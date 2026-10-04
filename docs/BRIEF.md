@@ -16,6 +16,7 @@ A complete multiplayer browser game "Benin Life":
 2. Needs (hunger, energy, hygiene, fun, social, health, stress) + game clock with day/night.
 3. Tap-to-travel illustrated Benin map (~30+ places), travel modes (walk, keke side roads only, ECTS bus, drop/ride-hail, own car), traffic-aware travel time, Ramat Park jam.
 4. Jobs & hustles: legal (PoS operator, keke rider, market trader, UNIBEN student, Igun bronze apprentice, UBTH nurse, police officer, farmer, barber/salon, club DJ) and risky (agbero, Yahoo boy w/ EFCC raid chance).
+   **Career ladders (user request):** every official job group is a career track from the lowest rank to the highest, e.g. Tech: Intern → Junior Dev → Mid-level Dev → Senior Dev → Tech Lead → Engineering Manager → CTO. Same for health (Ward Attendant → … → Chief Medical Director), police (Recruit/Constable → … → Commissioner of Police), banking (Teller/Intern → … → MD/CEO), etc. Promotion is dynamic (XP from shifts + performance + requirements like education/days worked), pay rises per level, and all tracks/levels/salaries/promotion rules are data-driven and admin-tunable. Tech industry included (fictional tech hub in Benin).
 5. Finance: cash vs bank (bank can't be robbed), PoS fees, esusu groups, loans.
 6. Marketplace: NPC shops per market + player-to-player listings with fee.
 7. Farming at Iguobazuwa: rent plot, plant, grow timers, harvest, sell; harvest-theft chance.

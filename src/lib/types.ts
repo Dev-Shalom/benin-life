@@ -21,7 +21,7 @@ export type SceneType =
   | 'market' | 'hospital' | 'campus' | 'palace' | 'museum' | 'club' | 'bank' | 'police'
   | 'motorpark' | 'street' | 'pos'
   | 'home_face_me' | 'home_flat' | 'home_duplex' | 'farm' | 'airport' | 'shrine'
-  | 'workshop' | 'buka' | 'salon' | 'cyber';
+  | 'workshop' | 'buka' | 'salon' | 'cyber' | 'office';
 
 export type PanelId =
   | 'activities' | 'jobs' | 'shop' | 'market_p2p' | 'housing' | 'inventory'
