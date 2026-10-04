@@ -1,0 +1,171 @@
+# Benin Life — Architecture & Build Contract
+
+This file is the **binding contract** for every agent working on the repo. Read `docs/BRIEF.md` first for product intent.
+If you need something another agent owns, code against the contract below — do not edit their files.
+
+## 1. Stack
+- Frontend: React 19 + TypeScript + Vite, react-router-dom v7, zustand. Plain CSS (tokens in `src/styles/tokens.css`). No UI framework.
+- Backend: Supabase — Auth (email + password, no confirmation locally), Postgres (all game logic in `security definer` plpgsql RPCs), Realtime, Edge Functions (Deno) for payments only.
+- Local dev: `npx supabase start` (Docker). DB container: `supabase_db_benin-life`. API: http://127.0.0.1:54321.
+- Env (frontend): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` in `.env.local` (never committed).
+
+## 2. Directory layout & ownership
+```
+docs/                         BRIEF, ARCHITECTURE (phase 0), others per owner
+scripts/sql-test.sh           phase 0 — run migration(s)+test in a ROLLBACK transaction
+supabase/migrations/
+  20261004000100_core.sql               P1-DB
+  20261004000200_core_seed.sql          P1-DB
+  20261004001000_economy.sql            P2-ECON
+  20261004002000_finance_farm_health.sql P2-FIN
+  20261004003000_crime_police.sql       P2-CRIME
+  20261004004000_social.sql             P2-SOCIAL
+  20261004005000_admin.sql              P2-ADMIN
+  20261004006000_payments.sql           P2-PAY
+supabase/tests/<owner>_test.sql         each owner
+supabase/tests/_helpers.sql             phase 0
+supabase/functions/                     P2-PAY only
+src/lib/{supabase,api,types}.ts         phase 0 (append-only: you MAY add new exported types at the bottom of types.ts inside a section headed with your owner tag)
+src/lib/{config,clock,pidgin,format}.ts P1-SHELL
+src/state/                              P1-SHELL
+src/styles/                             P1-SHELL
+src/ui/                                 P1-SHELL (shared kit: Button, Sheet, Modal, NeedBar, Toast, Tabs, Spinner, Money)
+src/screens/                            P1-SHELL
+src/art/avatar/                         P1-AVATAR
+src/art/map/                            P1-MAP
+src/art/scenes/<SceneType>.tsx          P1-SCENES-A / P1-SCENES-B (see §7)
+src/art/Scene.tsx                       phase 0 (dispatcher, do not edit)
+src/panels/registry.ts                  phase 0 (do not edit)
+src/panels/ActivitiesPanel.tsx          P1-SHELL
+src/panels/{Jobs,Shop,Market,Housing,Inventory}Panel.tsx         P2-ECON
+src/panels/{Bank,Pos,Loans,Esusu,Farm,Hospital,Babalawo}Panel.tsx P2-FIN
+src/panels/{Police,Rob,Crimes}Panel.tsx                          P2-CRIME
+src/panels/{Chat,Messages,Profile}Panel.tsx                      P2-SOCIAL
+src/panels/{Wallet,Airport}Panel.tsx                             P2-PAY
+src/api/<system>.ts                     each P2 owner (typed RPC wrappers)
+src/admin/                              P2-ADMIN (entry: src/admin/AdminApp.tsx default export)
+```
+Panels are discovered with `import.meta.glob`, so a missing panel file never breaks the build.
+
+## 3. Server conventions (Postgres)
+- All tables: RLS **enabled**. Clients get `select` only where listed; **all writes go through RPCs** (`security definer`, `set search_path = public`). Grant `execute` on RPCs to `authenticated`; revoke from `anon`/`public` (except catalog reads).
+- Helper functions (prefixed `bl_`) are internal: `revoke execute ... from public, anon, authenticated`.
+- RPC naming: snake_case verbs, e.g. `travel_start`, `bank_deposit`. Parameters prefixed `p_`.
+- **Success** returns `jsonb` with at least `{"message": "<pidgin>"}` plus data. **Failure**: `raise exception '<pidgin message>' using errcode = 'P0001';` — the client shows `error.message` verbatim, so write it in Pidgin.
+- Time: always use `bl_now()` (never `now()`), so tests can time-travel via `set local bl.test_offset_seconds = '600'`.
+- Randomness: always use `bl_rand()` (never `random()`), so tests can force rolls via `set local bl.test_rand = '0.01'`.
+- Config: read balance values with `bl_cfg(key) -> numeric`, `bl_cfg_bool(key)`, `bl_cfg_text(key)`. **Never hard-code a balance number** — add a `game_config` row in your migration (`insert ... on conflict (key) do nothing`).
+  - `kind='percent'` values are stored 0–100 (divide by 100 in formulas).
+- Money: only via `bl_add_money(p_uid, p_account 'cash'|'bank', p_delta bigint, p_reason text, p_meta jsonb default '{}')`, which writes the `ledger` and raises `'Your money no reach'` if it would go negative.
+- Needs: `bl_adjust_needs(p_uid, p_delta jsonb)` e.g. `'{"hunger": 30, "energy": -10}'` (clamped 0–100).
+- Status: `bl_jail(p_uid, p_game_minutes int, p_reason text)`, `bl_hospitalize(p_uid, p_game_minutes int, p_reason text)`, `bl_set_busy(p_uid, p_game_minutes int, p_label text)`.
+- Guard at the top of every gameplay RPC: `v_me := bl_me();` (loads caller row FOR UPDATE, applies lazy needs decay, raises if not logged in / no profile / banned) then `perform bl_assert_free(v_me);` (raises if traveling, busy, jailed or hospitalized — skip for RPCs that must work while jailed, e.g. bail).
+- Notify a player: `bl_event(p_uid, p_kind text, p_title text, p_body text, p_data jsonb default '{}')` → row in `events` (realtime-published).
+- Admin check: `bl_is_admin() -> boolean`.
+- Real-time duration of game minutes: `bl_real_seconds(p_game_minutes numeric) -> numeric` = minutes × `time.real_seconds_per_game_minute`.
+
+### Core tables (P1-DB) — other owners may `alter table ... add column if not exists` in their own migration, never drop/rename.
+- `profiles` (id uuid pk → auth.users, username unique, gender, avatar jsonb, is_admin, banned, cash bigint, bank bigint, hunger/energy/hygiene/fun/social/health/stress numeric, needs_updated_at, location_id → locations, home_location_id, housing_id text, job_id text, job_level int, job_xp int, street_cred int, wanted int, travel_to, travel_mode, travel_started_at, travel_arrives_at, busy_until, busy_label, jailed_until, jail_reason, hospitalized_until, protected_until, charm_strength numeric 0–1, charm_until, last_seen, created_at)
+- `locations` (id text pk, name, district, scene, blurb, risk numeric 0–1, night_risk_mult, cctv bool, keke_ok bool, congestion numeric, remote_km numeric, x, y numeric (map space 0–1000), actions text[], sort int)
+- `game_config` (key pk, value jsonb, category, label, description, kind, min, max, updated_at, updated_by)
+- `config_audit` (id, admin_id, key, old_value, new_value, created_at) — written by admin RPCs (P2-ADMIN)
+- `ledger` (id bigserial, user_id, account, delta, balance_after, reason, meta jsonb, created_at)
+- `events` (id bigserial, user_id, kind, title, body, data jsonb, read bool, created_at)
+- `items` (id text pk, name, category, price bigint, description, effects jsonb, sold_at text[] (location ids), sellable bool, resale_pct numeric, icon text, sort int) — rows seeded by P2-ECON (P2-FIN may add seeds/charms)
+- `inventory` (user_id, item_id, qty, primary key(user_id,item_id))
+- `activities` (id text pk, name, scenes text[] (which location scenes offer it), home_only bool, cost bigint, game_minutes int, effects jsonb, night_only bool, sort int)
+- Realtime publication `supabase_realtime`: profiles, events, game_config (+ chat tables by P2-SOCIAL).
+
+### Core RPCs (P1-DB)
+| RPC | Args | Returns |
+|---|---|---|
+| `create_profile` | p_username text, p_gender text, p_avatar jsonb | GameState |
+| `update_avatar` | p_avatar jsonb | {message} |
+| `get_my_state` | – | GameState (see `src/lib/types.ts`) — also bumps last_seen |
+| `travel_quote` | p_dest text | {dest, km, options:[{mode, label, allowed, reason?, cost, game_minutes, real_seconds, risk_pct}]} |
+| `travel_start` | p_dest text, p_mode text | {message, arrives_at} |
+| `travel_arrive` | – | {message, robbed?: {amount, injured}} — rolls street robbery |
+| `do_activity` | p_activity text | {message} |
+| `players_here` | p_location text | [{id, username, avatar, street_cred, last_seen}] seen within 3 real minutes |
+| `get_public_profile` | p_id uuid | {id, username, avatar, gender, street_cred, job_id, location_id, created_at} |
+
+Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location text, p_mode text, p_traffic numeric) returns jsonb` (P1-DB). P2-CRIME may `create or replace` it with a richer version **keeping the signature**.
+
+## 4. Game rules (baseline numbers = config defaults)
+- Clock: `clock.game_minutes_per_real_minute` = 12 (1 game day = 2 real hours). Game time = minutes since epoch 2026-01-01T00:00Z × speed + `clock.start_hour_offset`(6h). Night = hour ≥ `clock.night_start_hour`(20) or < `clock.night_end_hour`(6).
+- Needs decay per game hour: hunger 4, energy 3, hygiene 2.5, fun 2, social 1.5; stress +1; health −2 per game hour while hunger or energy is 0.
+- Start: cash ₦5,000, home `ekenwan_room`, housing `face_me_ekenwan`, location `ekenwan_room`, new-player protection 120 real minutes.
+- Travel: km = distance(x,y)/1000 × `travel.city_km_across`(18) + remote_km of each end. Modes (`travel.<mode>.*`): walk 5 km/h ₦0; keke 18 km/h ₦150 + ₦100/km (only if both ends `keke_ok`); bus (ECTS) 15 km/h ₦300 flat; drop 25 km/h ₦500 + ₦250/km; car 30 km/h ₦120/km fuel (needs an inventory item with category `vehicle`). Traffic = avg(congestion) × rush mult 1.8 (07–10, 16–20) × Ramat Park mult 1.6 if either end in district `ikpoba_hill`/`aduwawa` and `traffic.ramat_flyover_open` false. Walk ignores traffic. Real seconds = game minutes × `travel.real_seconds_per_game_minute`(1.0), min 3s.
+- Street robbery p = `crime.npc_base_pct`/100 × zone risk × (night ? night_risk_mult × `crime.night_mult` : 1) × (1 + (traffic−1) × `crime.traffic_weight`) × cash_factor × mode_factor × (1 − charm_strength); cash_factor = min(1.5, 0.3 + cash/`crime.cash_ref`); mode factors walk 1.4 / keke 1.0 / bus 0.8 / drop 0.7 / car 0.6; 0 while protected; cap `crime.npc_max_pct`. Loss = cash × U(`crime.loss_min_pct`,`crime.loss_max_pct`)/100; `crime.injury_pct` chance → health −U(15,35) and suggest UBTH.
+
+## 5. Locations (seeded by P1-DB, used by map art). Map space 1000×1000, north up, Ring Road centre (500,500).
+| id | name | district | scene | x | y | risk | night× | cctv | keke | cong | remote_km | actions |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| national_museum | Benin National Museum (King's Square) | oredo | museum | 500 | 500 | .15 | 1.5 | t | f | 1.3 | 0 | activities |
+| oba_market | Oba Market | oredo | market | 445 | 465 | .35 | 1.8 | f | f | 1.4 | 0 | shop,market_p2p,jobs,activities |
+| ring_road_pos | Ring Road PoS Line | oredo | pos | 565 | 465 | .40 | 2.0 | t | f | 1.5 | 0 | pos,jobs |
+| oba_palace | Oba's Palace | oredo | palace | 545 | 560 | .05 | 1.0 | t | f | 1.2 | 0 | activities |
+| igun_street | Igun Street (Bronze Casters) | oredo | workshop | 590 | 590 | .15 | 1.5 | f | t | 1.1 | 0 | jobs,shop,activities |
+| mama_osas_buka | Mama Osas Buka | oredo | buka | 455 | 545 | .20 | 1.5 | f | t | 1.2 | 0 | activities,jobs |
+| new_benin_market | New Benin Market | new_benin | market | 585 | 335 | .35 | 1.8 | f | f | 1.4 | 0 | shop,market_p2p,jobs,activities |
+| new_benin_pos | New Benin PoS Junction | new_benin | pos | 630 | 365 | .45 | 2.0 | f | f | 1.4 | 0 | pos,jobs |
+| mercy_clinic | Mercy Clinic | new_benin | hospital | 545 | 380 | .10 | 1.2 | t | t | 1.1 | 0 | hospital |
+| mission_rd_flats | Mission Road Mini Flats | new_benin | home_flat | 520 | 410 | .15 | 1.6 | f | t | 1.1 | 0 | housing,activities |
+| uselu_market | Uselu Market | uselu | market | 385 | 330 | .30 | 1.8 | f | f | 1.6 | 0 | shop,market_p2p,jobs,activities |
+| fresh_cut_salon | Fresh Cut Barbing & Salon | uselu | salon | 420 | 295 | .20 | 1.5 | f | t | 1.1 | 0 | jobs,shop,activities |
+| uselu_park | Uselu Motor Park | uselu | motorpark | 340 | 365 | .40 | 2.0 | f | f | 1.6 | 0 | jobs,activities |
+| uniben | UNIBEN Ugbowo Campus | ugbowo | campus | 255 | 205 | .20 | 1.6 | t | t | 1.2 | 0 | jobs,activities |
+| ubth | UBTH (Teaching Hospital) | ugbowo | hospital | 305 | 250 | .10 | 1.2 | t | f | 1.3 | 0 | hospital,jobs |
+| back_gate_joint | UNIBEN Back Gate Joint | ugbowo | buka | 215 | 165 | .30 | 2.0 | f | t | 1.1 | 0 | activities |
+| wifi_joint | Ugbowo Wi-Fi Joint | ugbowo | cyber | 305 | 170 | .25 | 1.8 | f | t | 1.0 | 0 | jobs,activities |
+| oluku_park | Oluku Junction Park | oluku | motorpark | 130 | 85 | .50 | 2.2 | f | f | 1.5 | 0 | jobs,activities |
+| ramat_park | Ramat Park Junction | ikpoba_hill | motorpark | 705 | 375 | .40 | 2.0 | f | f | 2.2 | 0 | jobs,activities |
+| oregbeni_market | Oregbeni Market (Ikpoba Hill) | ikpoba_hill | market | 745 | 470 | .35 | 1.8 | f | f | 1.4 | 0 | shop,market_p2p,jobs |
+| aduwawa_park | Aduwawa Motor Park | aduwawa | motorpark | 880 | 400 | .55 | 2.3 | f | f | 1.4 | 0 | jobs,activities |
+| aduwawa_room | Aduwawa Face-Me-I-Face-You | aduwawa | home_face_me | 850 | 505 | .40 | 2.0 | f | t | 1.0 | 0 | housing,activities |
+| third_east | Third East Circular | third_east | street | 680 | 560 | .50 | 3.0 | f | f | 1.3 | 0 | activities,jobs |
+| ekiosa_market | Ekiosa Market | sakponba | market | 620 | 630 | .35 | 1.8 | f | f | 1.3 | 0 | shop,market_p2p |
+| baba_shrine | Baba Osagie Shrine | sakponba | shrine | 680 | 665 | .30 | 1.8 | f | t | 1.0 | 0 | babalawo |
+| upper_sakponba | Upper Sakponba | upper_sakponba | street | 735 | 745 | .55 | 3.0 | f | t | 1.2 | 0 | activities,jobs |
+| santana_market | Santana Market | sapele_rd | market | 470 | 700 | .30 | 1.8 | f | f | 1.3 | 0 | shop,market_p2p |
+| sapele_pos | Sapele Road PoS Stand | sapele_rd | pos | 510 | 650 | .50 | 2.2 | f | f | 1.4 | 0 | pos,jobs |
+| bronze_lounge | Bronze Lounge | sapele_rd | club | 540 | 765 | .35 | 1.6 | t | f | 1.2 | 0 | activities,jobs |
+| police_hq | Police Command HQ (GRA) | gra | police | 380 | 600 | .02 | 1.0 | t | f | 1.1 | 0 | police,jobs |
+| bronze_bank | Bronze Bank (GRA) | gra | bank | 415 | 560 | .10 | 1.3 | t | f | 1.2 | 0 | bank,loans,esusu,jobs |
+| gra_duplex | GRA Duplex Estate | gra | home_duplex | 340 | 655 | .10 | 1.4 | t | f | 1.0 | 0 | housing,activities |
+| kingdom_lounge | Kingdom Lounge (GRA) | gra | club | 325 | 580 | .15 | 1.4 | t | f | 1.1 | 0 | activities |
+| benin_airport | Benin Airport | airport_rd | airport | 235 | 470 | .05 | 1.0 | t | f | 1.1 | 0 | airport |
+| siluko_rd | Siluko Road | siluko | street | 330 | 735 | .45 | 2.2 | f | t | 1.2 | 0 | activities,jobs |
+| ekenwan_room | Ekenwan Face-Me-I-Face-You | ekenwan | home_face_me | 205 | 620 | .40 | 2.0 | f | t | 1.0 | 0 | housing,activities |
+| iguobazuwa_farm | Iguobazuwa Farm Settlement | iguobazuwa | farm | 40 | 700 | .30 | 2.0 | f | f | 1.0 | 22 | farm,jobs |
+
+Roads to draw (map art): Ring Road circle r≈60 at (500,500); Ugbowo–Lagos Rd NW to Oluku (500,500)→(385,330)→(255,205)→(130,85); Mission Rd N/NE → New Benin (585,335); Akpakpava/Ikpoba Hill Rd E → Ramat Park (705,375) → Aduwawa (880,400) [Benin–Auchi Rd continues off-map E]; Sakponba Rd SE → (620,630) → (735,745); Sapele Rd S → (470,700) → (540,765) off-map S; Airport Rd W → (235,470); Siluko Rd SW → (330,735); Ekenwan Rd W/SW → (205,620) → Iguobazuwa (40,700) off-map W; Third East Circular arc around E from (640,330) through (680,560) to (620,700). Ikpoba River runs N–S around x≈650–670 east of centre (bridge on Ikpoba Hill Rd). GRA = leafy district SW of centre.
+
+## 6. Panel contract (frontend)
+```ts
+// src/lib/types.ts
+export interface PanelProps { state: GameState; location: Location; refresh: () => Promise<void>; close: () => void; params?: Record<string, unknown> }
+```
+- Panels are default exports in `src/panels/<Name>Panel.tsx`. Action ids → files in `src/panels/registry.ts`.
+- Location-bound panels render inside the location sheet as a tab when `location.actions` contains the id **and** the player is at that location. Global panels (`inventory`, `wallet`, `messages`, `crimes`) open from the HUD. `rob` and `profile` open from the "People here" list with `params: { targetId }`.
+- Call RPCs via `rpc()` from `src/lib/api.ts`; after a state-changing call, `await refresh()`; show the returned `message` with `toast(message)` from `src/ui/Toast` (P1-SHELL exports `toast(msg, kind?)`).
+- Use the shared UI kit from `src/ui` and tokens from `src/styles/tokens.css`. Mobile-first: panels must work at 360px width.
+- Format naira with `naira(n)` from `src/lib/format.ts` (P1-SHELL).
+
+## 7. Art contracts
+- **Avatar** (`src/art/avatar/`, P1-AVATAR): `export function Avatar(props: { config: AvatarConfig; view?: 'full'|'portrait'; size?: number; className?: string })` from `src/art/avatar/Avatar.tsx`; catalog in `src/art/avatar/catalog.ts` exporting `AVATAR_OPTIONS` (per-slot option lists with Pidgin labels, gender-filtered), `defaultAvatar(gender)`, `randomAvatar(gender)`, `normalizeAvatar(raw): AvatarConfig`. Full view viewBox `0 0 200 400`; portrait viewBox `0 0 200 200`.
+- **Map** (`src/art/map/`, P1-MAP): `export function BeninMap(props: { locations: Location[]; currentId?: string; selectedId?: string; onSelect: (id: string) => void; night: boolean; travel?: { from: string; to: string; progress: number } | null; crowd?: Record<string, number> })` from `src/art/map/BeninMap.tsx`. viewBox `0 0 1000 1000`. Pan + pinch/wheel zoom, tap pins.
+- **Scenes** (`src/art/scenes/<SceneType>.tsx`): default export `(props: { night: boolean }) => JSX.Element`, root `<svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">`. Dispatcher `src/art/Scene.tsx` (phase 0) lazy-loads by file name and falls back to a gradient. Unique `id`s inside each SVG must be prefixed with the scene name (`market-sky`) to avoid DOM id collisions.
+  - P1-SCENES-A: market, hospital, campus, palace, museum, club, bank, police, motorpark, street, pos
+  - P1-SCENES-B: home_face_me, home_flat, home_duplex, farm, airport, shrine, workshop, buka, salon, cyber
+- All art: detailed layered SVG (multi-stop gradients, five-zone lighting, coloured shadows — never pure black, subtle grain), Benin palette (laterite red-earth #b5552b family, coral red #d2342a, bronze #b0793a / gold #d9a441, ECTS green #1f7a3f, lush tropical greens). Follow the `svg-creator` skill workflow (render → look → fix) at `~/.claude/skills/svg-creator/` using `python ~/.claude/skills/svg-creator/scripts/svg_loop.py render <file.svg> [width]` then Read the PNG it prints.
+
+## 8. Testing protocol (every agent, before reporting done)
+- Frontend: `npm run build` must pass (tsc + vite) with zero errors.
+- SQL: `bash scripts/sql-test.sh <migration files...> -- <test file>` runs everything inside `BEGIN … ROLLBACK` against the local DB, so parallel agents don't collide. Tests use `supabase/tests/_helpers.sql` (`pg_temp.new_user(email)`, `pg_temp.login(uid)`) and must `raise exception` on failure. Use `set local bl.test_rand` / `bl.test_offset_seconds` for determinism.
+- Only the phase verifier runs `npx supabase db reset` (applies all migrations) — agents must not.
+- Art: render every SVG you produce and look at it before finishing.
+- Report: list files created, what you verified (commands + results), and any assumption the user should sanity-check.
+
+## 9. Copy & tone
+Naija Pidgin, playful street-smart, never graphic. Examples: "Omo, dem don rob you for Sapele Road!", "Your money no reach, my guy.", "Agbero don block road — drop ₦200 abeg." Gangs: agberos + fictional crews only ("Ring Road Boys", "Sapele Lions") — never real cults. Treat the Oba/palace respectfully.
