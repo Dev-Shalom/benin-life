@@ -1,0 +1,268 @@
+/* Global base — P1-SHELL */
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  background: var(--bg);
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+body {
+  min-width: 360px;
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  line-height: 1.1;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  font-size: max(16px, 1rem); /* never let iOS zoom */
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(217, 164, 65, 0.4);
+}
+
+@media (hover: hover) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 99px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.display {
+  font-family: var(--font-display);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--chip-bg);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.chip.good {
+  background: rgba(46, 154, 82, 0.16);
+  color: var(--good);
+}
+.chip.bad {
+  background: rgba(210, 52, 42, 0.14);
+  color: var(--bad);
+}
+.chip.warn {
+  background: rgba(224, 160, 42, 0.18);
+  color: #a86a00;
+}
+[data-theme='night'] .chip.warn {
+  color: var(--gold-soft);
+}
+[data-theme='night'] .chip.good {
+  color: #6fd08e;
+}
+[data-theme='night'] .chip.bad {
+  color: #ff8a7a;
+}
+
+/* Bronze-edged card used across screens and panels */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--e1);
+  padding: var(--s4);
+}
+
+.bronze-edge {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    var(--grad-bronze-line) border-box;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field label {
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 4px rgba(217, 164, 65, 0.22);
+}
+.input::placeholder {
+  color: var(--muted);
+}
+
+.hint {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.error-text {
+  color: var(--bad);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+@keyframes bl-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes bl-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+@keyframes bl-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+@keyframes bl-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes bl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes bl-shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
