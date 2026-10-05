@@ -20,6 +20,7 @@ supabase/migrations/
   20261005000200_origin.sql             P1-ORIGIN (LAPO/Nepo class roll — docs/ORIGIN.md)
   20261005000300_time_tuning.sql        P1-TIME
   20261005000400_creator.sql            R3a (traits, dreams, start homes, rent, origin overrides — docs/CREATOR.md)
+  20261005000500_bladder.sql            R4 (bladder need, toilet/TV/radio activities, players_online — docs/HUD_HOME.md)
   20261004001000_economy.sql            P2-ECON
   20261004002000_finance_farm_health.sql P2-FIN
   20261004003000_crime_police.sql       P2-CRIME
@@ -79,6 +80,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 - `inventory` (user_id, item_id, qty, primary key(user_id,item_id))
 - `activities` (id text pk, name, scenes text[] (which location scenes offer it), home_only bool, cost bigint, game_minutes int, effects jsonb, night_only bool, sort int)
 - R3a (`docs/CREATOR.md`): `traits` (id, name, emoji, description, effects jsonb, sort, active), `dreams` (id, name, emoji, description, goal jsonb, sort, active), `start_homes` (id, name, emoji, location_id, district, tag, description, weekly_rent, start_cash jsonb per origin, allowed_origins text[], locked_quip, housing_id, sort, active) — select for anon+authenticated; `admin_audit` (admin-only select). `profiles` adds `traits text[]`, `dream`, `start_home`, `home_chosen bool` (default true), `weekly_rent`, `rent_due_at`, `rent_owed`. Trait `effects.decay` multipliers are applied in `bl_decay_row`.
+- R4 (`docs/HUD_HOME.md`): `profiles.bladder` numeric default 100 (100 = comfortable). Decays `needs.bladder_per_hour` × trait `effects.decay.bladder`; at 0, hygiene drops an extra `needs.bladder_empty_hygiene_per_hour`. `bl_adjust_needs` accepts a `bladder` key. New activities `use_toilet` (home), `ease_yourself` / `public_toilet` (paid, outside), `watch_tv`, `listen_radio`.
 - `origin_tiers` (P1-ORIGIN: id text pk, name, tagline, welcome, chance_key → game_config key of its roll %, is_default (exactly one), sort, perks jsonb) — select for anon+authenticated. See `docs/ORIGIN.md`.
 - Realtime publication `supabase_realtime`: profiles, events, game_config (+ chat tables by P2-SOCIAL).
 
@@ -99,12 +101,13 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 | `do_activity` | p_activity text | {message} |
 | `players_here` | p_location text | [{id, username, avatar, street_cred, last_seen}] seen within 3 real minutes |
 | `get_public_profile` | p_id uuid | {id, username, avatar, gender, street_cred, job_id, location_id, created_at} |
+| `players_online` | – | {count, minutes} — Sims seen in the last `time.presence_real_minutes` (R4, HUD pill) |
 
 Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location text, p_mode text, p_traffic numeric) returns jsonb` (P1-DB). P2-CRIME may `create or replace` it with a richer version **keeping the signature**.
 
 ## 4. Game rules (baseline numbers = config defaults)
 - Clock: `clock.game_minutes_per_real_minute` = 12 (1 game day = 2 real hours). Game time = real minutes since `clock.epoch` (default 2026-10-05T00:00Z, the launch day = Day 1) × speed + `clock.start_hour_offset`(6h); client and server read the same key. Night = hour ≥ `clock.night_start_hour`(20) or < `clock.night_end_hour`(6).
-- Needs decay per game hour: hunger 4, energy 3, hygiene 2.5, fun 2, social 1.5; stress +1; health −2 per game hour while hunger or energy is 0.
+- Needs decay per game hour: hunger 4, energy 3, hygiene 2.5, fun 2, social 1.5, bladder 5 (R4); stress +1; health −2 per game hour while hunger or energy is 0; hygiene −4 extra per game hour while bladder is 0.
 - Start: depends on the rolled origin tier (P1-ORIGIN, `docs/ORIGIN.md`); in the R3a creator flow the cash comes from the chosen start home per origin (`docs/CREATOR.md`), the bank and items from the origin. `origin.nepo_pct` 10% → **Nepo baby**: cash ₦50,000, bank ₦500,000, home/location `gra_duplex`, housing `duplex_gra`, items `tokunbo_car,laptop`, career head start 2, Dad allowance ₦5,000/game day. Otherwise **LAPO baby** (default): cash ₦5,000, home/location `ekenwan_room`, housing `face_me_ekenwan`, easy micro-loans (Phase 2 hook). Per-tier keys `origin.<tier>.{start_cash,start_bank,home_location,housing,items,career_head_start,allowance_daily}`; missing ones fall back to `start.*`. New-player protection 120 real minutes for everyone.
 - Travel: km = distance(x,y)/1000 × `travel.city_km_across`(18) + remote_km of each end. Modes (`travel.<mode>.*`): walk 5 km/h ₦0; keke 18 km/h ₦150 + ₦100/km (only if both ends `keke_ok`); bus (ECTS) 15 km/h ₦300 flat; drop 25 km/h ₦500 + ₦250/km; car 30 km/h ₦120/km fuel (needs an inventory item with category `vehicle`). Traffic = avg(congestion) × rush mult 1.8 (07–10, 16–20) × Ramat Park mult 1.6 if either end in district `ikpoba_hill`/`aduwawa` and `traffic.ramat_flyover_open` false. Walk ignores traffic. Real seconds = game minutes × `travel.real_seconds_per_game_minute`(1.0), min 3s.
 - Street robbery p = `crime.npc_base_pct`/100 × zone risk × (night ? night_risk_mult × `crime.night_mult` : 1) × (1 + (traffic−1) × `crime.traffic_weight`) × cash_factor × mode_factor × (1 − charm_strength); cash_factor = min(1.5, 0.3 + cash/`crime.cash_ref`); mode factors walk 1.4 / keke 1.0 / bus 0.8 / drop 0.7 / car 0.6; 0 while protected; cap `crime.npc_max_pct`. Loss = cash × U(`crime.loss_min_pct`,`crime.loss_max_pct`)/100; `crime.injury_pct` chance → health −U(15,35) and suggest UBTH.

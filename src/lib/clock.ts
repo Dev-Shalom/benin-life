@@ -94,3 +94,8 @@ export function useGameClock(intervalMs = 1000): { clock: GameClock; now: number
   const clock = gameClockAt(now, clockSettings(cfg));
   return { clock, now };
 }
+
+/** 0 = Monday … 6 = Sunday (game day 1 is a Monday; the server sends clock.weekday since R3a). */
+export function weekdayOf(clock: GameClock): number {
+  return clock.weekday ?? (((clock.day - 1) % 7) + 7) % 7;
+}

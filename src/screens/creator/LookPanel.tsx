@@ -129,14 +129,15 @@ function OptionRow({ row, avatar, onPick }: { row: Row; avatar: AvatarConfig; on
 export interface LookPanelProps {
   avatar: AvatarConfig;
   onAvatar: (a: AvatarConfig) => void;
-  username: string;
-  onUsername: (v: string) => void;
+  /** Name field: shown only when onUsername is given (the in-game look editor has no name). */
+  username?: string;
+  onUsername?: (v: string) => void;
   /** Server or validation error for the name, shown under the field. */
-  nameError: string | null;
-  nameRef: React.RefObject<HTMLInputElement | null>;
+  nameError?: string | null;
+  nameRef?: React.RefObject<HTMLInputElement | null>;
 }
 
-export default function LookPanel({ avatar, onAvatar, username, onUsername, nameError, nameRef }: LookPanelProps) {
+export default function LookPanel({ avatar, onAvatar, username = '', onUsername, nameError = null, nameRef }: LookPanelProps) {
   const [group, setGroup] = useState<Group>('outfit');
   const [touched, setTouched] = useState(false);
   const gender = avatar.gender;
@@ -153,6 +154,7 @@ export default function LookPanel({ avatar, onAvatar, username, onUsername, name
 
   return (
     <div className="look">
+      {onUsername && (
       <div className="field look__name">
         <label htmlFor="sim-name" className="look-row__label">{CREATOR.nameLabel}</label>
         <div className={`name-input${error ? ' is-bad' : ''}`}>
@@ -179,6 +181,7 @@ export default function LookPanel({ avatar, onAvatar, username, onUsername, name
           {error ?? CREATOR.nameHelp}
         </p>
       </div>
+      )}
 
       <div className="look-row">
         <span className="look-row__label">{CREATOR.body}</span>

@@ -261,7 +261,7 @@ export interface ClaimAllowanceResult {
 // Server: supabase/migrations/20261005000400_creator.sql, docs/CREATOR.md. Wrappers: src/api/creator.ts.
 
 /** Need keys a trait's `effects.decay` may scale. */
-export type DecayNeed = 'hunger' | 'energy' | 'hygiene' | 'fun' | 'social' | 'stress';
+export type DecayNeed = 'hunger' | 'energy' | 'hygiene' | 'fun' | 'social' | 'stress' | 'bladder';
 
 /** Data-driven trait effects. `decay` multipliers apply now; the rest are stored for Phase 2. */
 export interface TraitEffects {
@@ -392,4 +392,19 @@ export interface AdminSetOriginResult {
   cash: number;
   bank: number;
   items: string[];
+}
+
+// ---- R4: bladder need, players online ----
+// Server: supabase/migrations/20261005000500_bladder.sql. Bladder: 100 = comfortable, drops every game
+// hour (needs.bladder_per_hour, trait effects.decay.bladder); toilet activities refill it.
+
+export interface Profile {
+  /** 0-100. Missing only on a server without the R4 migration. */
+  bladder?: number;
+}
+
+/** `players_online()` — Sims seen in the last time.presence_real_minutes. */
+export interface PlayersOnline {
+  count: number;
+  minutes: number;
 }

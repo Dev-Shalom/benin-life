@@ -34,7 +34,7 @@ function EffectChips({ effects }: { effects: Record<string, number> | null }) {
         const val = k === 'cash' || k === 'bank' ? naira(v) : `${v > 0 ? '+' : ''}${Math.round(v)}`;
         return (
           <span key={k} className={`chip ${good ? 'good' : 'bad'}`}>
-            {meta && <Icon name={meta.icon} size={12} />}
+            {meta && <span aria-hidden>{meta.emoji}</span>}
             {label} {val}
           </span>
         );

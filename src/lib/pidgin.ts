@@ -65,19 +65,35 @@ export const P = {
   panelMissing: 'Coming soon. This part of the city is still being built.',
 };
 
-export type NeedKey = 'hunger' | 'energy' | 'hygiene' | 'fun' | 'social' | 'health' | 'stress';
+export type NeedKey = 'hunger' | 'energy' | 'hygiene' | 'fun' | 'social' | 'bladder' | 'health' | 'stress';
 
-export const NEED_KEYS: NeedKey[] = ['hunger', 'energy', 'hygiene', 'fun', 'social', 'health', 'stress'];
+export const NEED_KEYS: NeedKey[] = ['hunger', 'energy', 'hygiene', 'fun', 'social', 'bladder', 'health', 'stress'];
 
-export const NEED_META: Record<NeedKey, { label: string; short: string; icon: string; inverted?: boolean }> = {
-  hunger: { label: 'Hunger', short: 'Hunger', icon: 'food' },
-  energy: { label: 'Energy', short: 'Energy', icon: 'bolt' },
-  hygiene: { label: 'Hygiene', short: 'Hygiene', icon: 'soap' },
-  fun: { label: 'Fun', short: 'Fun', icon: 'party' },
-  social: { label: 'Social', short: 'Social', icon: 'chat' },
-  health: { label: 'Health', short: 'Health', icon: 'heart' },
-  stress: { label: 'Stress', short: 'Stress', icon: 'stress', inverted: true },
+/** The six everyday needs shown in the HUD and the Sim sheet (R4). Health and stress live in the sheet. */
+export const HUD_NEEDS: NeedKey[] = ['hunger', 'energy', 'fun', 'social', 'hygiene', 'bladder'];
+
+export const NEED_META: Record<NeedKey, { label: string; short: string; icon: string; emoji: string; color: string; inverted?: boolean }> = {
+  hunger: { label: 'Hunger', short: 'Hunger', icon: 'food', emoji: '🍲', color: '#f08c2e' },
+  energy: { label: 'Energy', short: 'Energy', icon: 'bolt', emoji: '⚡', color: '#2f7fd6' },
+  hygiene: { label: 'Hygiene', short: 'Hygiene', icon: 'soap', emoji: '🫧', color: '#14a89a' },
+  fun: { label: 'Fun', short: 'Fun', icon: 'party', emoji: '🎉', color: '#e3a612' },
+  social: { label: 'Social', short: 'Social', icon: 'chat', emoji: '💬', color: '#e0457b' },
+  bladder: { label: 'Bladder', short: 'Bladder', icon: 'drop', emoji: '🚽', color: '#7b61d9' },
+  health: { label: 'Health', short: 'Health', icon: 'heart', emoji: '❤️', color: '#e0473a' },
+  stress: { label: 'Stress', short: 'Stress', icon: 'stress', emoji: '😤', color: '#8a94a6', inverted: true },
 };
+
+/** A nudge for a low need: the wish chip text and what helps (R4; real wishes arrive in Phase 2). */
+export const NEED_TIP: Partial<Record<NeedKey, { text: string; emoji: string }>> = {
+  hunger: { text: 'Eat something', emoji: '🍲' },
+  energy: { text: 'Get some sleep', emoji: '😴' },
+  hygiene: { text: 'Take a bath', emoji: '🫧' },
+  bladder: { text: 'Use the toilet', emoji: '🚽' },
+  fun: { text: 'Do something fun', emoji: '🎉' },
+  social: { text: 'Go and see people', emoji: '💬' },
+};
+
+export const WEEKDAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 /** How a need feels at value v (0–100). */
 export function needMood(key: NeedKey, v: number): 'good' | 'warn' | 'bad' {

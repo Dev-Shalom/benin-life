@@ -1,6 +1,7 @@
-// UI store — P1-SHELL. Which sheet/panel is open on the game screen.
+// UI store — P1-SHELL, extended in R4. Which sheet/panel/overlay is open on the game screen.
 import { create } from 'zustand';
 import type { PanelId } from '../lib/types';
+import type { HomeGroup } from '../art/home3d/model';
 
 export interface OpenPanel {
   id: PanelId;
@@ -9,30 +10,51 @@ export interface OpenPanel {
   locationId?: string;
 }
 
-export type Overlay = 'alerts' | 'settings' | null;
+/** Full-screen overlays (one at a time). 'settings' is kept as an alias for the Sim sheet's Settings tab. */
+export type Overlay = 'alerts' | 'settings' | 'phone' | 'sim' | 'buy' | 'shortcuts' | 'look' | null;
+
+export type SimTab = 'profile' | 'needs' | 'goals' | 'skills' | 'people' | 'career' | 'settings';
 
 interface UiStore {
   selectedId: string | null;
   panel: OpenPanel | null;
   overlay: Overlay;
-  needsOpen: boolean;
+  simTab: SimTab;
+  /** At home: the player picked the map instead of the 3D home. */
+  mapOpen: boolean;
+  /** Tapped furniture in the 3D home (opens its activity sheet). */
+  homePick: { id: string | null; group: HomeGroup } | null;
+  /** Phone app to open with the phone (e.g. 'alerts'). */
+  phoneApp: string | null;
   select: (id: string | null) => void;
   openPanel: (id: PanelId, params?: Record<string, unknown>, locationId?: string) => void;
   closePanel: () => void;
   setOverlay: (o: Overlay) => void;
-  toggleNeeds: () => void;
+  openSim: (tab?: SimTab) => void;
+  openPhone: (app?: string | null) => void;
+  setMapOpen: (v: boolean) => void;
+  pickHome: (p: { id: string | null; group: HomeGroup } | null) => void;
+  /** Close every sheet/overlay (used before switching views). */
+  closeAll: () => void;
 }
 
 export const useUi = create<UiStore>((set) => ({
   selectedId: null,
   panel: null,
   overlay: null,
-  needsOpen: false,
+  simTab: 'profile',
+  mapOpen: false,
+  homePick: null,
+  phoneApp: null,
   select: (id) => set({ selectedId: id }),
   openPanel: (id, params, locationId) => set({ panel: { id, params, locationId } }),
   closePanel: () => set({ panel: null }),
-  setOverlay: (overlay) => set({ overlay }),
-  toggleNeeds: () => set((s) => ({ needsOpen: !s.needsOpen })),
+  setOverlay: (overlay) => (overlay === 'settings' ? set({ overlay: 'sim', simTab: 'settings' }) : set({ overlay })),
+  openSim: (tab) => set((s) => ({ overlay: 'sim', simTab: tab ?? s.simTab })),
+  openPhone: (app = null) => set({ overlay: 'phone', phoneApp: app }),
+  setMapOpen: (mapOpen) => set({ mapOpen }),
+  pickHome: (homePick) => set({ homePick }),
+  closeAll: () => set({ selectedId: null, panel: null, overlay: null, homePick: null }),
 }));
 
 /** Open a global panel from anywhere (e.g. another panel): openPanel('profile', { targetId }). */
