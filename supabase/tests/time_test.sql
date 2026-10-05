@@ -25,6 +25,17 @@ end $$;
 
 create temp table t_tu (name text primary key, id uuid not null) on commit drop;
 
+-- ---------- L1 defaults (checked before sections 0-3 switch to the accelerated clock) ----------
+do $$ begin
+  perform pg_temp.assert(bl_cfg_text('clock.mode') = 'real', 'clock.mode defaults to real');
+  perform pg_temp.assert(bl_cfg_text('clock.timezone') = 'Africa/Lagos', 'clock.timezone = Africa/Lagos');
+  perform pg_temp.assert(bl_cfg_text('action.mode') = 'short', 'action.mode defaults to short');
+  -- sections 0-3 pin the P1-TIME behaviour: accelerated clock + game-minute durations (rolled back)
+  update game_config set value = '"accelerated"' where key = 'clock.mode';
+  update game_config set value = '"game_minutes"' where key = 'action.mode';
+  raise notice 'ok L1 defaults; sections 0-3 run on the accelerated clock';
+end $$;
+
 -- ---------- 0. config ----------
 do $$
 declare r record;
@@ -147,4 +158,264 @@ begin
   raise notice 'ok 3: decay independent of epoch';
 end $$;
 
+-- =====================================================================
+-- L1: real Benin time (clock.mode = real) + action timing (action.mode = short)
+-- =====================================================================
+create or replace function pg_temp.at(p timestamptz) returns void
+language sql as $$ select set_config('bl.test_offset_seconds', extract(epoch from p - now())::text, true) $$;
+
+-- ---------- L1-1. real clock at fixed instants ----------
+do $$
+declare c jsonb;
+begin
+  update game_config set value = '"real"' where key = 'clock.mode';
+  update game_config set value = '"short"' where key = 'action.mode';
+  update game_config set value = '20' where key = 'clock.night_start_hour';
+  update game_config set value = '6' where key = 'clock.night_end_hour';
+  perform set_config('bl.test_offset_seconds', '', true);
+
+  -- 21:07 UTC = 22:07 WAT on Monday 5 Oct 2026, launch day = Day 1
+  c := bl_game_clock(timestamptz '2026-10-05 21:07:00+00');
+  perform pg_temp.assert((c->>'day')::int = 1 and (c->>'hour')::int = 22 and (c->>'minute')::int = 7
+                         and (c->>'weekday')::int = 0 and (c->>'is_night')::boolean
+                         and c->>'date' = '2026-10-05' and c->>'mode' = 'real', 'Mon 22:07 WAT day 1: ' || c::text);
+  perform pg_temp.assert((c->>'game_minutes')::bigint = 22 * 60 + 7, 'game_minutes = (day-1)*1440 + local minutes');
+  -- local midnight (23:00 UTC) rolls the day; 00:00 WAT on launch day is still day 1
+  c := bl_game_clock(timestamptz '2026-10-05 22:59:59+00');
+  perform pg_temp.assert((c->>'day')::int = 1 and (c->>'hour')::int = 23 and (c->>'minute')::int = 59, '23:59 still day 1');
+  c := bl_game_clock(timestamptz '2026-10-05 23:00:00+00');
+  perform pg_temp.assert((c->>'day')::int = 2 and (c->>'hour')::int = 0 and (c->>'weekday')::int = 1
+                         and c->>'date' = '2026-10-06', 'WAT midnight -> Tue day 2');
+  c := bl_game_clock(timestamptz '2026-10-04 23:00:00+00');
+  perform pg_temp.assert((c->>'day')::int = 1 and (c->>'hour')::int = 0, '00:00 WAT 5 Oct = day 1');
+  -- Saturday and the next Monday
+  c := bl_game_clock(timestamptz '2026-10-10 12:00:00+00');
+  perform pg_temp.assert((c->>'weekday')::int = 5 and (c->>'day')::int = 6 and (c->>'hour')::int = 13, 'Sat 10 Oct = day 6, 13:00');
+  c := bl_game_clock(timestamptz '2026-10-12 06:00:00+00');
+  perform pg_temp.assert((c->>'weekday')::int = 0 and (c->>'day')::int = 8, 'Mon 12 Oct = day 8');
+  -- night boundaries (night_start 20, night_end 6) in WAT
+  perform pg_temp.assert(not (bl_game_clock(timestamptz '2026-10-06 18:59:00+00')->>'is_night')::boolean, '19:59 WAT day');
+  perform pg_temp.assert((bl_game_clock(timestamptz '2026-10-06 19:00:00+00')->>'is_night')::boolean, '20:00 WAT night');
+  perform pg_temp.assert((bl_game_clock(timestamptz '2026-10-07 04:59:00+00')->>'is_night')::boolean, '05:59 WAT night');
+  perform pg_temp.assert(not (bl_game_clock(timestamptz '2026-10-07 05:00:00+00')->>'is_night')::boolean, '06:00 WAT day');
+  -- the clock is the wall clock: bl_game_clock() follows bl_now()
+  perform pg_temp.at(timestamptz '2026-11-20 08:30:00+00');
+  c := bl_game_clock();
+  perform pg_temp.assert((c->>'hour')::int = 9 and (c->>'minute')::int = 30 and c->>'date' = '2026-11-20'
+                         and (c->>'day')::int = 47 and (c->>'weekday')::int = 4, 'Fri 20 Nov 09:30 WAT = day 47: ' || c::text);
+  perform set_config('bl.test_offset_seconds', '', true);
+  -- epoch renumbers days only; timezone is tunable; bad values rejected
+  update game_config set value = '"2026-10-01T00:00:00Z"' where key = 'clock.epoch';
+  c := bl_game_clock(timestamptz '2026-10-05 21:07:00+00');
+  perform pg_temp.assert((c->>'day')::int = 5 and (c->>'hour')::int = 22, 'epoch 1 Oct -> 5 Oct is day 5, same time');
+  update game_config set value = '"2026-10-05T00:00:00Z"' where key = 'clock.epoch';
+  update game_config set value = '"UTC"' where key = 'clock.timezone';
+  perform pg_temp.assert((bl_game_clock(timestamptz '2026-10-05 21:07:00+00')->>'hour')::int = 21, 'timezone tunable');
+  update game_config set value = '"Africa/Lagos"' where key = 'clock.timezone';
+  perform pg_temp.expect_error($q$ update game_config set value = '"fast"' where key = 'clock.mode' $q$, '%real or accelerated%');
+  perform pg_temp.expect_error($q$ update game_config set value = '"Mars/Base"' where key = 'clock.timezone' $q$, '%time zone%');
+  perform pg_temp.expect_error($q$ update game_config set value = '"slow"' where key = 'action.mode' $q$, '%short or game_minutes%');
+  -- accelerated mode still uses the old formula
+  update game_config set value = '"accelerated"' where key = 'clock.mode';
+  perform pg_temp.assert((bl_game_clock(timestamptz '2026-10-05 12:00:00+00')->>'day')::int = 7
+                         and bl_game_clock(timestamptz '2026-10-05 12:00:00+00')->>'mode' = 'accelerated', 'accelerated: noon = day 7');
+  update game_config set value = '"real"' where key = 'clock.mode';
+  perform pg_temp.assert(bl_clock_speed() = 1, 'real clock speed 1');
+  raise notice 'ok L1-1: real WAT clock';
+end $$;
+
+-- ---------- L1-2. rent day = next Saturday 00:00 WAT ----------
+do $$
+declare v uuid := (select id from t_tu where name = 'sleeper'); d timestamptz; c jsonb;
+begin
+  update game_config set value = '5' where key = 'rent.due_weekday';
+  d := bl_rent_due_after(timestamptz '2026-10-05 21:07:00+00', 0);
+  perform pg_temp.assert(d = timestamptz '2026-10-09 23:00:00+00', 'Mon night -> Sat 10 Oct 00:00 WAT, got ' || d);
+  c := bl_game_clock(d);
+  perform pg_temp.assert((c->>'weekday')::int = 5 and (c->>'hour')::int = 0 and (c->>'minute')::int = 0, 'due is Sat 00:00');
+  perform pg_temp.assert(bl_rent_due_after(timestamptz '2026-10-09 22:30:00+00', 0) = timestamptz '2026-10-09 23:00:00+00',
+                         'Fri 23:30 -> 30 min later');
+  perform pg_temp.assert(bl_rent_due_after(timestamptz '2026-10-09 23:00:00+00', 0) = timestamptz '2026-10-16 23:00:00+00',
+                         'strictly after: Sat 00:00 -> next Sat');
+  perform pg_temp.assert(bl_rent_due_after(timestamptz '2026-10-09 22:30:00+00', 1) = timestamptz '2026-10-16 23:00:00+00',
+                         'grace 1 day from Fri 23:30 -> the Sat after');
+  -- weekly charge steps one real week
+  perform pg_temp.assert(bl_rent_due_after(d + interval '1 second', 0) - d = interval '7 days', 'next rent a real week later');
+  -- switching clock mode re-aligns rent days to the new clock (never back-charges)
+  update profiles set rent_due_at = bl_now() - interval '3 days', allowance_claimed_day = 99, job_shift_day = 99 where id = v;
+  update game_config set value = '"accelerated"' where key = 'clock.mode';
+  perform pg_temp.assert((select rent_due_at from profiles where id = v) = bl_rent_due_after(bl_now(), 0)
+                         and (select rent_due_at from profiles where id = v) > bl_now(), 'mode switch: rent rolled forward');
+  perform pg_temp.assert((select allowance_claimed_day is null and job_shift_day is null from profiles where id = v),
+                         'mode switch clears stored day numbers');
+  update game_config set value = '"real"' where key = 'clock.mode';
+  perform pg_temp.assert((select rent_due_at from profiles where id = v) = bl_rent_due_after(bl_now(), 0), 'switch back: real Saturday');
+  perform pg_temp.assert(((bl_game_clock((select rent_due_at from profiles where id = v)))->>'weekday')::int = 5, 'real due is a Saturday');
+  raise notice 'ok L1-2: rent on real Saturdays';
+end $$;
+
+-- ---------- L1-3. shift cap resets at local midnight; allowance once per local day ----------
+do $$
+declare v uuid := pg_temp.new_user('worker@time.bl'); r jsonb; cap int;
+begin
+  insert into t_tu values ('worker', v);
+  perform pg_temp.login(v);
+  perform set_config('bl.test_rand', '0.99', true);
+  perform create_profile('Shift_Osa', 'female', '{"gender":"female"}');
+  perform set_config('bl.test_rand', '', true);
+  perform job_apply('tech');
+  update game_config set value = '3' where key = 'career.max_shifts_per_game_day';
+  update game_config set value = '1' where key = 'career.min_energy';
+  update game_config set value = '1' where key = 'career.min_hunger';
+  cap := bl_cfg('career.max_shifts_per_game_day')::int;
+  perform pg_temp.at(timestamptz '2026-10-07 22:50:00+00');   -- Wed 23:50 WAT
+  for i in 1..cap loop
+    update profiles set location_id = 'bronze_tech_hub', busy_until = null, job_shift_ends_at = null,
+                        hunger = 100, energy = 100, needs_updated_at = bl_now() where id = v;
+    r := work_shift();
+  end loop;
+  perform pg_temp.assert((select job_shifts_today from profiles where id = v) = cap, 'cap shifts done');
+  update profiles set busy_until = null, job_shift_ends_at = null, hunger = 100, energy = 100, needs_updated_at = bl_now() where id = v;
+  perform pg_temp.expect_error($q$ select work_shift() $q$, '%shifts today%');
+  perform pg_temp.at(timestamptz '2026-10-07 22:59:30+00');   -- 23:59:30 WAT: same day
+  update profiles set busy_until = null, job_shift_ends_at = null, needs_updated_at = bl_now() where id = v;
+  perform pg_temp.expect_error($q$ select work_shift() $q$, '%shifts today%');
+  perform pg_temp.at(timestamptz '2026-10-07 23:00:30+00');   -- 00:00:30 WAT Thursday
+  update profiles set busy_until = null, job_shift_ends_at = null, hunger = 100, energy = 100, needs_updated_at = bl_now() where id = v;
+  r := work_shift();
+  perform pg_temp.assert((select job_shifts_today from profiles where id = v) = 1
+                         and (select job_shift_day from profiles where id = v) = (bl_game_clock()->>'day')::int,
+                         'new local day: shifts reset');
+  raise notice 'ok L1-3a: shift cap resets at WAT midnight';
+end $$;
+
+do $$
+declare v uuid := pg_temp.new_user('nepo@time.bl'); r jsonb;
+begin
+  insert into t_tu values ('nepo', v);
+  perform pg_temp.login(v);
+  update game_config set value = '"nepo"' where key = 'origin.force_next';
+  perform create_profile('Allow_Osa', 'male', '{"gender":"male"}');
+  update game_config set value = '""' where key = 'origin.force_next';
+  perform pg_temp.assert((select origin from profiles where id = v) = 'nepo', 'nepo player');
+  perform pg_temp.at(timestamptz '2026-10-08 22:58:00+00');   -- Thu 23:58 WAT
+  r := claim_allowance();
+  perform pg_temp.assert((r->>'day')::int = (bl_game_clock()->>'day')::int, 'claimed today');
+  perform pg_temp.expect_error($q$ select claim_allowance() $q$, '%already sent today%');
+  perform pg_temp.at(timestamptz '2026-10-08 22:59:59+00');
+  perform pg_temp.expect_error($q$ select claim_allowance() $q$, '%already sent today%');
+  perform pg_temp.at(timestamptz '2026-10-08 23:00:01+00');   -- Fri 00:00:01 WAT
+  r := claim_allowance();
+  perform pg_temp.assert((r->>'amount')::bigint > 0, 'allowance again after WAT midnight');
+  raise notice 'ok L1-3b: allowance once per WAT day';
+end $$;
+
+-- ---------- L1-4. banking hours in WAT ----------
+do $$
+declare v uuid := (select id from t_tu where name = 'worker'); m text; b jsonb;
+begin
+  update game_config set value = '8' where key = 'bank.open_hour';
+  update game_config set value = '16' where key = 'bank.close_hour';
+  perform pg_temp.assert(not bl_bank_open(bl_game_clock(timestamptz '2026-10-06 06:59:00+00')), '07:59 WAT closed');
+  perform pg_temp.assert(bl_bank_open(bl_game_clock(timestamptz '2026-10-06 07:00:00+00')), '08:00 WAT open');
+  perform pg_temp.assert(bl_bank_open(bl_game_clock(timestamptz '2026-10-06 14:59:00+00')), '15:59 WAT open');
+  perform pg_temp.assert(not bl_bank_open(bl_game_clock(timestamptz '2026-10-06 15:00:00+00')), '16:00 WAT closed');
+  perform pg_temp.login(v);
+  perform pg_temp.at(timestamptz '2026-10-06 05:00:00+00');   -- 06:00 WAT: opens in 2 real hours
+  b := bank_info()->'bank_hours';
+  perform pg_temp.assert(not (b->>'open')::boolean and (b->>'opens_in_game_minutes')::int = 120
+                         and (b->>'opens_in_real_seconds')::int = 7200, 'bank_info: real seconds = real minutes: ' || b::text);
+  update profiles set location_id = 'bronze_bank', busy_until = null, job_shift_ends_at = null, travel_to = null where id = v;
+  begin
+    perform bank_deposit(500);
+  exception when others then m := sqlerrm;
+  end;
+  perform pg_temp.assert(m ilike '%is closed. Banking hours are 8:00 AM to 4:00 PM. It opens at 8:00 AM, in about 2 hrs.%', 'closed copy: ' || coalesce(m, 'none'));
+  perform set_config('bl.test_offset_seconds', '', true);
+  raise notice 'ok L1-4: banking hours in WAT';
+end $$;
+
+-- ---------- L1-5. needs decay per real hour ----------
+do $$
+declare v uuid := (select id from t_tu where name = 'sleeper'); p profiles; q profiles; spd numeric; rate numeric;
+begin
+  update game_config set value = '2.5' where key = 'needs.decay_speed';
+  update profiles set hunger = 90, energy = 90, health = 100, traits = '{}', needs_updated_at = bl_now() where id = v;
+  select * into p from profiles where id = v;
+  spd := bl_cfg('needs.decay_speed');
+  rate := bl_cfg('needs.hunger_per_hour');
+  q := bl_decay_row(p, bl_now() + interval '1 hour');
+  perform pg_temp.assert(abs(q.hunger - (90 - rate * spd)) < 0.001, format('1 real hour: hunger -%s, got %s', rate * spd, q.hunger));
+  -- path-independent: 2 x 30 min = 1 hour
+  perform pg_temp.assert(bl_decay_row(bl_decay_row(p, bl_now() + interval '30 minutes'), bl_now() + interval '1 hour') = q,
+                         'decay path-independent');
+  -- hunger 100 -> 0 in 100 / (rate x speed) real hours (10 h at the defaults)
+  perform pg_temp.assert(abs(100 / (rate * spd) - 10) < 0.001 or spd <> 2.5, 'hunger empties in ~10 real hours');
+  -- admin-tunable
+  update game_config set value = '5' where key = 'needs.decay_speed';
+  perform pg_temp.assert(abs((bl_decay_row(p, bl_now() + interval '1 hour')).hunger - (90 - rate * 5)) < 0.001, 'decay_speed tunable');
+  update game_config set value = '2.5' where key = 'needs.decay_speed';
+  -- accelerated mode: need-hours = game hours (clock speed), as before
+  update game_config set value = '"accelerated"' where key = 'clock.mode';
+  perform pg_temp.assert(abs((bl_decay_row(p, bl_now() + interval '10 minutes')).hunger
+                             - (90 - rate * bl_cfg('clock.game_minutes_per_real_minute') / 6)) < 0.001, 'accelerated decay x clock speed');
+  update game_config set value = '"real"' where key = 'clock.mode';
+  raise notice 'ok L1-5: needs decay per real hour';
+end $$;
+
+-- ---------- L1-6. action timing: sleep <= 15 s scaled by tiredness, live-bar snapshot ----------
+do $$
+declare v uuid := (select id from t_tu where name = 'sleeper'); a activities; r jsonb; me profiles; secs numeric;
+begin
+  perform pg_temp.login(v);
+  perform set_config('bl.test_offset_seconds', '', true);
+  update game_config set value = 'true' where key = 'action.scale_by_need';
+  select * into a from activities where id = 'sleep';
+  perform pg_temp.assert(a.max_seconds = 15 and a.min_seconds = 3 and a.scale_by_need, 'sleep 15 s max, 3 s min');
+  -- energy 0 -> the full max
+  update profiles set location_id = home_location_id, busy_until = null, travel_to = null, energy = 0, hunger = 80,
+                      rent_owed = 0, rent_due_at = bl_now() + interval '3 days', needs_updated_at = bl_now() where id = v;
+  r := do_activity('sleep');
+  select * into me from profiles where id = v;
+  secs := extract(epoch from me.busy_until - me.busy_started_at);
+  perform pg_temp.assert(abs(secs - a.max_seconds) < 0.05 and (r->>'real_seconds')::numeric = a.max_seconds,
+                         'energy 0: sleep = max seconds, got ' || secs);
+  perform pg_temp.assert((me.busy_needs_from->>'energy')::numeric = 0 and me.energy > 0, 'busy_needs_from keeps the start value');
+  perform pg_temp.assert((get_my_state()->'profile'->'busy_needs_from'->>'energy')::numeric = 0, 'busy_needs_from exposed');
+  -- energy 50 -> half; energy 90 -> the minimum
+  update profiles set busy_until = null, energy = 50, needs_updated_at = bl_now() where id = v;
+  perform do_activity('sleep');
+  select * into me from profiles where id = v;
+  perform pg_temp.assert(abs(extract(epoch from me.busy_until - me.busy_started_at) - a.max_seconds * 0.5) < 0.05, 'energy 50: half');
+  update profiles set busy_until = null, energy = 90, needs_updated_at = bl_now() where id = v;
+  perform do_activity('sleep');
+  select * into me from profiles where id = v;
+  perform pg_temp.assert(abs(extract(epoch from me.busy_until - me.busy_started_at) - greatest(a.min_seconds, a.max_seconds * 0.1)) < 0.05, 'energy 90: min');
+  -- scale off -> max
+  update game_config set value = 'false' where key = 'action.scale_by_need';
+  update profiles set busy_until = null, energy = 90, needs_updated_at = bl_now() where id = v;
+  perform do_activity('sleep');
+  select * into me from profiles where id = v;
+  perform pg_temp.assert(abs(extract(epoch from me.busy_until - me.busy_started_at) - a.max_seconds) < 0.05, 'scale off: max');
+  update game_config set value = 'true' where key = 'action.scale_by_need';
+  -- game_minutes mode: the old duration
+  update game_config set value = '"game_minutes"' where key = 'action.mode';
+  update profiles set busy_until = null, energy = 90, needs_updated_at = bl_now() where id = v;
+  perform do_activity('sleep');
+  select * into me from profiles where id = v;
+  perform pg_temp.assert(abs(extract(epoch from me.busy_until - me.busy_started_at) - a.game_minutes * bl_cfg('time.real_seconds_per_game_minute')) < 0.05,
+                         'game_minutes mode: game_minutes x rate');
+  perform pg_temp.assert(bl_shift_seconds(300) = 300 * bl_cfg('time.real_seconds_per_game_minute'), 'game_minutes mode shift');
+  update game_config set value = '"short"' where key = 'action.mode';
+  perform pg_temp.assert(bl_shift_seconds(300) = bl_cfg('action.shift_seconds'), 'short mode shift = action.shift_seconds');
+  -- every seeded activity lasts at most 15 s at worst
+  perform pg_temp.assert(not exists (select 1 from activities where max_seconds > 15 or min_seconds > max_seconds), 'all activities <= 15 s');
+  -- travel capped
+  update profiles set busy_until = null, cash = 100000 where id = v;
+  perform pg_temp.assert(not exists (select 1 from jsonb_array_elements(travel_quote('benin_airport')->'options') o
+                                      where (o->>'real_seconds')::numeric > bl_cfg('action.travel_max_seconds')), 'travel <= travel_max_seconds');
+  raise notice 'ok L1-6: action timing';
+end $$;
+
 do $$ begin raise notice 'ALL TIME TESTS PASSED'; end $$;
+
