@@ -572,3 +572,75 @@ export interface GameState {
   /** Missing only on a server without the shops migration. */
   inventory?: InventoryItem[];
 }
+
+// ---- V1-5: bank, PoS, phone transfers (docs/BANK.md) ----
+// Server: supabase/migrations/20261005000900_bank.sql.
+
+/** A place where money moves: the bank counter (banking hours) or a PoS stand (any hour, fee). */
+export interface BankPlace {
+  id: string;
+  name: string;
+  district: string;
+  kind: 'bank' | 'pos';
+}
+
+/** `bank_info()` (read-only). */
+export interface BankInfo {
+  cash: number;
+  bank: number;
+  min_amount: number;
+  bank_hours: { open_hour: number; close_hour: number; open: boolean; opens_in_game_minutes: number; opens_in_real_seconds: number };
+  pos: { fee_pct: number; fee_min: number; max_amount: number; max_cashout: number; max_deposit: number };
+  transfer: {
+    fee: number;
+    min_amount: number;
+    daily_limit: number;
+    sent_today: number;
+    left_today: number;
+    count_today: number;
+    daily_count: number;
+    cooldown_real_seconds: number;
+    new_account_wait_real_seconds: number;
+  };
+  tip_cash_threshold: number;
+  places: BankPlace[];
+}
+
+/** One `bank_history()` row (both accounts, newest first). */
+export interface LedgerRow {
+  id: number;
+  account: 'cash' | 'bank';
+  delta: number;
+  balance_after: number;
+  reason: string;
+  label: string;
+  note: string | null;
+  created_at: string;
+}
+
+/** `bank_recipient(p_username)` */
+export interface BankRecipient {
+  id: string;
+  username: string;
+  avatar: unknown;
+}
+
+/** Result of bank_deposit / bank_withdraw / pos_cashout / pos_deposit. */
+export interface MoneyMoveResult {
+  message: string;
+  amount: number;
+  fee?: number;
+  cash: number;
+  bank: number;
+}
+
+/** `bank_transfer(...)` */
+export interface TransferResult {
+  message: string;
+  amount: number;
+  fee: number;
+  bank: number;
+  to: { id: string; username: string };
+  sent_today: number;
+  left_today: number;
+}

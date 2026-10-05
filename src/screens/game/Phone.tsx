@@ -1,10 +1,10 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
 // Built: Ride (destination list -> the existing travel picker), Jobs (V1-3), ChopNow + Houses (V1-4, lazy),
-// Wallet, Alerts, Bank balances, Settings (Sim sheet). Everything else opens a "Coming soon" screen.
+// Bank (V1-5, lazy: transfers, history, where to cash in/out), Wallet, Alerts, Settings (Sim sheet). Everything else opens a "Coming soon" screen.
 // Esc closes the phone.
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { clockTime, naira, districtName } from '../../lib/format';
+import { clockTime, districtName } from '../../lib/format';
 import { WEEKDAYS } from '../../lib/pidgin';
 import type { GameClock, GameState, Location } from '../../lib/types';
 import { useGame } from '../../state/game';
@@ -19,6 +19,7 @@ import { useCareerActions, useJobsCatalog } from '../../panels/careers/careerHoo
 
 const FoodApp = lazy(() => import('./phone/FoodApp'));
 const HousesApp = lazy(() => import('./phone/HousesApp'));
+const BankApp = lazy(() => import('./phone/BankApp'));
 
 interface App {
   id: string;
@@ -94,20 +95,6 @@ function RideApp({ state, onPick }: { state: GameState; onPick: (id: string) => 
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function BankApp({ state }: { state: GameState }) {
-  return (
-    <div className="phone-app__body">
-      <div className="bank-card">
-        <span className="bank-card__label">Bank balance</span>
-        <span className="bank-card__amt">{naira(state.profile.bank)}</span>
-        <span className="bank-card__sub">Bronze Bank · safe from thieves</span>
-      </div>
-      <div className="bank-row"><span>Cash in pocket</span><b>{naira(state.profile.cash)}</b></div>
-      <p className="phone-app__lead">Deposits and withdrawals open soon, here and at the Bronze Bank counter in GRA. Until then, your bank balance is safe from thieves.</p>
     </div>
   );
 }
@@ -257,10 +244,9 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               {app.id === 'ride' ? <RideApp state={state} onPick={pickRide} />
                 : app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'bank' ? <BankApp state={state} />
-                    : app.id === 'food' || app.id === 'houses' ? (
+                  : app.id === 'food' || app.id === 'houses' || app.id === 'bank' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
-                        {app.id === 'food' ? <FoodApp state={state} /> : <HousesApp state={state} />}
+                        {app.id === 'food' ? <FoodApp state={state} /> : app.id === 'bank' ? <BankApp state={state} /> : <HousesApp state={state} />}
                       </Suspense>
                     )
                       : <ComingSoon app={app} />}

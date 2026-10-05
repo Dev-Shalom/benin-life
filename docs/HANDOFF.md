@@ -150,4 +150,5 @@ Draft the Terms of Service and Privacy Policy pages (approved by the user; the s
 - [done] V1-4 Shops + rent: migration 20261005000800_shops.sql (18 items, laptop ₦45k, shop_list/buy/use/sell, ChopNow +40%, pay_rent, rent ON with no back-charge trigger, 60% sleep energy while owing), shops_test.sql, ShopPanel, Bag, ChopNow + Houses apps, docs/SHOPS.md. Open to user: laptop price, rent penalty/eviction later, paracetamol, sell free laptop, ChopNow delay.
 - [done] User decision (2026-10-05 evening): finish v1 tonight; keep ALL default values (laptop price, rent penalty, pay table, no firing, instant job switch, instant ChopNow, etc.). The user will tune everything in the admin dashboard before announcing.
 - [done] User asked for real top-tier Benin landmarks; researched and saved in docs/LANDMARKS.md (first step after v1; brand-name decision pending).
-- [running] V1-5 Bank (first agent hit a usage limit; partial files: src/api/bank.ts, 20261005000900_bank.sql, bank_test.sql)
+- [done] V1-5 Bank: migration 20261005000900_bank.sql (deposit/withdraw at Bronze Bank 08–16, PoS 1.5% min ₦100, transfers ₦50 fee, limits, history), bank_test.sql, BankPanel, PosPanel, phone Bank app, night 'Bank your cash' tip, docs/BANK.md.
+- [running] V1-6 Chat

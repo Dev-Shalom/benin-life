@@ -1,11 +1,12 @@
 // R4 HUD (Lagos Life-style layout, Benin content):
 //   top     one white pill: day + weekday + time, mood, players online, mute, cash with a green "+"
-//   left    wish chips (tips from low needs), Dad's allowance, protection, "Clean screen"
+//   left    wish chips (tips from low needs, work, bank your cash at night), Dad's allowance, protection, "Clean screen"
 //   b-left  round cached portrait + 6 tiny need bars -> Sim sheet
 //   bottom  dock: Home · Buy · Map · Phone (badge = unread alerts)
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AvatarPortrait } from '../../art/avatar3d';
-import { weekdayOf } from '../../lib/clock';
+import { useGameClock, weekdayOf } from '../../lib/clock';
+import { getCfg } from '../../lib/config';
 import { clockTime, countdown, nairaShort } from '../../lib/format';
 import { rpc, errorMessage } from '../../lib/api';
 import { lowNeeds, moodOf, needValue } from '../../lib/mood';
@@ -122,6 +123,30 @@ const NEED_GROUP: Partial<Record<NeedKey, 'kitchen' | 'bed' | 'bath' | 'toilet' 
 };
 
 /**
+ * V1-5 tip: at night, carrying more cash than `bank.tip_cash_threshold` -> the nearest PoS stand
+ * (or the bank counter if it is open). Street thieves take cash, never bank money.
+ */
+function useBankTip(state: GameState, free: boolean): { id: string; name: string; tab: 'bank' | 'pos' } | null {
+  const { clock } = useGameClock(15_000);
+  const locations = useGame((s) => s.locations);
+  const threshold = Number(getCfg('bank.tip_cash_threshold', 20000));
+  if (!free || !clock.is_night || threshold <= 0 || state.profile.cash <= threshold) return null;
+  const o = Number(getCfg('bank.open_hour', 8));
+  const c = Number(getCfg('bank.close_hour', 16));
+  const h = clock.hour;
+  const bankOpen = o === c || (o < c ? h >= o && h < c : h >= o || h < c);
+  const here = locations.find((l) => l.id === state.profile.location_id) ?? state.location;
+  let best: { id: string; name: string; tab: 'bank' | 'pos'; d: number } | null = null;
+  for (const l of locations) {
+    const tab = bankOpen && l.actions.includes('bank') ? 'bank' : l.actions.includes('pos') ? 'pos' : null;
+    if (!tab) continue;
+    const d = Math.hypot(l.x - here.x, l.y - here.y);
+    if (!best || d < best.d) best = { id: l.id, name: l.name, tab, d };
+  }
+  return best && { id: best.id, name: best.name, tab: best.tab };
+}
+
+/**
  * Left rail. On the map (`compact`) the chips fold into one small summary chip so they do not cover
  * the city on phones; tapping it opens the full list (and "Clean screen") until a chip is used.
  */
@@ -147,7 +172,8 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   const protectedNow = status.protLeft > 0;
   const job = state.career?.job ?? null;
   const workAt = job && status.free && !job.pending && job.shifts_today < job.max_shifts_per_day ? nearestWorkplace(state, byId) : null;
-  const count = tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0);
+  const bankAt = useBankTip(state, status.free);
+  const count = tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0) + (bankAt ? 1 : 0);
   const folded = compact && !open && !clean;
 
   // Leaving the map (or switching to clean screen) folds the list again.
@@ -177,7 +203,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   };
 
   if (folded && count > 0) {
-    const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(dadReady ? ['💸'] : []), ...(protectedNow ? ['🛡️'] : [])];
+    const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...(protectedNow ? ['🛡️'] : [])];
     return (
       <div className="left-rail is-compact">
         <button type="button" className={`rail-summary${dadReady ? ' has-dad' : ''}`} onClick={() => setOpen(true)} aria-expanded={false}
@@ -218,6 +244,16 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
               <span className="wish-chip__text">
                 <span className="wish-chip__title">Go to work</span>
                 <span className="wish-chip__sub">{job.title} · {nairaShort(job.pay_per_shift)}</span>
+              </span>
+            </button>
+          )}
+          {bankAt && (
+            <button type="button" className="wish-chip wish-chip--bank"
+              onClick={() => { setOpen(false); if (bankAt.id !== p.location_id) setMapOpen(true); select(bankAt.id, bankAt.tab); }}>
+              <span className="wish-chip__icon" aria-hidden>🏦</span>
+              <span className="wish-chip__text">
+                <span className="wish-chip__title">Bank your cash</span>
+                <span className="wish-chip__sub">{nairaShort(p.cash)} on you at night · {bankAt.name}</span>
               </span>
             </button>
           )}

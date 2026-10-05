@@ -3231,3 +3231,243 @@ kbd {
 .rent-rows .bank-row > span {
   white-space: nowrap;
 }
+
+/* ---- V1-5 bank: Bank + PoS panels, phone Bank app, Wallet link, bank tip chip ---- */
+.wish-chip--bank .wish-chip__icon {
+  background: #ece9ff;
+  font-family: var(--font-emoji);
+}
+.bankx__bals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.bankx__bal {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+.bankx__bal b {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+.bankx__bal--bank {
+  color: #fff;
+  background: linear-gradient(140deg, #5b4fd6, #8a6cf0);
+}
+.bankx__bal-label {
+  font-size: 12.5px;
+  opacity: 0.85;
+}
+.bankx__safe {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green-700);
+}
+.bankx__hours {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--green-50);
+  color: var(--green-700);
+}
+.bankx__hours.is-closed {
+  background: var(--amber-50);
+  color: var(--amber-800);
+}
+.bankx__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.bankx__after p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.bankx__places,
+.bankx__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bankx__place,
+.bankx__chip {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: #fff;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: var(--e1);
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.bankx__place:active,
+.bankx__chip:active {
+  transform: scale(0.96);
+}
+.bankx__chip.is-on {
+  background: var(--ink);
+  color: #fff;
+}
+.bankx__chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.bankx__amount {
+  display: grid;
+  gap: 8px;
+}
+.bankx__amount-field {
+  display: grid;
+  gap: 4px;
+}
+.bankx__amount-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.bankx__amount-input {
+  position: relative;
+  display: block;
+}
+.bankx__amount-input > span {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 700;
+  color: var(--ink-3);
+  pointer-events: none;
+}
+.bankx__amount-input .input {
+  padding-left: 34px;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.bankx__fee {
+  display: grid;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  font-size: 13px;
+}
+.bankx__fee > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.bankx__fee b {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.bankx__fine {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.bank-app .bank-row {
+  margin: 10px 0 0;
+}
+.bank-send,
+.bank-confirm {
+  margin-top: 4px;
+}
+.bank-confirm {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--e1);
+}
+.bank-confirm__q {
+  margin: 0;
+  font-size: 16px;
+}
+.bank-confirm__btns {
+  gap: 8px;
+}
+.bank-hist {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bank-hist__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--e1);
+}
+.bank-hist__icon {
+  font-family: var(--font-emoji);
+  font-size: 18px;
+}
+.bank-hist__label {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+}
+.bank-hist__sub {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.bank-hist__amt {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.bank-hist__amt.is-in {
+  color: var(--green-700);
+}
+.wallet__bank-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 16px;
+  background: #ece9ff;
+  color: #3b2fb0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wallet__bank-link > span:first-child {
+  font-family: var(--font-emoji);
+  font-size: 24px;
+}
+.wallet__bank-link b,
+.wallet__bank-link .grow > span {
+  display: block;
+}
+.wallet__bank-link .grow > span {
+  font-size: 12.5px;
+  opacity: 0.85;
+}

@@ -5,12 +5,15 @@ import { formatKobo, getPaymentProvider, TOP_UP_PACKS, type TopUpPack } from '..
 import { naira } from '../lib/format';
 import type { PanelProps } from '../lib/types';
 import { useGame } from '../state/game';
+import { useUi } from '../state/ui';
 import { Button, Icon, Money, toast } from '../ui';
 
 export default function WalletPanel({ state }: PanelProps) {
   const provider = getPaymentProvider();
   const session = useGame((s) => s.session);
   const [busy, setBusy] = useState<string | null>(null);
+  const openPhone = useUi((s) => s.openPhone);
+  const closePanel = useUi((s) => s.closePanel);
 
   const topUp = async (pack: TopUpPack) => {
     setBusy(pack.id);
@@ -36,6 +39,14 @@ export default function WalletPanel({ state }: PanelProps) {
           <Money amount={state.profile.bank} kind="bank" />
         </div>
       </div>
+      <button type="button" className="wallet__bank-link" onClick={() => { closePanel(); openPhone('bank'); }}>
+        <span aria-hidden>🏦</span>
+        <span className="grow">
+          <b>Open the Bank app</b>
+          <span>Send money to friends, see your history, find a bank or PoS.</span>
+        </span>
+        <Icon name="chevronRight" size={18} />
+      </button>
 
       <div className="wallet__head">
         <h4 className="act__name">Top up naira</h4>
