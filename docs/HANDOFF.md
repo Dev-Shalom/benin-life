@@ -142,5 +142,6 @@ Draft the Terms of Service and Privacy Policy pages (approved by the user; the s
 - [done] R3b 5-step creator UI (src/screens/CreateSim.tsx + src/screens/creator/*, one 3D canvas, resume to Home step, username-taken path). Notes: server username-taken error has no hint (client matches text); test accounts left in the local DB; origin.force_next restored to 'nepo'.
 - [done] User decision: keep the R3a seed values for now (home rents/start cash, rent off until Phase 2 jobs, GRA Landlord ₦5M, mini-flat on Mission Rd). The user will tune everything in the admin console, so Phase 2 admin must cover start_homes, traits, dreams and every config key.
 - [done] R4 3D home (5 layouts), new HUD + dock, Sim sheet (7 tabs), phone (18 fictional apps), Bladder need (migration 20261005000500_bladder.sql + bladder_test.sql). Verified on 3 accounts at 390 and 1280. Notes: sky snaps (no fade) at dawn/dusk; T and E open the same sheet; clock vs activity speed are separate config keys.
+- [done] User asked to merge: main fast-forwarded to the work branch (5e3db8a). From now on push each verified step to both claude/kind-bell-e9reb8 and main (Vercel deploys main).
 - [running] R5 3D Benin city map
 - [todo] R6 demo to the user; wait for their OK, then Phase 2
