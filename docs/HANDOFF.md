@@ -61,7 +61,7 @@ Read this file first, then `docs/BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/DB_COR
    - When this handoff was written, an agent was still working on these on the user's PC. Files may be partial or uncommitted.
    - Check which files exist, render each one day and night, finish any that are missing, and run `npm run build`.
    - The original agent briefs aren't in the repo. The scope comes from ARCHITECTURE §7 and `src/art/Scene.tsx`.
-2. **Map geography fix.** The user asked for the map to match the real Benin City. The research is done and saved in **`docs/MAP_GEO.md`**: verified facts, road bearings, and a full corrected position table.
+2. ~~**Map geography fix.**~~ **DONE** (migration `20261005000100_map_geo.sql`, `supabase/tests/map_geo_test.sql`, render with `node scripts/render-map.mjs <outDir>`). The user asked for the map to match the real Benin City. The research is done and saved in **`docs/MAP_GEO.md`**: verified facts, road bearings, and a full corrected position table.
    - Write a new migration that updates `locations.x/y` to those values. Don't edit the applied core migration.
    - Update ARCHITECTURE §5.
    - Rework `src/art/map/mapGeo.ts` and the related files:

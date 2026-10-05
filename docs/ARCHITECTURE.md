@@ -102,44 +102,44 @@ Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location 
 | id | name | district | scene | x | y | risk | night× | cctv | keke | cong | remote_km | actions |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | national_museum | Benin National Museum (King's Square) | oredo | museum | 500 | 500 | .15 | 1.5 | t | f | 1.3 | 0 | activities |
-| oba_market | Oba Market | oredo | market | 445 | 465 | .35 | 1.8 | f | f | 1.4 | 0 | shop,market_p2p,jobs,activities |
-| ring_road_pos | Ring Road PoS Line | oredo | pos | 565 | 465 | .40 | 2.0 | t | f | 1.5 | 0 | pos,jobs |
-| oba_palace | Oba's Palace | oredo | palace | 545 | 560 | .05 | 1.0 | t | f | 1.2 | 0 | activities |
-| igun_street | Igun Street (Bronze Casters) | oredo | workshop | 590 | 590 | .15 | 1.5 | f | t | 1.1 | 0 | jobs,shop,activities |
-| mama_osas_buka | Mama Osas Buka | oredo | buka | 455 | 545 | .20 | 1.5 | f | t | 1.2 | 0 | activities,jobs |
-| new_benin_market | New Benin Market | new_benin | market | 585 | 335 | .35 | 1.8 | f | f | 1.4 | 0 | shop,market_p2p,jobs,activities |
-| new_benin_pos | New Benin PoS Junction | new_benin | pos | 630 | 365 | .45 | 2.0 | f | f | 1.4 | 0 | pos,jobs |
-| mercy_clinic | Mercy Clinic | new_benin | hospital | 545 | 380 | .10 | 1.2 | t | t | 1.1 | 0 | hospital |
-| mission_rd_flats | Mission Road Mini Flats | new_benin | home_flat | 520 | 410 | .15 | 1.6 | f | t | 1.1 | 0 | housing,activities |
-| uselu_market | Uselu Market | uselu | market | 385 | 330 | .30 | 1.8 | f | f | 1.6 | 0 | shop,market_p2p,jobs,activities |
-| fresh_cut_salon | Fresh Cut Barbing & Salon | uselu | salon | 420 | 295 | .20 | 1.5 | f | t | 1.1 | 0 | jobs,shop,activities |
-| uselu_park | Uselu Motor Park | uselu | motorpark | 340 | 365 | .40 | 2.0 | f | f | 1.6 | 0 | jobs,activities |
-| uniben | UNIBEN Ugbowo Campus | ugbowo | campus | 255 | 205 | .20 | 1.6 | t | t | 1.2 | 0 | jobs,activities |
-| ubth | UBTH (Teaching Hospital) | ugbowo | hospital | 305 | 250 | .10 | 1.2 | t | f | 1.3 | 0 | hospital,jobs |
-| back_gate_joint | UNIBEN Back Gate Joint | ugbowo | buka | 215 | 165 | .30 | 2.0 | f | t | 1.1 | 0 | activities |
-| wifi_joint | Ugbowo Wi-Fi Joint | ugbowo | cyber | 305 | 170 | .25 | 1.8 | f | t | 1.0 | 0 | jobs,activities |
-| oluku_park | Oluku Junction Park | oluku | motorpark | 130 | 85 | .50 | 2.2 | f | f | 1.5 | 0 | jobs,activities |
-| ramat_park | Ramat Park Junction | ikpoba_hill | motorpark | 705 | 375 | .40 | 2.0 | f | f | 2.2 | 0 | jobs,activities |
-| oregbeni_market | Oregbeni Market (Ikpoba Hill) | ikpoba_hill | market | 745 | 470 | .35 | 1.8 | f | f | 1.4 | 0 | shop,market_p2p,jobs |
-| aduwawa_park | Aduwawa Motor Park | aduwawa | motorpark | 880 | 400 | .55 | 2.3 | f | f | 1.4 | 0 | jobs,activities |
-| aduwawa_room | Aduwawa Face-Me-I-Face-You | aduwawa | home_face_me | 850 | 505 | .40 | 2.0 | f | t | 1.0 | 0 | housing,activities |
-| third_east | Third East Circular | third_east | street | 680 | 560 | .50 | 3.0 | f | f | 1.3 | 0 | activities,jobs |
-| ekiosa_market | Ekiosa Market | sakponba | market | 620 | 630 | .35 | 1.8 | f | f | 1.3 | 0 | shop,market_p2p |
-| baba_shrine | Baba Osagie Shrine | sakponba | shrine | 680 | 665 | .30 | 1.8 | f | t | 1.0 | 0 | babalawo |
-| upper_sakponba | Upper Sakponba | upper_sakponba | street | 735 | 745 | .55 | 3.0 | f | t | 1.2 | 0 | activities,jobs |
-| santana_market | Santana Market | sapele_rd | market | 470 | 700 | .30 | 1.8 | f | f | 1.3 | 0 | shop,market_p2p |
-| sapele_pos | Sapele Road PoS Stand | sapele_rd | pos | 510 | 650 | .50 | 2.2 | f | f | 1.4 | 0 | pos,jobs |
-| bronze_lounge | Bronze Lounge | sapele_rd | club | 540 | 765 | .35 | 1.6 | t | f | 1.2 | 0 | activities,jobs |
-| police_hq | Police Command HQ (GRA) | gra | police | 380 | 600 | .02 | 1.0 | t | f | 1.1 | 0 | police,jobs |
-| bronze_bank | Bronze Bank (GRA) | gra | bank | 415 | 560 | .10 | 1.3 | t | f | 1.2 | 0 | bank,loans,esusu,jobs |
-| gra_duplex | GRA Duplex Estate | gra | home_duplex | 340 | 655 | .10 | 1.4 | t | f | 1.0 | 0 | housing,activities |
-| kingdom_lounge | Kingdom Lounge (GRA) | gra | club | 325 | 580 | .15 | 1.4 | t | f | 1.1 | 0 | activities |
-| benin_airport | Benin Airport | airport_rd | airport | 235 | 470 | .05 | 1.0 | t | f | 1.1 | 0 | airport |
-| siluko_rd | Siluko Road | siluko | street | 330 | 735 | .45 | 2.2 | f | t | 1.2 | 0 | activities,jobs |
-| ekenwan_room | Ekenwan Face-Me-I-Face-You | ekenwan | home_face_me | 205 | 620 | .40 | 2.0 | f | t | 1.0 | 0 | housing,activities |
-| iguobazuwa_farm | Iguobazuwa Farm Settlement | iguobazuwa | farm | 40 | 700 | .30 | 2.0 | f | f | 1.0 | 22 | farm,jobs |
+| oba_market | Oba Market | oredo | market | 448 | 452 | .35 | 1.8 | f | f | 1.4 | 0 | shop,market_p2p,jobs,activities |
+| ring_road_pos | Ring Road PoS Line | oredo | pos | 540 | 452 | .40 | 2.0 | t | f | 1.5 | 0 | pos,jobs |
+| oba_palace | Oba's Palace | oredo | palace | 432 | 512 | .05 | 1.0 | t | f | 1.2 | 0 | activities |
+| igun_street | Igun Street (Bronze Casters) | oredo | workshop | 580 | 470 | .15 | 1.5 | f | t | 1.1 | 0 | jobs,shop,activities |
+| mama_osas_buka | Mama Osas Buka | oredo | buka | 480 | 565 | .20 | 1.5 | f | t | 1.2 | 0 | activities,jobs |
+| new_benin_market | New Benin Market | new_benin | market | 595 | 350 | .35 | 1.8 | f | f | 1.4 | 0 | shop,market_p2p,jobs,activities |
+| new_benin_pos | New Benin PoS Junction | new_benin | pos | 645 | 375 | .45 | 2.0 | f | f | 1.4 | 0 | pos,jobs |
+| mercy_clinic | Mercy Clinic | new_benin | hospital | 560 | 365 | .10 | 1.2 | t | t | 1.1 | 0 | hospital |
+| mission_rd_flats | Mission Road Mini Flats | new_benin | home_flat | 530 | 405 | .15 | 1.6 | f | t | 1.1 | 0 | housing,activities |
+| uselu_market | Uselu Market | uselu | market | 480 | 235 | .30 | 1.8 | f | f | 1.6 | 0 | shop,market_p2p,jobs,activities |
+| fresh_cut_salon | Fresh Cut Barbing & Salon | uselu | salon | 515 | 290 | .20 | 1.5 | f | t | 1.1 | 0 | jobs,shop,activities |
+| uselu_park | Uselu Motor Park | uselu | motorpark | 450 | 270 | .40 | 2.0 | f | f | 1.6 | 0 | jobs,activities |
+| uniben | UNIBEN Ugbowo Campus | ugbowo | campus | 480 | 125 | .20 | 1.6 | t | t | 1.2 | 0 | jobs,activities |
+| ubth | UBTH (Teaching Hospital) | ugbowo | hospital | 440 | 165 | .10 | 1.2 | t | f | 1.3 | 0 | hospital,jobs |
+| back_gate_joint | UNIBEN Back Gate Joint | ugbowo | buka | 455 | 75 | .30 | 2.0 | f | t | 1.1 | 0 | activities |
+| wifi_joint | Ugbowo Wi-Fi Joint | ugbowo | cyber | 400 | 135 | .25 | 1.8 | f | t | 1.0 | 0 | jobs,activities |
+| oluku_park | Oluku Junction Park | oluku | motorpark | 390 | 40 | .50 | 2.2 | f | f | 1.5 | 0 | jobs,activities |
+| ramat_park | Ramat Park Junction | ikpoba_hill | motorpark | 680 | 415 | .40 | 2.0 | f | f | 2.2 | 0 | jobs,activities |
+| oregbeni_market | Oregbeni Market (Ikpoba Hill) | ikpoba_hill | market | 700 | 465 | .35 | 1.8 | f | f | 1.4 | 0 | shop,market_p2p,jobs |
+| aduwawa_park | Aduwawa Motor Park | aduwawa | motorpark | 820 | 335 | .55 | 2.3 | f | f | 1.4 | 0 | jobs,activities |
+| aduwawa_room | Aduwawa Face-Me-I-Face-You | aduwawa | home_face_me | 860 | 385 | .40 | 2.0 | f | t | 1.0 | 0 | housing,activities |
+| third_east | Third East Circular | third_east | street | 665 | 520 | .50 | 3.0 | f | f | 1.3 | 0 | activities,jobs |
+| ekiosa_market | Ekiosa Market | sakponba | market | 595 | 575 | .35 | 1.8 | f | f | 1.3 | 0 | shop,market_p2p |
+| baba_shrine | Baba Osagie Shrine | sakponba | shrine | 640 | 615 | .30 | 1.8 | f | t | 1.0 | 0 | babalawo |
+| upper_sakponba | Upper Sakponba | upper_sakponba | street | 700 | 665 | .55 | 3.0 | f | t | 1.2 | 0 | activities,jobs |
+| santana_market | Santana Market | sapele_rd | market | 560 | 700 | .30 | 1.8 | f | f | 1.3 | 0 | shop,market_p2p |
+| sapele_pos | Sapele Road PoS Stand | sapele_rd | pos | 545 | 640 | .50 | 2.2 | f | f | 1.4 | 0 | pos,jobs |
+| bronze_lounge | Bronze Lounge | sapele_rd | club | 560 | 770 | .35 | 1.6 | t | f | 1.2 | 0 | activities,jobs |
+| police_hq | Police Command HQ (GRA) | gra | police | 510 | 604 | .02 | 1.0 | t | f | 1.1 | 0 | police,jobs |
+| bronze_bank | Bronze Bank (GRA) | gra | bank | 470 | 625 | .10 | 1.3 | t | f | 1.2 | 0 | bank,loans,esusu,jobs |
+| gra_duplex | GRA Duplex Estate | gra | home_duplex | 450 | 690 | .10 | 1.4 | t | f | 1.0 | 0 | housing,activities |
+| kingdom_lounge | Kingdom Lounge (GRA) | gra | club | 420 | 650 | .15 | 1.4 | t | f | 1.1 | 0 | activities |
+| benin_airport | Benin Airport | airport_rd | airport | 330 | 615 | .05 | 1.0 | t | f | 1.1 | 0 | airport |
+| siluko_rd | Siluko Road | siluko | street | 378 | 378 | .45 | 2.2 | f | t | 1.2 | 0 | activities,jobs |
+| ekenwan_room | Ekenwan Face-Me-I-Face-You | ekenwan | home_face_me | 298 | 562 | .40 | 2.0 | f | t | 1.0 | 0 | housing,activities |
+| iguobazuwa_farm | Iguobazuwa Farm Settlement | iguobazuwa | farm | 40 | 300 | .30 | 2.0 | f | f | 1.0 | 22 | farm,jobs |
 
-Roads to draw (map art): Ring Road circle r≈60 at (500,500); Ugbowo–Lagos Rd NW to Oluku (500,500)→(385,330)→(255,205)→(130,85); Mission Rd N/NE → New Benin (585,335); Akpakpava/Ikpoba Hill Rd E → Ramat Park (705,375) → Aduwawa (880,400) [Benin–Auchi Rd continues off-map E]; Sakponba Rd SE → (620,630) → (735,745); Sapele Rd S → (470,700) → (540,765) off-map S; Airport Rd W → (235,470); Siluko Rd SW → (330,735); Ekenwan Rd W/SW → (205,620) → Iguobazuwa (40,700) off-map W; Third East Circular arc around E from (640,330) through (680,560) to (620,700). Ikpoba River runs N–S around x≈650–670 east of centre (bridge on Ikpoba Hill Rd). GRA = leafy district SW of centre.
+Positions come from `docs/MAP_GEO.md` (OSM + Wikipedia check of real Benin City, compressed radially) and are applied by `supabase/migrations/20261005000100_map_geo.sql` (two small nudges for pin spacing: ring_road_pos 540,452, police_hq 510,604). Roads to draw (map art, `src/art/map/mapGeo.ts`): Ring Road circle r≈60 at (500,500); each radial road leaves the ring at its real bearing. Ugbowo–Lagos Rd N (bearing ~350) through Uselu (450,270)/(480,235), Ugbowo with UBTH (440,165) west of the road and UNIBEN (480,125) east of it, to Oluku (390,40), then off-map towards Lagos; Siluko Rd NW (~300–314) past (378,378) becoming Upper Siluko Rd towards Iguobazuwa (farm sign, farmland on the NW edge; the farm itself is off-map, `remote_km` 22); Mission Rd NNE (31) past Mission Rd Flats/Mercy Clinic to New Benin Market (595,350), continuing N as Upper Mission Rd; Akpakpava Rd NE (52) over the Ikpoba bridge (≈656,420) to Ramat Park (680,415); from Ramat the Benin–Auchi Rd runs ENE to Aduwawa (820,335) and the Benin–Agbor Rd E/ESE; Sakponba Rd SE/ESE (125) past Ekiosa (595,575) and Baba Osagie (640,615) to Upper Sakponba (700,665); Sapele Rd SSE (165) past Sapele Rd PoS, Santana (560,700) and Bronze Lounge (560,770) off-map S; Airport Rd SW (221) to Benin Airport (330,615); Ekenwan Rd WSW (~245) along the south side of the palace past Ekenwan (298,562); First/Second/Third East Circular run N–S east of the centre (Third East at x≈650). Ikpoba River runs N–S around x≈655–695 between the end of Akpakpava Rd and Ramat Park, then bends SE past Upper Sakponba. Oba's Palace compound is just W of King's Square (≈405,505), outside the ring. GRA = leafy district S of centre between Airport Rd and Sapele Rd (police HQ, Bronze Bank, Kingdom Lounge, GRA Duplex). Exit signs: LAGOS N via Oluku, AUCHI ENE via Aduwawa, AGBOR/Asaba E, SAPELE/Warri S, FARMS/Iguobazuwa NW.
 
 ## 6. Panel contract (frontend)
 ```ts

@@ -238,6 +238,18 @@ export function inPoly(x: number, y: number, poly: readonly Pt[]): boolean {
   return inside;
 }
 
+/** [minX, minY, maxX, maxY] of a polygon. */
+export function bbox(poly: readonly Pt[]): [number, number, number, number] {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [x, y] of poly) {
+    if (x < x0) x0 = x;
+    if (y < y0) y0 = y;
+    if (x > x1) x1 = x;
+    if (y > y1) y1 = y;
+  }
+  return [x0, y0, x1, y1];
+}
+
 export const polyD = (poly: readonly Pt[]) => 'M' + poly.map((p) => `${ft(p[0])},${ft(p[1])}`).join('L') + 'Z';
 
 /** Smooth closed blob path through points. */
@@ -266,171 +278,210 @@ export interface RoadDef {
   spurs?: boolean;
 }
 
+// Geography follows docs/MAP_GEO.md (OSM road bearings out of King's Square, compressed
+// radially). Each radial road starts on the Ring Road at its real bearing (clockwise from N):
+// Lagos/Ugbowo 350, Mission 31, Akpakpava 52, Sakponba 125, Sapele 165, Airport 221,
+// Ekenwan ~245 (passes south of the palace), Siluko ~300 (NW).
 export const ROADS: RoadDef[] = [
   {
+    // Uselu → Ugbowo (UBTH west, UNIBEN east) → Oluku, then the expressway towards Lagos
     id: 'ugbowo', kind: 'express', spurs: true,
-    pts: [[467, 450], [430, 395], [385, 330], [345, 290], [305, 253], [255, 213], [205, 190], [165, 140], [130, 85], [85, 48], [30, 24], [-30, 8]],
-    labels: [['Ugbowo–Lagos Rd', 0.355], ['Lagos Expressway', 0.87]],
+    pts: [[490, 441], [486, 400], [478, 350], [470, 300], [465, 250], [460, 200], [455, 160], [446, 120], [430, 86], [410, 58], [390, 40], [370, 16], [352, -20]],
+    labels: [['Ugbowo–Lagos Rd', 0.17]],
   },
   {
     id: 'mission', kind: 'main', spurs: true,
-    pts: [[514, 442], [518, 410], [538, 380], [585, 338], [612, 305], [612, 240], [602, 160], [592, 70], [588, -20]],
-    labels: [['Upper Mission Rd', 0.68]],
+    pts: [[531, 449], [548, 418], [566, 388], [585, 360], [605, 330], [618, 290], [625, 230], [628, 150], [630, 60], [632, -20]],
+    labels: [['Mission Rd', 0.12], ['Upper Mission Rd', 0.62]],
   },
   {
+    // NE to the Ikpoba bridge, up Ikpoba Hill to Ramat Park
     id: 'akpakpava', kind: 'main', spurs: true,
-    pts: [[547, 463], [585, 430], [615, 393], [640, 372], [665, 371], [690, 373], [705, 375]],
-    labels: [['Akpakpava Rd', 0.36]],
+    pts: [[547, 463], [578, 445], [610, 431], [636, 423], [656, 420], [686, 412]],
+    labels: [['Akpakpava Rd', 0.62]],
   },
   {
     id: 'auchi', kind: 'express', spurs: true,
-    pts: [[705, 375], [760, 382], [820, 390], [880, 400], [940, 398], [1030, 390]],
-    labels: [['Benin–Auchi Rd', 0.3]],
+    pts: [[686, 412], [735, 388], [780, 360], [820, 338], [870, 322], [930, 306], [1030, 285]],
+    labels: [['Benin–Auchi Rd', 0.66]],
   },
   {
     id: 'agbor', kind: 'express', spurs: true,
-    pts: [[705, 375], [722, 420], [745, 470], [790, 500], [850, 530], [920, 560], [1030, 595]],
-    labels: [['Benin–Agbor Rd', 0.66]],
+    pts: [[686, 412], [740, 420], [800, 430], [860, 446], [920, 466], [1030, 502]],
+    labels: [['Benin–Agbor Rd', 0.5]],
   },
   {
     id: 'sakponba', kind: 'main', spurs: true,
-    pts: [[541, 544], [570, 575], [600, 606], [620, 630], [660, 672], [700, 712], [735, 745], [752, 764]],
-    labels: [['Sakponba Rd', 0.66]],
+    pts: [[549, 534], [582, 557], [615, 580], [650, 605], [685, 640], [712, 672], [740, 710]],
+    labels: [['Sakponba Rd', 0.86]],
   },
   {
     id: 'sapele', kind: 'express', spurs: true,
-    pts: [[499, 560], [500, 610], [497, 650], [488, 690], [495, 720], [518, 745], [540, 765], [556, 800], [568, 860], [578, 940], [585, 1030]],
-    labels: [['Sapele Rd', 0.66]],
+    pts: [[516, 558], [524, 600], [532, 640], [542, 690], [546, 740], [545, 800], [552, 880], [560, 960], [564, 1030]],
+    labels: [['Sapele Rd', 0.5]],
   },
   {
     id: 'airport', kind: 'main', spurs: true,
-    pts: [[440, 497], [400, 492], [350, 486], [300, 478], [258, 472], [238, 470]],
-    labels: [['Airport Rd', 0.42]],
+    pts: [[461, 545], [432, 563], [400, 580], [365, 598], [335, 612]],
+    labels: [['Airport Rd', 0.5]],
   },
   {
+    // NW: Siluko Rd becomes Upper Siluko Rd and runs on towards Iguobazuwa
     id: 'siluko', kind: 'main', spurs: true,
-    pts: [[466, 549], [445, 590], [425, 630], [400, 670], [368, 705], [330, 735], [285, 770], [240, 815], [190, 870], [140, 930], [100, 1030]],
-    labels: [['Siluko Rd', 0.5]],
+    pts: [[446, 474], [420, 450], [398, 415], [378, 385], [345, 355], [300, 326], [240, 302], [170, 284], [100, 273], [30, 266], [-30, 262]],
+    labels: [['Siluko Rd', 0.14], ['Upper Siluko Rd', 0.5]],
   },
   {
+    // WSW along the south side of the palace
     id: 'ekenwan', kind: 'main', spurs: true,
-    pts: [[444, 521], [400, 535], [350, 552], [300, 570], [250, 595], [205, 620], [160, 645], [110, 672], [60, 693], [0, 712], [-30, 720]],
-    labels: [['Ekenwan Rd', 0.36]],
+    pts: [[446, 525], [418, 541], [380, 551], [340, 560], [300, 577], [250, 592], [190, 606], [120, 620], [50, 635], [-30, 650]],
+    labels: [['Ekenwan Rd', 0.7]],
   },
   {
+    // Third East Circular: N–S east of the centre, between Akpakpava and Sakponba
     id: 'thirdeast', kind: 'main', spurs: true,
-    pts: [[612, 305], [632, 330], [645, 355], [648, 371], [655, 420], [668, 480], [680, 560], [678, 610], [662, 668], [645, 690], [618, 705], [570, 725], [518, 745]],
-    labels: [['3rd East Circular', 0.3]],
+    pts: [[630, 425], [638, 470], [647, 520], [652, 568], [657, 610]],
+    labels: [['3rd East Circular', 0.42]],
   },
-  { id: 'oluku-bypass', kind: 'main', pts: [[130, 85], [150, 40], [160, -20]] },
-  { id: 'uselu-airport', kind: 'minor', pts: [[384, 333], [360, 350], [340, 366], [300, 392], [270, 425], [262, 472]] },
-  { id: 'uselu-newbenin', kind: 'minor', pts: [[392, 322], [420, 297], [470, 284], [530, 298], [585, 336]] },
-  { id: 'backgate', kind: 'dirt', pts: [[210, 188], [212, 160], [220, 110], [234, 50], [242, -10]] },
-  { id: 'wifi', kind: 'minor', pts: [[306, 252], [308, 200], [310, 150], [318, 100], [330, 40]] },
-  { id: 'aduwawa-link', kind: 'minor', pts: [[850, 530], [852, 505], [860, 450], [878, 400]] },
-  { id: 'upper-sakponba', kind: 'dirt', pts: [[735, 745], [722, 800], [702, 860], [690, 930], [686, 1010]] },
-  { id: 'gra-1', kind: 'minor', pts: [[452, 535], [415, 556], [380, 582], [352, 615], [338, 655], [350, 690]] },
-  { id: 'gra-2', kind: 'minor', pts: [[300, 570], [318, 610], [345, 638], [395, 658], [425, 632]] },
-  { id: 'farm-1', kind: 'dirt', pts: [[42, 700], [58, 760], [48, 840], [70, 930], [60, 1010]] },
-  { id: 'farm-2', kind: 'dirt', pts: [[96, 678], [118, 620], [112, 575]] },
-  { id: 'shrine', kind: 'dirt', pts: [[664, 662], [682, 666], [700, 652]] },
+  { id: 'oluku-bypass', kind: 'main', pts: [[390, 40], [440, 26], [520, 8], [590, -16]] },
+  { id: 'second-east', kind: 'minor', pts: [[610, 431], [616, 480], [620, 535], [616, 584]] },
+  { id: 'first-east', kind: 'minor', pts: [[585, 442], [596, 480], [600, 520], [596, 562]] },
+  { id: 'uselu-siluko', kind: 'minor', pts: [[468, 290], [430, 302], [395, 322], [355, 350]] },
+  { id: 'uselu-newbenin', kind: 'minor', pts: [[471, 312], [520, 324], [560, 340], [588, 356]] },
+  { id: 'wifi', kind: 'minor', pts: [[452, 140], [420, 130], [380, 124], [330, 112], [280, 96]] },
+  { id: 'backgate', kind: 'dirt', pts: [[495, 90], [486, 60], [479, 25], [475, -15]] },
+  { id: 'aduwawa-link', kind: 'minor', pts: [[852, 444], [855, 400], [858, 360], [862, 325]] },
+  { id: 'oregbeni', kind: 'minor', pts: [[742, 420], [730, 455], [724, 500], [718, 540]] },
+  { id: 'upper-sakponba', kind: 'dirt', pts: [[740, 710], [752, 780], [760, 860], [765, 1010]] },
+  { id: 'gra-1', kind: 'minor', pts: [[432, 563], [441, 600], [442, 640], [436, 690], [430, 735]] },
+  { id: 'gra-2', kind: 'minor', pts: [[531, 636], [490, 648], [450, 662], [410, 676], [372, 700]] },
+  { id: 'farm-1', kind: 'dirt', pts: [[80, 271], [62, 300], [52, 345], [60, 420]] },
+  { id: 'farm-2', kind: 'dirt', pts: [[140, 279], [132, 230], [112, 185]] },
+  { id: 'shrine', kind: 'dirt', pts: [[628, 597], [642, 622], [656, 640]] },
 ];
 
-/** Off-map expressway exits (green road signs). */
+/** Off-map exits (green road signs). */
 export const EXITS: { text: string; sub?: string; x: number; y: number; arrow: 'l' | 'r' | 'd' | 'u' }[] = [
-  { text: 'LAGOS', sub: 'via Oluku', x: 60, y: 46, arrow: 'l' },
-  { text: 'AUCHI', sub: 'via Aduwawa', x: 952, y: 428, arrow: 'r' },
-  { text: 'AGBOR', sub: 'Asaba', x: 948, y: 612, arrow: 'r' },
-  { text: 'SAPELE', sub: 'Warri', x: 630, y: 968, arrow: 'd' },
+  { text: 'LAGOS', sub: 'via Oluku', x: 300, y: 26, arrow: 'u' },
+  { text: 'AUCHI', sub: 'via Aduwawa', x: 948, y: 345, arrow: 'r' },
+  { text: 'AGBOR', sub: 'Asaba', x: 945, y: 515, arrow: 'r' },
+  { text: 'SAPELE', sub: 'Warri', x: 620, y: 966, arrow: 'd' },
+  { text: 'FARMS', sub: 'Iguobazuwa', x: 70, y: 232, arrow: 'l' },
 ];
 
 /* ------------------------------------------------------------------ */
 /* River, zones, landmarks                                              */
 /* ------------------------------------------------------------------ */
 
+/** Ikpoba River: N–S east of the centre, between the end of Akpakpava Rd and Ramat Park,
+ *  then bending SE past Upper Sakponba. */
 export const RIVER: Pt[] = [
-  [648, -20], [652, 60], [661, 150], [656, 240], [660, 310], [665, 371], [688, 430], [710, 505],
-  [716, 580], [711, 650], [733, 712], [778, 765], [805, 850], [798, 930], [790, 1020],
+  [725, -20], [718, 80], [705, 180], [690, 262], [674, 330], [666, 380], [656, 420], [670, 466],
+  [695, 515], [726, 585], [762, 655], [798, 735], [826, 840], [836, 930], [840, 1020],
 ];
-export const BRIDGE = { x: 665, y: 371, a: Math.atan2(2, 50) };
+export const BRIDGE = { x: 656, y: 420, a: Math.atan2(-5, 40) };
 
-export const CAMPUS: Pt[] = [[226, 182], [226, 130], [252, 102], [296, 100], [298, 150], [294, 200], [270, 206], [246, 196]];
-export const UBTH: Pt[] = [[282, 266], [330, 280], [350, 300], [338, 322], [296, 312], [276, 290]];
-export const AIRPORT: Pt[] = [[22, 530], [70, 476], [170, 420], [222, 430], [228, 498], [150, 540], [70, 580], [28, 582]];
-export const RUNWAY = { x1: 48, y1: 552, x2: 196, y2: 462, w: 11 };
-export const PALACE: Pt[] = [[520, 568], [548, 556], [574, 584], [560, 612], [530, 616], [512, 594]];
-export const POLICE: Pt[] = [[364, 592], [396, 592], [396, 616], [364, 616]];
-export const FARMLAND: Pt[] = [[0, 600], [60, 598], [120, 630], [152, 700], [142, 790], [160, 880], [140, 1000], [0, 1000]];
+export const CAMPUS: Pt[] = [[464, 98], [500, 86], [535, 100], [538, 150], [510, 168], [468, 160]];
+export const UBTH: Pt[] = [[400, 148], [438, 145], [445, 160], [443, 192], [410, 196], [398, 175]];
+export const AIRPORT: Pt[] = [[205, 625], [290, 610], [335, 640], [325, 700], [255, 732], [190, 700]];
+export const RUNWAY = { x1: 214, y1: 702, x2: 306, y2: 640, w: 11 };
+/** Airport terminal + apron (east end of the runway, at the end of Airport Rd). */
+export const TERMINAL = { x: 312, y: 660 };
+/** Oba's Palace: just W (slightly S) of King's Square, outside the ring, north of Ekenwan Rd. */
+export const PALACE: Pt[] = [[385, 487], [412, 479], [428, 494], [426, 518], [404, 528], [384, 518]];
+export const POLICE: Pt[] = [[486, 600], [508, 600], [508, 620], [486, 620]];
+export const FARMLAND: Pt[] = [[0, 160], [80, 165], [150, 195], [185, 250], [175, 330], [140, 400], [70, 440], [0, 445]];
 export const KINGS_SQUARE = { x: 500, y: 500, r: 49 };
-export const RAMAT = { x: 705, y: 375 };
+/** Ramat Park roundabout (east bank of the Ikpoba, top of Ikpoba Hill). */
+export const RAMAT = { x: 686, y: 412 };
+export const GO_SLOW = { x: 728, y: 430 };
+/** UNIBEN sports ground, UBTH hospital sign. */
+export const STADIUM = { x: 514, y: 140 };
+export const UBTH_SIGN = { x: 422, y: 182 };
+/** Sacred grove around the shrine. */
+export const GROVE = { x: 655, y: 632, r: 22 };
 
 /** Market stall zones: [x, y, radius, location id]. */
 export const MARKETS: [number, number, number, string][] = [
-  [418, 445, 26, 'oba_market'],
-  [596, 315, 17, 'new_benin_market'],
-  [362, 318, 16, 'uselu_market'],
-  [636, 612, 14, 'ekiosa_market'],
-  [462, 716, 14, 'santana_market'],
-  [764, 455, 15, 'oregbeni_market'],
+  [445, 420, 22, 'oba_market'],
+  [612, 368, 15, 'new_benin_market'],
+  [500, 235, 16, 'uselu_market'],
+  [600, 598, 13, 'ekiosa_market'],
+  [580, 705, 14, 'santana_market'],
+  [722, 492, 13, 'oregbeni_market'],
+];
+
+/** Warm night glows: [x, y, radius, opacity] (markets, Ramat, nightlife). */
+export const NIGHT_GLOWS: [number, number, number, number][] = [
+  [500, 500, 52, 1],
+  [686, 412, 40, 1],
+  [445, 425, 34, 0.8],
+  [560, 770, 30, 0.8],
+  [420, 650, 26, 0.7],
+  [480, 235, 28, 0.6],
 ];
 
 /** Urban density cores: x, y, radius, weight. */
 export const CORES: [number, number, number, number][] = [
   [500, 500, 150, 0.95],
-  [590, 350, 105, 0.85],
-  [385, 320, 95, 0.85],
-  [300, 235, 95, 0.55],
-  [760, 430, 105, 0.75],
-  [870, 460, 95, 0.6],
-  [640, 660, 115, 0.8],
-  [720, 775, 85, 0.55],
-  [520, 720, 115, 0.75],
-  [320, 750, 105, 0.6],
-  [220, 615, 95, 0.55],
-  [320, 470, 80, 0.55],
-  [375, 615, 85, 0.35],
-  [130, 90, 60, 0.5],
-  [420, 380, 80, 0.7],
+  [590, 345, 100, 0.85], // New Benin
+  [470, 275, 95, 0.85], // Uselu
+  [460, 150, 85, 0.55], // Ugbowo
+  [390, 45, 60, 0.5], // Oluku
+  [730, 450, 95, 0.75], // Ikpoba Hill
+  [850, 365, 90, 0.6], // Aduwawa
+  [635, 520, 80, 0.75], // Third East
+  [640, 610, 110, 0.8], // Sakponba
+  [725, 700, 85, 0.55], // Upper Sakponba
+  [550, 740, 110, 0.75], // Sapele Rd
+  [345, 355, 100, 0.6], // Siluko
+  [270, 560, 90, 0.55], // Ekenwan
+  [390, 590, 70, 0.45], // Airport Rd
+  [465, 655, 85, 0.35], // GRA
+  [555, 860, 90, 0.5], // Sapele Rd south
+  [190, 600, 80, 0.4], // Ekenwan west
+  [430, 400, 80, 0.7],
   [600, 470, 70, 0.7],
 ];
 
-export const GRA_ZONE = { x: 372, y: 620, r: 88 };
+export const GRA_ZONE = { x: 462, y: 655, r: 80 };
 
 /** Soft district tint blobs: x, y, rx, ry, colour. */
 export const DISTRICT_TINTS: [number, number, number, number, string][] = [
   [500, 500, 150, 140, '#f3c77d'], // Oredo
-  [372, 625, 105, 95, '#6fae5a'], // GRA
-  [265, 215, 115, 100, '#eaa868'], // Ugbowo
-  [390, 320, 90, 80, '#f0b674'], // Uselu
-  [590, 330, 95, 95, '#ec9f72'], // New Benin
-  [770, 440, 95, 85, '#e0956a'], // Ikpoba Hill
-  [880, 440, 90, 100, '#d9a46a'], // Aduwawa
-  [620, 650, 85, 70, '#eaa676'], // Sakponba
-  [720, 790, 80, 80, '#d48f60'], // Upper Sakponba
-  [520, 760, 100, 110, '#f0b97f'], // Sapele Rd
-  [320, 470, 90, 50, '#e4bd82'], // Airport Rd
-  [310, 760, 90, 90, '#dc9f6e'], // Siluko
-  [205, 615, 85, 70, '#d29c6c'], // Ekenwan
-  [125, 95, 75, 60, '#d6a774'], // Oluku
+  [462, 660, 100, 90, '#6fae5a'], // GRA
+  [470, 140, 110, 90, '#eaa868'], // Ugbowo
+  [470, 275, 95, 70, '#f0b674'], // Uselu
+  [590, 330, 90, 95, '#ec9f72'], // New Benin
+  [735, 455, 80, 80, '#e0956a'], // Ikpoba Hill
+  [870, 380, 95, 90, '#d9a46a'], // Aduwawa
+  [640, 520, 55, 70, '#e7ad78'], // Third East
+  [630, 625, 85, 65, '#eaa676'], // Sakponba
+  [725, 715, 80, 75, '#d48f60'], // Upper Sakponba
+  [550, 780, 95, 120, '#f0b97f'], // Sapele Rd
+  [350, 600, 70, 50, '#e4bd82'], // Airport Rd
+  [320, 340, 100, 80, '#dc9f6e'], // Siluko
+  [250, 575, 85, 60, '#d29c6c'], // Ekenwan
+  [390, 50, 80, 50, '#d6a774'], // Oluku
 ];
 
-export const DISTRICT_LABELS: { t: string; x: number; y: number; size?: number }[] = [
-  { t: 'OREDO', x: 432, y: 404, size: 17 },
-  { t: 'G.R.A.', x: 300, y: 640, size: 20 },
-  { t: 'UGBOWO', x: 168, y: 238 },
-  { t: 'USELU', x: 455, y: 340 },
-  { t: 'NEW BENIN', x: 555, y: 268 },
-  { t: 'IKPOBA HILL', x: 806, y: 432, size: 16 },
-  { t: 'RAMAT PARK', x: 760, y: 330, size: 13 },
-  { t: 'ADUWAWA', x: 912, y: 300 },
-  { t: 'SAKPONBA', x: 595, y: 680 },
-  { t: 'UPPER SAKPONBA', x: 690, y: 828, size: 15 },
-  { t: 'THIRD EAST', x: 612, y: 500, size: 13 },
-  { t: 'SAPELE RD', x: 452, y: 880 },
-  { t: 'AIRPORT RD', x: 318, y: 515, size: 14 },
-  { t: 'SILUKO', x: 260, y: 735 },
-  { t: 'EKENWAN', x: 116, y: 600, size: 15 },
-  { t: 'OLUKU', x: 70, y: 125 },
+export const DISTRICT_LABELS: { t: string; x: number; y: number; size?: number; rot?: number }[] = [
+  { t: 'OREDO', x: 566, y: 531, size: 15 },
+  { t: 'G.R.A.', x: 395, y: 728, size: 20 },
+  { t: 'UGBOWO', x: 565, y: 60 },
+  { t: 'USELU', x: 392, y: 236 },
+  { t: 'NEW BENIN', x: 645, y: 232, size: 15 },
+  { t: 'IKPOBA HILL', x: 810, y: 522, size: 15 },
+  { t: 'RAMAT PARK', x: 790, y: 378, size: 12 },
+  { t: 'ADUWAWA', x: 880, y: 270 },
+  { t: 'SAKPONBA', x: 640, y: 692, size: 15 },
+  { t: 'UPPER SAKPONBA', x: 772, y: 752, size: 13 },
+  { t: 'THIRD EAST', x: 676, y: 568, size: 11, rot: 76 },
+  { t: 'SAPELE RD', x: 470, y: 880 },
+  { t: 'AIRPORT RD', x: 255, y: 762, size: 13 },
+  { t: 'SILUKO', x: 300, y: 380 },
+  { t: 'EKENWAN', x: 175, y: 560, size: 15 },
+  { t: 'OLUKU', x: 300, y: 78, size: 15 },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -442,12 +493,12 @@ export type LabelSide = 'b' | 'r' | 'l' | 't';
 export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: LabelSide }> = {
   national_museum: { short: 'National Museum', tier: 1, side: 'b' },
   oba_market: { short: 'Oba Market', tier: 1, side: 'l' },
-  ring_road_pos: { short: 'Ring Rd PoS', tier: 2, side: 'r' },
+  ring_road_pos: { short: 'Ring Rd PoS', tier: 2, side: 'l' },
   oba_palace: { short: "Oba's Palace", tier: 1, side: 'b' },
   igun_street: { short: 'Igun Street', tier: 2, side: 'r' },
   mama_osas_buka: { short: 'Mama Osas Buka', tier: 2, side: 'l' },
-  new_benin_market: { short: 'New Benin Mkt', tier: 1, side: 'l' },
-  new_benin_pos: { short: 'New Benin PoS', tier: 2, side: 't' },
+  new_benin_market: { short: 'New Benin Mkt', tier: 1, side: 't' },
+  new_benin_pos: { short: 'New Benin PoS', tier: 2, side: 'r' },
   mercy_clinic: { short: 'Mercy Clinic', tier: 2, side: 'l' },
   mission_rd_flats: { short: 'Mission Rd Flats', tier: 2, side: 'l' },
   uselu_market: { short: 'Uselu Market', tier: 1, side: 'r' },
@@ -456,26 +507,26 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   uniben: { short: 'UNIBEN', tier: 1, side: 'r' },
   ubth: { short: 'UBTH', tier: 1, side: 'r' },
   back_gate_joint: { short: 'Back Gate Joint', tier: 2, side: 'l' },
-  wifi_joint: { short: 'Wi-Fi Joint', tier: 2, side: 'r' },
+  wifi_joint: { short: 'Wi-Fi Joint', tier: 2, side: 'l' },
   oluku_park: { short: 'Oluku Park', tier: 1, side: 'r' },
-  ramat_park: { short: 'Ramat Park', tier: 1, side: 'b' },
+  ramat_park: { short: 'Ramat Park', tier: 1, side: 'r' },
   oregbeni_market: { short: 'Oregbeni Mkt', tier: 1, side: 'r' },
   aduwawa_park: { short: 'Aduwawa Park', tier: 1, side: 't' },
   aduwawa_room: { short: 'Aduwawa Room', tier: 2, side: 'b' },
   third_east: { short: 'Third East', tier: 2, side: 'r' },
-  ekiosa_market: { short: 'Ekiosa Market', tier: 1, side: 'l' },
+  ekiosa_market: { short: 'Ekiosa Market', tier: 1, side: 'r' },
   baba_shrine: { short: 'Baba Osagie', tier: 2, side: 'r' },
   upper_sakponba: { short: 'Upper Sakponba', tier: 2, side: 'r' },
   santana_market: { short: 'Santana Mkt', tier: 1, side: 'l' },
-  sapele_pos: { short: 'Sapele Rd PoS', tier: 2, side: 'r' },
+  sapele_pos: { short: 'Sapele Rd PoS', tier: 2, side: 'b' },
   bronze_lounge: { short: 'Bronze Lounge', tier: 2, side: 'r' },
-  police_hq: { short: 'Police HQ', tier: 1, side: 'b' },
-  bronze_bank: { short: 'Bronze Bank', tier: 1, side: 'r' },
+  police_hq: { short: 'Police HQ', tier: 1, side: 'r' },
+  bronze_bank: { short: 'Bronze Bank', tier: 1, side: 'l' },
   gra_duplex: { short: 'GRA Duplex', tier: 2, side: 'b' },
   kingdom_lounge: { short: 'Kingdom Lounge', tier: 2, side: 'l' },
-  benin_airport: { short: 'Benin Airport', tier: 1, side: 'b' },
+  benin_airport: { short: 'Benin Airport', tier: 1, side: 'l' },
   siluko_rd: { short: 'Siluko Road', tier: 2, side: 'r' },
-  ekenwan_room: { short: 'Ekenwan Room', tier: 2, side: 'b' },
+  ekenwan_room: { short: 'Ekenwan Room', tier: 2, side: 'l' },
   iguobazuwa_farm: { short: 'Iguobazuwa Farm', tier: 1, side: 'r' },
   bronze_tech_hub: { short: 'Tech Hub', tier: 2, side: 'r' },
 };

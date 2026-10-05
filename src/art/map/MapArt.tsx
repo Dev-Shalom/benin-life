@@ -1,8 +1,9 @@
 // P1-MAP — static illustrated layers. Memoised: rendered once, never re-rendered on pan/zoom.
 import { memo, useMemo } from 'react';
 import {
-  AIRPORT, BRIDGE, CAMPUS, DISTRICT_LABELS, DISTRICT_TINTS, EXITS, FARMLAND, KINGS_SQUARE, PALACE, POLICE,
-  RAMAT, RING, RUNWAY, UBTH, blobD, circleD, inPoly, labelPath, polyD, r1, rng, type Pt,
+  AIRPORT, BRIDGE, CAMPUS, DISTRICT_LABELS, DISTRICT_TINTS, EXITS, FARMLAND, GO_SLOW, KINGS_SQUARE, NIGHT_GLOWS,
+  PALACE, POLICE, RAMAT, RING, RUNWAY, STADIUM, TERMINAL, UBTH, UBTH_SIGN, bbox, blobD, circleD, inPoly, labelPath,
+  polyD, r1, rng, type Pt,
 } from './mapGeo';
 import { getMapModel, ROOF_BUCKETS, type RoofBucket, type Vehicle } from './mapModel';
 
@@ -20,11 +21,13 @@ const FONT = "'Bricolage Grotesque', 'Trebuchet MS', 'Segoe UI', system-ui, sans
 /* ------------------------------------------------------------------ */
 /* Farm fields (computed once)                                          */
 /* ------------------------------------------------------------------ */
+let fieldsCache: string[] | null = null;
 function farmFields(): string[] {
   const rand = rng(77);
   const out = ['', '', '', ''];
-  for (let y = 600; y < 1000; y += 38)
-    for (let x = 0; x < 165; x += 46) {
+  const [x0, y0, x1, y1] = bbox(FARMLAND);
+  for (let y = y0; y < y1; y += 38)
+    for (let x = x0; x < x1; x += 46) {
       const j = () => (rand() - 0.5) * 8;
       const q: Pt[] = [[x + 2 + j(), y + 2 + j()], [x + 44 + j(), y + 2 + j()], [x + 44 + j(), y + 36 + j()], [x + 2 + j(), y + 36 + j()]];
       const cx = x + 23;
@@ -243,7 +246,7 @@ const ROAD_STYLE = {
 
 export const MapArt = memo(function MapArt() {
   const m = getMapModel();
-  const fields = useMemo(farmFields, []);
+  const fields = (fieldsCache ??= farmFields());
   const paved = m.roads.filter((r) => r.kind === 'express' || r.kind === 'main');
   const minor = m.roads.filter((r) => r.kind === 'minor');
   const dirt = m.roads.filter((r) => r.kind === 'dirt');
@@ -292,13 +295,13 @@ export const MapArt = memo(function MapArt() {
 
       {/* L6 landmark grounds */}
       <path d={polyD(CAMPUS)} fill="#a9c97a" stroke="#f4ead2" strokeWidth={1.6} />
-      <g transform="translate(262 128) rotate(-8)">
+      <g transform={`translate(${STADIUM.x} ${STADIUM.y}) rotate(-8)`}>
         <ellipse rx={16} ry={10} fill="#c2593a" />
         <ellipse rx={12.5} ry={6.8} fill="#6fae4f" />
         <path d="M-12.5,0H12.5" stroke="#e9f2dc" strokeWidth={0.5} />
       </g>
       <path d={polyD(UBTH)} fill="#d8e3cf" stroke="#f6f1e4" strokeWidth={1.4} />
-      <g transform="translate(330 306)">
+      <g transform={`translate(${UBTH_SIGN.x} ${UBTH_SIGN.y})`}>
         <circle r={6} fill="#5d6a74" />
         <path d="M-2.4,-3V3M2.4,-3V3M-2.4,0H2.4" stroke="#f6f1e4" strokeWidth={1.1} />
       </g>
@@ -380,7 +383,7 @@ export const MapArt = memo(function MapArt() {
         <path d="M-6,-20.6V-12" stroke="#4a4050" strokeWidth={0.5} />
         <rect x={12} y={-2} width={4} height={4} fill="#4a4050" />
       </g>
-      <g transform="translate(676 338)" className="map-goslow">
+      <g transform={`translate(${GO_SLOW.x} ${GO_SLOW.y})`} className="map-goslow">
         <path d="M-17,-7H17V5H4L0,10L-4,5H-17Z" fill="#d2342a" stroke="#fff6e4" strokeWidth={1.1} strokeLinejoin="round" />
         <text y={2.4} textAnchor="middle" fontSize={7.4} fontWeight={800} fill="#fff6e4" fontFamily={FONT} letterSpacing={0.4}>GO-SLOW!</text>
       </g>
@@ -421,11 +424,14 @@ export const MapArt = memo(function MapArt() {
             <path key={y} d={`M2,${y}H7M${r1(rwL - 5)},${y}H${r1(rwL)}`} stroke="#f4f1e6" strokeWidth={0.9} />
           ))}
         </g>
-        <path d="M186,468L214,482" stroke="#4c4855" strokeWidth={5} strokeLinecap="round" />
-        <path d="M206,474L236,462L240,486L214,492Z" fill="#8f8b97" />
-        <rect x={218} y={453} width={24} height={9} rx={1} fill="#e9e4dc" stroke="#7a7486" strokeWidth={0.6} />
-        <rect x={218} y={453} width={24} height={3.4} fill="#6aa3ac" />
-        <g transform="translate(222 478) rotate(-30)">
+        {/* taxiway, apron, terminal and a parked plane, laid out relative to TERMINAL */}
+        <g transform={`translate(${TERMINAL.x} ${TERMINAL.y})`}>
+          <path d="M-22,0L-6,10" stroke="#4c4855" strokeWidth={5} strokeLinecap="round" />
+          <path d="M-12,4L14,-8L18,14L-6,20Z" fill="#8f8b97" />
+          <rect x={4} y={-24} width={24} height={9} rx={1} fill="#e9e4dc" stroke="#7a7486" strokeWidth={0.6} transform="rotate(-34 16 -19)" />
+          <rect x={4} y={-24} width={24} height={3.4} fill="#6aa3ac" transform="rotate(-34 16 -19)" />
+        </g>
+        <g transform={`translate(${TERMINAL.x + 2} ${TERMINAL.y + 8}) rotate(-34)`}>
           <path d="M-7,0L7,0M-1,-6.5L1.5,0L-1,6.5M-6,-2.5L-5,0L-6,2.5" stroke="#f7f7f2" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" fill="none" />
           <path d="M-7,0L7,0" stroke="#2f7fc1" strokeWidth={0.6} />
         </g>
@@ -494,11 +500,9 @@ export const MapLight = memo(function MapLight({ night }: { night: boolean }) {
       <path d={lampMid} fill="#ffd98c" opacity={0.28} />
       <path d={lampCore} fill="#fff6d6" />
       <path d={runwayLights} fill="#bfe2ff" />
-      <circle cx={500} cy={500} r={52} fill="url(#map-glow-warm)" />
-      <circle cx={RAMAT.x} cy={RAMAT.y} r={40} fill="url(#map-glow-warm)" />
-      <circle cx={418} cy={445} r={34} fill="url(#map-glow-warm)" opacity={0.8} />
-      <circle cx={540} cy={765} r={30} fill="url(#map-glow-warm)" opacity={0.8} />
-      <circle cx={325} cy={580} r={26} fill="url(#map-glow-warm)" opacity={0.7} />
+      {NIGHT_GLOWS.map(([x, y, r, o]) => (
+        <circle key={`${x},${y}`} cx={x} cy={y} r={r} fill="url(#map-glow-warm)" opacity={o} />
+      ))}
       <rect width="1000" height="1000" fill="url(#map-night-vig)" />
     </g>
   );
@@ -525,6 +529,7 @@ export const MapLabels = memo(function MapLabels({ night }: { night: boolean }) 
           key={l.t}
           x={l.x}
           y={l.y}
+          transform={l.rot ? `rotate(${l.rot} ${l.x} ${l.y})` : undefined}
           textAnchor="middle"
           fontSize={l.size ?? 18}
           fontWeight={800}

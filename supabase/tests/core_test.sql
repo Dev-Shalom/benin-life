@@ -367,8 +367,9 @@ begin
   q := travel_quote('mama_osas_buka');
   select x into o from jsonb_array_elements(q->'options') x where x->>'mode' = 'keke';
   perform pg_temp.assert((o->>'allowed')::boolean, 'keke ok between keke_ok places');
-  -- km formula: dist((205,620),(455,545))/1000*18
-  perform pg_temp.assert(abs((q->>'km')::numeric - sqrt(250^2 + 75^2) / 1000 * 18) < 0.01, 'km formula');
+  -- km formula: dist(ekenwan_room, mama_osas_buka)/1000*18, read from the table so map moves don't break it
+  perform pg_temp.assert(abs((q->>'km')::numeric - (select sqrt((a.x-b.x)^2 + (a.y-b.y)^2) from locations a, locations b
+    where a.id = 'ekenwan_room' and b.id = 'mama_osas_buka') / 1000 * 18) < 0.01, 'km formula');
   perform pg_temp.assert((o->>'cost')::bigint = ceil((150 + 100 * (q->>'km')::numeric) / 10) * 10, 'keke fare formula');
 
   -- farm adds remote_km

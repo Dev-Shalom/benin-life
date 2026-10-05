@@ -127,3 +127,12 @@ The exit signs need these changes:
 - **AGBOR / Asaba:** goes E/ESE from Ramat.
 - **SAPELE / Warri:** goes S.
 - **Iguobazuwa / farm:** a sign NW on Upper Siluko Rd.
+
+## Applied (P1-MAP, 2026-10-05)
+- `supabase/migrations/20261005000100_map_geo.sql` moves every seeded pin to the table above, with two small nudges so pins and labels never collide at phone zoom:
+  - **ring_road_pos:** 540,452 instead of 520,440. It is still on the ring, now on the NE side between Mission Rd and Akpakpava Rd.
+  - **police_hq:** 510,604 instead of 510,600.
+- `bronze_tech_hub` (535,190) is left to its Phase 2 owner. Nothing in the map art sits on that spot.
+- The map art (`src/art/map/mapGeo.ts`) draws the roads, river, palace, campus, UBTH, airport, GRA, farmland, district tints/labels and exit signs to match this file.
+- `supabase/tests/map_geo_test.sql` checks every position and the main direction facts.
+- `node scripts/render-map.mjs <outDir>` renders the map (day/night, full, phone, zoomed) and prints label/pin collision diagnostics.

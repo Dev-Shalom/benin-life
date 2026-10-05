@@ -1,8 +1,8 @@
 // P1-MAP — procedural city generator. Everything is merged into a few big <path>
 // strings per colour so the whole illustrated city stays at a few hundred DOM nodes.
 import {
-  AIRPORT, CAMPUS, CORES, FARMLAND, GRA_ZONE, KINGS_SQUARE, MARKETS, PALACE, POLICE, RAMAT, RING, RIVER,
-  ROAD_HW, ROADS, RUNWAY, UBTH, PathBuf, at, circleD, inPoly, labelPath, rng, spline,
+  AIRPORT, CAMPUS, CORES, FARMLAND, GRA_ZONE, GROVE, KINGS_SQUARE, MARKETS, PALACE, POLICE, RAMAT, RING, RIVER,
+  ROAD_HW, ROADS, RUNWAY, UBTH, PathBuf, at, bbox, circleD, inPoly, labelPath, rng, spline,
   type Pt, type RoadKind, type Spline,
 } from './mapGeo';
 
@@ -597,7 +597,7 @@ function build(): MapModel {
       if (inGRA(x, y)) g += 0.5;
       if (rd < 46) g += 0.45;
       if (inPoly(x, y, CAMPUS) || inPoly(x, y, UBTH)) g += 0.32;
-      if (dist(x, y, 680, 660) < 22) g += 0.8; // sacred grove at the shrine
+      if (dist(x, y, GROVE.x, GROVE.y) < GROVE.r) g += 0.8; // sacred grove at the shrine
       if (rand() > g * 1.44 || rd < 13) continue;
       if (inPoly(x, y, FARMLAND) || inRunway(x, y, 10) || inPoly(x, y, PALACE)) continue;
       const r = R(3.2, 6.2) * (inGRA(x, y) ? 1.15 : 1);
@@ -611,11 +611,14 @@ function build(): MapModel {
 
   tick('trees');
   // Oil palms in Iguobazuwa farmland (field edges)
-  for (let i = 0; i < 260; i++) {
-    const x = R(0, 160);
-    const y = R(595, 1000);
+  const [fx0, fy0, fx1, fy1] = bbox(FARMLAND);
+  const farmTries = Math.round(((fx1 - fx0) * (fy1 - fy0)) / 250);
+  for (let i = 0; i < farmTries; i++) {
+    const x = R(fx0, fx1);
+    const y = R(fy0, fy1);
     if (!inPoly(x, y, FARMLAND)) continue;
-    const edge = Math.abs(((y - 600) % 70) - 35) > 29 || Math.abs((x % 48) - 24) > 20;
+    // field edges follow the 46x38 field grid drawn by MapArt's farmFields()
+    const edge = Math.abs(((y - fy0) % 38) - 19) > 14 || Math.abs(((x - fx0) % 46) - 23) > 19;
     if (!edge && rand() < 0.8) continue;
     if (roadClear(x, y, 14) < 5) continue;
     palm(x, y, R(5, 7.5));

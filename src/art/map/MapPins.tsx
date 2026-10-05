@@ -21,7 +21,7 @@ const overlap = (a: Box, b: Box) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] &&
 
 function labelBox(l: Location, side: LabelSide, text: string, ps: number): Box {
   const w = text.length * LABEL_FS * 0.56 * ps;
-  const h = LABEL_FS * 1.15 * ps;
+  const h = LABEL_FS * ps; // cap top to descender of the 11.5px label
   const { x, y } = l;
   switch (side) {
     case 'r':
@@ -31,7 +31,7 @@ function labelBox(l: Location, side: LabelSide, text: string, ps: number): Box {
     case 't':
       return [x - w / 2, y - 52 * ps, x + w / 2, y - 52 * ps + h];
     default:
-      return [x - w / 2, y + 3 * ps, x + w / 2, y + 3 * ps + h];
+      return [x - w / 2, y + 4 * ps, x + w / 2, y + 4 * ps + h];
   }
 }
 
@@ -40,12 +40,13 @@ export function layoutLabels(locs: Location[], zoom: number, currentId?: string,
   const ps = pinScaleFor(zoom);
   const out = new Map<string, LabelSide>();
   const badges = new Map<string, Box>(
-    locs.map((l) => [l.id, [l.x - BADGE_R * ps, l.y + (BADGE_Y - BADGE_R) * ps, l.x + BADGE_R * ps, l.y + 2 * ps] as Box]),
+    // badge circle + tail; the circle's bbox corners are empty, so trim the sides a little
+    locs.map((l) => [l.id, [l.x - BADGE_R * 0.85 * ps, l.y + (BADGE_Y - BADGE_R) * ps, l.x + BADGE_R * 0.85 * ps, l.y + 2 * ps] as Box]),
   );
   const taken: Box[] = [];
   // the "You dey here" tag floats above the current pin (body scaled ×1.12)
   const cur = currentId ? locs.find((l) => l.id === currentId) : undefined;
-  if (cur) taken.push([cur.x - 40 * ps, cur.y - 64 * ps, cur.x + 40 * ps, cur.y - 42 * ps]);
+  if (cur) taken.push([cur.x - 39 * ps, cur.y - 63.5 * ps, cur.x + 39 * ps, cur.y - 42 * ps]);
   const prio = (l: Location) => (l.id === selectedId ? 0 : l.id === currentId ? 1 : (PIN_META[l.id]?.tier ?? 2) + 1);
   const order = [...locs].sort((a, b) => prio(a) - prio(b) || a.sort - b.sort);
   for (const l of order) {
@@ -96,8 +97,9 @@ export function PinDefs() {
         <stop offset="100%" stopColor="#d2342a" stopOpacity={0} />
       </radialGradient>
       <radialGradient id="map-danger">
-        <stop offset="0%" stopColor="#ff3b3b" stopOpacity={0.6} />
-        <stop offset="50%" stopColor="#d2142a" stopOpacity={0.25} />
+        <stop offset="0%" stopColor="#ff4a3b" stopOpacity={0.85} />
+        <stop offset="45%" stopColor="#ff2a3a" stopOpacity={0.5} />
+        <stop offset="75%" stopColor="#e0142a" stopOpacity={0.2} />
         <stop offset="100%" stopColor="#9c0f1f" stopOpacity={0} />
       </radialGradient>
       <radialGradient id="map-pin-shine" cx="35%" cy="25%" r="60%">
@@ -192,7 +194,12 @@ function Pin({ loc, ps, side, current, selected, night, count, onSelect }: PinPr
         }
       }}
     >
-      {danger && <circle className="map-danger" cy={BADGE_Y} r={34} fill="url(#map-danger)" />}
+      {danger && (
+        <g className="map-danger">
+          <circle cy={BADGE_Y} r={40} fill="url(#map-danger)" />
+          <circle cy={BADGE_Y} r={27} fill="none" stroke="#ff5a4a" strokeOpacity={0.7} strokeWidth={1.4} strokeDasharray="4 3.5" />
+        </g>
+      )}
       {selected && <circle className="map-sel-glow" cy={BADGE_Y * 1.3} r={40} fill="url(#map-sel-glow)" />}
       <ellipse cx={1.5} cy={0.5} rx={selected ? 9 : 6.5} ry={selected ? 3.4 : 2.6} fill={selected ? '#d2342a' : '#2a1030'} opacity={selected ? 0.55 : 0.35} />
       {current && (
