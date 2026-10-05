@@ -192,6 +192,13 @@
   .pill-bar {
     padding-left: 14px;
   }
+  /* the clock must never clip ("10:54 PI"); mute also lives in Settings */
+  .pill-bar__time {
+    flex: none;
+  }
+  .pill-bar__mute {
+    display: none;
+  }
 }
 @media (max-width: 349px) {
   .pill-bar__online,
@@ -312,6 +319,51 @@ div.wish-chip {
   transform: scale(0.96);
 }
 
+/* map view: the rail folds into one summary chip so it does not cover the city */
+.rail-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 4px 10px 4px 5px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--e1), inset 0 0 0 1px var(--line);
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.rail-summary:active {
+  transform: scale(0.96);
+}
+.rail-summary.is-open {
+  padding-left: 12px;
+}
+.rail-summary.has-dad {
+  box-shadow: var(--e1), inset 0 0 0 1.5px var(--amber-500);
+}
+.rail-summary__icons {
+  display: flex;
+}
+.rail-summary__icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  box-shadow: 0 0 0 2px var(--surface);
+  font-family: var(--font-emoji);
+  font-size: 14px;
+}
+.rail-summary__icon + .rail-summary__icon {
+  margin-left: -7px;
+}
+
 /* phones: compact chips so the rail does not cover the house (reference: small white chips) */
 @media (max-width: 599px) {
   .left-rail {
@@ -400,7 +452,13 @@ div.wish-chip {
 .home-chip > span:first-child {
   font-family: var(--font-emoji);
 }
+.home-chip__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .home-chip__go {
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -2462,4 +2520,7 @@ kbd {
 }
 .game:has(.lite-badge) .left-rail:not(.is-clean) {
   top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 52px);
+}
+.game:has(.lite-badge) .left-rail.is-clean {
+  top: calc(var(--sat) + 56px);
 }

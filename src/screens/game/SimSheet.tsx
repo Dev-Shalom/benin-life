@@ -120,7 +120,7 @@ function ProfileTab({ state, onEditLook }: { state: GameState; onEditLook: () =>
       </div>
       <div className="sim-field">
         <span className="sim-field__val">@{p.username}</span>
-        <span className="sim-field__label">your name</span>
+        <span className="sim-field__label">Username</span>
       </div>
       <Button variant="ghost" block icon="user" onClick={onEditLook}>Edit look</Button>
       <section className="sim-card">
@@ -200,8 +200,8 @@ function GoalsTab({ state }: { state: GameState }) {
         <div className="dream-hero__row">
           <span className="dream-hero__emoji" aria-hidden>{dream?.emoji ?? '🌟'}</span>
           <div>
-            <div className="dream-hero__name">{dream?.name ?? 'Pick a dream'}</div>
-            <div className="dream-hero__desc">{dream?.description ?? ''}</div>
+            <div className="dream-hero__name">{dream?.name ?? 'No dream yet'}</div>
+            <div className="dream-hero__desc">{dream?.description ?? 'Older Sims can pick a lifetime dream in a coming update.'}</div>
           </div>
         </div>
         <div className="dream-hero__bar"><span style={{ width: '0%' }} /></div>

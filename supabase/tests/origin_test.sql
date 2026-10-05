@@ -263,7 +263,7 @@ begin
   perform pg_temp.assert((o->>'allowed')::boolean, 'nepo car allowed: ' || o::text);
   perform pg_temp.login(pg_temp.ou('Lapo_Efosa'));
   select x into o from jsonb_array_elements(travel_quote('national_museum')->'options') x where x->>'mode' = 'car';
-  perform pg_temp.assert(not (o->>'allowed')::boolean and o->>'reason' ilike '%motor%', 'lapo has no car');
+  perform pg_temp.assert(not (o->>'allowed')::boolean and o->>'reason' ilike '%car yet%', 'lapo has no car');
   raise notice 'ok 5: car travel for Nepo baby';
 end $$;
 
@@ -274,7 +274,7 @@ begin
   perform pg_temp.login(pg_temp.ou('Nepo_Osaro'));
   perform pg_temp.expect_error($q$ select create_profile('Another1', 'male', '{}') $q$, '%already create%');
   perform pg_temp.login(v);
-  perform pg_temp.expect_error($q$ select create_profile('nepo_osaro', 'female', '{}') $q$, '%don already carry%');
+  perform pg_temp.expect_error($q$ select create_profile('nepo_osaro', 'female', '{}') $q$, '%already taken%');
   perform pg_temp.expect_error($q$ select create_profile('ab', 'female', '{}') $q$, '%3 to 20%');
   perform pg_temp.expect_error($q$ select create_profile('bad name', 'female', '{}') $q$, '%3 to 20%');
   perform pg_temp.expect_error($q$ select create_profile('Efe', 'alien', '{}') $q$, '%male or female%');
@@ -284,7 +284,7 @@ begin
   -- a broken tier home blocks creation with a Pidgin error instead of a half-made profile
   update game_config set value = '"atlantis"' where key = 'origin.lapo.home_location';
   perform set_config('bl.test_rand', '0.9', true);
-  perform pg_temp.expect_error($q$ select create_profile('Efe_Ok', 'female', '{}') $q$, '%no dey for map%');
+  perform pg_temp.expect_error($q$ select create_profile('Efe_Ok', 'female', '{}') $q$, '%isn''t on the map%');
   update game_config set value = '"ekenwan_room"' where key = 'origin.lapo.home_location';
   perform pg_temp.assert(create_profile('Efe_Ok', 'female', '{}')->'profile'->>'origin' = 'lapo', 'valid create after fix');
   perform set_config('bl.test_rand', '', true);

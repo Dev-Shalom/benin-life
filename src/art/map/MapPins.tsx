@@ -44,7 +44,7 @@ export function layoutLabels(locs: Location[], zoom: number, currentId?: string,
     locs.map((l) => [l.id, [l.x - BADGE_R * 0.85 * ps, l.y + (BADGE_Y - BADGE_R) * ps, l.x + BADGE_R * 0.85 * ps, l.y + 2 * ps] as Box]),
   );
   const taken: Box[] = [];
-  // the "You dey here" tag floats above the current pin (body scaled ×1.12)
+  // the "You are here" tag floats above the current pin (body scaled ×1.12)
   const cur = currentId ? locs.find((l) => l.id === currentId) : undefined;
   if (cur) taken.push([cur.x - 39 * ps, cur.y - 63.5 * ps, cur.x + 39 * ps, cur.y - 42 * ps]);
   const prio = (l: Location) => (l.id === selectedId ? 0 : l.id === currentId ? 1 : (PIN_META[l.id]?.tier ?? 2) + 1);
@@ -59,7 +59,7 @@ export function layoutLabels(locs: Location[], zoom: number, currentId?: string,
     const sides: LabelSide[] = [pref, ...(['b', 'r', 'l', 't'] as LabelSide[]).filter((s) => s !== pref)];
     let placed: LabelSide | null = null;
     for (const s of sides) {
-      // 't' is reserved for the "You dey here" tag on the current pin
+      // 't' is reserved for the "You are here" tag on the current pin
       if (s === 't' && l.id === currentId) continue;
       const box = labelBox(l, s, text, ps);
       if (box[0] < 2 || box[2] > 998 || box[1] < 2 || box[3] > 998) continue;
@@ -185,7 +185,7 @@ function Pin({ loc, ps, side, current, selected, night, count, onSelect }: PinPr
       data-pin-id={loc.id}
       role="button"
       tabIndex={0}
-      aria-label={`${loc.name}${current ? ' — you dey here' : ''}${count > 0 ? `, ${count} people` : ''}`}
+      aria-label={`${loc.name}${current ? ' — you are here' : ''}${count > 0 ? `, ${count} people` : ''}`}
       style={{ transform: `translate(${r1(loc.x)}px, ${r1(loc.y)}px) scale(${ps.toFixed(3)})` }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -229,7 +229,7 @@ function Pin({ loc, ps, side, current, selected, night, count, onSelect }: PinPr
         <g transform={`translate(0 ${r1(BADGE_Y * k - BADGE_R * k - 13)})`} className="map-here">
           <path d="M-36,-9H36A3,3 0 0 1 39,-6V5A3,3 0 0 1 36,8H4L0,12L-4,8H-36A3,3 0 0 1 -39,5V-6A3,3 0 0 1 -36,-9Z" fill="#1f7a3f" stroke="#fffaf0" strokeWidth={1.4} />
           <text y={3} textAnchor="middle" fontSize={10.5} fontWeight={800} fill="#fffaf0" letterSpacing={0.2}>
-            You dey here
+            You are here
           </text>
         </g>
       )}

@@ -72,7 +72,7 @@ begin
   perform pg_temp.assert(bl_cfg('start.cash') = 5000, 'bl_cfg numeric');
   perform pg_temp.assert(bl_cfg_bool('traffic.ramat_flyover_open') = false, 'bl_cfg_bool');
   perform pg_temp.assert(bl_cfg_text('start.home_location') = 'ekenwan_room', 'bl_cfg_text');
-  perform pg_temp.expect_error($q$ select bl_cfg('nope.not_a_key') $q$, '%no dey%');
+  perform pg_temp.expect_error($q$ select bl_cfg('nope.not_a_key') $q$, '%Missing game setting%');
   raise notice 'ok 0: seeds + config helpers';
 end $$;
 
@@ -146,7 +146,7 @@ begin
 
   -- duplicate username (case-insensitive) + bad usernames + bad gender
   perform pg_temp.as_user('b');
-  perform pg_temp.expect_error($q$ select create_profile('osas_1', 'female', '{}') $q$, '%don already carry%');
+  perform pg_temp.expect_error($q$ select create_profile('osas_1', 'female', '{}') $q$, '%already taken%');
   perform pg_temp.expect_error($q$ select create_profile('ab', 'female', '{}') $q$, '%3 to 20%');
   perform pg_temp.expect_error($q$ select create_profile('bad name', 'female', '{}') $q$, '%3 to 20%');
   perform pg_temp.expect_error($q$ select create_profile('this_name_is_way_too_long', 'female', '{}') $q$, '%3 to 20%');
@@ -368,7 +368,7 @@ begin
   select x into o from jsonb_array_elements(q->'options') x where x->>'mode' = 'keke';
   perform pg_temp.assert(not (o->>'allowed')::boolean and o->>'reason' ilike '%keke%', 'keke blocked to museum');
   select x into o from jsonb_array_elements(q->'options') x where x->>'mode' = 'car';
-  perform pg_temp.assert(not (o->>'allowed')::boolean and o->>'reason' ilike '%motor%', 'car blocked w/o vehicle');
+  perform pg_temp.assert(not (o->>'allowed')::boolean and o->>'reason' ilike '%car yet%', 'car blocked w/o vehicle');
   select x into o from jsonb_array_elements(q->'options') x where x->>'mode' = 'walk';
   perform pg_temp.assert((o->>'allowed')::boolean and (o->>'cost')::int = 0 and not (o ? 'reason'), 'walk free');
 
@@ -390,7 +390,7 @@ begin
   perform pg_temp.assert((o->>'allowed')::boolean, 'car allowed with vehicle');
 
   perform pg_temp.expect_error($q$ select travel_quote('ekenwan_room') $q$, '%already%');
-  perform pg_temp.expect_error($q$ select travel_quote('atlantis') $q$, '%no dey for map%');
+  perform pg_temp.expect_error($q$ select travel_quote('atlantis') $q$, '%isn''t on the map%');
   raise notice 'ok 5: travel_quote';
 end $$;
 
@@ -503,7 +503,7 @@ begin
 
   r := get_public_profile(pg_temp.uid('c'));
   perform pg_temp.assert(r->>'username' = 'Ize' and r ? 'avatar' and r ? 'location_id' and not (r ? 'cash'), 'public profile');
-  perform pg_temp.expect_error(format('select get_public_profile(%L)', gen_random_uuid()), '%no dey%');
+  perform pg_temp.expect_error(format('select get_public_profile(%L)', gen_random_uuid()), '%doesn''t exist%');
   raise notice 'ok 8: players_here + get_public_profile';
 end $$;
 

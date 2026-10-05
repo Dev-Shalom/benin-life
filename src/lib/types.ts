@@ -219,7 +219,7 @@ export type OriginId = 'lapo' | 'nepo' | (string & {});
 
 export interface Profile {
   origin: OriginId;
-  /** Game day the Papa allowance was last claimed (null = never). */
+  /** Game day Dad's allowance was last claimed (null = never). */
   allowance_claimed_day: number | null;
 }
 

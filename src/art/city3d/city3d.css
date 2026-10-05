@@ -348,6 +348,13 @@
 .game:has(.c3-caption) .left-rail:not(.is-clean) {
   top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 96px);
 }
+/* clean screen: the chips move to the top, so "Show HUD" sits under them instead of over them */
+.game:has(.c3-top) .left-rail.is-clean {
+  top: calc(var(--sat) + 62px);
+}
+.game:has(.c3-caption) .left-rail.is-clean {
+  top: calc(var(--sat) + 100px);
+}
 
 /* ---------- controls ---------- */
 .c3-ctrls {

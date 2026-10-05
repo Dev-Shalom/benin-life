@@ -3,7 +3,7 @@
 // Settings (Sim sheet). Everything else opens a "Coming soon" screen. Esc closes the phone.
 import { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { clockTime, naira, titleCase } from '../../lib/format';
+import { clockTime, naira, districtName } from '../../lib/format';
 import { WEEKDAYS } from '../../lib/pidgin';
 import type { GameClock, GameState, Location } from '../../lib/types';
 import { useGame } from '../../state/game';
@@ -80,7 +80,7 @@ function RideApp({ state, onPick }: { state: GameState; onPick: (id: string) => 
               <span className="ride-row__pin" aria-hidden>{l.id === homeId ? '🏠' : '📍'}</span>
               <span className="grow">
                 <span className="ride-row__name">{l.id === homeId ? 'Home' : l.name}</span>
-                <span className="ride-row__sub">{titleCase(l.district)}</span>
+                <span className="ride-row__sub">{districtName(l.district)}</span>
               </span>
               <span className="ride-row__km">{km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`}</span>
             </button>
@@ -100,7 +100,7 @@ function BankApp({ state }: { state: GameState }) {
         <span className="bank-card__sub">Bronze Bank · safe from thieves</span>
       </div>
       <div className="bank-row"><span>Cash in pocket</span><b>{naira(state.profile.cash)}</b></div>
-      <p className="phone-app__lead">Deposits and transfers are coming to the app. For now, visit Bronze Bank in GRA or any PoS stand.</p>
+      <p className="phone-app__lead">Deposits and withdrawals open soon, here and at the Bronze Bank counter in GRA. Until then, your bank balance is safe from thieves.</p>
     </div>
   );
 }

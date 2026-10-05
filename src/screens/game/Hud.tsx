@@ -119,7 +119,11 @@ const NEED_GROUP: Partial<Record<NeedKey, 'kitchen' | 'bed' | 'bath' | 'toilet' 
   fun: 'media',
 };
 
-export function LeftRail({ state, status, atHome }: { state: GameState; status: PlayerStatus; atHome: boolean }) {
+/**
+ * Left rail. On the map (`compact`) the chips fold into one small summary chip so they do not cover
+ * the city on phones; tapping it opens the full list (and "Clean screen") until a chip is used.
+ */
+export function LeftRail({ state, status, atHome, compact = false }: { state: GameState; status: PlayerStatus; atHome: boolean; compact?: boolean }) {
   const p = state.profile;
   const origin = state.origin ?? null;
   const refresh = useGame((s) => s.refresh);
@@ -128,7 +132,15 @@ export function LeftRail({ state, status, atHome }: { state: GameState; status: 
   const clean = usePrefs((s) => s.clean);
   const setPrefs = usePrefs((s) => s.set);
   const [claiming, setClaiming] = useState(false);
+  const [open, setOpen] = useState(false);
   const tips = lowNeeds(p, 2);
+  const dadReady = Boolean(origin?.allowance_claimable);
+  const protectedNow = status.protLeft > 0;
+  const count = tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0);
+  const folded = compact && !open && !clean;
+
+  // Leaving the map (or switching to clean screen) folds the list again.
+  if (open && (!compact || clean)) setOpen(false);
 
   const claimDad = async () => {
     if (claiming) return;
@@ -145,13 +157,35 @@ export function LeftRail({ state, status, atHome }: { state: GameState; status: 
   };
 
   const onTip = (k: NeedKey) => {
+    setOpen(false);
     const g = NEED_GROUP[k];
     if (atHome && g) pickHome({ id: null, group: g });
     else select(p.location_id);
   };
 
+  if (folded && count > 0) {
+    const icons = [...tips.map((t) => t.emoji), ...(dadReady ? ['💸'] : []), ...(protectedNow ? ['🛡️'] : [])];
+    return (
+      <div className="left-rail is-compact">
+        <button type="button" className={`rail-summary${dadReady ? ' has-dad' : ''}`} onClick={() => setOpen(true)} aria-expanded={false}
+          aria-label={`Tips and status (${count}). Show`}>
+          <span className="rail-summary__icons" aria-hidden>
+            {icons.map((e, i) => <span key={i} className="rail-summary__icon">{e}</span>)}
+          </span>
+          <Icon name="chevronDown" size={14} stroke={2.6} />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className={`left-rail${clean ? ' is-clean' : ''}`}>
+    <div className={`left-rail${clean ? ' is-clean' : ''}${compact ? ' is-compact' : ''}`}>
+      {compact && open && !clean && (
+        <button type="button" className="rail-summary is-open" onClick={() => setOpen(false)} aria-expanded aria-label="Hide tips and status">
+          <span className="rail-summary__label">Hide</span>
+          <Icon name="chevronUp" size={14} stroke={2.6} />
+        </button>
+      )}
       {!clean && (
         <>
           {tips.map((t) => (
@@ -163,7 +197,7 @@ export function LeftRail({ state, status, atHome }: { state: GameState; status: 
               </span>
             </button>
           ))}
-          {origin?.allowance_claimable && (
+          {dadReady && origin && (
             <button type="button" className="wish-chip wish-chip--dad" onClick={() => void claimDad()} disabled={claiming}
               aria-label={`${ORIGIN_UI.collectDad} (${nairaShort(origin.allowance_daily)})`}>
               <span className="wish-chip__icon" aria-hidden>💸</span>
@@ -173,7 +207,7 @@ export function LeftRail({ state, status, atHome }: { state: GameState; status: 
               </span>
             </button>
           )}
-          {status.protLeft > 0 && (
+          {protectedNow && (
             <div className="wish-chip wish-chip--protect" title="New player protection: nobody can rob you yet">
               <span className="wish-chip__icon" aria-hidden>🛡️</span>
               <span className="wish-chip__text">
@@ -239,7 +273,8 @@ export function Dock({ active, unread, onPick }: { active: DockId | null; unread
     <nav className="dock" aria-label="Game menu">
       {items.map((it) => (
         <button key={it.id} type="button" className={`dock__btn${active === it.id ? ' is-active' : ''}`} onClick={() => onPick(it.id)}
-          aria-current={active === it.id ? 'page' : undefined}>
+          aria-current={active === it.id ? 'page' : undefined}
+          aria-label={it.id === 'phone' && unread > 0 ? `Phone, ${unread} unread` : undefined}>
           <span className="dock__icon">
             {it.icon}
             {it.id === 'phone' && unread > 0 && <span className="dock__badge">{unread > 99 ? '99+' : unread}</span>}

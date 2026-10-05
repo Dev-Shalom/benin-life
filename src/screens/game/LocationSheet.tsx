@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AvatarPortrait, migrateAvatar } from '../../art/avatar3d';
 import { Scene } from '../../art/Scene';
 import { rpc } from '../../lib/api';
-import { titleCase } from '../../lib/format';
+import { districtName } from '../../lib/format';
 import { P, riskLabel } from '../../lib/pidgin';
 import type { GameState, Location, PanelId, PublicPlayer } from '../../lib/types';
 import { hasPanel, PANEL_LABELS } from '../../panels/registry';
@@ -43,7 +43,7 @@ function LocationHeader({ loc, night, here }: { loc: Location; night: boolean; h
       <div className="loc-head__shade" />
       <div className="loc-head__text">
         <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-          <span className="loc-district"><Icon name="pin" size={12} /> {titleCase(loc.district)}</span>
+          <span className="loc-district"><Icon name="pin" size={12} /> {districtName(loc.district)}</span>
           {here && <span className="loc-here">{P.youAreHere}</span>}
         </div>
         <h3 className="loc-name">{loc.name}</h3>
@@ -69,14 +69,16 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
   const current = tab && tabs.includes(tab) ? tab : (tabs[0] ?? null);
 
   if (!here) {
+    // Only list what a player can actually do there today (jobs, shops... appear as they ship).
+    const offers = tabs.filter((a) => a !== 'chat');
     return (
       <div className="loc-body">
         <TravelPicker dest={loc} cash={state.profile.cash} blockedReason={status.blockedReason} onStarted={close} />
-        {loc.actions.length > 0 && (
+        {offers.length > 0 && (
           <div className="loc-offers">
             <p className="loc-offers__title">Available here</p>
             <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-              {loc.actions.map((a) => (
+              {offers.map((a) => (
                 <span key={a} className="chip">{PANEL_LABELS[a] ?? a}</span>
               ))}
             </div>

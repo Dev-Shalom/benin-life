@@ -105,7 +105,7 @@ export function TravelPicker({ dest, cash, blockedReason, onStarted }: {
       )}
       <Button size="lg" block variant="green" loading={going} disabled={!selected || !selected.allowed || selected.cost > cash}
         onClick={() => void go()}>
-        {selected ? `Go by ${MODE_META[selected.mode]?.label ?? selected.label} · ${selected.cost ? naira(selected.cost) : 'Free'}` : 'Pick a way to travel'}
+        {selected ? `${selected.mode === 'walk' ? 'Walk there' : `Go by ${MODE_META[selected.mode]?.label ?? selected.label}`} · ${selected.cost ? naira(selected.cost) : 'Free'}` : 'Pick a way to travel'}
       </Button>
     </div>
   );
@@ -132,7 +132,7 @@ function ModeCard({ o, cash, active, onPick }: { o: TravelOption; cash: number; 
       </span>
       <span className="mode-card__side">
         <span className="mode-card__cost">{o.cost ? naira(o.cost) : 'Free'}</span>
-        <span className={`chip ${riskTone(risk)}`}>{risk.toFixed(risk < 10 ? 1 : 0)}% risk</span>
+        <span className={`chip ${riskTone(risk)}`}>{risk <= 0 ? 'No risk' : `${risk.toFixed(risk < 10 ? 1 : 0)}% risk`}</span>
       </span>
     </button>
   );

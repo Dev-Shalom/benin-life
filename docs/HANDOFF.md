@@ -145,4 +145,5 @@ Draft the Terms of Service and Privacy Policy pages (approved by the user; the s
 - [done] User asked to merge: main fast-forwarded to the work branch (5e3db8a). From now on push each verified step to both claude/kind-bell-e9reb8 and main (Vercel deploys main).
 - [done] User approved the V1 launch plan: docs/V1_PLAN.md (R5 → R6 → jobs → shops+rent → bank → chat → admin → launch check). Phase 2 items not in V1 ship one by one after launch.
 - [done] R5 3D Benin city map (V1-1): src/art/city3d/*, docs/CITY3D.md. ~17 draw calls, ~100k tris, 20 kB gz chunk; 2D map is a lazy fallback (Data Saver/2g/Lite pref/no WebGL). Open: Neighbours chip needs per-place player counts (Phase 2 social); wish chips cover part of the map on phones (look at in R6); real low-end phone check needed.
-- [running] R6 full test (V1-2)
+- [done] R6 full test (V1-2): 17 fixes (map rail folds, top pill clock, UI reset on re-login, travel marker mode, English server strings via 20261005000600_r6_fixes.sql, brand names, GRA/Sapele Road names, /dev routes dev-only). Suggestions parked: cancel/wake-up for activities, rent '(starts soon)' copy, housing-specific activities, danger filter camera, logout → landing.
+- [running] V1-3 Jobs that pay

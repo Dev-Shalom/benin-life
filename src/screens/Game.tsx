@@ -90,6 +90,13 @@ export default function Game() {
   const atHome = Boolean(p && !state?.travel && p.location_id === p.home_location_id);
   const showHome = atHome && !mapOpen;
 
+  // A fresh game screen (e.g. after logging out and in again) starts clean: no sheet or map left
+  // open from the previous session. The UI store outlives the screen.
+  useEffect(() => {
+    closeAll();
+    setMapOpen(false);
+  }, [closeAll, setMapOpen]);
+
   // Coming back home switches to the home view.
   const wasHome = useRef(atHome);
   useEffect(() => {
@@ -154,7 +161,7 @@ export default function Game() {
   const status = deriveStatus(state, now);
   const here = byId[state.location.id] ?? state.location;
   const travel = state.travel
-    ? { from: p.location_id || state.location.id, to: state.travel.to, progress: status.travelProgress }
+    ? { from: p.location_id || state.location.id, to: state.travel.to, progress: status.travelProgress, mode: state.travel.mode }
     : null;
   // Another live 3D view is open (Sim sheet turntable / look editor): the home canvas steps aside.
   const suspendHome = (overlay === 'sim' && simTab === 'profile') || overlay === 'look';
@@ -207,7 +214,7 @@ export default function Game() {
       </div>
 
       {!clean && <TopPill state={state} clock={clock} />}
-      <LeftRail state={state} status={status} atHome={atHome} />
+      <LeftRail state={state} status={status} atHome={atHome} compact={!showHome} />
 
       <div className="game__bottom">
         <div className="game__banners">
@@ -224,7 +231,7 @@ export default function Game() {
           )}
           {!clean && showHome && status.free && (
             <button type="button" className="home-chip" onClick={() => select(here.id)}>
-              <span aria-hidden>🏠</span> {here.name.replace(/ \(.*\)$/, '')}
+              <span aria-hidden>🏠</span> <span className="home-chip__name">{here.name.replace(/ \(.*\)$/, '')}</span>
               <span className="home-chip__go">Things to do <Icon name="chevronUp" size={13} /></span>
             </button>
           )}

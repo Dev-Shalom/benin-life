@@ -12,7 +12,7 @@ The characters are built in code (low-poly, flat-shaded, no model files). Code l
 | `engine/body.ts`, `head.ts`, `hair.ts`, `clothing.ts`, `accessories.ts` | The parts. |
 | `engine/materials.ts` | Canvas-drawn fabric textures and the shared material cache. |
 | `engine/anim.ts` | Idle (breathing, weight shift, head turns) and walk poses. |
-| `dev/AvatarLab.tsx` | Dev gallery at `/dev/avatars`. Show one section with `?s=presets|pviews|views|bodies|faces|features|hair|hats|acc|fabrics|portraits|landing|stats`. Extra params: `&g=male|female`, `&size=150`, `&yaw=1.57`. `stats` lists triangles and meshes per look. |
+| `dev/AvatarLab.tsx` | Dev gallery at `/dev/avatars` (dev server only). Show one section with `?s=presets|pviews|views|bodies|faces|features|hair|hats|acc|fabrics|portraits|landing|stats`. Extra params: `&g=male|female`, `&size=150`, `&yaw=1.57`. `stats` lists triangles and meshes per look. |
 
 `/dev/create` (dev server only) mounts the creator without a session, for screenshots.
 

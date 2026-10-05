@@ -196,7 +196,7 @@ export default function HomeFlatScene({ night }: { night: boolean }) {
           <ellipse cx="2" cy="1" rx="12" ry="14" fill="#c8c6d0" />
           <path d="M0 0 L18 4" stroke="#7d8090" strokeWidth="2" />
           <circle cx="18" cy="4" r="2.5" fill="#3a3a4a" />
-          <text x="-3" y="-4" fontSize="4" fontFamily={SIGN_FONT} fill="#1f4fa0" transform="rotate(30)">DStv</text>
+          <text x="-3" y="-4" fontSize="4" fontFamily={SIGN_FONT} fill="#1f4fa0" transform="rotate(30)">EdoTV</text>
         </g>
         <path d="M596 206 L606 214" stroke="#7d8090" strokeWidth="2" />
       </g>
@@ -212,7 +212,7 @@ export default function HomeFlatScene({ night }: { night: boolean }) {
       {/* puddle */}
       <ellipse cx="560" cy="420" rx="40" ry="6" fill={night ? '#6a74b8' : '#a9c8de'} opacity="0.6" />
 
-      {/* parked car (Corolla) + car-wash boy */}
+      {/* parked car (saloon) + car-wash boy */}
       <Car p={P} x={130} y={402} s={1.05} color="#3a6fb0" dark="#24467a" night={night} />
       <Bucket x={248} y={410} s={1} color="#e0a526" dark="#9a6b12" />
       <Person x={268} y={412} s={1.2} skin="#4a2c1e" top="#f2f0ea" bottom="#5a4a3a" pose="work" facing={-1} night={night} />

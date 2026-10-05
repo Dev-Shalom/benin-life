@@ -55,7 +55,7 @@ export interface CitySceneProps {
   onSelect: (id: string) => void;
   /** Game hour as a float (14.5 = 2:30 pm). */
   hour: number;
-  travel?: { from: string; to: string; progress: number } | null;
+  travel?: { from: string; to: string; progress: number; mode?: string } | null;
   crowd?: Record<string, number>;
   paused?: boolean;
   onReady?: (api: CityApi) => void;
@@ -686,11 +686,14 @@ function setState(L: LabelState, key: string, el: HTMLElement, s: string) {
 /** The big landmarks win label space over other places. */
 const LANDMARKS = new Set(['national_museum', 'oba_palace', 'oba_market', 'uniben', 'ubth', 'benin_airport', 'ramat_park', 'police_hq']);
 
+const MODE_EMOJI: Record<string, string> = { walk: '🚶', keke: '🛺', bus: '🚌', drop: '🚕', car: '🚗' };
+
 const Labels = memo(function Labels(props: {
   locations: Location[];
   currentId?: string;
   selectedId?: string;
   travelTo?: string;
+  travelMode?: string;
   crowd?: Record<string, number>;
   filters: CityFilter[];
   night: boolean;
@@ -699,7 +702,7 @@ const Labels = memo(function Labels(props: {
   onItems: (items: LabelItem[]) => void;
   dragMoved: MutableRefObject<boolean>;
 }) {
-  const { locations, currentId, selectedId, travelTo, crowd, filters, night, labels, onPick, onItems, dragMoved } = props;
+  const { locations, currentId, selectedId, travelTo, travelMode, crowd, filters, night, labels, onPick, onItems, dragMoved } = props;
   // priority order for the greedy placement
   const items = useMemo(() => {
     const out: LabelItem[] = [];
@@ -736,7 +739,7 @@ const Labels = memo(function Labels(props: {
   return (
     <div className="c3-labels" aria-label="Places">
       <div ref={reg('me')} className="c3-label c3-me" data-s="hidden">
-        <span className="c3-pill c3-pill--me"><span aria-hidden>🛺</span> On the way</span>
+        <span className="c3-pill c3-pill--me"><span aria-hidden>{MODE_EMOJI[travelMode ?? ''] ?? '🚶'}</span> On the way</span>
       </div>
       {locations.map((l) => {
         const f = filters.find((ff) => matchesFilter(ff, l, crowd));
@@ -1121,6 +1124,7 @@ export default function CityScene(props: CitySceneProps) {
         currentId={currentId}
         selectedId={selectedId}
         travelTo={travel?.to}
+        travelMode={travel?.mode}
         crowd={crowd}
         filters={filters}
         night={night}

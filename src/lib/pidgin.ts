@@ -61,7 +61,7 @@ export const P = {
   hospital: "You're in hospital",
   protected: 'New player protection',
   logout: 'Log out',
-  ageNote: '18+ only. Benin Life is a game: the money is fake and nothing here is real-world advice.',
+  ageNote: 'For players 18 and over. Benin Life is a game: the money is fake and nothing here is real-world advice.',
   panelMissing: 'Coming soon. This part of the city is still being built.',
 };
 

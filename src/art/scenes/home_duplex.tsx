@@ -160,7 +160,7 @@ export default function HomeDuplexScene({ night }: { night: boolean }) {
       <path d="M300 94 L500 94" stroke="#8a94b8" strokeWidth="2.5" />
       <rect x="208" y="158" width="384" height="7" fill="#fbf4e6" />
       <rect x="212" y="165" width="376" height="7" fill="#2d1b4e" opacity="0.22" />
-      {/* DStv dish + chimney vent */}
+      {/* satellite dish + chimney vent */}
       <g transform="translate(520 120) rotate(-25)">
         <ellipse rx="11" ry="13" fill="#e8e6e1" />
         <ellipse cx="1.5" cy="1" rx="8" ry="10" fill="#c8c6d0" />

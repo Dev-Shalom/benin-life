@@ -43,7 +43,7 @@ function EffectChips({ effects }: { effects: Record<string, number> | null }) {
   );
 }
 
-export default function ActivitiesPanel({ state, location, refresh }: PanelProps) {
+export default function ActivitiesPanel({ state, location, refresh, close }: PanelProps) {
   const [list, setList] = useState<Activity[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -77,6 +77,7 @@ export default function ActivitiesPanel({ state, location, refresh }: PanelProps
       const res = await rpc<{ message?: string }>('do_activity', { p_activity: a.id });
       toast(res?.message ?? 'Done!', 'good');
       await refresh();
+      close(); // like the home furniture sheet: show the city and the progress ring
     } catch (e) {
       toast(errorMessage(e), 'bad');
     } finally {

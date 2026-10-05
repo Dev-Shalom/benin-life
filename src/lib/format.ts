@@ -88,6 +88,13 @@ export function pct(n: number, isPct = false): string {
 }
 
 /** "upper_sakponba" → "Upper Sakponba". */
+const DISTRICT_NAMES: Record<string, string> = { gra: 'GRA', sapele_rd: 'Sapele Road', airport_rd: 'Airport Road' };
+
+/** District id -> display name ("gra" -> "GRA", "sapele_rd" -> "Sapele Road"). */
+export function districtName(id: string): string {
+  return DISTRICT_NAMES[id] ?? titleCase(id);
+}
+
 export function titleCase(id: string): string {
   return id
     .split(/[_\s-]+/)
