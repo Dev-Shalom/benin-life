@@ -18,6 +18,8 @@ supabase/migrations/
   20261004000200_core_seed.sql          P1-DB
   20261005000100_map_geo.sql            P1-MAP (location positions)
   20261005000200_origin.sql             P1-ORIGIN (LAPO/Nepo class roll — docs/ORIGIN.md)
+  20261005000300_time_tuning.sql        P1-TIME
+  20261005000400_creator.sql            R3a (traits, dreams, start homes, rent, origin overrides — docs/CREATOR.md)
   20261004001000_economy.sql            P2-ECON
   20261004002000_finance_farm_health.sql P2-FIN
   20261004003000_crime_police.sql       P2-CRIME
@@ -44,7 +46,7 @@ src/panels/{Bank,Pos,Loans,Esusu,Farm,Hospital,Babalawo}Panel.tsx P2-FIN
 src/panels/{Police,Rob,Crimes}Panel.tsx                          P2-CRIME
 src/panels/{Chat,Messages,Profile}Panel.tsx                      P2-SOCIAL
 src/panels/{Wallet,Airport}Panel.tsx                             P2-PAY
-src/api/<system>.ts                     each P2 owner (typed RPC wrappers)
+src/api/<system>.ts                     each P2 owner (typed RPC wrappers); src/api/creator.ts = R3a
 src/admin/                              P2-ADMIN (entry: src/admin/AdminApp.tsx default export)
 ```
 Panels are discovered with `import.meta.glob`, so a missing panel file never breaks the build.
@@ -61,7 +63,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 - Money: only via `bl_add_money(p_uid, p_account 'cash'|'bank', p_delta bigint, p_reason text, p_meta jsonb default '{}')`, which writes the `ledger` and raises `'Your money no reach'` if it would go negative.
 - Needs: `bl_adjust_needs(p_uid, p_delta jsonb)` e.g. `'{"hunger": 30, "energy": -10}'` (clamped 0–100).
 - Status: `bl_jail(p_uid, p_game_minutes int, p_reason text)`, `bl_hospitalize(p_uid, p_game_minutes int, p_reason text)`, `bl_set_busy(p_uid, p_game_minutes int, p_label text)`.
-- Guard at the top of every gameplay RPC: `v_me := bl_me();` (loads caller row FOR UPDATE, applies lazy needs decay, raises if not logged in / no profile / banned) then `perform bl_assert_free(v_me);` (raises if traveling, busy, jailed or hospitalized — skip for RPCs that must work while jailed, e.g. bail).
+- Guard at the top of every gameplay RPC: `v_me := bl_me();` (loads caller row FOR UPDATE, applies lazy needs decay, raises if not logged in / no profile / banned / **no home chosen yet** (hint `no_home`, R3a), then charges weekly rent if due and `rent.enabled`). then `perform bl_assert_free(v_me);` (raises if traveling, busy, jailed or hospitalized — skip for RPCs that must work while jailed, e.g. bail). Creator steps and avatar edits use `bl_me_any()` instead (same row lock and decay, without the home check and rent).
 - Notify a player: `bl_event(p_uid, p_kind text, p_title text, p_body text, p_data jsonb default '{}')` → row in `events` (realtime-published).
 - Admin check: `bl_is_admin() -> boolean`.
 - Real-time duration of game minutes: `bl_real_seconds(p_game_minutes numeric) -> numeric` = minutes × `time.real_seconds_per_game_minute` (0.75 since P1-TIME: an 8-hour sleep lasts 6 real minutes, faster than the clock on purpose).
@@ -76,6 +78,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 - `items` (id text pk, name, category, price bigint, description, effects jsonb, sold_at text[] (location ids), sellable bool, resale_pct numeric, icon text, sort int) — rows seeded by P2-ECON (P2-FIN may add seeds/charms)
 - `inventory` (user_id, item_id, qty, primary key(user_id,item_id))
 - `activities` (id text pk, name, scenes text[] (which location scenes offer it), home_only bool, cost bigint, game_minutes int, effects jsonb, night_only bool, sort int)
+- R3a (`docs/CREATOR.md`): `traits` (id, name, emoji, description, effects jsonb, sort, active), `dreams` (id, name, emoji, description, goal jsonb, sort, active), `start_homes` (id, name, emoji, location_id, district, tag, description, weekly_rent, start_cash jsonb per origin, allowed_origins text[], locked_quip, housing_id, sort, active) — select for anon+authenticated; `admin_audit` (admin-only select). `profiles` adds `traits text[]`, `dream`, `start_home`, `home_chosen bool` (default true), `weekly_rent`, `rent_due_at`, `rent_owed`. Trait `effects.decay` multipliers are applied in `bl_decay_row`.
 - `origin_tiers` (P1-ORIGIN: id text pk, name, tagline, welcome, chance_key → game_config key of its roll %, is_default (exactly one), sort, perks jsonb) — select for anon+authenticated. See `docs/ORIGIN.md`.
 - Realtime publication `supabase_realtime`: profiles, events, game_config (+ chat tables by P2-SOCIAL).
 
@@ -85,7 +88,11 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 | `create_profile` | p_username text, p_gender text, p_avatar jsonb | GameState — rolls the origin tier and applies its starter pack (redefined by P1-ORIGIN) |
 | `update_avatar` | p_avatar jsonb | {message} |
 | `get_my_state` | – | GameState (see `src/lib/types.ts`) incl. `origin` block (P1-ORIGIN; keep it if you redefine) — also bumps last_seen |
-| `claim_allowance` | – | {message, amount, account:'bank', bank, day} — Papa allowance once per game day (P1-ORIGIN) |
+| `claim_allowance` | – | {message, amount, account:'bank', bank, day} — Dad allowance once per game day (P1-ORIGIN) |
+| `create_profile_v2` | p_username, p_gender, p_avatar, p_traits text[], p_dream text | GameState — Sim created with no home yet (R3a); `creator.homes` lists the homes for the rolled origin |
+| `choose_start_home` | p_home text | GameState + message — once; pays the starter pack, sets rent (R3a) |
+| `creator_catalog` | – | {trait_count, traits, dreams, homes, rent_weekday} — anon too |
+| `admin_set_origin` | p_user uuid, p_origin text, p_apply_perks bool | {message, old, new, cash, bank, items} — admin only |
 | `travel_quote` | p_dest text | {dest, km, options:[{mode, label, allowed, reason?, cost, game_minutes, real_seconds, risk_pct}]} |
 | `travel_start` | p_dest text, p_mode text | {message, arrives_at} |
 | `travel_arrive` | – | {message, robbed?: {amount, injured}} — rolls street robbery |
@@ -98,7 +105,7 @@ Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location 
 ## 4. Game rules (baseline numbers = config defaults)
 - Clock: `clock.game_minutes_per_real_minute` = 12 (1 game day = 2 real hours). Game time = real minutes since `clock.epoch` (default 2026-10-05T00:00Z, the launch day = Day 1) × speed + `clock.start_hour_offset`(6h); client and server read the same key. Night = hour ≥ `clock.night_start_hour`(20) or < `clock.night_end_hour`(6).
 - Needs decay per game hour: hunger 4, energy 3, hygiene 2.5, fun 2, social 1.5; stress +1; health −2 per game hour while hunger or energy is 0.
-- Start: depends on the rolled origin tier (P1-ORIGIN, `docs/ORIGIN.md`). `origin.nepo_pct` 10% → **Nepo baby**: cash ₦50,000, bank ₦500,000, home/location `gra_duplex`, housing `duplex_gra`, items `tokunbo_car,laptop`, career head start 2, Papa allowance ₦5,000/game day. Otherwise **LAPO baby** (default): cash ₦5,000, home/location `ekenwan_room`, housing `face_me_ekenwan`, easy micro-loans (Phase 2 hook). Per-tier keys `origin.<tier>.{start_cash,start_bank,home_location,housing,items,career_head_start,allowance_daily}`; missing ones fall back to `start.*`. New-player protection 120 real minutes for everyone.
+- Start: depends on the rolled origin tier (P1-ORIGIN, `docs/ORIGIN.md`); in the R3a creator flow the cash comes from the chosen start home per origin (`docs/CREATOR.md`), the bank and items from the origin. `origin.nepo_pct` 10% → **Nepo baby**: cash ₦50,000, bank ₦500,000, home/location `gra_duplex`, housing `duplex_gra`, items `tokunbo_car,laptop`, career head start 2, Dad allowance ₦5,000/game day. Otherwise **LAPO baby** (default): cash ₦5,000, home/location `ekenwan_room`, housing `face_me_ekenwan`, easy micro-loans (Phase 2 hook). Per-tier keys `origin.<tier>.{start_cash,start_bank,home_location,housing,items,career_head_start,allowance_daily}`; missing ones fall back to `start.*`. New-player protection 120 real minutes for everyone.
 - Travel: km = distance(x,y)/1000 × `travel.city_km_across`(18) + remote_km of each end. Modes (`travel.<mode>.*`): walk 5 km/h ₦0; keke 18 km/h ₦150 + ₦100/km (only if both ends `keke_ok`); bus (ECTS) 15 km/h ₦300 flat; drop 25 km/h ₦500 + ₦250/km; car 30 km/h ₦120/km fuel (needs an inventory item with category `vehicle`). Traffic = avg(congestion) × rush mult 1.8 (07–10, 16–20) × Ramat Park mult 1.6 if either end in district `ikpoba_hill`/`aduwawa` and `traffic.ramat_flyover_open` false. Walk ignores traffic. Real seconds = game minutes × `travel.real_seconds_per_game_minute`(1.0), min 3s.
 - Street robbery p = `crime.npc_base_pct`/100 × zone risk × (night ? night_risk_mult × `crime.night_mult` : 1) × (1 + (traffic−1) × `crime.traffic_weight`) × cash_factor × mode_factor × (1 − charm_strength); cash_factor = min(1.5, 0.3 + cash/`crime.cash_ref`); mode factors walk 1.4 / keke 1.0 / bus 0.8 / drop 0.7 / car 0.6; 0 while protected; cap `crime.npc_max_pct`. Loss = cash × U(`crime.loss_min_pct`,`crime.loss_max_pct`)/100; `crime.injury_pct` chance → health −U(15,35) and suggest UBTH.
 
@@ -141,6 +148,8 @@ Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location 
 | benin_airport | Benin Airport | airport_rd | airport | 330 | 615 | .05 | 1.0 | t | f | 1.1 | 0 | airport |
 | siluko_rd | Siluko Road | siluko | street | 378 | 378 | .45 | 2.2 | f | t | 1.2 | 0 | activities,jobs |
 | ekenwan_room | Ekenwan Face-Me-I-Face-You | ekenwan | home_face_me | 298 | 562 | .40 | 2.0 | f | t | 1.0 | 0 | housing,activities |
+| uniben_hostel (R3a) | UNIBEN Hostel (Ugbowo) | ugbowo | home_face_me | 522 | 140 | .20 | 1.6 | t | t | 1.0 | 0 | housing,activities |
+| uselu_selfcon (R3a) | Uselu Self-Contain | uselu | home_flat | 420 | 228 | .30 | 1.8 | f | t | 1.0 | 0 | housing,activities |
 | iguobazuwa_farm | Iguobazuwa Farm Settlement | iguobazuwa | farm | 40 | 300 | .30 | 2.0 | f | f | 1.0 | 22 | farm,jobs |
 
 Positions come from `docs/MAP_GEO.md` (OSM + Wikipedia check of real Benin City, compressed radially) and are applied by `supabase/migrations/20261005000100_map_geo.sql` (two small nudges for pin spacing: ring_road_pos 540,452, police_hq 510,604). Roads to draw (map art, `src/art/map/mapGeo.ts`): Ring Road circle r≈60 at (500,500); each radial road leaves the ring at its real bearing. Ugbowo–Lagos Rd N (bearing ~350) through Uselu (450,270)/(480,235), Ugbowo with UBTH (440,165) west of the road and UNIBEN (480,125) east of it, to Oluku (390,40), then off-map towards Lagos; Siluko Rd NW (~300–314) past (378,378) becoming Upper Siluko Rd towards Iguobazuwa (farm sign, farmland on the NW edge; the farm itself is off-map, `remote_km` 22); Mission Rd NNE (31) past Mission Rd Flats/Mercy Clinic to New Benin Market (595,350), continuing N as Upper Mission Rd; Akpakpava Rd NE (52) over the Ikpoba bridge (≈656,420) to Ramat Park (680,415); from Ramat the Benin–Auchi Rd runs ENE to Aduwawa (820,335) and the Benin–Agbor Rd E/ESE; Sakponba Rd SE/ESE (125) past Ekiosa (595,575) and Baba Osagie (640,615) to Upper Sakponba (700,665); Sapele Rd SSE (165) past Sapele Rd PoS, Santana (560,700) and Bronze Lounge (560,770) off-map S; Airport Rd SW (221) to Benin Airport (330,615); Ekenwan Rd WSW (~245) along the south side of the palace past Ekenwan (298,562); First/Second/Third East Circular run N–S east of the centre (Third East at x≈650). Ikpoba River runs N–S around x≈655–695 between the end of Akpakpava Rd and Ramat Park, then bends SE past Upper Sakponba. Oba's Palace compound is just W of King's Square (≈405,505), outside the ring. GRA = leafy district S of centre between Airport Rd and Sapele Rd (police HQ, Bronze Bank, Kingdom Lounge, GRA Duplex). Exit signs: LAGOS N via Oluku, AUCHI ENE via Aduwawa, AGBOR/Asaba E, SAPELE/Warri S, FARMS/Iguobazuwa NW.

@@ -529,6 +529,8 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   ekenwan_room: { short: 'Ekenwan Room', tier: 2, side: 'l' },
   iguobazuwa_farm: { short: 'Iguobazuwa Farm', tier: 1, side: 'r' },
   bronze_tech_hub: { short: 'Tech Hub', tier: 2, side: 'r' },
+  uniben_hostel: { short: 'UNIBEN Hostel', tier: 2, side: 'r' },
+  uselu_selfcon: { short: 'Uselu Self-con', tier: 2, side: 'l' },
 };
 
 export function shortName(id: string, name: string): string {

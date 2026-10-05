@@ -256,3 +256,140 @@ export interface ClaimAllowanceResult {
   bank: number; // new bank balance
   day: number;
 }
+
+// ---- R3a: creator data (traits, dreams, start homes, rent) ----
+// Server: supabase/migrations/20261005000400_creator.sql, docs/CREATOR.md. Wrappers: src/api/creator.ts.
+
+/** Need keys a trait's `effects.decay` may scale. */
+export type DecayNeed = 'hunger' | 'energy' | 'hygiene' | 'fun' | 'social' | 'stress';
+
+/** Data-driven trait effects. `decay` multipliers apply now; the rest are stored for Phase 2. */
+export interface TraitEffects {
+  decay?: Partial<Record<DecayNeed, number>>;
+  skill_xp?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+export interface Trait {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  effects: TraitEffects;
+}
+
+export type DreamGoal =
+  | { type: 'career_top'; track?: string }
+  | { type: 'net_worth'; amount: number }
+  | { type: 'skill'; skill: string; level: number }
+  | { type: 'friends'; count: number; level?: string }
+  | { type: 'startup_funded' }
+  | { type: string; [key: string]: unknown };
+
+export interface Dream {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  goal: DreamGoal;
+}
+
+export type StartHomeTag = 'Student life' | 'Hard start' | 'Balanced' | 'Big spender' | (string & {});
+
+/** A start home as the catalog lists it (all origins). */
+export interface StartHomeCatalogItem {
+  id: string;
+  name: string;
+  emoji: string;
+  district: string;
+  tag: StartHomeTag;
+  description: string;
+  location_id: string;
+  weekly_rent: number;
+  /** Cash in hand per origin id; a missing origin falls back to origin.<tier>.start_cash. */
+  start_cash: Record<string, number>;
+  /** Empty = every origin may pick it. */
+  allowed_origins: string[];
+  locked_quip: string;
+}
+
+/** A start home as offered to one player (GameState.creator.homes): amounts for their origin. */
+export interface StartHomeOption {
+  id: string;
+  name: string;
+  emoji: string;
+  district: string;
+  tag: StartHomeTag;
+  description: string;
+  location_id: string;
+  location_name: string;
+  scene: SceneType;
+  housing_id: string;
+  weekly_rent: number;
+  start_cash: number;
+  start_bank: number;
+  allowed: boolean;
+  /** Joke shown on a greyed-out card; null when allowed. */
+  locked_quip: string | null;
+}
+
+/** `creator_catalog()` — readable before sign-up. */
+export interface CreatorCatalog {
+  trait_count: number;
+  traits: Trait[];
+  dreams: Dream[];
+  homes: StartHomeCatalogItem[];
+  /** Rent weekday, 0 = Monday … 6 = Sunday (game day 1 is a Monday). */
+  rent_weekday: number;
+}
+
+/** `get_my_state().creator` — route back to the home step while `home_chosen` is false. */
+export interface CreatorState {
+  home_chosen: boolean;
+  traits: string[];
+  dream: string | null;
+  start_home: string | null;
+  /** Homes for the player's origin while no home is chosen; null afterwards. */
+  homes: StartHomeOption[] | null;
+}
+
+export interface RentState {
+  weekly: number;
+  due_at: string | null;
+  owed: number;
+  /** False while rent.enabled is off: the due date rolls forward without charging. */
+  enabled: boolean;
+}
+
+export interface Profile {
+  traits: string[];
+  dream: string | null;
+  start_home: string | null;
+  home_chosen: boolean;
+  weekly_rent: number;
+  rent_due_at: string | null;
+  rent_owed: number;
+}
+
+export interface GameClock {
+  /** 0 = Monday … 6 = Sunday (game day 1 is a Monday). Missing on servers before R3a. */
+  weekday?: number;
+}
+
+export interface GameState {
+  creator?: CreatorState;
+  rent?: RentState;
+}
+
+/** `choose_start_home()` result: the new GameState plus a message. */
+export type ChooseStartHomeResult = GameState & { message: string };
+
+/** `admin_set_origin()` result. */
+export interface AdminSetOriginResult {
+  message: string;
+  old: OriginId;
+  new: OriginId;
+  cash: number;
+  bank: number;
+  items: string[];
+}

@@ -71,6 +71,12 @@ BL_PSQL="psql -h /tmp -p 54322 -U postgres -d postgres" bash scripts/sql-test.sh
 - **HUD**: a class badge (NEPO or LAPO) sits on the portrait. A "Dad ₦5,000" chip appears next to the protection chip while `origin.allowance_claimable` is true. Tapping it calls `claim_allowance`, shows a toast and refreshes.
 - **Toasts** on the game screen now sit left of the HUD side buttons, so they no longer cover the bell. They stay below the HUD rows (the 150 px offset already existed).
 
+## R3a changes (`20261005000400_creator.sql`, see `docs/CREATOR.md`)
+- **`origin.force_next`** (text, '' or a tier id): one-shot override. The next profile created (v1 or v2) gets that tier and the key resets to '' (audited in `config_audit` with admin_id null). Seeded to `nepo` only when the key is first inserted, so re-running the migration never re-arms it.
+- **`admin_set_origin(p_user, p_origin, p_apply_perks default false)`**: admin only; audit row in `admin_audit` and an `origin_changed` event. With perks it tops up (never takes away) the cash/bank difference and missing starter items.
+- **Creator v2:** `create_profile_v2` rolls the tier but pays nothing; `choose_start_home` pays the home's start cash for the tier (falls back to `origin.<tier>.start_cash`), `origin.<tier>.start_bank` and the tier items. v1 `create_profile` is unchanged in behaviour.
+- **Copy:** "Dad" replaces "Papa" in taglines, welcome text, config labels and `claim_allowance` ("Dad sent ₦5,000 to your account. Spend it wisely."). The perk key `papa_allowance` is unchanged (internal).
+
 ## Phase 2 hooks
 - **Careers:** add `origin.career_head_start` (`bl_origin_num(origin,'career_head_start')`) to `job_level` on the first hire.
 - **Loans:** read `origin_tiers.perks->>'micro_loan_access'` for the player's tier.

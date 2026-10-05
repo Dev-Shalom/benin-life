@@ -4,6 +4,10 @@
 -- Rolled back at the end. Time travel with bl.test_offset_seconds (relative to real now()).
 
 -- local helper (standalone; safe if another test already defined it)
+-- R3a: origin.force_next (20261005000400_creator.sql) would override the forced rolls below; clear it.
+-- A no-op when that migration is not loaded.
+update game_config set value = '""'::jsonb where key = 'origin.force_next';
+
 create or replace function pg_temp.expect_error(p_sql text, p_like text) returns void
 language plpgsql as $$
 begin

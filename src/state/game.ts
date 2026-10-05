@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import type { RealtimeChannel, Session } from '@supabase/supabase-js';
 import { supabase, supabaseConfigured } from '../lib/supabase';
-import { rpc, errorMessage } from '../lib/api';
+import { rpc, errorMessage, GameError } from '../lib/api';
 import { syncServerTime } from '../lib/clock';
 import { ensureConfig } from '../lib/config';
 import { migrateAvatar } from '../art/avatar3d/catalog';
@@ -97,7 +97,7 @@ export const useGame = create<GameStore>((set, get) => ({
       } catch (e) {
         const msg = errorMessage(e);
         // Distinguish "no profile yet" from real errors.
-        let noProfile = looksLikeNoProfile(msg);
+        let noProfile = (e instanceof GameError && e.hint === 'no_profile') || looksLikeNoProfile(msg);
         if (!noProfile) {
           const { data: row, error } = await supabase.from('profiles').select('id').eq('id', uid).maybeSingle();
           noProfile = !error && !row;

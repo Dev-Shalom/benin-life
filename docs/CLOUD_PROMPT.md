@@ -2,7 +2,7 @@
 
 This file is kept current after every step. The live status is in `docs/HANDOFF.md`, under the "STATUS LOG" section at the bottom.
 
-**Current state (updated by the cloud session after every step):** Phase R in progress in a cloud session. Done: R1, R2. Running: R3a (traits, dreams, starter homes, origin overrides; next new account = Nepo). Next: R3b → R4 → R5 → R6 demo. Decisions: keep Phase 1 SVG place scenes as panel headers; 3D for everyone, the 2D map only as a fallback on extremely weak connections.
+**Current state (updated by the cloud session after every step):** Phase R in progress in a cloud session. Done: R1, R2, R3a. Running: R3b (5-step creator UI). Next: R4 → R5 → R6 demo. Decisions: keep Phase 1 SVG place scenes as panel headers; 3D for everyone, the 2D map only as a fallback on extremely weak connections.
 If the cloud session is still working when you start locally, run `git pull` first and don't redo a step marked [running] unless it has been idle for hours.
 
 ```

@@ -9,7 +9,8 @@ Run 'npm ci'
 # Retry once: right after Docker starts, the DB container can report 'not ready'.
 npx supabase start -x $exclude
 if ($LASTEXITCODE -ne 0) { Start-Sleep -Seconds 20; Run "npx supabase start -x $exclude" }
-Run 'npx supabase db reset'
+# Apply only new migrations (keeps existing accounts). Use 'npx supabase db reset' for a clean slate.
+Run 'npx supabase migration up'
 $status = npx supabase status -o env
 function Get-Val($name) {
   $line = $status | Where-Object { $_ -match "^$name=" } | Select-Object -First 1

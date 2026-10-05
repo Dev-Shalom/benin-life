@@ -3,6 +3,10 @@
 --     supabase/migrations/20261005000100_map_geo.sql supabase/migrations/20261005000200_origin.sql -- supabase/tests/origin_test.sql
 -- Rolled back at the end. Rolls are forced with bl.test_rand, time with bl.test_offset_seconds.
 
+-- R3a: origin.force_next (20261005000400_creator.sql) would override the forced rolls below; clear it.
+-- A no-op when that migration is not loaded.
+update game_config set value = '""'::jsonb where key = 'origin.force_next';
+
 -- ---------- local helpers (standalone; safe if core_test already defined them) ----------
 create or replace function pg_temp.expect_error(p_sql text, p_like text) returns void
 language plpgsql as $$
@@ -207,7 +211,7 @@ begin
   v_bank := (select bank from profiles where id = v);
   v_day := (bl_game_clock()->>'day')::int;
   r := claim_allowance();
-  perform pg_temp.assert(r->>'message' = 'Papa don send ₦5,000 enter your account. No spend am anyhow o.', 'allowance message: ' || (r->>'message'));
+  perform pg_temp.assert(r->>'message' = 'Dad sent ₦5,000 to your account. Spend it wisely.', 'allowance message: ' || (r->>'message'));
   perform pg_temp.assert((r->>'amount')::bigint = 5000 and r->>'account' = 'bank', 'allowance result');
   perform pg_temp.assert((select bank from profiles where id = v) = v_bank + 5000, 'bank +5000');
   perform pg_temp.assert((select allowance_claimed_day from profiles where id = v) = v_day, 'claimed day stored');
@@ -215,7 +219,7 @@ begin
                                  and (meta->>'day')::int = v_day), 'allowance ledger');
   perform pg_temp.assert(not (get_my_state()->'origin'->>'allowance_claimable')::boolean, 'not claimable after claim');
   -- second claim the same game day fails, nothing paid
-  perform pg_temp.expect_error($q$ select claim_allowance() $q$, '%already send today%');
+  perform pg_temp.expect_error($q$ select claim_allowance() $q$, '%already sent today%');
   perform pg_temp.assert((select bank from profiles where id = v) = v_bank + 5000, 'no double pay');
   -- next game day (1 game day = 2 real hours at 12x)
   perform pg_temp.advance(7200);
@@ -239,7 +243,7 @@ begin
   perform claim_allowance();
   -- LAPO babies have no allowance
   perform pg_temp.login(pg_temp.ou('Lapo_Efosa'));
-  perform pg_temp.expect_error($q$ select claim_allowance() $q$, '%No Papa allowance%');
+  perform pg_temp.expect_error($q$ select claim_allowance() $q$, '%No Dad allowance%');
   perform pg_temp.assert((select bank from profiles where id = pg_temp.ou('Lapo_Efosa')) = 0, 'lapo bank untouched');
   -- admin can turn LAPO allowance on
   update game_config set value = '1000' where key = 'origin.lapo.allowance_daily';

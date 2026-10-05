@@ -3,6 +3,10 @@
 -- Everything runs as one transaction that is rolled back. now() is frozen inside it, so time only
 -- moves via bl.test_offset_seconds (pg_temp.advance) — fully deterministic.
 
+-- R3a: origin.force_next (20261005000400_creator.sql) would override the forced rolls below; clear it.
+-- A no-op when that migration is not loaded.
+update game_config set value = '""'::jsonb where key = 'origin.force_next';
+
 -- ---------- local helpers ----------
 create or replace function pg_temp.expect_error(p_sql text, p_like text) returns void
 language plpgsql as $$
@@ -52,7 +56,7 @@ language sql as $$ select abs(a - b) < 0.01 $$;
 -- ---------- 0. seed sanity ----------
 do $$
 begin
-  perform pg_temp.assert((select count(*) from locations) = 37, 'expected 37 locations, got ' || (select count(*) from locations));
+  perform pg_temp.assert((select count(*) from locations) = 39, 'expected 39 locations (37 + 2 R3a homes), got ' || (select count(*) from locations));
   perform pg_temp.assert((select night_risk_mult from locations where id = 'upper_sakponba') = 3.0, 'upper_sakponba night x3');
   perform pg_temp.assert((select night_risk_mult from locations where id = 'third_east') = 3.0, 'third_east night x3');
   perform pg_temp.assert((select count(*) from locations where coalesce(blurb, '') = '') = 0, 'every location has blurb');
@@ -76,10 +80,10 @@ end $$;
 do $$
 begin
   perform pg_temp.logout();
-  perform pg_temp.expect_error($q$ select get_my_state() $q$, '%login%');
-  perform pg_temp.expect_error($q$ select create_profile('Nobody', 'male', '{}') $q$, '%login%');
-  perform pg_temp.expect_error($q$ select players_here('ekenwan_room') $q$, '%login%');
-  perform pg_temp.expect_error($q$ select travel_quote('uniben') $q$, '%login%');
+  perform pg_temp.expect_error($q$ select get_my_state() $q$, '%log in%');
+  perform pg_temp.expect_error($q$ select create_profile('Nobody', 'male', '{}') $q$, '%log in%');
+  perform pg_temp.expect_error($q$ select players_here('ekenwan_room') $q$, '%log in%');
+  perform pg_temp.expect_error($q$ select travel_quote('uniben') $q$, '%log in%');
   raise notice 'ok 1: anonymous calls rejected';
 end $$;
 
@@ -97,7 +101,7 @@ begin
   -- start-state asserts below are deterministic; a no-op when only the core migrations are loaded.
   perform set_config('bl.test_rand', '0.99', true);
   -- before creating: no profile
-  perform pg_temp.expect_error($q$ select get_my_state() $q$, '%never create%');
+  perform pg_temp.expect_error($q$ select get_my_state() $q$, '%created your Sim%');
 
   s := create_profile('Osas_1', 'male', '{"gender":"male","skin":"s3"}');
   -- GameState shape
@@ -166,7 +170,7 @@ begin
   select count(*) into n from profiles;
   if n <> 1 then raise exception 'TEST FAILED: authenticated sees % profiles (want only own)', n; end if;
   select count(*) into n from locations;
-  if n <> 37 then raise exception 'TEST FAILED: locations not readable'; end if;
+  if n <> 39 then raise exception 'TEST FAILED: locations not readable'; end if;
   ok := false;
   begin update profiles set cash = 999999; exception when insufficient_privilege then ok := true; end;
   if not ok then raise exception 'TEST FAILED: client could update profiles'; end if;
@@ -191,7 +195,7 @@ declare ok boolean := false;
 begin
   begin perform get_my_state(); exception when insufficient_privilege then ok := true; end;
   if not ok then raise exception 'TEST FAILED: anon could call get_my_state'; end if;
-  if (select count(*) from locations) <> 37 then raise exception 'TEST FAILED: anon cannot read locations'; end if;
+  if (select count(*) from locations) <> 39 then raise exception 'TEST FAILED: anon cannot read locations'; end if;
   raise notice 'ok 3b: anon blocked from RPCs, can read catalog';
 end $$;
 reset role;
@@ -412,7 +416,7 @@ begin
   perform pg_temp.expect_error($q$ select travel_start('uniben', 'walk') $q$, '%road%');
   perform pg_temp.expect_error($q$ select do_activity('bathe') $q$, '%road%');
   -- too early
-  perform pg_temp.expect_error($q$ select travel_arrive() $q$, '%never reach%');
+  perform pg_temp.expect_error($q$ select travel_arrive() $q$, '%arrived yet%');
   -- time passes: travel finished but still reported until arrive
   v_secs := (o->>'real_seconds')::numeric;
   perform pg_temp.advance(v_secs + 1);
@@ -424,7 +428,7 @@ begin
   s := get_my_state();
   perform pg_temp.assert(s->'profile'->>'location_id' = 'mama_osas_buka' and jsonb_typeof(s->'travel') = 'null', 'moved + travel cleared');
   perform pg_temp.assert(s->'location'->>'id' = 'mama_osas_buka', 'state location updated');
-  perform pg_temp.expect_error($q$ select travel_arrive() $q$, '%no dey travel%');
+  perform pg_temp.expect_error($q$ select travel_arrive() $q$, '%not travelling%');
   raise notice 'ok 6: travel_start / travel_arrive';
 end $$;
 
@@ -433,9 +437,9 @@ do $$
 declare r jsonb; v_cash bigint; v_h numeric; me profiles;
 begin
   perform pg_temp.as_user('a');           -- at mama_osas_buka (buka)
-  perform pg_temp.expect_error($q$ select do_activity('museum_tour') $q$, '%no fit do%');
-  perform pg_temp.expect_error($q$ select do_activity('sleep') $q$, '%no fit do%');
-  perform pg_temp.expect_error($q$ select do_activity('fly_to_moon') $q$, '%no dey%');
+  perform pg_temp.expect_error($q$ select do_activity('museum_tour') $q$, '%can''t do%');
+  perform pg_temp.expect_error($q$ select do_activity('sleep') $q$, '%can''t do%');
+  perform pg_temp.expect_error($q$ select do_activity('fly_to_moon') $q$, '%doesn''t exist%');
   perform bl_apply_needs(pg_temp.uid('a'));
   update profiles set hunger = 20 where id = pg_temp.uid('a');
   select cash, hunger into v_cash, v_h from profiles where id = pg_temp.uid('a');
@@ -458,7 +462,7 @@ begin
   -- home_only / money checks with Efe (b)
   perform pg_temp.as_user('b');
   update profiles set location_id = 'aduwawa_room' where id = pg_temp.uid('b');
-  perform pg_temp.expect_error($q$ select do_activity('bathe') $q$, '%own house%');
+  perform pg_temp.expect_error($q$ select do_activity('bathe') $q$, '%own home%');
   update profiles set location_id = 'ekenwan_room', cash = 100 where id = pg_temp.uid('b');
   perform pg_temp.expect_error($q$ select do_activity('cook_home') $q$, '%money no reach%');
   perform pg_temp.assert((select cash from profiles where id = pg_temp.uid('b')) = 100, 'failed activity no charge');

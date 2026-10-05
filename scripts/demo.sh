@@ -7,7 +7,8 @@ npm ci
 EXCLUDE=studio,imgproxy,vector,logflare,supavisor,storage-api,postgres-meta,edge-runtime,mailpit
 # Retry once: right after Docker starts, the DB container can report 'not ready'.
 npx supabase start -x "$EXCLUDE" || { sleep 20; npx supabase start -x "$EXCLUDE"; }
-npx supabase db reset
+# Apply only new migrations (keeps existing accounts). Use `npx supabase db reset` for a clean slate.
+npx supabase migration up
 status="$(npx supabase status -o env)"
 api="$(printf '%s\n' "$status" | sed -n 's/^API_URL="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p')"
 anon="$(printf '%s\n' "$status" | sed -n 's/^ANON_KEY="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p')"

@@ -3,10 +3,13 @@ import { supabase } from './supabase';
 /** Error thrown by game RPCs. `message` is already player-facing Pidgin. */
 export class GameError extends Error {
   code?: string;
-  constructor(message: string, code?: string) {
+  /** Machine-readable hint from the server, e.g. 'no_profile', 'no_home', 'insufficient_funds'. */
+  hint?: string;
+  constructor(message: string, code?: string, hint?: string) {
     super(message);
     this.name = 'GameError';
     this.code = code;
+    this.hint = hint;
   }
 }
 
@@ -15,7 +18,7 @@ export async function rpc<T = Record<string, unknown>>(fn: string, args: Record<
   const { data, error } = await supabase.rpc(fn, args);
   if (error) {
     const msg = error.code === 'P0001' ? error.message : friendly(error.message);
-    throw new GameError(msg, error.code);
+    throw new GameError(msg, error.code, error.code === 'P0001' ? error.hint || undefined : undefined);
   }
   return data as T;
 }

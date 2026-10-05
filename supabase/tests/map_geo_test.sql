@@ -44,13 +44,15 @@ begin
     ('benin_airport',330,615),
     ('ekenwan_room',298,562),
     ('siluko_rd',378,378),
-    ('iguobazuwa_farm',40,300)
+    ('iguobazuwa_farm',40,300),
+    ('uniben_hostel',522,140),   -- R3a start home (UNIBEN hall, east side of campus)
+    ('uselu_selfcon',420,228)    -- R3a start home (Uselu, west of Lagos Rd)
   ) v(id, x, y) loop
     perform pg_temp.assert(exists (select 1 from locations l where l.id = r.id and l.x = r.x and l.y = r.y),
       format('%s should be at (%s,%s)', r.id, r.x, r.y));
   end loop;
   select count(*) into n from locations;
-  perform pg_temp.assert(n = 37, format('expected 37 seeded locations, got %s', n));
+  perform pg_temp.assert(n = 39, format('expected 39 seeded locations, got %s', n));
   raise notice 'ok 1: all % pins at MAP_GEO.md positions', n;
 
   -- 2. real-world relations (north is up: smaller y = further north)
