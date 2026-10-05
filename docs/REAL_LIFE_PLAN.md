@@ -45,5 +45,4 @@ The user wants the game to follow real daily life in Benin City. Waiting on new 
 | L5 | Real landmarks | from docs/LANDMARKS.md. |
 
 ## Status
-- Not started; V1-8 launch check is running first. References read and noted (2026-10-05). Next session: read the new references, confirm the open question, then
-  build in this order: real-time clock → crowds (NPC + players, capped) → landmarks.
+- V1-8 done (v1 ready). References read. Order: L1 → L2 → L3 → L4 → L5.
