@@ -703,13 +703,15 @@ const Labels = memo(function Labels(props: {
       const isF = filters.some((f) => matchesFilter(f, l, crowd));
       const must = l.id === selectedId || l.id === currentId || l.id === travelTo;
       const prio = l.id === selectedId ? 1 : l.id === currentId ? 2 : l.id === travelTo ? 3 : isF ? 4 : LANDMARKS.has(l.id) ? 5 : tier === 1 ? 6 : 8;
-      out.push({ key: l.id, kind: 'place', x: l.x, y: l.y, prio: prio + (crowd?.[l.id] ? -0.5 : 0), tier, must });
+      // filter matches and tonight's danger zones label like landmarks
+      const lift = isF || (night && isNightRisky(l));
+      out.push({ key: l.id, kind: 'place', x: l.x, y: l.y, prio: prio + (crowd?.[l.id] ? -0.5 : 0) - (lift && prio > 4 ? 2 : 0), tier: lift ? 1 : tier, must });
     }
     for (const c of COMING_SOON) out.push({ key: 'soon:' + c.id, kind: 'soon', x: c.x, y: c.y, prio: 7, tier: 1, must: false });
     for (const e of EXIT_SIGNS) out.push({ key: 'exit:' + e.text, kind: 'exit', x: e.x, y: e.y, prio: 9, tier: 1, must: false });
     for (const d of DISTRICT_NAMES) out.push({ key: 'd:' + d.t, kind: 'district', x: d.x, y: d.y, prio: 10, tier: 2, must: false });
     return out.sort((a, b) => a.prio - b.prio);
-  }, [locations, currentId, selectedId, travelTo, crowd, filters]);
+  }, [locations, currentId, selectedId, travelTo, crowd, filters, night]);
   useEffect(() => {
     labels.current.items = items;
     labels.current.sizes.clear();
