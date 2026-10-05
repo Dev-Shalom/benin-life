@@ -92,7 +92,7 @@ export default function CreateSim() {
     setErr(null);
     if (!nameOk) {
       setStep('name');
-      return setErr('Name must be 3–16 letters, numbers or _ only.');
+      return setErr('Your name must be 3 to 16 letters, numbers or _.');
     }
     setBusy(true);
     try {
@@ -120,8 +120,8 @@ export default function CreateSim() {
           <div>
             <h1 className="create__title">Create your Sim</h1>
             <p className="create__step">
-              Step {step === 'gender' ? 1 : step === 'name' ? 2 : 3} of 3 ·{' '}
-              {step === 'gender' ? 'Who you be?' : step === 'name' ? 'Wetin dem dey call you?' : 'Fine-tune your look'}
+              Step {step === 'gender' ? 1 : step === 'name' ? 2 : 3} of 3:{' '}
+              {step === 'gender' ? 'Choose a body' : step === 'name' ? 'Name your Sim' : 'Style your look'}
             </p>
           </div>
         </div>
@@ -136,7 +136,7 @@ export default function CreateSim() {
                 <div className="gender-card__art">
                   <Avatar config={previews[g]} view="full" className="gender-card__avatar" />
                 </div>
-                <span className="gender-card__label">{g === 'male' ? 'Guy man' : 'Babe'}</span>
+                <span className="gender-card__label">{g === 'male' ? 'Man' : 'Woman'}</span>
                 {gender === g && <span className="gender-card__tick"><Icon name="check" size={16} stroke={3} /></span>}
               </button>
             ))}
@@ -154,12 +154,12 @@ export default function CreateSim() {
               <Avatar config={avatar} view="portrait" className="name-card__portrait" />
             </div>
             <div className="field">
-              <label htmlFor="sim-name">Your street name</label>
+              <label htmlFor="sim-name">Sim name</label>
               <input id="sim-name" className="input" autoFocus autoComplete="off" autoCapitalize="off" spellCheck={false}
                 maxLength={16} placeholder="e.g. Osas_Gold" value={username}
                 onChange={(e) => { setUsername(e.target.value.replace(/\s/g, '_')); setErr(null); }}
                 onKeyDown={(e) => { if (e.key === 'Enter' && nameOk) setStep('look'); }} />
-              <p className="hint">3–16 letters, numbers or _ . Everybody for Benin go see am — keep am clean.</p>
+              <p className="hint">3 to 16 letters, numbers or _. Everyone in Benin City will see it, so keep it clean.</p>
               {err && <p className="error-text">{err}</p>}
             </div>
           </div>
@@ -179,7 +179,7 @@ export default function CreateSim() {
             <Avatar config={avatar} view="full" className="look-stage__avatar" />
             <div className="look-stage__plinth" />
             <div className="look-stage__name">{username || 'Your Sim'}</div>
-            <Button variant="gold" size="sm" icon="dice" className="look-stage__random" onClick={() => setAvatar({ ...randomAvatar(gender), gender })}>
+            <Button variant="ghost" size="sm" icon="dice" className="look-stage__random" onClick={() => setAvatar({ ...randomAvatar(gender), gender })}>
               Shuffle
             </Button>
           </div>
@@ -206,7 +206,7 @@ export default function CreateSim() {
             <div className="create__actions row">
               <Button variant="ghost" size="lg" onClick={() => setStep('name')}>Back</Button>
               <Button size="lg" variant="green" className="grow" loading={busy} onClick={() => void create()}>
-                Enter Benin
+                Enter Benin City
               </Button>
             </div>
           </div>

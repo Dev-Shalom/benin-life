@@ -13,7 +13,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children?: ReactNode;
 }
 
-/** Chunky game button with bevel. `loading` disables + shows spinner. */
+/** Pill button. primary/green = the green action, gold = money/premium, ghost = white secondary. `loading` disables + shows spinner. */
 export function Button({
   variant = 'primary', size = 'md', block, loading, icon, children, className = '', disabled, type = 'button', ...rest
 }: ButtonProps) {
@@ -31,7 +31,7 @@ export function Button({
   );
 }
 
-/** Round icon-only button (HUD, close buttons). */
+/** Round icon-only button (HUD, close buttons). glass = white floating circle, plain = soft grey. */
 export function IconButton({ icon, label, badge, className = '', variant = 'glass', size = 44, ...rest }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
   icon: string; label: string; badge?: number | string | null; variant?: 'glass' | 'plain' | 'gold'; size?: number;
 }) {

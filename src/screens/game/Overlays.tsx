@@ -24,9 +24,9 @@ export function AlertsSheet() {
   }, [open, markEventsRead]);
 
   return (
-    <Sheet open={open} onClose={() => setOverlay(null)} title="Alerts" subtitle="Wetin don happen to you lately" size="tall">
+    <Sheet open={open} onClose={() => setOverlay(null)} title="Alerts" subtitle="What has happened to you lately" size="tall">
       {events.length === 0 ? (
-        <EmptyState icon="bell" title="No gist yet" body="When something happen — salary land, police find you, harvest ready — e go show here." />
+        <EmptyState icon="bell" title="No alerts yet" body="Paydays, police visits, ready harvests and more will show up here." />
       ) : (
         <ul className="alerts">
           {events.map((e) => {
@@ -83,11 +83,11 @@ export function SettingsSheet() {
           {p.is_admin && (
             <Button variant="gold" icon="crown" block onClick={() => nav('/admin')}>Open admin panel</Button>
           )}
-          <Button variant="danger" icon="logout" block onClick={() => { setOverlay(null); void signOut(); }}>
+          <Button variant="ghost" icon="logout" block onClick={() => { setOverlay(null); void signOut(); }}>
             {P.logout}
           </Button>
           <p className="hint" style={{ textAlign: 'center' }}>
-            <span className="age-badge">16+</span> {P.sixteenPlus}
+            <span className="age-badge">18+</span> {P.ageNote}
           </p>
         </div>
       )}

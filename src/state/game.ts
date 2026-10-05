@@ -192,7 +192,7 @@ function startLive(uid: string) {
         unread: s.unread + 1,
       }));
       // Street robbery already has its own modal (StatusBanners); the event stays in Alerts.
-      if (ev.kind !== 'robbed') toast(ev.body ? `${ev.title} — ${ev.body}` : ev.title, eventTone(ev.kind));
+      if (ev.kind !== 'robbed') toast(ev.body ? `${ev.title}${/[.!?…]$/.test(ev.title) ? '' : ':'} ${ev.body}` : ev.title, eventTone(ev.kind));
       scheduleRefresh(600);
     })
     .subscribe();
@@ -236,7 +236,13 @@ export function initAuth(): void {
     .getSession()
     .then(({ data }) => onSession(data.session))
     .catch(() => useGame.setState({ authReady: true }));
-  supabase.auth.onAuthStateChange((_event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
+    // A password-reset link signs the player in. Send them to "choose a new password" wherever the
+    // link landed (Supabase falls back to the site root when the redirect URL isn't allow-listed).
+    if (event === 'PASSWORD_RECOVERY' && !/[?&]mode=reset\b/.test(window.location.search)) {
+      window.location.replace('/auth?mode=reset');
+      return;
+    }
     // Defer: supabase warns against awaiting other calls inside this callback.
     window.setTimeout(() => onSession(session), 0);
   });

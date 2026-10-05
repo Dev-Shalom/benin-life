@@ -17,8 +17,8 @@ export default function WalletPanel({ state }: PanelProps) {
     try {
       const res = await provider.startTopUp(pack, { email: session?.user.email ?? '', userId: state.profile.id });
       if (res.status === 'unavailable') toast(res.message, 'info');
-      else if (res.status === 'cancelled') toast('You cancel am. No wahala.', 'info');
-      else toast('Payment don land! We dey confirm am…', 'good');
+      else if (res.status === 'cancelled') toast('Payment cancelled.', 'info');
+      else toast('Payment received! Confirming it now…', 'good');
     } finally {
       setBusy(null);
     }
@@ -28,11 +28,11 @@ export default function WalletPanel({ state }: PanelProps) {
     <div className="wallet">
       <div className="wallet__balances">
         <div className="wallet__bal">
-          <span className="wallet__label">For pocket</span>
+          <span className="wallet__label">Cash</span>
           <Money amount={state.profile.cash} kind="cash" />
         </div>
         <div className="wallet__bal">
-          <span className="wallet__label">For bank</span>
+          <span className="wallet__label">Bank</span>
           <Money amount={state.profile.bank} kind="bank" />
         </div>
       </div>
@@ -42,7 +42,7 @@ export default function WalletPanel({ state }: PanelProps) {
         <span className="chip warn"><Icon name="clock" size={12} /> Coming soon</span>
       </div>
       <p className="act__desc">
-        Buy game naira to move faster. Na game money o — e no get real cash value and you no fit withdraw am.
+        Buy game naira to move faster. It is game money only: it has no real cash value and can't be withdrawn.
       </p>
 
       <div className="acts">
@@ -64,7 +64,7 @@ export default function WalletPanel({ state }: PanelProps) {
         ))}
       </div>
       <p className="wallet__fine">
-        Payment go pass through {provider.name === 'None' ? 'our payment partner' : provider.name}. We go confirm every payment for server before money land.
+        Payments go through {provider.name === 'None' ? 'our payment partner' : provider.name}. We confirm every payment on our server before the naira lands.
       </p>
     </div>
   );

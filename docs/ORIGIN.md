@@ -1,6 +1,6 @@
 # Starting class roll: LAPO baby vs Nepo baby (P1-ORIGIN)
 
-Files: `supabase/migrations/20261005000200_origin.sql`, `supabase/tests/origin_test.sql`, `src/screens/OriginReveal.tsx`, HUD badge and Papa chip in `src/screens/game/Hud.tsx`, copy in `src/lib/pidgin.ts` (`ORIGIN_COPY`, `ORIGIN_UI`), types in `src/lib/types.ts` (`// P1-ORIGIN`).
+Files: `supabase/migrations/20261005000200_origin.sql`, `supabase/tests/origin_test.sql`, `src/screens/OriginReveal.tsx`, HUD badge and Dad chip in `src/screens/game/Hud.tsx`, copy in `src/lib/pidgin.ts` (`ORIGIN_COPY`, `ORIGIN_UI`), types in `src/lib/types.ts` (`// P1-ORIGIN`).
 
 Test (all three must print PASSED):
 ```
@@ -68,7 +68,7 @@ BL_PSQL="psql -h /tmp -p 54322 -U postgres -d postgres" bash scripts/sql-test.sh
   - Animations are CSS transform and opacity only. Nepo gets a confetti burst of 18 pieces that plays once. `prefers-reduced-motion` gives fades only.
   - The reveal replaced the old hard-coded "Ekenwan" toast.
   - If the page is reloaded mid-reveal, the player simply lands in the game, because the profile already exists.
-- **HUD**: a class badge (NEPO or LAPO) sits on the portrait. A "Papa ₦5,000" chip appears next to the protection chip while `origin.allowance_claimable` is true. Tapping it calls `claim_allowance`, shows a toast and refreshes.
+- **HUD**: a class badge (NEPO or LAPO) sits on the portrait. A "Dad ₦5,000" chip appears next to the protection chip while `origin.allowance_claimable` is true. Tapping it calls `claim_allowance`, shows a toast and refreshes.
 - **Toasts** on the game screen now sit left of the HUD side buttons, so they no longer cover the bell. They stay below the HUD rows (the 150 px offset already existed).
 
 ## Phase 2 hooks

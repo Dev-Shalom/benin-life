@@ -1,4 +1,4 @@
-// Toasts — call `toast('Omo!', 'bad')` from anywhere; render <Toaster /> once at the app root.
+// Toasts: call `toast('Saved!', 'good')` from anywhere; render <Toaster /> once at the app root.
 import { useSyncExternalStore } from 'react';
 import { Icon } from './Icon';
 

@@ -45,15 +45,15 @@ function LocationHeader({ loc, night, here }: { loc: Location; night: boolean; h
       <div className="loc-head__text">
         <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
           <span className="loc-district"><Icon name="pin" size={12} /> {titleCase(loc.district)}</span>
-          {here && <span className="loc-here">{P.youDeyHere}</span>}
+          {here && <span className="loc-here">{P.youAreHere}</span>}
         </div>
         <h3 className="loc-name">{loc.name}</h3>
         {loc.blurb && <p className="loc-blurb">{loc.blurb}</p>}
         <div className="loc-chips">
           <span className={`risk-chip risk-chip--${day.tone}${!night ? ' is-now' : ''}`}><Icon name="sun" size={12} /> {day.label}</span>
           <span className={`risk-chip risk-chip--${nite.tone}${night ? ' is-now' : ''}`}><Icon name="moon" size={12} /> {nite.label}</span>
-          {loc.cctv && <span className="risk-chip risk-chip--info"><Icon name="camera" size={12} /> CCTV dey</span>}
-          {loc.keke_ok && <span className="risk-chip risk-chip--info"><Icon name="keke" size={12} /> Keke fit reach</span>}
+          {loc.cctv && <span className="risk-chip risk-chip--info"><Icon name="camera" size={12} /> CCTV</span>}
+          {loc.keke_ok && <span className="risk-chip risk-chip--info"><Icon name="keke" size={12} /> Keke access</span>}
         </div>
       </div>
     </div>
@@ -75,7 +75,7 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
         <TravelPicker dest={loc} cash={state.profile.cash} blockedReason={status.blockedReason} onStarted={close} />
         {loc.actions.length > 0 && (
           <div className="loc-offers">
-            <p className="loc-offers__title">Wetin dey here</p>
+            <p className="loc-offers__title">Available here</p>
             <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
               {loc.actions.map((a) => (
                 <span key={a} className="chip">{PANEL_LABELS[a] ?? a}</span>

@@ -1,8 +1,9 @@
-// Shared UI kit — P1-SHELL. Import from 'src/ui'.
+// Shared UI kit (P1-SHELL, restyled in R1). Import from 'src/ui'.
 export { Button, IconButton, type ButtonProps, type ButtonVariant } from './Button';
 export { Sheet, type SheetProps } from './Sheet';
 export { Modal } from './Modal';
 export { Tabs, type TabItem } from './Tabs';
+export { Segmented, type SegmentOption } from './Segmented';
 export { NeedBar } from './NeedBar';
 export { Money } from './Money';
 export { Spinner, LoadingScreen } from './Spinner';

@@ -21,14 +21,14 @@ export async function rpc<T = Record<string, unknown>>(fn: string, args: Record<
 }
 
 function friendly(raw: string): string {
-  if (/JWT|not logged|auth/i.test(raw)) return 'Abeg login again, your session don expire.';
-  if (/fetch|network|Failed to/i.test(raw)) return 'Network don cut. Check your data and try again.';
-  return 'Wahala dey somewhere. Try again small time.';
+  if (/JWT|not logged|auth/i.test(raw)) return 'Your session has expired. Please log in again.';
+  if (/fetch|network|Failed to/i.test(raw)) return 'Network problem. Check your connection and try again.';
+  return 'Something went wrong. Please try again.';
 }
 
 /** Return a Pidgin message for any thrown value. */
 export function errorMessage(e: unknown): string {
   if (e instanceof GameError) return e.message;
   if (e instanceof Error) return friendly(e.message);
-  return 'Wahala dey somewhere. Try again small time.';
+  return 'Something went wrong. Please try again.';
 }

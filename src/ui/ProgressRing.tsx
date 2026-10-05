@@ -1,4 +1,4 @@
-// Slow-filling circular progress ring — P1-TIME. Used by the busy banner (sleep, chop, gist…).
+// Slow-filling circular progress ring — P1-TIME. Used by the busy banner (sleep, eat, chat…).
 //
 // Cheap on low-end phones: no requestAnimationFrame loop. The parent re-renders once per tick
 // (`useNow`, 1 s); each render aims the ring at where it must be ONE TICK FROM NOW and lets a

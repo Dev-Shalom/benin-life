@@ -179,4 +179,4 @@ export interface PanelProps { state: GameState; location: Location; refresh: () 
 - New SceneType `office` (modern tech hub / corporate office) — drawn in Phase 2 by the art agent.
 
 ## 9. Copy & tone
-Naija Pidgin, playful street-smart, never graphic. Examples: "Omo, dem don rob you for Sapele Road!", "Your money no reach, my guy.", "Agbero don block road — drop ₦200 abeg." Gangs: agberos + fictional crews only ("Ring Road Boys", "Sapele Lions") — never real cults. Treat the Oba/palace respectfully.
+Clear, warm English by default (updated in R1 after user feedback). Pidgin only where a real Benin person would use it: street moments (agberos, robbery, market banter) and the LAPO-baby voice, e.g. "Omo! Dem don rob you!", "Agbero don block road. Drop ₦200 abeg." Keep it natural, never a parody, never graphic. Nepo babies are school-trained and say "Dad"/"Daddy", never "Papa". Landing, auth and settings are plain English. Shared strings live in `src/lib/pidgin.ts`. Gangs: agberos + fictional crews only ("Ring Road Boys", "Sapele Lions") — never real cults. Treat the Oba/palace respectfully.

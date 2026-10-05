@@ -1,4 +1,4 @@
-// "Wetin to do" — activities offered at this location's scene. P1-SHELL.
+// "Things to do": activities offered at this location's scene. P1-SHELL.
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { rpc, errorMessage } from '../lib/api';
@@ -60,7 +60,7 @@ export default function ActivitiesPanel({ state, location, refresh }: PanelProps
         .order('sort');
       if (!alive) return;
       if (error) {
-        setErr('We no fit load wetin dey to do. Check your network.');
+        setErr("Couldn't load activities. Check your connection.");
         setList([]);
         return;
       }
@@ -75,7 +75,7 @@ export default function ActivitiesPanel({ state, location, refresh }: PanelProps
     setBusyId(a.id);
     try {
       const res = await rpc<{ message?: string }>('do_activity', { p_activity: a.id });
-      toast(res?.message ?? 'E don do!', 'good');
+      toast(res?.message ?? 'Done!', 'good');
       await refresh();
     } catch (e) {
       toast(errorMessage(e), 'bad');
@@ -95,8 +95,8 @@ export default function ActivitiesPanel({ state, location, refresh }: PanelProps
   }
   if (list.length === 0) {
     return (
-      <EmptyState icon="sparkle" title="Nothing to do here now"
-        body={err ?? (location.scene.startsWith('home') && !atHome ? 'Na person house be this. You fit only relax for your own house.' : 'Check another place — Benin big.')} />
+      <EmptyState icon="sparkle" title="Nothing to do here right now"
+        body={err ?? (location.scene.startsWith('home') && !atHome ? "This is someone else's home. You can only relax at your own place." : 'Try another spot. Benin City is big.')} />
     );
   }
 
@@ -120,7 +120,7 @@ export default function ActivitiesPanel({ state, location, refresh }: PanelProps
               </div>
               <Button size="sm" variant={a.cost > 0 ? 'primary' : 'green'} loading={busyId === a.id}
                 disabled={disabled || (busyId !== null && busyId !== a.id)} onClick={() => void doIt(a)}>
-                {nightLocked ? 'Wait night' : broke ? 'No money' : 'Do am'}
+                {nightLocked ? 'Night only' : broke ? 'Not enough cash' : 'Do it'}
               </Button>
             </div>
             <EffectChips effects={a.effects} />

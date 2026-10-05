@@ -41,7 +41,7 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
         if (res?.robbed && Number(res.robbed.amount) > 0) {
           setRobbed({ amount: Number(res.robbed.amount), injured: Boolean(res.robbed.injured), where: dest });
         } else {
-          toast(res?.message ?? `You don reach ${dest}!`, 'good');
+          toast(res?.message ?? `You've arrived at ${dest}!`, 'good');
         }
       } catch (e) {
         // Clock skew or a race — retry a few times, then surface the message.
@@ -100,7 +100,7 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
               nowMs={status.now} size={44} stroke={4} label={p.busy_label ?? 'Busy'}>
               <Icon name="clock" size={18} />
             </ProgressRing>
-            <div className="grow banner__title">{p.busy_label ? `${p.busy_label}…` : 'You dey busy…'}</div>
+            <div className="grow banner__title">{p.busy_label ? `${p.busy_label}…` : 'Busy…'}</div>
             <span className="banner__time">{countdown(status.busyLeft)}</span>
           </div>
         )}
@@ -108,7 +108,7 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
           <div className="banner banner--jail">
             <span className="banner__icon"><Icon name="lock" size={20} /></span>
             <div className="grow">
-              <div className="banner__title">You dey police cell</div>
+              <div className="banner__title">You're in a police cell</div>
               {p.jail_reason && <div className="banner__sub">{p.jail_reason}</div>}
             </div>
             <span className="banner__time">{countdown(status.jailLeft)}</span>
@@ -118,7 +118,7 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
         {status.hospLeft > 0 && (
           <div className="banner banner--hosp">
             <span className="banner__icon"><Icon name="cross" size={18} /></span>
-            <div className="grow banner__title">Doctor say make you rest for hospital</div>
+            <div className="grow banner__title">Doctor's orders: rest in hospital</div>
             <span className="banner__time">{countdown(status.hospLeft)}</span>
           </div>
         )}
@@ -133,27 +133,27 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
         actions={
           <>
             {policeHq && (
-              <Button variant="dark" icon="shield" onClick={() => { setRobbed(null); select(policeHq); }}>
+              <Button icon="shield" onClick={() => { setRobbed(null); select(policeHq); }}>
                 Show me Police HQ
               </Button>
             )}
             {robbed?.injured && hospital && (
-              <Button variant="green" icon="cross" onClick={() => { setRobbed(null); select(hospital); }}>
-                Find hospital
+              <Button variant="ghost" icon="cross" onClick={() => { setRobbed(null); select(hospital); }}>
+                Find a hospital
               </Button>
             )}
-            <Button onClick={() => setRobbed(null)}>I don hear — life go on</Button>
+            <Button variant="ghost" onClick={() => setRobbed(null)}>Life goes on</Button>
           </>
         }
       >
         {robbed && (
           <>
             <p>
-              Some area boys catch you as you dey reach <b>{robbed.where}</b>. Dem collect{' '}
+              Some area boys caught you on your way to <b>{robbed.where}</b> and took{' '}
               <b className="robbed-amount">{naira(robbed.amount)}</b> from your pocket.
             </p>
-            {robbed.injured && <p>Dem rough you small — your body dey pain. Make you check UBTH or Mercy Clinic.</p>}
-            <p className="muted" style={{ fontSize: 13 }}>Tip: Keep your money for bank. Bank money no dey rob.</p>
+            {robbed.injured && <p>They roughed you up a bit. Get checked at UBTH or Mercy Clinic.</p>}
+            <p className="muted" style={{ fontSize: 13 }}>Tip: keep your money in the bank. Bank money can't be stolen.</p>
           </>
         )}
       </Modal>

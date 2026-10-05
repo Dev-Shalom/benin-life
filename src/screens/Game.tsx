@@ -16,7 +16,7 @@ function useNightTheme(night: boolean) {
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = night ? 'night' : 'day';
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', night ? '#0e1028' : '#7c3216');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', night ? '#1d2542' : '#e4f0fa');
   }, [night]);
   useEffect(
     () => () => {
@@ -73,7 +73,7 @@ export default function Game() {
           <button type="button" className="where-chip" onClick={() => select(here.id)}>
             <span className="where-chip__dot" />
             <span className="grow">
-              <span className="where-chip__label">You dey</span>
+              <span className="where-chip__label">You're at</span>
               <span className="where-chip__name">{here.name}</span>
             </span>
             <span className="where-chip__go">Open <Icon name="chevronUp" size={14} /></span>

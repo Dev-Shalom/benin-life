@@ -15,8 +15,8 @@ export default function AdminRoute() {
     return (
       <div className="center-screen">
         <div className="auth-card">
-          <EmptyState icon="lock" title="Oga, this place na for admin only"
-            body="You no get admin access. Go back go hustle."
+          <EmptyState icon="lock" title="Admins only"
+            body="Your account doesn't have admin access."
             action={<Link to="/play" className="bl-btn bl-btn--primary bl-btn--md"><span className="bl-btn__label">Back to game</span></Link>} />
         </div>
       </div>
@@ -26,8 +26,8 @@ export default function AdminRoute() {
     return (
       <div className="center-screen">
         <div className="auth-card">
-          <EmptyState icon="crown" title="Admin panel no dey yet"
-            body="The developer tools never land for this build. Check back later."
+          <EmptyState icon="crown" title="Admin panel not available yet"
+            body="The admin tools aren't in this build yet. Check back later."
             action={<Link to="/play" className="bl-btn bl-btn--primary bl-btn--md"><span className="bl-btn__label">Back to game</span></Link>} />
         </div>
       </div>

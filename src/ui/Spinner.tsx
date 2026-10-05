@@ -9,13 +9,13 @@ export function Spinner({ size = 20, label }: { size?: number; label?: string })
   );
 }
 
-/** Full-area loader with a coral-bead ring and Pidgin caption. */
-export function LoadingScreen({ text = 'Hold on small…' }: { text?: string }) {
+/** Full-area loader: a ring of Benin coral beads on the sky background. */
+export function LoadingScreen({ text = 'Loading…' }: { text?: string }) {
   return (
     <div className="bl-loading">
       <div className="bl-loading__beads" aria-hidden>
         {Array.from({ length: 8 }, (_, i) => (
-          <span key={i} style={{ transform: `rotate(${i * 45}deg) translateY(-22px)`, animationDelay: `${i * 0.12}s` }} />
+          <span key={i} style={{ transform: `rotate(${i * 45}deg) translateY(-20px)`, animationDelay: `${i * 0.12}s` }} />
         ))}
       </div>
       <p>{text}</p>

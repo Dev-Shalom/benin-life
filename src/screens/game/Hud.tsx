@@ -43,7 +43,7 @@ export function Hud({ state, clock, status }: { state: GameState; clock: GameClo
     };
   }, []);
 
-  const claimPapa = async () => {
+  const claimDad = async () => {
     if (claiming) return;
     setClaiming(true);
     try {
@@ -82,13 +82,13 @@ export function Hud({ state, clock, status }: { state: GameState; clock: GameClo
             </span>
           </button>
           <div className="hud-money">
-            <button type="button" className="hud-cash" onClick={() => openPanel('wallet')} aria-label="Cash — open wallet">
+            <button type="button" className="hud-cash" onClick={() => openPanel('wallet')} aria-label="Cash, open wallet">
               <Icon name="cash" size={16} />
               <span>{nairaShort(p.cash)}</span>
               <span className="hud-plus"><Icon name="plus" size={12} stroke={3} /></span>
             </button>
             <button type="button" className="hud-bank"
-              onClick={() => toast('Na Bronze Bank (GRA) or any PoS you go fit move bank money. Bank money no dey rob!', 'info')}
+              onClick={() => toast("Move bank money at Bronze Bank (GRA) or any PoS. Money in the bank can't be stolen.", 'info')}
               aria-label="Bank balance">
               <Icon name="bank" size={14} />
               <span>{nairaShort(p.bank)}</span>
@@ -117,16 +117,16 @@ export function Hud({ state, clock, status }: { state: GameState; clock: GameClo
         {(status.protLeft > 0 || origin?.allowance_claimable) && (
           <div className="hud-chips">
             {status.protLeft > 0 && (
-              <div className="hud-protect" title="New-player protection: nobody fit rob you yet">
+              <div className="hud-protect" title="New player protection: nobody can rob you yet">
                 <Icon name="shield" size={14} /> Protected · {countdown(status.protLeft)}
               </div>
             )}
             {origin?.allowance_claimable && (
-              <button type="button" className="hud-papa" onClick={() => void claimPapa()} disabled={claiming}
-                title={ORIGIN_UI.collectPapa} aria-label={`${ORIGIN_UI.collectPapa} (${nairaShort(origin.allowance_daily)})`}>
+              <button type="button" className="hud-dad" onClick={() => void claimDad()} disabled={claiming}
+                title={ORIGIN_UI.collectDad} aria-label={`${ORIGIN_UI.collectDad} (${nairaShort(origin.allowance_daily)})`}>
                 <Icon name="sparkle" size={14} />
-                {ORIGIN_UI.papaChip}
-                <span className="hud-papa__amt">{nairaShort(origin.allowance_daily)}</span>
+                {ORIGIN_UI.dadChip}
+                <span className="hud-dad__amt">{nairaShort(origin.allowance_daily)}</span>
               </button>
             )}
           </div>

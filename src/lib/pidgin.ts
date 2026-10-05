@@ -1,29 +1,29 @@
 // Shared Naija Pidgin copy — P1-SHELL. Keep it playful, street-smart, never graphic.
 
+// Shared game copy (P1-SHELL, rewritten in R1).
+// Tone: clear, warm English by default. Pidgin only where a real Benin person would use it:
+// street moments (agberos, robbery, market banter) and the LAPO-baby voice. Nepo babies are
+// school-trained and say "Dad". Never parody, never graphic. The file name is historical.
+
 export const GREETINGS = [
+  'Welcome back',
+  'Good to see you',
   'How far',
-  'Wetin dey sup',
-  'My guy',
-  'Oya na',
-  'Odogwu',
-  'Chairman',
-  'Boss',
-  'How body',
-  'Correct person',
-  'Big man',
+  'Welcome home',
+  'Hey',
 ];
 
 export const TIPS = [
-  'Bank money no fit get robbed — only cash for pocket dey vulnerable.',
-  'Night for Upper Sakponba and Third East Circular? Omo, think twice.',
-  'Ramat Park traffic fit hold you tire. Plan your waka.',
-  'Keke no dey enter major road — na side roads dem dey run.',
-  'ECTS bus cheap and e safe pass trekking.',
-  'If belle empty, everything go dey hard. Chop something.',
-  'Babalawo protection fit reduce robbery chance… if you believe.',
-  'People dey rush house before 8pm for Benin. Na sense.',
-  'PoS dey everywhere, but dem go collect their own cut.',
-  'New players get small protection at first — use am well.',
+  'Money in the bank is safe. Only the cash in your pocket can be stolen.',
+  'Upper Sakponba and Third East Circular get risky at night. Think twice.',
+  'The Ramat Park go-slow can eat your whole afternoon. Plan your trip.',
+  'Keke only run on side roads, never on the major roads.',
+  'The ECTS bus is cheap, and safer than walking.',
+  'Everything is harder on an empty stomach. Eat something first.',
+  "A babalawo's protection might lower your robbery risk... if you believe.",
+  'Benin people head home before 8pm. There is a reason.',
+  'There is a PoS on every corner, but every one of them takes a cut.',
+  'New players get a short protection window. Use it well.',
 ];
 
 export function pick<T>(arr: readonly T[]): T {
@@ -40,29 +40,29 @@ export function randomTip(): string {
 }
 
 export const P = {
-  loading: 'Hold on small…',
-  loadingGame: 'We dey load Benin for you…',
+  loading: 'Loading…',
+  loadingGame: 'Loading Benin City…',
   retry: 'Try again',
   close: 'Close',
-  cancel: 'Leave am',
-  confirm: 'Oya, do am',
+  cancel: 'Cancel',
+  confirm: 'Confirm',
   back: 'Back',
   next: 'Next',
-  done: 'E don do',
-  networkDown: 'Network don cut. Check your data and try again.',
-  somethingWrong: 'Wahala dey somewhere. Try again small time.',
-  emptyHere: 'Nothing dey here for now.',
-  noPeople: 'Nobody dey here now — na only you and mosquito.',
+  done: 'Done',
+  networkDown: 'Network problem. Check your connection and try again.',
+  somethingWrong: 'Something went wrong. Please try again.',
+  emptyHere: 'Nothing here yet.',
+  noPeople: 'Nobody else is here right now. Just you and the mosquitoes.',
   goThere: 'Go there',
-  youDeyHere: 'You dey here',
-  onTheRoad: 'You dey road',
-  busy: 'You dey busy',
-  jailed: 'You dey cell',
-  hospital: 'You dey hospital',
+  youAreHere: "You're here",
+  onTheRoad: "You're on the road",
+  busy: "You're busy",
+  jailed: "You're in a police cell",
+  hospital: "You're in hospital",
   protected: 'New player protection',
-  logout: 'Comot (Log out)',
-  sixteenPlus: '16+ only. Na game — fake money, real wahala. Nothing for here be real crime advice.',
-  panelMissing: 'This one never ready. Dem still dey build am.',
+  logout: 'Log out',
+  ageNote: '18+ only. Benin Life is a game: the money is fake and nothing here is real-world advice.',
+  panelMissing: 'Coming soon. This part of the city is still being built.',
 };
 
 export type NeedKey = 'hunger' | 'energy' | 'hygiene' | 'fun' | 'social' | 'health' | 'stress';
@@ -70,11 +70,11 @@ export type NeedKey = 'hunger' | 'energy' | 'hygiene' | 'fun' | 'social' | 'heal
 export const NEED_KEYS: NeedKey[] = ['hunger', 'energy', 'hygiene', 'fun', 'social', 'health', 'stress'];
 
 export const NEED_META: Record<NeedKey, { label: string; short: string; icon: string; inverted?: boolean }> = {
-  hunger: { label: 'Belle', short: 'Belle', icon: 'food' },
-  energy: { label: 'Energy', short: 'Power', icon: 'bolt' },
-  hygiene: { label: 'Body clean', short: 'Clean', icon: 'soap' },
-  fun: { label: 'Enjoyment', short: 'Enjoy', icon: 'party' },
-  social: { label: 'Paddy dem', short: 'Social', icon: 'chat' },
+  hunger: { label: 'Hunger', short: 'Hunger', icon: 'food' },
+  energy: { label: 'Energy', short: 'Energy', icon: 'bolt' },
+  hygiene: { label: 'Hygiene', short: 'Hygiene', icon: 'soap' },
+  fun: { label: 'Fun', short: 'Fun', icon: 'party' },
+  social: { label: 'Social', short: 'Social', icon: 'chat' },
   health: { label: 'Health', short: 'Health', icon: 'heart' },
   stress: { label: 'Stress', short: 'Stress', icon: 'stress', inverted: true },
 };
@@ -90,34 +90,36 @@ export function needMood(key: NeedKey, v: number): 'good' | 'warn' | 'bad' {
 /** Risk 0–1 → label. */
 export function riskLabel(p: number): { label: string; tone: 'good' | 'warn' | 'bad' } {
   if (p < 0.15) return { label: 'Calm', tone: 'good' };
-  if (p < 0.3) return { label: 'Shine your eye', tone: 'warn' };
+  if (p < 0.3) return { label: 'Stay alert', tone: 'warn' };
   if (p < 1.4) return { label: 'Risky', tone: 'bad' };
   // Same threshold as the map's night danger glow (isNightRisky).
   return { label: 'Danger zone', tone: 'bad' };
 }
 
 export const MODE_META: Record<string, { label: string; blurb: string }> = {
-  walk: { label: 'Trek', blurb: 'Free, but leg go pain you' },
+  walk: { label: 'Walk', blurb: 'Free, but slow' },
   keke: { label: 'Keke', blurb: 'Side roads only' },
-  bus: { label: 'ECTS Bus', blurb: 'Green bus, cheap & steady' },
-  drop: { label: 'Drop', blurb: 'Ride-hail, quick & safer' },
-  car: { label: 'Your Motor', blurb: 'Fuel money only' },
+  bus: { label: 'ECTS bus', blurb: 'Cheap and steady' },
+  drop: { label: 'Drop', blurb: 'Ride-hail, quick and safer' },
+  car: { label: 'Your car', blurb: 'Just fuel money' },
 };
 
-/** Map Supabase auth errors to friendly Pidgin. */
-export function authErrorPidgin(raw: string): string {
+/** Map Supabase auth errors to friendly English. */
+export function authErrorMessage(raw: string): string {
   const m = raw.toLowerCase();
-  if (m.includes('invalid login')) return 'Email or password no correct. Check am well.';
+  if (m.includes('invalid login')) return "That email and password don't match. Check them and try again.";
   if (m.includes('already registered') || m.includes('already been registered') || m.includes('already exists'))
-    return 'This email don get account already — login instead.';
+    return 'There is already an account with this email. Log in instead.';
+  if (m.includes('same') && m.includes('password')) return 'Pick a password you have not used before.';
   if (m.includes('password') && (m.includes('6') || m.includes('short') || m.includes('weak')))
-    return 'Password too short, my guy. Make am reach 6 characters at least.';
+    return 'Your password needs at least 6 characters.';
   if (m.includes('email') && (m.includes('invalid') || m.includes('valid')))
-    return 'That email no look correct. Check am again.';
-  if (m.includes('not confirmed')) return 'Confirm your email first — check your inbox.';
-  if (m.includes('rate') || m.includes('too many')) return 'You don try too many times. Rest small, then try again.';
+    return "That email doesn't look right. Check it and try again.";
+  if (m.includes('not confirmed')) return 'Confirm your email first. Check your inbox for the link.';
+  if (m.includes('rate') || m.includes('too many') || m.includes('security purposes'))
+    return 'Too many attempts. Wait a minute, then try again.';
   if (m.includes('fetch') || m.includes('network')) return P.networkDown;
-  if (m.includes('signup') && m.includes('disabled')) return 'Sign up close for now. Try again later.';
+  if (m.includes('signup') && m.includes('disabled')) return 'Sign-ups are closed right now. Please try again later.';
   return P.somethingWrong;
 }
 
@@ -136,18 +138,20 @@ export interface OriginCopy {
 }
 
 export const ORIGIN_COPY: Record<string, OriginCopy> = {
+  // Nepo babies are school-trained: polished English, and it's always "Dad".
   nepo: {
-    kicker: 'Omo! You be…',
+    kicker: 'You were born a',
     title: 'Nepo baby',
-    line: 'Papa get connection. You don land for {home} with motor for compound and laptop for table.',
-    cheer: 'Enjoy am, but abeg no spoil the family name o.',
+    line: "Dad has connections. You're starting out in {home}, with a car in the compound and a laptop on the desk.",
+    cheer: "Enjoy it. Just don't embarrass the family name.",
     badge: 'Nepo',
   },
+  // LAPO babies keep a street voice, used lightly.
   lapo: {
-    kicker: 'You be…',
+    kicker: 'You were born a',
     title: 'LAPO baby',
-    line: 'Na hustle go carry you. {home}, small money for pocket, and big dream for head.',
-    cheer: 'Plenty big men for Benin start from one room. Your own story go sweet pass.',
+    line: "Na hustle go carry you. You're starting out in {home}, with small money and a big dream.",
+    cheer: 'Plenty big men for Benin started from one room. Your story starts here.',
     badge: 'LAPO',
   },
 };
@@ -156,30 +160,31 @@ export const ORIGIN_COPY: Record<string, OriginCopy> = {
 export function originCopy(id: string, name: string, tagline: string): OriginCopy {
   return (
     ORIGIN_COPY[id] ?? {
-      kicker: 'You be…',
+      kicker: 'You were born',
       title: name,
-      line: tagline || 'Life don give you your own start for {home}.',
-      cheer: 'Oya, show Benin wetin you carry.',
+      line: tagline || 'Life has given you your own start in {home}.',
+      cheer: 'Go show Benin City what you can do.',
       badge: name.split(' ')[0] ?? name,
     }
   );
 }
 
 export const ORIGIN_UI = {
-  rolling: 'Life dey roll the dice…',
+  rolling: 'Rolling the dice of life…',
   skip: 'Tap to skip',
-  enter: 'Oya enter Benin',
-  cash: 'For pocket',
-  bank: 'For bank',
-  allowance: 'Papa allowance',
+  enter: 'Enter Benin City',
+  cash: 'Cash',
+  bank: 'In the bank',
+  allowance: "Dad's allowance",
   perDay: '/ day',
   headStart: 'Career head start',
   levels: (n: number) => `+${n} level${n === 1 ? '' : 's'}`,
   easyLoan: 'LAPO loan',
   easyLoanValue: 'Easy access (soon)',
   emptyBag: 'Bag',
-  emptyBagValue: 'Na your hustle go fill am',
-  home: 'Your house',
-  collectPapa: 'Collect Papa money',
-  papaChip: 'Papa',
+  emptyBagValue: 'Empty for now',
+  owned: 'Yours',
+  home: 'Your home',
+  collectDad: "Collect Dad's allowance",
+  dadChip: 'Dad',
 };

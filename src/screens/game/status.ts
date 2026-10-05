@@ -42,13 +42,13 @@ export function deriveStatus(state: GameState, now: number): PlayerStatus {
   const hospLeft = secondsUntil(p.hospitalized_until, now);
   const protLeft = secondsUntil(p.protected_until, now);
   const blockedReason = t
-    ? 'You dey road. Wait make you reach first.'
+    ? "You're on the road. Wait until you arrive."
     : jailLeft > 0
-      ? 'You dey police cell. Bail yourself or wait.'
+      ? "You're in a police cell. Pay bail or wait it out."
       : hospLeft > 0
-        ? 'You dey hospital bed. Rest small.'
+        ? "You're in a hospital bed. Rest up first."
         : busyLeft > 0
-          ? `You dey busy${p.busy_label ? ` (${p.busy_label})` : ''}. Wait small.`
+          ? `You're busy${p.busy_label ? ` (${p.busy_label})` : ''}. Wait a moment.`
           : null;
   return {
     traveling: Boolean(t),

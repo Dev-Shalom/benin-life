@@ -36,8 +36,8 @@ export class ErrorBoundary extends Component<Props, State> {
         this.props.fallback ?? (
           <EmptyState
             icon="warning"
-            title="This side don jam small wahala"
-            body="Something scatter for here. Try again. If e still dey do like this, tell the devs."
+            title="This part hit a snag"
+            body="Something went wrong here. Try again, and if it keeps happening, let us know."
             action={
               <Button variant="ghost" size="sm" icon="refresh" onClick={() => this.setState({ error: null })}>
                 Try again

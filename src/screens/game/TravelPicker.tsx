@@ -60,7 +60,7 @@ export function TravelPicker({ dest, cash, blockedReason, onStarted }: {
     setGoing(true);
     try {
       const res = await rpc<{ message?: string }>('travel_start', { p_dest: dest.id, p_mode: mode });
-      toast(res?.message ?? `Oya! You don commot for ${dest.name}.`, 'good');
+      toast(res?.message ?? `You're on your way to ${dest.name}.`, 'good');
       await refresh();
       onStarted();
     } catch (e) {
@@ -90,12 +90,12 @@ export function TravelPicker({ dest, cash, blockedReason, onStarted }: {
   return (
     <div className="travel">
       <div className="travel__head">
-        <h4>How you wan take go?</h4>
+        <h4>How do you want to go?</h4>
         <span className="chip"><Icon name="road" size={12} /> {quote.km.toFixed(1)} km</span>
         {loading && <Spinner size={14} />}
       </div>
       {quote.options.length === 0 ? (
-        <EmptyState icon="road" title="No road dey" body="No way to reach there right now." />
+        <EmptyState icon="road" title="No route" body="There is no way to get there right now." />
       ) : (
         <div className="mode-grid">
           {quote.options.map((o) => (
@@ -105,7 +105,7 @@ export function TravelPicker({ dest, cash, blockedReason, onStarted }: {
       )}
       <Button size="lg" block variant="green" loading={going} disabled={!selected || !selected.allowed || selected.cost > cash}
         onClick={() => void go()}>
-        {selected ? `Oya, ${MODE_META[selected.mode]?.label ?? selected.label} — ${selected.cost ? naira(selected.cost) : 'free'}` : 'Pick how you go go'}
+        {selected ? `Go by ${MODE_META[selected.mode]?.label ?? selected.label} · ${selected.cost ? naira(selected.cost) : 'Free'}` : 'Pick a way to travel'}
       </Button>
     </div>
   );
@@ -114,7 +114,7 @@ export function TravelPicker({ dest, cash, blockedReason, onStarted }: {
 function ModeCard({ o, cash, active, onPick }: { o: TravelOption; cash: number; active: boolean; onPick: () => void }) {
   const broke = o.allowed && o.cost > cash;
   const disabled = !o.allowed || broke;
-  const reason = !o.allowed ? (o.reason ?? 'E no possible now') : broke ? 'Your money no reach' : null;
+  const reason = !o.allowed ? (o.reason ?? 'Not available right now') : broke ? 'Not enough cash' : null;
   const risk = Number(o.risk_pct) || 0;
   return (
     <button type="button" className={`mode-card${active ? ' is-active' : ''}${disabled ? ' is-disabled' : ''}`}

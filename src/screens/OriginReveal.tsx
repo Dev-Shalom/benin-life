@@ -1,6 +1,6 @@
 // Origin reveal (P1-ORIGIN): shown once, right after create_profile, before entering the game.
 // Timeline is pure CSS (see "Origin reveal" in screens.css): coin toss ~1.2s → title, home card,
-// perks stagger in → "Oya enter Benin". Tap during the toss to skip. Reduced motion = fades only.
+// perks stagger in, then "Enter Benin City". Tap during the toss to skip. Reduced motion = fades only.
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Avatar } from '../art/avatar/Avatar';
 import { Scene } from '../art/Scene';
@@ -64,7 +64,7 @@ export default function OriginReveal({ state, onDone }: { state: GameState; onDo
     const list: Perk[] = [{ icon: 'cash', label: ORIGIN_UI.cash, value: naira(p.cash) }];
     if (p.bank > 0) list.push({ icon: 'bank', label: ORIGIN_UI.bank, value: naira(p.bank) });
     for (const it of o?.items ?? []) {
-      list.push({ icon: it.category === 'vehicle' ? 'car' : it.category === 'gadget' ? 'laptop' : 'bag', label: it.name, value: 'Na your own' });
+      list.push({ icon: it.category === 'vehicle' ? 'car' : it.category === 'gadget' ? 'laptop' : 'bag', label: it.name, value: ORIGIN_UI.owned });
     }
     if (o && o.allowance_daily > 0)
       list.push({ icon: 'sparkle', label: ORIGIN_UI.allowance, value: `${naira(o.allowance_daily)} ${ORIGIN_UI.perDay}` });

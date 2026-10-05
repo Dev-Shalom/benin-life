@@ -39,7 +39,7 @@ export const TOP_UP_PACKS: TopUpPack[] = [
 /** Flip to true in P2-PAY once checkout + server verification are wired. */
 const LIVE_CHECKOUT = false;
 
-const COMING_SOON = 'Top-up never ready o. E dey come soon — hold your money for now.';
+const COMING_SOON = 'Top-ups are coming soon. Hold on to your naira for now.';
 
 function paystackProvider(): PaymentProvider {
   const key = (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ?? '').trim();
