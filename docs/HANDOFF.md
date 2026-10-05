@@ -105,7 +105,7 @@ The whole game goes 3D, with a Lagos Life-style light UI, the creator flow, a ph
 6. **Payments and airport.** Paystack, built so the provider can be swapped; the airport for linking to other cities; and the office art.
 
 ## Phase 3
-Run a full browser test, balance the numbers, write a deploy guide (Supabase cloud plus static hosting), and push to `https://github.com/Dev-Shalom/benin-life`. Then give the user the final demo.
+Draft the Terms of Service and Privacy Policy pages (approved by the user; the sign-up checkbox links to them). Run a full browser test, balance the numbers, write a deploy guide (Supabase cloud plus static hosting), and push to `https://github.com/Dev-Shalom/benin-life`. Then give the user the final demo.
 
 ## Decisions the user already approved
 - Use Paystack first, behind an abstraction so it can be changed.
@@ -135,7 +135,7 @@ Run a full browser test, balance the numbers, write a deploy guide (Supabase clo
 - [done] Phase 0 and Phase 1, plus the Phase 1 demo fixes (see the tables above).
 - [done] The user's Phase 1 feedback is recorded in docs/FEEDBACK_PHASE1.md, and the Lagos Life references are in docs/references/lagos-life/.
 - [done] 2026-10-05: the user approved Phase R (everything goes 3D, a Lagos Life-style UI, deeper systems). The plan is in docs/REDESIGN_PLAN.md.
-- [done] R1 Look and copy: committed 2026-10-05 and verified (build plus screenshots). Open user questions: confirm 18+ (was 16+); Terms/Privacy pages needed before launch. Left for R3a: the server strings still say "Papa" (claim_allowance, origin taglines) plus Pidgin seed blurbs.
+- [done] R1 Look and copy: committed 2026-10-05 and verified (build plus screenshots). The user CONFIRMED 18+ (replace any remaining 16+). The user approved drafting Terms of Service and Privacy Policy pages in Phase 3. Left for R3a: the server strings still say "Papa" (claim_allowance, origin taglines) plus Pidgin seed blurbs.
 - [running] R2 3D engine and characters (if the session died: check git status for uncommitted src/art/avatar3d or similar, verify, commit)
 - [todo] R3a creator data (DB). The user's NEXT new account must be Nepo.
 - [todo] R3b 5-step creator UI

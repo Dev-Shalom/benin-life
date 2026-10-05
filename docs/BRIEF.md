@@ -41,7 +41,7 @@ Stack: React + TypeScript (Vite), Supabase (Auth email+password, Postgres, Realt
 - ₦0/month to start (free tiers). Paystack per-transaction fee only.
 - Mobile-first, low-end Android, small first load.
 - Server-authoritative economy (all money/state changes in Postgres RPCs). Admin panel admin-only. Payments server-verified. No secrets in git.
-- Lifestyle humour, not too dark; 16+ notice. Real public landmarks OK; private businesses fictional names.
+- Lifestyle humour, not too dark; 18+ only (confirmed by the user 2026-10-05). Real public landmarks OK; private businesses fictional names.
 - Code at `C:\Users\shalo\desktop\benin-life`; pushed to user's GitHub repo once URL provided.
 - Done = every system works end-to-end locally + deployable to free hosts.
 - Payments: Paystack first; swapping provider must be a config change.
