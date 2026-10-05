@@ -16,6 +16,7 @@ every day. Other features ship one by one after launch.
 | V1-8 | Launch check | full test on the preview (https://benin-life.vercel.app), balance pass, deploy notes, then hand the user v1 and wait for OK. |
 
 ## After v1 (one by one)
+**First after v1: real Benin landmarks** (docs/LANDMARKS.md — ShopRite/Benin City Mall, Kada Plaza, Mama Ebo, Ogba Zoo, stadium, Emotan Statue, hotels, GRA lounges, fun parks).
 PvP robbery + police/jail/bail, loans + esusu (LAPO hook), farming at Iguobazuwa, Babalawo charms, more careers + hustles (agbero, Yahoo/EFCC), buy mode + furniture, Paystack top-ups, DMs, airport, skills/feelings/wishes/perks, Terms/Privacy pages.
 
 ## Preview
