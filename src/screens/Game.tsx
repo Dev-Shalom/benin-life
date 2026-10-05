@@ -8,6 +8,7 @@ import { useGameClock } from '../lib/clock';
 import { randomGreeting } from '../lib/pidgin';
 import { usePrefs } from '../lib/prefs';
 import { useCatalog } from '../state/catalog';
+import { useChat, useChatLive } from '../state/chat';
 import { useGame } from '../state/game';
 import { useUi } from '../state/ui';
 import { Icon, LoadingScreen, toast } from '../ui';
@@ -89,6 +90,9 @@ export default function Game() {
   const p = state?.profile;
   const atHome = Boolean(p && !state?.travel && p.location_id === p.home_location_id);
   const showHome = atHome && !mapOpen;
+  // V1-6: stay subscribed to the chat of the place you are at (unread dot while the sheet is closed).
+  useChatLive(state && !state.travel ? state.location.id : null, p?.id ?? null);
+  const chatUnread = useChat((s) => s.unread);
 
   // A fresh game screen (e.g. after logging out and in again) starts clean: no sheet or map left
   // open from the previous session. The UI store outlives the screen.
@@ -219,6 +223,12 @@ export default function Game() {
       <div className="game__bottom">
         <div className="game__banners">
           <StatusBanners state={state} status={status} />
+          {!clean && !state.travel && chatUnread > 0 && (
+            <button type="button" className="chat-chip" onClick={() => select(here.id, 'chat')}
+              aria-label={`${chatUnread} new chat message${chatUnread === 1 ? '' : 's'} here. Open chat`}>
+              <span className="chat-chip__dot" aria-hidden /> <Icon name="chat" size={15} /> {chatUnread > 9 ? '9+' : chatUnread} new in chat
+            </button>
+          )}
           {!clean && !state.travel && !showHome && (
             <button type="button" className="where-chip" onClick={() => select(here.id)}>
               <span className="where-chip__dot" />

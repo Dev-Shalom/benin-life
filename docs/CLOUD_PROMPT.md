@@ -9,7 +9,8 @@ This file is kept current after every step. The detailed live status is the STAT
   - Phase R redesign R1–R6: light Lagos Life-style UI, English copy (Pidgin only in street moments, Nepo says "Dad"), 3D characters with presets and face shapes, 5-step creator (Look → Personality → Dream → Birth lottery → Home), 3D home dollhouse, new HUD + dock (Home · Buy · Map · Phone), phone with apps, Sim sheet, Bladder need, 3D Benin City map (2D map only as weak-network fallback), full test pass.
   - V1-3 jobs that pay (6 career tracks, Bronze Tech Hub), V1-4 shops + Bag + ChopNow + weekly rent (on).
 - **Done:** V1-5 Bank (Bronze Bank, PoS, transfers, history).
-- **Running:** V1-6 chat per location.
+- **Done:** V1-6 chat per location.
+- **Running:** V1-7 admin page.
 - **Next:** V1-7 admin page (`/admin`, edit every config value + tables, players) → V1-8 launch check.
 - **After v1 (one by one):** PvP robbery + police/jail, loans/esusu, farming, Babalawo, more careers + hustles, buy mode/furniture, Paystack top-ups, DMs, airport, skills/feelings/wishes/perks, Terms/Privacy.
 

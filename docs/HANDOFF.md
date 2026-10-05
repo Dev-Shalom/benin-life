@@ -151,4 +151,5 @@ Draft the Terms of Service and Privacy Policy pages (approved by the user; the s
 - [done] User decision (2026-10-05 evening): finish v1 tonight; keep ALL default values (laptop price, rent penalty, pay table, no firing, instant job switch, instant ChopNow, etc.). The user will tune everything in the admin dashboard before announcing.
 - [done] User asked for real top-tier Benin landmarks; researched and saved in docs/LANDMARKS.md (first step after v1; brand-name decision pending).
 - [done] V1-5 Bank: migration 20261005000900_bank.sql (deposit/withdraw at Bronze Bank 08–16, PoS 1.5% min ₦100, transfers ₦50 fee, limits, history), bank_test.sql, BankPanel, PosPanel, phone Bank app, night 'Bank your cash' tip, docs/BANK.md.
-- [running] V1-6 Chat
+- [done] V1-6 Chat: migration 20261005001000_chat.sql (per-location chat with RLS = current place, realtime, profanity filter, rate limits, report/auto-hide, block, 48 h retention, admin hide, chat_muted_until), chat_test.sql, ChatPanel, unread chip, phone Messages shortcut (DMs later), blocked list, docs/CHAT.md.
+- [running] V1-7 Admin page

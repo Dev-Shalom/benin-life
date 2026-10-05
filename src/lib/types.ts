@@ -644,3 +644,29 @@ export interface TransferResult {
   sent_today: number;
   left_today: number;
 }
+
+// ---- V1-6: location chat (docs/CHAT.md) ----
+// Server: supabase/migrations/20261005001000_chat.sql. Wrappers: src/api/chat.ts, live state: src/state/chat.ts.
+
+/** A chat message (chat_recent / chat_send rows; realtime INSERT rows lack `avatar` and `mine`). */
+export interface ChatMessage {
+  id: number;
+  location_id: string;
+  user_id: string;
+  username: string;
+  body: string;
+  created_at: string;
+  avatar?: AvatarConfig | null;
+  mine?: boolean;
+}
+
+/** `chat_send()` result. */
+export type ChatSendResult = ChatMessage & { message: string; masked: boolean };
+
+/** A row of `chat_blocked()`. */
+export interface BlockedPlayer {
+  id: string;
+  username: string;
+  avatar: AvatarConfig | null;
+  created_at: string;
+}

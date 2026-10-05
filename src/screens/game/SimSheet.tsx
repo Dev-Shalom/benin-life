@@ -4,14 +4,16 @@
 // The Profile turntable is the only live 3D view while this sheet is open: Game suspends the 3D home.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AvatarPortrait, AvatarStage } from '../../art/avatar3d';
+import { AvatarPortrait, AvatarStage, migrateAvatar } from '../../art/avatar3d';
+import { chatBlocked, chatUnblock } from '../../api/chat';
 import { rpc, errorMessage } from '../../lib/api';
 import { naira, titleCase } from '../../lib/format';
 import { moodOf, needValue } from '../../lib/mood';
 import { HUD_NEEDS, NEED_META, ORIGIN_UI, P, WEEKDAYS, originCopy, type NeedKey } from '../../lib/pidgin';
 import { usePrefs } from '../../lib/prefs';
-import type { AvatarConfig, GameState } from '../../lib/types';
+import type { AvatarConfig, BlockedPlayer, GameState } from '../../lib/types';
 import { useCatalog } from '../../state/catalog';
+import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
 import { useUi, type SimTab } from '../../state/ui';
 import { Button, EmptyState, Sheet, Switch, Tabs, toast } from '../../ui';
@@ -283,10 +285,59 @@ function SkillsTab() {
 
 function PeopleTab() {
   return (
-    <div className="sim-tab">
+    <div className="sim-tab stack">
       <EmptyState icon="people" title="Nobody in your circle yet"
         body="Friends, neighbours, colleagues and rivals will show up here with how close you are. Relationships arrive in the next update." />
+      <BlockedList />
     </div>
+  );
+}
+
+/** V1-6: players you blocked in chat, with Unblock. */
+function BlockedList() {
+  const [rows, setRows] = useState<BlockedPlayer[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    chatBlocked()
+      .then((r) => alive && setRows(r ?? []))
+      .catch(() => alive && setRows([]));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const unblock = async (b: BlockedPlayer) => {
+    setBusy(b.id);
+    try {
+      const r = await chatUnblock(b.id);
+      toast(r.message, 'good');
+      setRows((x) => (x ?? []).filter((y) => y.id !== b.id));
+      void useChat.getState().reload();
+    } catch (e) {
+      toast(errorMessage(e), 'bad');
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <section className="sim-card">
+      <h4 className="sim-card__title">Blocked in chat</h4>
+      {!rows ? (
+        <div className="panel-skel"><span /></div>
+      ) : rows.length === 0 ? (
+        <p className="muted" style={{ fontSize: 13 }}>Nobody. To block someone, tap their message in a chat.</p>
+      ) : (
+        <div className="blocked-list">
+          {rows.map((b) => (
+            <div key={b.id} className="blocked-row">
+              <span className="blocked-row__face">{b.avatar && <AvatarPortrait config={migrateAvatar(b.avatar)} size={36} />}</span>
+              <b className="grow">@{b.username}</b>
+              <Button size="sm" variant="ghost" loading={busy === b.id} onClick={() => void unblock(b)}>Unblock</Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

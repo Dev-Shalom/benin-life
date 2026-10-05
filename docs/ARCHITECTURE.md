@@ -91,8 +91,9 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 - V1-3 (`docs/CAREERS.md`): `career_tracks` (id, name, emoji, category, location_ids, description, skill, sort, active) and `career_levels` (track_id, level, title, pay_per_shift, shift_game_minutes, energy_cost, effects, xp_per_shift, xp_to_next, requirements, perks) — select for anon+authenticated. `profiles` adds `job_started_at`, `job_shifts_in_level`, `job_total_shifts`, `job_shift_day`, `job_shifts_today`, `job_shift_ends_at/pay/xp/perf` (the running shift) and `career_best` jsonb. `get_my_state` gains a read-only `career` block (keep it, with `origin`, `creator` and `rent`, if you redefine it).
 - V1-4 (`docs/SHOPS.md`): `items` seeded (food, drinks, hygiene, health, phone, laptop ₦45,000, souvenir); `items.effects` = need deltas (use), `{"boost":{"<activity>":{…}}}` (used up by that activity) or `{}` (keep). 13 more locations got the `shop` action. `get_my_state` gains a read-only `inventory` block and `rent.owed_sleep_pct` (keep both, with `origin`, `creator`, `rent`, `career`, if you redefine it). `do_activity` redefined (boost items, rent penalty). Trigger `game_config_rent_switch` rolls overdue rent days forward when `rent.enabled` goes false → true. **`rent.enabled` is true since V1-4.**
 - V1-5 (`docs/BANK.md`): no new tables. Config categories `bank` and `pos`; index `ledger_transfer_out_idx`. Street robbery still takes cash only, so the bank is the safe place.
+- V1-6 (`docs/CHAT.md`): `chat_messages` (id, location_id, user_id, username snapshot, body, created_at, hidden), `chat_reports`, `chat_blocks`, `chat_banned_words` (admin-editable profanity list). Clients may select `chat_messages` (RLS: not hidden, at the caller's current `profiles.location_id`, author not blocked by the caller) and their own `chat_blocks`; no client writes. `profiles` adds `chat_muted_until`. Config category `chat`. The Chat tab renders at every location without a `chat` action.
 - `origin_tiers` (P1-ORIGIN: id text pk, name, tagline, welcome, chance_key → game_config key of its roll %, is_default (exactly one), sort, perks jsonb) — select for anon+authenticated. See `docs/ORIGIN.md`.
-- Realtime publication `supabase_realtime`: profiles, events, game_config (+ chat tables by P2-SOCIAL).
+- Realtime publication `supabase_realtime`: profiles, events, game_config, chat_messages (V1-6; the client subscribes to INSERT with `location_id=eq.<current place>`, one channel at a time).
 
 ### Core RPCs (P1-DB)
 | RPC | Args | Returns |
@@ -122,6 +123,9 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 | `bank_info` / `bank_history` / `bank_recipient` | – / p_limit / p_username | balances, hours, PoS charge, transfer limits, places (read) / ledger with friendly labels (read) / check a username (V1-5) |
 | `bank_deposit` / `bank_withdraw` | p_amount | free, at a place with `bank` (Bronze Bank), banking hours `bank.open_hour`–`bank.close_hour` (V1-5) |
 | `pos_cashout` / `pos_deposit` | p_amount | any hour at a place with `pos`; charge `pos.fee_pct` (min `pos.fee_min`, rounded up to ₦10) paid on top, ledger `pos_fee` (V1-5) |
+| `chat_send` / `chat_recent` | p_body / p_location, p_limit | send at your current place (rate limit, burst, duplicate, new-account wait, profanity mask, lazy retention) / last messages there, oldest first (V1-6) |
+| `chat_report` / `chat_block` / `chat_unblock` / `chat_blocked` | p_message_id, p_reason / p_user / p_user / – | report (auto-hide after `chat.report_hide_count`) / one-way block lists (V1-6) |
+| `admin_chat_hide` | p_message_id, p_hidden | admin only, logged in `admin_audit` (V1-6) |
 | `bank_transfer` | p_username, p_amount, p_note | bank→bank to another player from anywhere; fee, daily amount/count limits, cooldown, new-account wait; ledger `transfer_out`/`transfer_fee`/`transfer_in`, events to both (V1-5) |
 
 Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location text, p_mode text, p_traffic numeric) returns jsonb` (P1-DB). P2-CRIME may `create or replace` it with a richer version **keeping the signature**.

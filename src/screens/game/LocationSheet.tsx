@@ -6,6 +6,7 @@ import { districtName } from '../../lib/format';
 import { P, riskLabel } from '../../lib/pidgin';
 import type { GameState, Location, PanelId, PublicPlayer } from '../../lib/types';
 import { hasPanel, PANEL_LABELS } from '../../panels/registry';
+import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { Button, Icon, Sheet, Spinner, Tabs } from '../../ui';
@@ -70,6 +71,7 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
     return want && tabs.includes(want) ? want : (tabs[0] ?? null);
   });
   const current = tab && tabs.includes(tab) ? tab : (tabs[0] ?? null);
+  const chatUnread = useChat((s) => s.unread);
 
   if (!here) {
     // Only list what a player can actually do there today (jobs, shops... appear as they ship).
@@ -100,7 +102,7 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
       {tabs.length > 0 ? (
         <>
           <Tabs value={current ?? ''} onChange={(id) => setTab(id as PanelId)}
-            tabs={tabs.map((id) => ({ id, label: PANEL_LABELS[id] }))} className="loc-tabs" />
+            tabs={tabs.map((id) => ({ id, label: PANEL_LABELS[id], badge: id === 'chat' && chatUnread > 0 ? (chatUnread > 9 ? '9+' : chatUnread) : null }))} className="loc-tabs" />
           <div className="loc-panel">
             {current && <PanelHost key={current} id={current} location={loc} close={close} />}
           </div>

@@ -1,12 +1,14 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
 // Built: Ride (destination list -> the existing travel picker), Jobs (V1-3), ChopNow + Houses (V1-4, lazy),
-// Bank (V1-5, lazy: transfers, history, where to cash in/out), Wallet, Alerts, Settings (Sim sheet). Everything else opens a "Coming soon" screen.
+// Bank (V1-5, lazy: transfers, history, where to cash in/out), Messages (V1-6: shortcut to the location chat;
+// private messages later), Wallet, Alerts, Settings (Sim sheet). Everything else opens a "Coming soon" screen.
 // Esc closes the phone.
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { clockTime, districtName } from '../../lib/format';
 import { WEEKDAYS } from '../../lib/pidgin';
 import type { GameClock, GameState, Location } from '../../lib/types';
+import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { Button, Icon, usePresence } from '../../ui';
@@ -134,6 +136,34 @@ function JobsApp({ state, onGo }: { state: GameState; onGo: (id: string) => void
   );
 }
 
+/** V1-6: location chat shortcut; private messages (DMs) come after v1. */
+function MessagesApp({ state, onChat }: { state: GameState; onChat: () => void }) {
+  const unread = useChat((s) => s.unread);
+  const byId = useGame((s) => s.locationsById);
+  const here = byId[state.location.id] ?? state.location;
+  const atHome = state.profile.location_id === state.profile.home_location_id;
+  return (
+    <div className="phone-app__body messages-app">
+      {state.travel ? (
+        <p className="phone-app__lead">You're on the road. You can chat with the people at your next stop when you arrive.</p>
+      ) : (
+        <>
+          <p className="phone-app__lead">Every place in Benin has its own chat. Talk to the people around you right now.</p>
+          <Button variant="green" icon="chat" block onClick={onChat}>
+            {atHome ? 'Chat with your neighbours' : `Chat at ${here.name}`}{unread > 0 ? ` · ${unread > 9 ? '9+' : unread} new` : ''}
+          </Button>
+        </>
+      )}
+      <div className="phone-soon" style={{ paddingTop: 8 }}>
+        <span className="phone-soon__icon" style={{ background: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)' }} aria-hidden>✉️</span>
+        <h3>Private messages</h3>
+        <p>One-to-one chats with friends and the people you meet around town.</p>
+        <span className="soon-pill soon-pill--lg">Coming soon</span>
+      </div>
+    </div>
+  );
+}
+
 function ComingSoon({ app }: { app: App }) {
   return (
     <div className="phone-soon">
@@ -154,6 +184,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const select = useUi((s) => s.select);
   const setMapOpen = useUi((s) => s.setMapOpen);
   const unread = useGame((s) => s.unread);
+  const chatUnread = useChat((s) => s.unread);
   const events = useGame((s) => s.events);
   const open = overlay === 'phone';
   const { mounted, closing } = usePresence(open, 200);
@@ -186,6 +217,10 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
     close();
     setMapOpen(true);
     select(id, 'jobs');
+  };
+  const openChat = () => {
+    close();
+    select(state.location.id, 'chat');
   };
   const app = APPS.find((a) => a.id === screen);
   const latest = events[0];
@@ -225,6 +260,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                     <span className="app-icon__tile" style={{ background: a.bg }} aria-hidden>
                       {a.emoji}
                       {a.id === 'alerts' && unread > 0 && <span className="app-icon__badge">{unread > 99 ? '99+' : unread}</span>}
+                      {a.id === 'messages' && chatUnread > 0 && <span className="app-icon__badge">{chatUnread > 9 ? '9+' : chatUnread}</span>}
                       {a.id === 'houses' && (state.rent?.owed ?? 0) > 0 && <span className="app-icon__badge">!</span>}
                     </span>
                     <span className="app-icon__name">{a.name}</span>
@@ -243,6 +279,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               </div>
               {app.id === 'ride' ? <RideApp state={state} onPick={pickRide} />
                 : app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
+                : app.id === 'messages' ? <MessagesApp state={state} onChat={openChat} />
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
                   : app.id === 'food' || app.id === 'houses' || app.id === 'bank' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
