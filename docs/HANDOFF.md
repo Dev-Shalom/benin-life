@@ -152,4 +152,5 @@ Draft the Terms of Service and Privacy Policy pages (approved by the user; the s
 - [done] User asked for real top-tier Benin landmarks; researched and saved in docs/LANDMARKS.md (first step after v1; brand-name decision pending).
 - [done] V1-5 Bank: migration 20261005000900_bank.sql (deposit/withdraw at Bronze Bank 08–16, PoS 1.5% min ₦100, transfers ₦50 fee, limits, history), bank_test.sql, BankPanel, PosPanel, phone Bank app, night 'Bank your cash' tip, docs/BANK.md.
 - [done] V1-6 Chat: migration 20261005001000_chat.sql (per-location chat with RLS = current place, realtime, profanity filter, rate limits, report/auto-hide, block, 48 h retention, admin hide, chat_muted_until), chat_test.sql, ChatPanel, unread chip, phone Messages shortcut (DMs later), blocked list, docs/CHAT.md.
-- [running] V1-7 Admin page
+- [done] V1-7 Admin page: migration 20261005001100_admin.sql (config list/set/revert with audit, whitelisted table upserts, players: grant/ban/mute/admin/origin, stats, audit, chat reports, admin_claim with admin.bootstrap_emails; admin.* config hidden from players), admin_test.sql, src/admin/* (Overview, Settings, Content, Players, Chat, Audit), docs/ADMIN.md. User must claim admin on the live site soon after deploy, then clear the owner list.
+- [running] V1-8 Launch check

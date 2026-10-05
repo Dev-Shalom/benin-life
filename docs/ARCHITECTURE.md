@@ -25,6 +25,8 @@ supabase/migrations/
   20261005000700_careers.sql            V1-3 (career tracks/levels, bronze_tech_hub, jobs RPCs — docs/CAREERS.md)
   20261005000800_shops.sql              V1-4 (items, shops, Bag, ChopNow, rent ON + pay_rent — docs/SHOPS.md)
   20261005000900_bank.sql               V1-5 (bank counter, PoS, phone transfers, money history — docs/BANK.md)
+  20261005001000_chat.sql               V1-6 (location chat, reports, blocks — docs/CHAT.md)
+  20261005001100_admin.sql              V1-7 (admin RPCs, owner claim, admin.* config hidden — docs/ADMIN.md)
   20261004001000_economy.sql            P2-ECON
   20261004002000_finance_farm_health.sql P2-FIN
   20261004003000_crime_police.sql       P2-CRIME
@@ -55,7 +57,7 @@ src/panels/{Police,Rob,Crimes}Panel.tsx                          P2-CRIME
 src/panels/{Chat,Messages,Profile}Panel.tsx                      P2-SOCIAL
 src/panels/{Wallet,Airport}Panel.tsx                             P2-PAY
 src/api/<system>.ts                     each P2 owner (typed RPC wrappers); src/api/creator.ts = R3a
-src/admin/                              P2-ADMIN (entry: src/admin/AdminApp.tsx default export)
+src/admin/                              V1-7 (entry: src/admin/AdminApp.tsx default export, lazy chunk; api.ts, parts.tsx, util.ts, one file per section, admin.css — docs/ADMIN.md)
 ```
 Panels are discovered with `import.meta.glob`, so a missing panel file never breaks the build.
 
@@ -80,7 +82,8 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 - `profiles` (id uuid pk → auth.users, username unique, gender, avatar jsonb, is_admin, banned, cash bigint, bank bigint, hunger/energy/hygiene/fun/social/health/stress numeric, needs_updated_at, location_id → locations, home_location_id, housing_id text, job_id text, job_level int, job_xp int, street_cred int, wanted int, travel_to, travel_mode, travel_started_at, travel_arrives_at, busy_until, busy_label, busy_started_at (P1-TIME), jailed_until, jail_reason, hospitalized_until, protected_until, charm_strength numeric 0–1, charm_until, last_seen, created_at; P1-ORIGIN adds origin text → origin_tiers default 'lapo', allowance_claimed_day int)
 - `locations` (id text pk, name, district, scene, blurb, risk numeric 0–1, night_risk_mult, cctv bool, keke_ok bool, congestion numeric, remote_km numeric, x, y numeric (map space 0–1000), actions text[], sort int)
 - `game_config` (key pk, value jsonb, category, label, description, kind, min, max, updated_at, updated_by)
-- `config_audit` (id, admin_id, key, old_value, new_value, created_at) — written by admin RPCs (P2-ADMIN)
+- `config_audit` (id, admin_id, key, old_value, new_value, created_at) — written by admin RPCs (V1-7; admin_id null = the game itself, e.g. origin.force_next consumed)
+- V1-7 (`docs/ADMIN.md`): `game_config` keys starting with `admin.` are hidden from players by RLS (`game_config_read` policy: `key not like 'admin.%'`); admins read them through `admin_config_list()`. New key `admin.bootstrap_emails`.
 - `ledger` (id bigserial, user_id, account, delta, balance_after, reason, meta jsonb, created_at)
 - `events` (id bigserial, user_id, kind, title, body, data jsonb, read bool, created_at)
 - `items` (id text pk, name, category, price bigint, description, effects jsonb, sold_at text[] (location ids), sellable bool, resale_pct numeric, icon text, sort int) — rows seeded by P2-ECON (P2-FIN may add seeds/charms)
@@ -126,6 +129,12 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 | `chat_send` / `chat_recent` | p_body / p_location, p_limit | send at your current place (rate limit, burst, duplicate, new-account wait, profanity mask, lazy retention) / last messages there, oldest first (V1-6) |
 | `chat_report` / `chat_block` / `chat_unblock` / `chat_blocked` | p_message_id, p_reason / p_user / p_user / – | report (auto-hide after `chat.report_hide_count`) / one-way block lists (V1-6) |
 | `admin_chat_hide` | p_message_id, p_hidden | admin only, logged in `admin_audit` (V1-6) |
+| `admin_config_list` / `admin_config_set` / `admin_config_set_many` / `admin_config_revert` | – / p_key, p_value jsonb / p_changes jsonb / p_audit_id | all config rows + metadata + previous value / validated by kind + min/max, config triggers still run, `config_audit` (V1-7) |
+| `admin_table_rows` / `admin_row_upsert` | p_table / p_table, p_row jsonb | whitelisted tables + columns + types; update or insert (where allowed), soft-disable via `active`; `admin_audit` (V1-7) |
+| `admin_players` / `admin_player_detail` | p_search, p_limit, p_offset / p_id | list ({total, rows}) / profile + email + recent ledger + bag + admin history (V1-7) |
+| `admin_grant_money` / `admin_ban` / `admin_mute` / `admin_set_admin` | p_id + p_account, p_delta, p_reason / p_banned, p_reason / p_minutes / p_is_admin | ledger `admin_grant` via `bl_add_money` / can't ban yourself / 0 = unmute / last-admin guard; all audited (V1-7) |
+| `admin_stats` / `admin_audit_list` / `admin_chat_reports` | – / p_limit / p_include_hidden | dashboard numbers (today = WAT midnight) / config + admin audit merged, newest first / reported messages (V1-7) |
+| `admin_claim` | – | caller becomes admin if their auth email is in `admin.bootstrap_emails` (audited) — the only admin RPC open to non-admins (V1-7) |
 | `bank_transfer` | p_username, p_amount, p_note | bank→bank to another player from anywhere; fee, daily amount/count limits, cooldown, new-account wait; ledger `transfer_out`/`transfer_fee`/`transfer_in`, events to both (V1-5) |
 
 Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location text, p_mode text, p_traffic numeric) returns jsonb` (P1-DB). P2-CRIME may `create or replace` it with a richer version **keeping the signature**.

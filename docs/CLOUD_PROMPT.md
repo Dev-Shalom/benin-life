@@ -10,7 +10,8 @@ This file is kept current after every step. The detailed live status is the STAT
   - V1-3 jobs that pay (6 career tracks, Bronze Tech Hub), V1-4 shops + Bag + ChopNow + weekly rent (on).
 - **Done:** V1-5 Bank (Bronze Bank, PoS, transfers, history).
 - **Done:** V1-6 chat per location.
-- **Running:** V1-7 admin page.
+- **Done:** V1-7 admin page (/admin; owner claims admin with the listed emails).
+- **Running:** V1-8 launch check.
 - **Next:** V1-7 admin page (`/admin`, edit every config value + tables, players) → V1-8 launch check.
 - **After v1 (one by one):** PvP robbery + police/jail, loans/esusu, farming, Babalawo, more careers + hustles, buy mode/furniture, Paystack top-ups, DMs, airport, skills/feelings/wishes/perks, Terms/Privacy.
 
