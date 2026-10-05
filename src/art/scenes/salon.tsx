@@ -27,7 +27,7 @@ function StyleHead({ x, y, kind, label }: { x: number; y: number; kind: number; 
 }
 
 export default function SalonScene({ night }: { night: boolean }) {
-  const skyHole = 'M0 0 H800 V60 H0 Z';
+  const skyHole = `M0 0 H800 V60 H0 Z M66 140 H386 V${FL} H66 Z M426 140 H736 V${FL} H426 Z`;
   const tube = night ? '#eaf8ff' : '#f6f2ea';
   return (
     <svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" role="img" aria-label="Fresh Cut barbing and salon">
@@ -53,6 +53,10 @@ export default function SalonScene({ night }: { night: boolean }) {
           <stop offset="0" stopColor="#c46a3c" />
           <stop offset="1" stopColor="#8a3a1e" />
         </linearGradient>
+        <linearGradient id={`${P}-spill`} gradientUnits="userSpaceOnUse" x1="0" y1={FL} x2="0" y2="450">
+          <stop offset="0" stopColor="#cfefff" stopOpacity="0.2" />
+          <stop offset="1" stopColor="#cfefff" stopOpacity="0" />
+        </linearGradient>
         <pattern id={`${P}-tilegrid`} patternUnits="userSpaceOnUse" width="16" height="16">
           <path d="M0 0 H16 M0 0 V16" stroke="#fff" strokeWidth="1" opacity="0.5" />
         </pattern>
@@ -64,6 +68,7 @@ export default function SalonScene({ night }: { night: boolean }) {
 
       {/* building front */}
       <rect x="40" y="60" width="720" height={FL - 60} fill={`url(#${P}-front)`} />
+      {night && <rect x="40" y="60" width="720" height={FL - 60} fill="#4a3a6a" opacity="0.45" />}
       <rect x="40" y="60" width="720" height="8" fill="#b9a088" />
 
       {/* signboard */}
@@ -217,16 +222,17 @@ export default function SalonScene({ night }: { night: boolean }) {
 
       {night && (
         <g>
-          <NightShade p={P} exclude={skyHole} feather={[20, 60]} />
+          <NightShade p={P} exclude={skyHole} />
           {/* fluorescent interiors */}
-          <rect x="66" y="140" width="320" height={FL - 140} fill="#d8f4ff" opacity="0.22" style={{ mixBlendMode: 'screen' }} />
-          <rect x="426" y="140" width="310" height={FL - 140} fill="#ffe0f0" opacity="0.2" style={{ mixBlendMode: 'screen' }} />
-          <Glow p={P} cx={190} cy={150} r={170} ry={110} kind="gc" o={0.55} />
-          <Glow p={P} cx={560} cy={150} r={170} ry={110} kind="gc" o={0.5} />
+          {/* interiors stay lit (excluded from shade) — just a cool fluorescent cast */}
+          <rect x="66" y="140" width="320" height={FL - 140} fill="#b8d8f0" opacity="0.25" style={{ mixBlendMode: 'multiply' }} />
+          <rect x="426" y="140" width="310" height={FL - 140} fill="#d8c8f0" opacity="0.25" style={{ mixBlendMode: 'multiply' }} />
+          <Glow p={P} cx={190} cy={146} r={120} ry={30} kind="gc" o={0.5} />
+          <Glow p={P} cx={560} cy={146} r={120} ry={30} kind="gc" o={0.5} />
           <rect x="150" y="142" width="80" height="4" rx="2" fill="#fff" />
           <rect x="520" y="142" width="80" height="4" rx="2" fill="#fff" />
           {/* light spill onto pavement */}
-          <path d={`M66 ${FL} L386 ${FL} L460 450 L0 450 Z M426 ${FL} L736 ${FL} L800 440 L400 450 Z`} fill="#cfefff" opacity="0.12" style={{ mixBlendMode: 'screen' }} />
+          <path d={`M66 ${FL} L386 ${FL} L460 450 L0 450 Z M426 ${FL} L736 ${FL} L800 440 L400 450 Z`} fill={`url(#${P}-spill)`} style={{ mixBlendMode: 'screen' }} />
           {/* backlit sign */}
           <Glow p={P} cx={400} cy={98} r={330} ry={50} kind="gc" o={0.3} />
           <text x="400" y="106" fontSize="30" fontFamily={SIGN_FONT} fill="#ffe36a" textAnchor="middle" letterSpacing="3">FRESH CUT</text>
