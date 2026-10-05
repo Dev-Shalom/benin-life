@@ -16,6 +16,7 @@
 | Room shell / furniture geometry / poses / day-night | `engine/room.ts`, `engine/furniture.ts`, `engine/poses.ts`, `engine/light.ts`, `engine/build.ts` |
 | Dev page | `/dev/home?l=flat&h=21.5&busy=bed` (dev server only) |
 | Preferences (mute, sound, music, lite map, clean screen) | `src/lib/prefs.ts` (localStorage, try/catch) |
+| Map view: 3D city / lite 2D map (R5) | `src/art/city3d/*`, `docs/CITY3D.md` |
 | Mood from needs, low-need tips | `src/lib/mood.ts` |
 | Cached activities + creator catalog | `src/state/catalog.ts` |
 
@@ -25,7 +26,7 @@
 - **Clean screen** hides the pill, chips, needs card and dock. Status banners stay. The button turns into "Show HUD".
 - **Bottom:** status banners (travel, busy ring, jail, hospital) and the place chip, then the needs card (cached `AvatarPortrait`, origin badge, 6 tiny bars; tap -> Sim sheet Needs) and the **dock: Home · Buy · Map · Phone** (unread alerts badge on Phone). Desktop puts needs, dock and the keyboard button on one row.
 - **Toasts** sit top-centre under the pill (`--hud-bottom` is measured by `TopPill`).
-- **Views:** at home (`location_id === home_location_id`, not travelling) the 3D home shows unless the player opened the map; everywhere else the 2D map (R5 replaces it with the 3D city). Arriving home switches back to the home view.
+- **Views:** at home (`location_id === home_location_id`, not travelling) the 3D home shows unless the player opened the map; everywhere else the map: the **3D city** (R5, `CityView`, see `docs/CITY3D.md`), with the 2D map only as the lite fallback. Only one of the two canvases is ever mounted. Arriving home switches back to the home view.
   - Home: at home -> home view; away -> map + the home location sheet (travel picker).
   - Buy: "Buy mode, coming soon" sheet (Phase 2 catalogue preview).
   - Map: the map; the location sheet works as before.
@@ -70,7 +71,7 @@ Tabs Profile / Needs / Goals / Skills / People / Career / Settings (`useUi().ope
 - Needs: the 6 needs with %, Health and Stress, "Feelings arrive soon", traits.
 - Goals: dream card (progress starts in Phase 2), origin card, wishes and perks previews.
 - Skills / People / Career: previews of the Phase 2 systems.
-- Settings: sound effects, music, **Lite map for weak network** (`prefs.liteMap`; R5 reads it together with `isSlowNetwork()`), notifications placeholder, account email, admin button, log out, 18+ note.
+- Settings: sound effects, music, **Lite map for weak network** (`prefs.liteMap`; `CityView` reads it together with `isSlowNetwork()`), notifications placeholder, account email, admin button, log out, 18+ note.
 
 ## Phone
 Lock screen (game time, weekday, latest unread alert) -> tap or swipe up -> app grid. Built apps: **KekeGo** (Ride: places by distance -> map + the location sheet's travel picker), **Wallet** (Wallet panel), **Alerts** (events list; marks read), **Bronze Bank** (balances), **Settings** (Sim sheet). Jobs, Messages, Contacts, ChopNow (food), Houses, Cars, Health, Invest, EdoBet, Family, Hustle, Edo Gov and Police open a "Coming soon" screen. The home bar goes back to the grid; Esc or "Close" closes the phone.

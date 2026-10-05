@@ -144,5 +144,5 @@ Draft the Terms of Service and Privacy Policy pages (approved by the user; the s
 - [done] R4 3D home (5 layouts), new HUD + dock, Sim sheet (7 tabs), phone (18 fictional apps), Bladder need (migration 20261005000500_bladder.sql + bladder_test.sql). Verified on 3 accounts at 390 and 1280. Notes: sky snaps (no fade) at dawn/dusk; T and E open the same sheet; clock vs activity speed are separate config keys.
 - [done] User asked to merge: main fast-forwarded to the work branch (5e3db8a). From now on push each verified step to both claude/kind-bell-e9reb8 and main (Vercel deploys main).
 - [done] User approved the V1 launch plan: docs/V1_PLAN.md (R5 → R6 → jobs → shops+rent → bank → chat → admin → launch check). Phase 2 items not in V1 ship one by one after launch.
-- [running] R5 3D Benin city map (V1-1)
-- [todo] R6 demo to the user; wait for their OK, then Phase 2
+- [done] R5 3D Benin city map (V1-1): src/art/city3d/*, docs/CITY3D.md. ~17 draw calls, ~100k tris, 20 kB gz chunk; 2D map is a lazy fallback (Data Saver/2g/Lite pref/no WebGL). Open: Neighbours chip needs per-place player counts (Phase 2 social); wish chips cover part of the map on phones (look at in R6); real low-end phone check needed.
+- [running] R6 full test (V1-2)

@@ -98,14 +98,15 @@ const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
 /** "cover" on phones: the short side shows about as much of the city as the 2D map's cover zoom. */
-export function coverZoom(w: number, h: number): number {
+function coverZoom(w: number, h: number): number {
   const aspect = w / Math.max(1, h);
   return clamp(aspect < 1 ? 100 * aspect * 0.92 : 100 / aspect, 18, 70);
 }
 
 /** Filters survive the canvas being unmounted (suspend) within a session. */
 let savedFilters: CityFilter[] = [];
-let savedView: { tx: number; tz: number; zoom: number; at: number } | null = null;
+/** Where the camera was when the canvas last unmounted (suspend, or leaving the map view). */
+let savedView: { tx: number; tz: number; zoom: number } | null = null;
 
 interface Controller {
   groundAt(cx: number, cy: number, out: Vector3): boolean;
@@ -516,7 +517,7 @@ function City(props: InnerProps) {
       labels.current.me = { x: mx, y: my };
     }
 
-    placeLabels(labels.current, ctl.current, size, v.zoom, { top: insetTop + (props.hideChrome ? 0 : 50), bottom: insetBottom });
+    placeLabels(labels.current, ctl.current, size, v.zoom, { top: insetTop + (props.hideChrome ? 0 : 50), bottom: insetBottom + (props.hideChrome ? 0 : 56) });
   });
 
   /* ---------- API ---------- */
@@ -543,12 +544,16 @@ function City(props: InnerProps) {
         };
       },
       bench(n = 60) {
+        // readPixels forces the GPU to finish, so the time covers the real draw work
         const ctx = gl.getContext();
+        const px = new Uint8Array(4);
         gl.render(scene, camera);
-        ctx.finish();
+        ctx.readPixels(0, 0, 1, 1, ctx.RGBA, ctx.UNSIGNED_BYTE, px);
         const s = performance.now();
-        for (let i = 0; i < n; i++) gl.render(scene, camera);
-        ctx.finish();
+        for (let i = 0; i < n; i++) {
+          gl.render(scene, camera);
+          ctx.readPixels(0, 0, 1, 1, ctx.RGBA, ctx.UNSIGNED_BYTE, px);
+        }
         return (performance.now() - s) / n;
       },
       flyTo(mx, my, zoom) {
@@ -563,7 +568,7 @@ function City(props: InnerProps) {
       },
     };
     onReady?.(api);
-    if (import.meta.env.DEV) Object.assign(window, { __city: api, __cityView: view.current });
+    if (import.meta.env.DEV) Object.assign(window, { __city: api, __cityView: view.current, __cityGl: { gl, scene, camera } });
   }, [gl, scene, camera, layout, onReady, byId, size, view, invalidate]);
 
   return (
@@ -691,9 +696,10 @@ const Labels = memo(function Labels(props: {
   night: boolean;
   labels: MutableRefObject<LabelState>;
   onPick: (id: string) => void;
+  onItems: (items: LabelItem[]) => void;
   dragMoved: MutableRefObject<boolean>;
 }) {
-  const { locations, currentId, selectedId, travelTo, crowd, filters, night, labels, onPick, dragMoved } = props;
+  const { locations, currentId, selectedId, travelTo, crowd, filters, night, labels, onPick, onItems, dragMoved } = props;
   // priority order for the greedy placement
   const items = useMemo(() => {
     const out: LabelItem[] = [];
@@ -712,10 +718,7 @@ const Labels = memo(function Labels(props: {
     for (const d of DISTRICT_NAMES) out.push({ key: 'd:' + d.t, kind: 'district', x: d.x, y: d.y, prio: 10, tier: 2, must: false });
     return out.sort((a, b) => a.prio - b.prio);
   }, [locations, currentId, selectedId, travelTo, crowd, filters, night]);
-  useEffect(() => {
-    labels.current.items = items;
-    labels.current.sizes.clear();
-  }, [items, labels]);
+  useEffect(() => onItems(items), [items, onItems]);
 
   const reg = (key: string) => (el: HTMLElement | null) => {
     if (el) labels.current.els.set(key, el);
@@ -798,29 +801,33 @@ export default function CityScene(props: CitySceneProps) {
   const labels = useRef<LabelState>({ els: new Map(), sizes: new Map(), items: [], state: new Map(), me: null });
   const dragMoved = useRef(false);
   const onSelectRef = useRef(onSelect);
-  onSelectRef.current = onSelect;
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
+  const onItems = useCallback((items: LabelItem[]) => {
+    labels.current.items = items;
+    labels.current.sizes.clear();
+  }, []);
   const [filters, setFilters] = useState<CityFilter[]>(props.initialFilters ?? savedFilters);
   const motion = useMemo(() => !reduceMotion(), []);
   const night = cityLight(hour).dark > 0.45;
   const byId = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
 
-  // initial camera: the dev focus, the last view (if the canvas was only unmounted for a moment),
-  // or "cover" on the player
-  const view = useRef<View>(null as unknown as View);
-  if (!view.current) {
+  // initial camera: the dev focus, the last view (this session), or "cover" on the player
+  const [initialView] = useState<View>(() => {
     const w = typeof window !== 'undefined' ? window.innerWidth : 390;
     const h = typeof window !== 'undefined' ? window.innerHeight : 844;
     const cur = (currentId && byId.get(currentId)) || (travel && byId.get(travel.from)) || null;
-    const recent = savedView && performance.now() - savedView.at < 5 * 60_000 ? savedView : null;
     const init = props.initial
       ? { tx: W(props.initial.x), tz: W(props.initial.y), zoom: props.initial.zoom }
-      : recent ?? { tx: cur ? W(cur.x) : 0, tz: cur ? W(cur.y) : 0, zoom: coverZoom(w, h) };
-    view.current = { ...init, anim: null, vx: 0, vz: 0, dragging: false, visible: true, dirty: true };
-  }
+      : savedView ?? { tx: cur ? W(cur.x) : 0, tz: cur ? W(cur.y) : 0, zoom: coverZoom(w, h) };
+    return { ...init, anim: null, vx: 0, vz: 0, dragging: false, visible: true, dirty: true };
+  });
+  const view = useRef<View>(initialView);
   useEffect(() => {
     const v = view.current;
     return () => {
-      savedView = { tx: v.tx, tz: v.tz, zoom: v.zoom, at: performance.now() };
+      savedView = { tx: v.tx, tz: v.tz, zoom: v.zoom };
     };
   }, []);
   useEffect(() => {
@@ -1119,6 +1126,7 @@ export default function CityScene(props: CitySceneProps) {
         night={night}
         labels={labels}
         onPick={onPick}
+        onItems={onItems}
         dragMoved={dragMoved}
       />
       {!props.hideChrome && (

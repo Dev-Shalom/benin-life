@@ -272,7 +272,7 @@ export function buildCity(L: CityLayout): CityMeshes {
 
   /* ---------- ground ---------- */
   {
-    const N = 96;
+    const N = 72;
     const span = 1200;
     const f = new Flat();
     const c = new Color();
@@ -696,7 +696,7 @@ function buildLandmarks(b: HomeBuilder) {
   }
 
   // --- UNIBEN gate on the Ugbowo road (campus to the east of the road)
-  at2(471, 128, -0.15);
+  at2(476, 128, Math.PI / 2 - 0.15);
   for (const z of [-0.55, 0.55]) {
     b.box(0.16, 0.75, 0.16, 0, 0, z, '#f2efe6');
     b.box(0.2, 0.08, 0.2, 0, 0.75, z, '#1f7a3f');
