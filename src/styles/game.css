@@ -2390,3 +2390,76 @@ kbd {
 .phone .alerts {
   margin: 0;
 }
+
+/* ---------- R5: map view (3D city / lite 2D map), see src/art/city3d/CityView.tsx ---------- */
+.city-view {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, #cfe5f1 0%, #dfe9d6 100%);
+}
+.game.is-night .city-view {
+  background: linear-gradient(180deg, #16203f 0%, #1d2a3a 100%);
+}
+.city-view__still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.city-view__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.lite-badge {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 8px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 6px;
+  border-radius: var(--r-pill);
+  background: #fff;
+  box-shadow: var(--e2), inset 0 0 0 1px var(--line);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.game.is-clean .lite-badge {
+  top: calc(var(--sat) + 10px);
+}
+.lite-badge__tag {
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--amber-100);
+  color: var(--amber-800);
+  font-weight: 750;
+}
+.lite-badge__note {
+  padding-right: 8px;
+  color: var(--muted);
+}
+.lite-badge__btn {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--primary);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.lite-badge__btn:active {
+  transform: scale(0.96);
+}
+.game:has(.lite-badge) .left-rail:not(.is-clean) {
+  top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 52px);
+}

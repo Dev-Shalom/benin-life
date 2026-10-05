@@ -1,0 +1,390 @@
+/* R5: 3D city overlay (labels, filter chips, controls). Loaded with the lazy city chunk. */
+.city3d {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: grab;
+}
+.city3d:active {
+  cursor: grabbing;
+}
+.city3d canvas {
+  display: block;
+}
+
+/* ---------- labels ---------- */
+.c3-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  font-family: var(--font-body);
+}
+.c3-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+.c3-label[data-s='hidden'] {
+  display: none;
+}
+.c3-pill,
+.c3-dot {
+  pointer-events: auto;
+  position: absolute;
+  left: 0;
+  top: 0;
+  border: 0;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+.c3-pill {
+  transform: translate(-50%, calc(-100% - 7px));
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 5px 11px 5px 8px;
+  border-radius: var(--r-pill);
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+  line-height: 18px;
+  box-shadow: 0 1px 2px rgba(17, 32, 56, 0.14), 0 4px 12px rgba(17, 32, 56, 0.14);
+  transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+}
+/* small stem from the pill to the spot on the ground */
+.c3-pill::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 2px;
+  height: 6px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 1px rgba(17, 32, 56, 0.25);
+}
+.c3-pill:active {
+  transform: translate(-50%, calc(-100% - 7px)) scale(0.96);
+}
+.c3-pill__emoji {
+  font-family: var(--font-emoji);
+  font-size: 14px;
+  line-height: 1;
+}
+.c3-pill__warn {
+  font-family: var(--font-emoji);
+  font-size: 12px;
+}
+.c3-pill__count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--blue-500);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 750;
+  display: inline-grid;
+  place-items: center;
+}
+.c3-pill__tag {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--green-600);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(10, 111, 64, 0.35);
+}
+.c3-pill__tag--dest {
+  background: var(--red-500);
+  box-shadow: 0 2px 8px rgba(195, 53, 42, 0.35);
+}
+.c3-dot {
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  font-family: var(--font-emoji);
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  box-shadow: 0 1px 2px rgba(17, 32, 56, 0.16), 0 3px 8px rgba(17, 32, 56, 0.14);
+}
+.c3-label[data-s='full'] .c3-dot,
+.c3-label[data-s='dot'] .c3-pill {
+  display: none;
+}
+
+.c3-place.is-current .c3-pill {
+  background: var(--green-600);
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(10, 111, 64, 0.3), 0 6px 16px rgba(10, 111, 64, 0.3);
+}
+.c3-place.is-current .c3-pill::after {
+  background: var(--green-600);
+}
+.c3-place.is-current .c3-pill__tag {
+  background: #fff;
+  color: var(--green-700);
+}
+.c3-place.is-selected .c3-pill {
+  background: var(--ink);
+  color: #fff;
+  transform: translate(-50%, calc(-100% - 7px)) scale(1.06);
+}
+.c3-place.is-selected .c3-pill::after {
+  background: var(--ink);
+}
+.c3-place.is-dest .c3-pill {
+  box-shadow: 0 0 0 2px var(--red-500), 0 4px 12px rgba(17, 32, 56, 0.14);
+}
+.c3-place.is-danger .c3-pill {
+  box-shadow: 0 0 0 2px #ff3b30, 0 0 18px rgba(255, 59, 48, 0.55);
+}
+.c3-place.is-match .c3-pill {
+  box-shadow: 0 0 0 2px var(--c3-f, var(--green-600)), 0 4px 14px rgba(17, 32, 56, 0.18);
+}
+.c3-place.is-match .c3-dot {
+  box-shadow: 0 0 0 2px var(--c3-f, var(--green-600)), 0 3px 8px rgba(17, 32, 56, 0.14);
+}
+.c3-place.is-dim .c3-pill,
+.c3-place.is-dim .c3-dot {
+  opacity: 0.5;
+}
+.c3-place.is-dim.is-current .c3-pill,
+.c3-place.is-dim.is-selected .c3-pill {
+  opacity: 1;
+}
+
+.c3-pill--me {
+  background: var(--green-600);
+  color: #fff;
+  font-size: 12px;
+  padding: 4px 10px 4px 8px;
+  transform: translate(-50%, calc(-100% - 26px));
+}
+.c3-pill--me::after {
+  display: none;
+}
+.c3-pill--soon {
+  background: linear-gradient(180deg, #ffd65a 0%, #f5b81e 100%);
+  color: #3d2a00;
+  font-weight: 750;
+  box-shadow: 0 1px 2px rgba(122, 79, 0, 0.25), 0 4px 12px rgba(122, 79, 0, 0.22);
+}
+.c3-pill--soon::after {
+  background: #f5b81e;
+}
+.c3-sign {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 9px 4px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  background: #1f7a3f;
+  color: #fff;
+  line-height: 1.1;
+  box-shadow: 0 2px 8px rgba(17, 32, 56, 0.25);
+  white-space: nowrap;
+}
+.c3-sign b {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.c3-sign small {
+  font-size: 9.5px;
+  opacity: 0.9;
+}
+.c3-district span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: rgba(70, 40, 20, 0.42);
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.city3d.is-night .c3-district span {
+  color: rgba(230, 230, 255, 0.4);
+  text-shadow: none;
+}
+
+/* ---------- filter chips (under the HUD pill) ---------- */
+.c3-top {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.game.is-clean .c3-top {
+  top: calc(var(--sat) + 10px);
+}
+.c3-chips {
+  pointer-events: auto;
+  display: flex;
+  gap: 4px;
+  max-width: calc(100% - 20px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 5px;
+  border-radius: var(--r-pill);
+  background: #fff;
+  box-shadow: var(--e2), inset 0 0 0 1px var(--line);
+  touch-action: pan-x;
+}
+.c3-chips::-webkit-scrollbar {
+  display: none;
+}
+.c3-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px 0 10px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.c3-chip > span:first-child {
+  font-family: var(--font-emoji);
+  font-size: 13px;
+}
+.c3-chip:active {
+  transform: scale(0.96);
+}
+@media (hover: hover) {
+  .c3-chip:hover {
+    background: var(--surface-2);
+  }
+}
+.c3-chip.is-on {
+  background: var(--c3-f, var(--ink));
+  color: #fff;
+}
+.c3-chip__n {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.28);
+  font-size: 11px;
+  font-weight: 750;
+  display: inline-grid;
+  place-items: center;
+}
+.c3-caption {
+  pointer-events: auto;
+  max-width: min(420px, calc(100% - 24px));
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  background: rgba(19, 26, 36, 0.82);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 550;
+  text-align: center;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.c3-caption.is-soon {
+  background: linear-gradient(180deg, #ffd65a 0%, #f5b81e 100%);
+  color: #3d2a00;
+  font-weight: 700;
+}
+/* make room for the chips: the wish chips on the left start under them */
+.game:has(.c3-top) .left-rail:not(.is-clean) {
+  top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 58px);
+}
+
+/* ---------- controls ---------- */
+.c3-ctrls {
+  position: absolute;
+  z-index: 3;
+  right: calc(12px + var(--sar, 0px));
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.c3-ctrl {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--e2), inset 0 0 0 1px var(--line);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 120ms var(--ease-out);
+}
+.c3-ctrl:active {
+  transform: scale(0.94);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c3-pill,
+  .c3-chip,
+  .c3-ctrl {
+    transition: none;
+  }
+}

@@ -2,7 +2,7 @@
 // and the travel route. Pins counter-scale with zoom so they stay thumb-sized on phones.
 import { memo, useMemo } from 'react';
 import type { Location } from '../../lib/types';
-import { PIN_META, r1, shortName, type LabelSide } from './mapGeo';
+import { PIN_META, isNightRisky, r1, shortName, type LabelSide } from './mapGeo';
 import { PIN_STYLE, PinGlyph, SCENES } from './pinIcons';
 
 const FONT = "'Figtree', 'Segoe UI', system-ui, -apple-system, sans-serif";
@@ -14,8 +14,7 @@ const PIN_D = `M0,0C-3,-6 -${BADGE_R},-14 -${BADGE_R},${BADGE_Y}A${BADGE_R},${BA
 /** Pin scale (map units) for a given zoom: pins grow only gently when you zoom in. */
 export const pinScaleFor = (zoom: number) => Math.min(2.4, Math.max(0.36, Math.pow(zoom, -0.72)));
 
-// Only the approved night danger zones (Upper Sakponba 1.65, Third East 1.5) cross this.
-export const isNightRisky = (l: Location) => l.risk * l.night_risk_mult >= 1.4;
+export { isNightRisky } from './mapGeo';
 
 type Box = [number, number, number, number];
 const overlap = (a: Box, b: Box) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];

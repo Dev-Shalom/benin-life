@@ -1,8 +1,9 @@
-// Game screen (R4): the 3D home when the player is at home, otherwise the city map (2D until R5).
+// Game screen (R4/R5): the 3D home when the player is at home, otherwise the 3D city map
+// (the 2D map only as the lite fallback, see src/art/city3d/CityView.tsx).
 // HUD: top pill, left rail, needs card, dock (Home · Buy · Map · Phone), status banners, toasts.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HomeView, activityGroup, homeLayoutFor, itemGroup, type FurnitureItem } from '../art/home3d';
-import { BeninMap } from '../art/map/BeninMap';
+import { CityView } from '../art/city3d';
 import { useGameClock } from '../lib/clock';
 import { randomGreeting } from '../lib/pidgin';
 import { usePrefs } from '../lib/prefs';
@@ -158,6 +159,9 @@ export default function Game() {
   // Another live 3D view is open (Sim sheet turntable / look editor): the home canvas steps aside.
   const suspendHome = (overlay === 'sim' && simTab === 'profile') || overlay === 'look';
   const coveredHome = Boolean(selectedId || panel || homePick || (overlay && !suspendHome));
+  // The city stays live under the location sheet (it sits over the lower half) but pauses under
+  // full-screen panels and overlays.
+  const coveredMap = Boolean(panel || (overlay && !suspendHome));
   const layout = homeLayoutFor(p.housing_id, here.scene);
   const dockActive: DockId | null = overlay === 'phone' ? 'phone' : overlay === 'buy' ? 'buy' : showHome ? 'home' : 'map';
   const hourF = clock.hour + clock.minute / 60;
@@ -186,13 +190,18 @@ export default function Game() {
             }
           />
         ) : (
-          <BeninMap
+          <CityView
             locations={locations.length ? locations : [state.location]}
             currentId={state.travel ? undefined : state.location.id}
             selectedId={selectedId ?? undefined}
             onSelect={(id) => select(id)}
             night={clock.is_night}
+            hour={hourF}
             travel={travel}
+            suspended={suspendHome}
+            paused={coveredMap}
+            insetTop={clean ? 70 : insets.top}
+            insetBottom={clean ? 40 : insets.bottom}
           />
         )}
       </div>

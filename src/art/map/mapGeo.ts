@@ -539,3 +539,7 @@ export function shortName(id: string, name: string): string {
   const cut = name.replace(/\s*\(.*\)\s*$/, '');
   return cut.length > 18 ? cut.slice(0, 17) + '…' : cut;
 }
+
+/** Night danger zones: only the approved ones (Upper Sakponba 1.65, Third East 1.5) cross 1.4.
+ *  Shared by the 2D map, the 3D city and the risk labels. */
+export const isNightRisky = (l: { risk: number; night_risk_mult: number }) => l.risk * l.night_risk_mult >= 1.4;

@@ -63,10 +63,10 @@ export class HomeBuilder {
   }
 
   /** Cylinder whose bottom centre sits at (x, y, z). */
-  cyl(rTop: number, rBot: number, h: number, x: number, y: number, z: number, color: string, opt: { seg?: number; rx?: number; rz?: number; layer?: Layer } = {}) {
+  cyl(rTop: number, rBot: number, h: number, x: number, y: number, z: number, color: string, opt: { seg?: number; rx?: number; ry?: number; rz?: number; layer?: Layer } = {}) {
     const g = new CylinderGeometry(rTop, rBot, h, opt.seg ?? 10, 1, false);
     g.translate(0, h / 2, 0);
-    this.push(g, color, opt.layer ?? 'solid', x, y, z, opt.rx, 0, opt.rz);
+    this.push(g, color, opt.layer ?? 'solid', x, y, z, opt.rx, opt.ry ?? 0, opt.rz);
   }
 
   /** Merge each layer into one geometry (null when empty). */

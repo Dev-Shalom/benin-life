@@ -17,6 +17,8 @@ const AdminRoute = lazy(() => import('./screens/AdminRoute'));
 // Dev-only gallery of the 3D avatars (not linked anywhere).
 const AvatarLab = lazy(() => import('./art/avatar3d/dev/AvatarLab'));
 const HomeLab = lazy(() => import('./art/home3d/dev/HomeLab'));
+// Dev-only 3D city close-ups (tree-shaken out of production builds).
+const CityLab = import.meta.env.DEV ? lazy(() => import('./art/city3d/dev/CityLab')) : null;
 
 function RequireSession({ children }: { children: ReactNode }) {
   const authReady = useGame((s) => s.authReady);
@@ -89,6 +91,7 @@ export default function App() {
           />
           <Route path="/dev/avatars" element={<AvatarLab />} />
           {import.meta.env.DEV && <Route path="/dev/home" element={<HomeLab />} /> /* 3D home without a session */}
+          {CityLab && <Route path="/dev/city" element={<CityLab />} /> /* 3D city without a session */}
           {import.meta.env.DEV && <Route path="/dev/create" element={<CreateSim />} /> /* creator without a session, for screenshots */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
