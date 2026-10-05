@@ -135,8 +135,8 @@ Run a full browser test, balance the numbers, write a deploy guide (Supabase clo
 - [done] Phase 0 and Phase 1, plus the Phase 1 demo fixes (see the tables above).
 - [done] The user's Phase 1 feedback is recorded in docs/FEEDBACK_PHASE1.md, and the Lagos Life references are in docs/references/lagos-life/.
 - [done] 2026-10-05: the user approved Phase R (everything goes 3D, a Lagos Life-style UI, deeper systems). The plan is in docs/REDESIGN_PLAN.md.
-- [running] **R1 Look and copy**: the agent was started 2026-10-05 and isn't committed yet. If the session died: check `git status` for R1's uncommitted changes in src/styles, src/ui, src/screens, src/lib/pidgin.ts. Verify them (npm run build plus screenshots), then commit and push. If the work is unusable, re-run R1 from its row in REDESIGN_PLAN.md.
-- [todo] R2 3D engine and characters
+- [done] R1 Look and copy: committed 2026-10-05 and verified (build plus screenshots). Open user questions: confirm 18+ (was 16+); Terms/Privacy pages needed before launch. Left for R3a: the server strings still say "Papa" (claim_allowance, origin taglines) plus Pidgin seed blurbs.
+- [running] R2 3D engine and characters (if the session died: check git status for uncommitted src/art/avatar3d or similar, verify, commit)
 - [todo] R3a creator data (DB). The user's NEXT new account must be Nepo.
 - [todo] R3b 5-step creator UI
 - [todo] R4 3D home, HUD dock and phone
