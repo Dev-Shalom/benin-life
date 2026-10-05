@@ -73,7 +73,9 @@ All Phase 1 work is committed on branch `claude/kind-bell-e9reb8` (not yet merge
 
 **One-command demo:** `scripts/demo.ps1` (Windows) or `bash scripts/demo.sh` (Mac/Linux) starts Supabase, resets the DB, writes `.env.local` and opens the game.
 
-### Open questions for the user (ask before/while starting Phase 2)
+### User feedback on the Phase 1 demo: see docs/FEEDBACK_PHASE1.md (read it before any UI or copy work)
+
+### Open questions for the user (asked 2026-10-05; answers are in FEEDBACK_PHASE1.md)
 1. Jail and hospital use the same `time.real_seconds_per_game_minute` as sleep, so they got ~6.7x shorter. Give crime its own rate key in Phase 2?
 2. Landing page is dark "dusk" theme only. Light theme wanted?
 3. The map compresses distances to the centre, so outer S/W is mostly bush. OK?
