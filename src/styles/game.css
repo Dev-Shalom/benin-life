@@ -323,6 +323,41 @@
   background: var(--grad-bronze);
   color: #3a2108;
 }
+/* Busy progress ring (src/ui/ProgressRing.tsx): fills clockwise from 12 o'clock, lands on
+   100% exactly when the activity ends. Linear on purpose — it is a clock, not a gesture. */
+.ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.ring > svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.ring__track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.14);
+}
+.ring__fill {
+  fill: none;
+  stroke: var(--gold);
+  stroke-linecap: round;
+  transition-property: stroke-dashoffset;
+  transition-timing-function: linear;
+}
+.ring__inner {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(100% - 14px);
+  height: calc(100% - 14px);
+  border-radius: 50%;
+  background: var(--grad-bronze);
+  color: #3a2108;
+}
 .banner--jail .banner__icon {
   background: linear-gradient(180deg, #4b5394, #262a5c);
 }

@@ -1,13 +1,22 @@
 // Client game clock — P1-SHELL. Mirrors the server formula (ARCHITECTURE §4):
-//   game_minutes = real minutes since 2026-01-01T00:00Z × clock.game_minutes_per_real_minute
-//                  + clock.start_hour_offset × 60
+//   game_minutes = floor(real minutes since clock.epoch × clock.game_minutes_per_real_minute
+//                        + clock.start_hour_offset × 60)
+//   day = floor(game_minutes / 1440) + 1   (clock.epoch defaults to 2026-10-05T00:00:00Z = Day 1)
 //   night = hour >= clock.night_start_hour || hour < clock.night_end_hour
 // Real "now" is corrected for device clock skew using GameState.server_time.
 import { useEffect, useState } from 'react';
 import type { GameClock } from './types';
 import { getCfg, useConfig } from './config';
 
-export const GAME_EPOCH_MS = Date.UTC(2026, 0, 1, 0, 0, 0);
+/** Default `clock.epoch` (must match the seed in 20261005000300_time_tuning.sql). */
+export const DEFAULT_CLOCK_EPOCH = '2026-10-05T00:00:00Z';
+export const GAME_EPOCH_MS = Date.parse(DEFAULT_CLOCK_EPOCH);
+
+/** Parse an ISO epoch string; falls back to the default when missing or unparseable. */
+export function parseEpoch(iso: string): number {
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? GAME_EPOCH_MS : ms;
+}
 
 let skewMs = 0;
 
@@ -28,6 +37,7 @@ export function serverNow(): number {
 }
 
 export interface ClockSettings {
+  epochMs: number; // clock.epoch as epoch ms
   speed: number; // game minutes per real minute
   offsetHours: number;
   nightStart: number;
@@ -36,6 +46,7 @@ export interface ClockSettings {
 
 export function clockSettings(read: <T>(k: string, f: T) => T = getCfg): ClockSettings {
   return {
+    epochMs: parseEpoch(read('clock.epoch', DEFAULT_CLOCK_EPOCH)),
     speed: read('clock.game_minutes_per_real_minute', 12),
     offsetHours: read('clock.start_hour_offset', 6),
     nightStart: read('clock.night_start_hour', 20),
@@ -52,8 +63,8 @@ export function isNightHour(hour: number, s: Pick<ClockSettings, 'nightStart' | 
 
 /** Game clock at a given real epoch ms. */
 export function gameClockAt(ms: number, s: ClockSettings = clockSettings()): GameClock {
-  const realMinutes = (ms - GAME_EPOCH_MS) / 60000;
-  const game_minutes = Math.floor(realMinutes * s.speed + s.offsetHours * 60);
+  // Same order as the server (multiply before dividing) so whole seconds give exact minutes.
+  const game_minutes = Math.floor(((ms - s.epochMs) / 1000) * s.speed / 60 + s.offsetHours * 60);
   const dayIdx = Math.floor(game_minutes / 1440);
   const inDay = ((game_minutes % 1440) + 1440) % 1440;
   const hour = Math.floor(inDay / 60);

@@ -80,10 +80,10 @@ Read this file first, then `docs/BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/DB_COR
      - Add SQL tests.
      - Add a fun animated **reveal screen** after character creation ("Omo! You be Nepo baby…" / "LAPO baby — na hustle go carry you…").
      - Show the class on the profile and HUD.
-4. **Shorter sleep and activities, with a progress ring (user request).**
+4. ~~**Shorter sleep and activities, with a progress ring (user request).**~~ **DONE** (migration `20261005000300_time_tuning.sql`: rate 0.75 and `profiles.busy_started_at`; `src/ui/ProgressRing.tsx` in the busy banner; `supabase/tests/time_test.sql`).
    - A full sleep currently takes about 40 real minutes (`time.real_seconds_per_game_minute` = 5). The user wants **about 5–8 real minutes**. Set it to about 0.75 so a 480-game-minute sleep takes about 6 min, and keep it admin-tunable.
    - The busy banner must show a **slow-filling circular progress ring** that completes when the activity ends, like Lagos Life, instead of only a countdown.
-5. **Game-day counter.** The HUD shows "Day 3323" because the clock counts from 2026-01-01. Add a config epoch (launch date) so the count starts near day 1.
+5. ~~**Game-day counter.**~~ **DONE** (config `clock.epoch` = 2026-10-05T00:00:00Z, read by `bl_game_clock` and `src/lib/clock.ts`). The HUD shows "Day 3323" because the clock counts from 2026-01-01. Add a config epoch (launch date) so the count starts near day 1.
 6. **Landing page polish** using the `emil-design-eng` and `design-taste-frontend` skills. A good landing page already exists in `src/screens/Landing.tsx`.
 7. **Paystack placeholder.** Add a provider-agnostic `src/lib/payments.ts`, `VITE_PAYSTACK_PUBLIC_KEY` in `.env.example`, and a wallet "Top up" button that says it's coming soon. The user will test real payments with you later and will provide the **test** public key only.
 8. **Phase 1 demo:**

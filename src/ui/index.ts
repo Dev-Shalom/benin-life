@@ -11,3 +11,4 @@ export { EmptyState } from './EmptyState';
 export { Icon, type IconName } from './Icon';
 export { ErrorBoundary } from './ErrorBoundary';
 export { usePresence } from './presence';
+export { ProgressRing, type ProgressRingProps } from './ProgressRing';

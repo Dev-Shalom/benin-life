@@ -5,7 +5,7 @@ import { MODE_META } from '../../lib/pidgin';
 import type { GameState } from '../../lib/types';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
-import { Button, Icon, Modal, toast } from '../../ui';
+import { Button, Icon, Modal, ProgressRing, toast } from '../../ui';
 import type { PlayerStatus } from './status';
 
 interface ArriveResult {
@@ -70,6 +70,12 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
     void refresh();
   }, [timersDone, p.busy_until, p.jailed_until, p.hospitalized_until, refresh]);
 
+  // Ring start: busy_started_at from the server; for rows from before that column existed,
+  // fall back to the moment this client first saw the timer.
+  const [seen, setSeen] = useState<{ key: string; at: number } | null>(null);
+  if (p.busy_until && seen?.key !== p.busy_until) setSeen({ key: p.busy_until, at: status.now });
+  const busyStart = status.busyStartMs ?? (seen && seen.key === p.busy_until ? seen.at : null);
+
   const policeHq = Object.values(byId).find((l) => l.scene === 'police')?.id;
   const hospital = Object.values(byId).find((l) => l.id === 'ubth')?.id ?? Object.values(byId).find((l) => l.scene === 'hospital')?.id;
 
@@ -88,9 +94,12 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
             <span className="banner__time">{status.travelLeft > 0 ? countdown(status.travelLeft) : 'Reaching…'}</span>
           </div>
         )}
-        {status.busyLeft > 0 && (
+        {status.busyLeft > 0 && status.busyEndMs !== null && (
           <div className="banner banner--busy">
-            <span className="banner__icon"><Icon name="clock" size={20} /></span>
+            <ProgressRing className="banner__ring" startMs={busyStart ?? status.now} endMs={status.busyEndMs}
+              nowMs={status.now} size={44} stroke={4} label={p.busy_label ?? 'Busy'}>
+              <Icon name="clock" size={18} />
+            </ProgressRing>
             <div className="grow banner__title">{p.busy_label ? `${p.busy_label}…` : 'You dey busy…'}</div>
             <span className="banner__time">{countdown(status.busyLeft)}</span>
           </div>

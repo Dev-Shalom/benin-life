@@ -444,7 +444,8 @@ begin
   perform pg_temp.assert((select cash from profiles where id = pg_temp.uid('a')) = v_cash - 1500, 'owo soup cost 1500');
   perform pg_temp.assert(pg_temp.approx((select hunger from profiles where id = pg_temp.uid('a')), v_h + 55), 'hunger +55');
   select * into me from profiles where id = pg_temp.uid('a');
-  perform pg_temp.assert(me.busy_until = bl_now() + make_interval(secs => 30 * 5), 'busy 30 game min = 150 s');
+  perform pg_temp.assert(me.busy_until = bl_now() + make_interval(secs => (30 * bl_cfg('time.real_seconds_per_game_minute'))::double precision),
+                         'busy 30 game min = 30 x time.real_seconds_per_game_minute');
   perform pg_temp.assert(me.busy_label = (select name from activities where id = 'owo_soup'), 'busy label');
   -- busy blocks everything
   perform pg_temp.expect_error($q$ select do_activity('pepper_soup') $q$, '%busy%');
@@ -589,7 +590,8 @@ begin
   -- jail
   perform bl_jail(v_b, 60, 'test case');
   perform pg_temp.assert((select location_id from profiles where id = v_b) = 'police_hq', 'jailed -> police_hq');
-  perform pg_temp.assert((select jailed_until from profiles where id = v_b) = bl_now() + interval '300 seconds', 'jail 60 game min = 300 s');
+  perform pg_temp.assert((select jailed_until from profiles where id = v_b) = bl_now() + make_interval(secs => (60 * bl_cfg('time.real_seconds_per_game_minute'))::double precision),
+                         'jail 60 game min = 60 x time.real_seconds_per_game_minute');
   perform pg_temp.as_user('b');
   s := get_my_state();                                   -- still works while jailed
   perform pg_temp.assert(s->'profile'->>'jail_reason' = 'test case', 'jail reason in state');
@@ -610,10 +612,11 @@ begin
   perform pg_temp.assert((select gender from profiles where id = pg_temp.uid('a')) = 'female', 'gender synced');
   perform pg_temp.expect_error($q$ select update_avatar('"nope"') $q$, '%avatar%');
   -- clock helper sanity
-  perform pg_temp.assert((bl_game_clock(timestamptz '2026-01-01 00:00:00+00')->>'hour')::int = 6, 'epoch = 06:00 day 1');
-  perform pg_temp.assert((bl_game_clock(timestamptz '2026-01-01 00:00:00+00')->>'day')::int = 1, 'day 1');
-  perform pg_temp.assert((bl_game_clock(timestamptz '2026-01-01 01:10:00+00')->>'hour')::int = 20
-                         and (bl_game_clock(timestamptz '2026-01-01 01:10:00+00')->>'is_night')::boolean, '70 real min -> 20:00 night');
+  -- epoch comes from config (clock.epoch, 20261005000300_time_tuning.sql)
+  perform pg_temp.assert((bl_game_clock(bl_cfg_text('clock.epoch')::timestamptz)->>'hour')::int = 6, 'epoch = 06:00 day 1');
+  perform pg_temp.assert((bl_game_clock(bl_cfg_text('clock.epoch')::timestamptz)->>'day')::int = 1, 'day 1');
+  perform pg_temp.assert((bl_game_clock(bl_cfg_text('clock.epoch')::timestamptz + interval '70 minutes')->>'hour')::int = 20
+                         and (bl_game_clock(bl_cfg_text('clock.epoch')::timestamptz + interval '70 minutes')->>'is_night')::boolean, '70 real min -> 20:00 night');
   -- ban
   update profiles set banned = true where id = pg_temp.uid('c');
   perform pg_temp.as_user('c');
@@ -628,7 +631,7 @@ declare
   t_night timestamptz; t_noon timestamptz; t_rush timestamptz;
   v_exp numeric; v_got numeric; q jsonb; o jsonb; v_km numeric; v_tr numeric;
   base numeric := 0.06;
-  g timestamptz := timestamptz '2026-01-01 00:00:00+00';
+  g timestamptz := bl_cfg_text('clock.epoch')::timestamptz;  -- clock epoch from config
 begin
   -- fixed instants (real -> game): +0 = 06:00, +80 min = 22:00 (night), +30 min = 12:00, +10 min = 08:00 (rush)
   t_night := g + interval '80 minutes'; t_noon := g + interval '30 minutes'; t_rush := g + interval '10 minutes';

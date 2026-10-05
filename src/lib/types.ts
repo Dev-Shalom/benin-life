@@ -72,6 +72,8 @@ export interface Profile {
   street_cred: number;
   wanted: number;
   busy_until: string | null;
+  /** When the current busy activity started (set with busy_until; null for old rows). */
+  busy_started_at?: string | null;
   busy_label: string | null;
   jailed_until: string | null;
   jail_reason: string | null;
