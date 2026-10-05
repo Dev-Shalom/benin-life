@@ -72,7 +72,11 @@
     0 0 0 2px #fff,
     0 0 0 3.5px var(--green-400);
 }
-.hud-portrait svg {
+.hud-portrait img,
+.hud-portrait .avatar-ph,
+.person__face img,
+.person__face .avatar-ph {
+  display: block;
   width: 100%;
   height: 100%;
 }

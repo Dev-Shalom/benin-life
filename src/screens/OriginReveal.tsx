@@ -2,7 +2,7 @@
 // Timeline is pure CSS (see "Origin reveal" in screens.css): coin toss ~1.2s → title, home card,
 // perks stagger in, then "Enter Benin City". Tap during the toss to skip. Reduced motion = fades only.
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Avatar } from '../art/avatar/Avatar';
+import { AvatarPortrait } from '../art/avatar3d';
 import { Scene } from '../art/Scene';
 import { naira } from '../lib/format';
 import { ORIGIN_UI, originCopy } from '../lib/pidgin';
@@ -135,7 +135,7 @@ export default function OriginReveal({ state, onDone }: { state: GameState; onDo
             <Scene type={home.scene} night={state.clock.is_night} />
           </div>
           <div className="reveal__avatar">
-            <Avatar config={p.avatar} view="full" />
+            <AvatarPortrait config={p.avatar} view="full" size={150} />
           </div>
           <figcaption className="reveal__home">
             <Icon name="home" size={14} stroke={2.4} />

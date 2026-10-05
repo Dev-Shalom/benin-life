@@ -5,7 +5,7 @@ import { supabase, supabaseConfigured } from '../lib/supabase';
 import { rpc, errorMessage } from '../lib/api';
 import { syncServerTime } from '../lib/clock';
 import { ensureConfig } from '../lib/config';
-import { normalizeAvatar } from '../art/avatar/catalog';
+import { migrateAvatar } from '../art/avatar3d/catalog';
 import type { GameEvent, GameState, Location } from '../lib/types';
 import { toast, type ToastKind } from '../ui/Toast';
 
@@ -48,7 +48,7 @@ function loadLastRead(uid: string): number {
 }
 
 function normalizeState(raw: GameState): GameState {
-  const profile = { ...raw.profile, avatar: normalizeAvatar(raw.profile?.avatar) };
+  const profile = { ...raw.profile, avatar: migrateAvatar(raw.profile?.avatar) };
   profile.cash = Number(profile.cash ?? 0);
   profile.bank = Number(profile.bank ?? 0);
   return { ...raw, profile };

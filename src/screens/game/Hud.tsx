@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Avatar } from '../../art/avatar/Avatar';
+import { AvatarPortrait } from '../../art/avatar3d';
 import { clockTime, countdown, nairaShort } from '../../lib/format';
 import { rpc, errorMessage } from '../../lib/api';
 import { NEED_KEYS, ORIGIN_UI, originCopy } from '../../lib/pidgin';
@@ -64,7 +64,7 @@ export function Hud({ state, clock, status }: { state: GameState; clock: GameClo
           <button type="button" className="hud-id" onClick={() => openPanel('profile', { targetId: p.id })} aria-label="My profile">
             <span className="hud-portrait-wrap">
               <span className="hud-portrait">
-                <Avatar config={p.avatar} view="portrait" size={46} />
+                <AvatarPortrait config={p.avatar} size={46} />
               </span>
               {badge && (
                 <span className={`origin-chip origin-chip--${tier === 'nepo' ? 'nepo' : tier === 'lapo' ? 'lapo' : 'other'}`}

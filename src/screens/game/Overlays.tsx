@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Avatar } from '../../art/avatar/Avatar';
+import { AvatarPortrait } from '../../art/avatar3d';
 import { naira, timeAgo, titleCase } from '../../lib/format';
 import { P, randomTip } from '../../lib/pidgin';
 import { eventTone, useGame } from '../../state/game';
@@ -65,7 +65,7 @@ export function SettingsSheet() {
       {p && (
         <div className="stack">
           <div className="settings-me card">
-            <span className="hud-portrait"><Avatar config={p.avatar} view="portrait" size={56} /></span>
+            <span className="hud-portrait"><AvatarPortrait config={p.avatar} size={56} /></span>
             <div className="grow">
               <b style={{ fontSize: 18 }}>{p.username}</b>
               <div className="muted" style={{ fontSize: 13 }}>{session?.user.email}</div>

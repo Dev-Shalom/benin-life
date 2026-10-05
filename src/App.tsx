@@ -13,6 +13,8 @@ import ErrorScreen from './screens/ErrorScreen';
 const CreateSim = lazy(() => import('./screens/CreateSim'));
 const Game = lazy(() => import('./screens/Game'));
 const AdminRoute = lazy(() => import('./screens/AdminRoute'));
+// Dev-only gallery of the 3D avatars (not linked anywhere).
+const AvatarLab = lazy(() => import('./art/avatar3d/dev/AvatarLab'));
 
 function RequireSession({ children }: { children: ReactNode }) {
   const authReady = useGame((s) => s.authReady);
@@ -82,6 +84,7 @@ export default function App() {
               </RequireSession>
             }
           />
+          <Route path="/dev/avatars" element={<AvatarLab />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

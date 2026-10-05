@@ -1,29 +1,11 @@
 // Landing page art that is too heavy for the first load (scenes + avatars).
 // Lazy-loaded by Landing.tsx only when a card scrolls near the viewport.
 import { Scene } from '../art/Scene';
-import { Avatar } from '../art/avatar/Avatar';
-import { defaultAvatar } from '../art/avatar/catalog';
-import type { AvatarConfig, SceneType } from '../lib/types';
+import type { SceneType } from '../lib/types';
 
-const LAPO_SIM: AvatarConfig = {
-  ...defaultAvatar('male'),
-  skin: 'tone5',
-  hair: 'low_cut',
-  outfit: 'keke_rider',
-  outfitColor: '#d9a128',
-  mouth: 'grin',
-  accessories: ['cap'],
-};
-
-const NEPO_SIM: AvatarConfig = {
-  ...defaultAvatar('female'),
-  skin: 'tone3',
-  hair: 'bone_straight',
-  outfit: 'senator',
-  outfitColor: '#f4f1ea',
-  mouth: 'smirk',
-  accessories: ['sunglasses', 'gold_chain', 'phone_in_hand'],
-};
+// The landing page must not load three.js, so its Sims are still images rendered from the 3D avatar
+// system (regenerate them from /dev/avatars, "Landing images"; see LANDING_SIMS in src/art/avatar3d/dev).
+const SIM_IMG = { lapo: '/art/sim-lapo.webp', nepo: '/art/sim-nepo.webp' } as const;
 
 export interface LandingArtProps {
   scene: SceneType;
@@ -38,7 +20,7 @@ export default function LandingArt({ scene, night, sim }: LandingArtProps) {
       <Scene type={scene} night={night} />
       {sim && (
         <div className="landing__sim">
-          <Avatar config={sim === 'nepo' ? NEPO_SIM : LAPO_SIM} view="full" />
+          <img src={SIM_IMG[sim]} alt="" width={240} height={480} decoding="async" draggable={false} />
         </div>
       )}
     </>

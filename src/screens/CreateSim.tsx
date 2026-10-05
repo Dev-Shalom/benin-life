@@ -1,36 +1,138 @@
 import { useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Avatar } from '../art/avatar/Avatar';
-import { AVATAR_OPTIONS, defaultAvatar, randomAvatar, type AvatarOption } from '../art/avatar/catalog';
+import {
+  AvatarPortrait,
+  AvatarStage,
+  applyPreset,
+  defaultAvatar,
+  optionsFor,
+  presetsFor,
+  randomAvatar,
+  OUTFIT_PRESETS,
+  type AvatarOption,
+  type AvatarSlot,
+} from '../art/avatar3d';
 import { rpc, errorMessage } from '../lib/api';
-import type { AvatarConfig, GameState, Gender } from '../lib/types';
+import type { AvatarConfig, AvatarGarment, FabricId, GameState, Gender } from '../lib/types';
 import { useGame } from '../state/game';
-import { Button, Icon, Tabs, toast } from '../ui';
+import { Button, Icon, Segmented, Tabs, toast } from '../ui';
 import { Logo } from './Brand';
 import OriginReveal from './OriginReveal';
 
-type Slot = keyof typeof AVATAR_OPTIONS;
 type Step = 'gender' | 'name' | 'look';
-
-const SLOT_LABELS: Record<Slot, string> = {
-  skin: 'Skin',
-  body: 'Body',
-  hair: 'Hair',
-  hairColor: 'Hair colour',
-  eyes: 'Eyes',
-  brows: 'Brows',
-  mouth: 'Mouth',
-  facialHair: 'Beard',
-  outfit: 'Outfit',
-  outfitColor: 'Cloth colour',
-  accessories: 'Jewelry & extras',
-};
-const SLOT_ORDER: Slot[] = ['skin', 'body', 'hair', 'hairColor', 'outfit', 'outfitColor', 'accessories', 'eyes', 'brows', 'mouth', 'facialHair'];
+type Group = 'outfit' | 'body' | 'face' | 'hair' | 'extras';
 
 const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 
-function optionsFor(slot: Slot, gender: Gender): AvatarOption[] {
-  return (AVATAR_OPTIONS[slot] ?? []).filter((o) => !o.gender || o.gender === gender);
+const GROUPS: { id: Group; label: string }[] = [
+  { id: 'outfit', label: 'Outfit' },
+  { id: 'body', label: 'Body' },
+  { id: 'face', label: 'Face' },
+  { id: 'hair', label: 'Hair' },
+  { id: 'extras', label: 'Extras' },
+];
+
+/** One editable row in the look editor. */
+interface Row {
+  label: string;
+  hint?: string;
+  slot: AvatarSlot;
+  multi?: boolean;
+  get: (a: AvatarConfig) => string | string[];
+  set: (a: AvatarConfig, id: string) => AvatarConfig;
+}
+
+const garment = (k: 'top' | 'bottom', field: keyof AvatarGarment) => ({
+  get: (a: AvatarConfig) => a[k][field] as string,
+  set: (a: AvatarConfig, id: string) => ({ ...a, [k]: { ...a[k], [field]: field === 'f' ? (id as FabricId) : id } }),
+});
+const field = (k: 'body' | 'skin' | 'face' | 'eyes' | 'brows' | 'nose' | 'lips' | 'mouth' | 'facialHair' | 'hair' | 'hairColor' | 'hat' | 'accent') => ({
+  get: (a: AvatarConfig) => a[k] as string,
+  set: (a: AvatarConfig, id: string) => ({ ...a, [k]: id }) as AvatarConfig,
+});
+
+const ROWS: Record<Group, Row[]> = {
+  outfit: [
+    { label: 'Top', slot: 'top', ...garment('top', 's') },
+    { label: 'Fabric', slot: 'fabric', ...garment('top', 'f') },
+    { label: 'Outfit colour', slot: 'outfitColor', ...garment('top', 'c') },
+    { label: 'Bottoms', slot: 'bottom', ...garment('bottom', 's') },
+    { label: 'Bottoms fabric', slot: 'fabric', ...garment('bottom', 'f') },
+    { label: 'Bottoms colour', slot: 'outfitColor', ...garment('bottom', 'c') },
+    { label: 'Shoes', slot: 'shoes', get: (a) => a.shoes.s, set: (a, id) => ({ ...a, shoes: { ...a.shoes, s: id } }) },
+    { label: 'Shoe colour', slot: 'outfitColor', get: (a) => a.shoes.c, set: (a, id) => ({ ...a, shoes: { ...a.shoes, c: id } }) },
+    { label: 'Accent colour', hint: 'Headwear, tie, prints, embroidery and bags', slot: 'accent', ...field('accent') },
+  ],
+  body: [
+    { label: 'Body type', slot: 'body', ...field('body') },
+    { label: 'Skin tone', slot: 'skin', ...field('skin') },
+  ],
+  face: [
+    { label: 'Face shape', slot: 'face', ...field('face') },
+    { label: 'Eyes', slot: 'eyes', ...field('eyes') },
+    { label: 'Brows', slot: 'brows', ...field('brows') },
+    { label: 'Nose', slot: 'nose', ...field('nose') },
+    { label: 'Lips', slot: 'lips', ...field('lips') },
+    { label: 'Expression', slot: 'mouth', ...field('mouth') },
+    { label: 'Facial hair', slot: 'facialHair', ...field('facialHair') },
+  ],
+  hair: [
+    { label: 'Hairstyle', slot: 'hair', ...field('hair') },
+    { label: 'Hair colour', slot: 'hairColor', ...field('hairColor') },
+    { label: 'Headwear', slot: 'hat', ...field('hat') },
+    { label: 'Headwear colour', slot: 'accent', ...field('accent') },
+  ],
+  extras: [
+    {
+      label: 'Accessories', hint: 'Pick as many as you like', slot: 'accessories', multi: true,
+      get: (a) => a.accessories,
+      set: (a, id) => ({ ...a, accessories: a.accessories.includes(id) ? a.accessories.filter((x) => x !== id) : [...a.accessories, id] }),
+    },
+    { label: 'Accent colour', hint: 'Headwear, tie, prints, embroidery and bags', slot: 'accent', ...field('accent') },
+  ],
+};
+
+/** True when the current outfit still matches the preset exactly. */
+function matchesPreset(a: AvatarConfig, id: string | null): boolean {
+  if (!id) return false;
+  const p = OUTFIT_PRESETS.find((x) => x.id === id);
+  if (!p) return false;
+  const patch = p.build(a.gender);
+  const same = (x: unknown, y: unknown) => JSON.stringify(x) === JSON.stringify(y);
+  return same(a.top, patch.top) && same(a.bottom, patch.bottom) && same(a.shoes, patch.shoes) && a.hat === patch.hat
+    && a.accent === patch.accent && same([...a.accessories].sort(), [...patch.accessories].sort());
+}
+
+function OptionRow({ row, avatar, onPick }: { row: Row; avatar: AvatarConfig; onPick: (a: AvatarConfig) => void }) {
+  const opts: AvatarOption[] = optionsFor(row.slot, avatar.gender);
+  if (!opts.length) return null;
+  const value = row.get(avatar);
+  const isOn = (id: string) => (Array.isArray(value) ? value.includes(id) : value === id);
+  const swatches = opts.some((o) => o.swatch);
+  return (
+    <div className="look-row">
+      <div className="look-row__head">
+        <span className="look-row__label">{row.label}</span>
+        {row.hint && <span className="look-row__hint">{row.hint}</span>}
+      </div>
+      <div className={swatches ? 'swatch-row' : 'chip-row'}>
+        {opts.map((o) =>
+          swatches ? (
+            <button key={o.id} type="button" className={`swatch-dot${isOn(o.id) ? ' is-active' : ''}`} title={o.label} aria-label={o.label}
+              aria-pressed={isOn(o.id)} onClick={() => onPick(row.set(avatar, o.id))}>
+              <span style={{ background: o.swatch }} />
+            </button>
+          ) : (
+            <button key={o.id} type="button" className={`opt${isOn(o.id) ? ' is-active' : ''}`} aria-pressed={isOn(o.id)}
+              onClick={() => onPick(row.set(avatar, o.id))}>
+              {row.multi && <span className="opt__check">{isOn(o.id) ? <Icon name="check" size={12} stroke={3} /> : null}</span>}
+              {o.label}
+            </button>
+          ),
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function CreateSim() {
@@ -43,14 +145,13 @@ export default function CreateSim() {
   const [gender, setGender] = useState<Gender>('male');
   const [username, setUsername] = useState('');
   const [avatar, setAvatar] = useState<AvatarConfig>(() => defaultAvatar('male'));
-  const [slot, setSlot] = useState<Slot>('skin');
+  const [group, setGroup] = useState<Group>('outfit');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // Fresh GameState from create_profile, held back from the store until the origin reveal is done
   // (applying it flips status to 'ready', which redirects to /play).
   const [revealed, setRevealed] = useState<GameState | null>(null);
 
-  const slots = useMemo(() => SLOT_ORDER.filter((s) => optionsFor(s, gender).length > 0), [gender]);
   const previews = useMemo(() => ({ male: defaultAvatar('male'), female: defaultAvatar('female') }), []);
 
   if (status === 'ready') return <Navigate to="/play" replace />;
@@ -70,23 +171,12 @@ export default function CreateSim() {
 
   const chooseGender = (g: Gender) => {
     setGender(g);
-    setAvatar(defaultAvatar(g));
+    // keep the face and skin; reset gender-specific hair and clothes
+    setAvatar((a) => ({ ...defaultAvatar(g), skin: a.skin, face: a.face, eyes: a.eyes, nose: a.nose, body: a.body }));
   };
-
-  const setSlotValue = (s: Slot, id: string) => {
-    setAvatar((a) => {
-      if (s === 'accessories') {
-        const has = a.accessories.includes(id);
-        return { ...a, accessories: has ? a.accessories.filter((x) => x !== id) : [...a.accessories, id] };
-      }
-      return { ...a, [s]: id } as AvatarConfig;
-    });
-  };
-
-  const isSelected = (s: Slot, id: string) =>
-    s === 'accessories' ? avatar.accessories.includes(id) : (avatar as unknown as Record<string, unknown>)[s] === id;
 
   const nameOk = USERNAME_RE.test(username);
+  const presetEdited = avatar.preset && !matchesPreset(avatar, avatar.preset);
 
   const create = async () => {
     setErr(null);
@@ -113,7 +203,7 @@ export default function CreateSim() {
   };
 
   return (
-    <div className="create">
+    <div className={`create${step === 'look' ? ' create--look' : ''}`}>
       <header className="create__top">
         <div className="row">
           <Logo size={34} />
@@ -134,7 +224,7 @@ export default function CreateSim() {
             {(['male', 'female'] as Gender[]).map((g) => (
               <button key={g} type="button" className={`gender-card${gender === g ? ' is-active' : ''}`} onClick={() => chooseGender(g)}>
                 <div className="gender-card__art">
-                  <Avatar config={previews[g]} view="full" className="gender-card__avatar" />
+                  <AvatarPortrait config={previews[g]} view="full" size={150} className="gender-card__avatar" />
                 </div>
                 <span className="gender-card__label">{g === 'male' ? 'Man' : 'Woman'}</span>
                 {gender === g && <span className="gender-card__tick"><Icon name="check" size={16} stroke={3} /></span>}
@@ -151,7 +241,7 @@ export default function CreateSim() {
         <section className="create__panel create__name">
           <div className="name-card">
             <div className="name-card__avatar">
-              <Avatar config={avatar} view="portrait" className="name-card__portrait" />
+              <AvatarPortrait config={avatar} size={120} className="name-card__portrait" />
             </div>
             <div className="field">
               <label htmlFor="sim-name">Sim name</label>
@@ -175,35 +265,49 @@ export default function CreateSim() {
       {step === 'look' && (
         <section className="create__look">
           <div className="look-stage">
-            <div className="look-stage__glow" />
-            <Avatar config={avatar} view="full" className="look-stage__avatar" />
-            <div className="look-stage__plinth" />
-            <div className="look-stage__name">{username || 'Your Sim'}</div>
+            <AvatarStage config={avatar} className="look-stage__canvas" />
+            <div className="look-stage__name">@{username || 'your_sim'}</div>
             <Button variant="ghost" size="sm" icon="dice" className="look-stage__random" onClick={() => setAvatar({ ...randomAvatar(gender), gender })}>
               Shuffle
             </Button>
           </div>
           <div className="look-editor">
-            <Tabs value={slot} onChange={(s) => setSlot(s as Slot)} tabs={slots.map((s) => ({ id: s, label: SLOT_LABELS[s] }))} />
-            <div className={`opt-grid${optionsFor(slot, gender).some((o) => o.swatch) ? ' opt-grid--swatch' : ''}`}>
-              {optionsFor(slot, gender).map((o) =>
-                o.swatch ? (
-                  <button key={o.id} type="button" className={`swatch${isSelected(slot, o.id) ? ' is-active' : ''}`}
-                    onClick={() => setSlotValue(slot, o.id)} title={o.label} aria-label={o.label} aria-pressed={isSelected(slot, o.id)}>
-                    <span style={{ background: o.swatch }} />
-                    <small>{o.label}</small>
-                  </button>
-                ) : (
-                  <button key={o.id} type="button" className={`opt${isSelected(slot, o.id) ? ' is-active' : ''}`}
-                    onClick={() => setSlotValue(slot, o.id)} aria-pressed={isSelected(slot, o.id)}>
-                    {slot === 'accessories' && <span className="opt__check">{isSelected(slot, o.id) ? <Icon name="check" size={12} stroke={3} /> : null}</span>}
-                    {o.label}
-                  </button>
-                ),
+            <Tabs value={group} onChange={(g) => setGroup(g as Group)} tabs={GROUPS} />
+            <div className="look-editor__body" key={group}>
+              {group === 'outfit' && (
+                <div className="look-row">
+                  <div className="look-row__head">
+                    <span className="look-row__label">Outfit presets</span>
+                    <span className="look-row__hint">{presetEdited ? 'Edited. Tap a preset to reset it.' : 'A whole look in one tap. Change any piece after.'}</span>
+                  </div>
+                  <div className="preset-grid">
+                    {presetsFor(gender).map((p) => {
+                      const on = avatar.preset === p.id;
+                      return (
+                        <button key={p.id} type="button" className={`preset${on ? ' is-active' : ''}`} aria-pressed={on}
+                          onClick={() => setAvatar((a) => applyPreset(a, p.id))}>
+                          <span className="preset__emoji" aria-hidden>{p.emoji}</span>
+                          <span className="preset__label">{p.label}</span>
+                          {on && presetEdited && <span className="preset__edited">Edited</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
+              {group === 'body' && (
+                <div className="look-row">
+                  <div className="look-row__head"><span className="look-row__label">Body</span></div>
+                  <Segmented label="Body" value={gender} onChange={chooseGender}
+                    options={[{ id: 'female', label: 'Woman' }, { id: 'male', label: 'Man' }]} />
+                </div>
+              )}
+              {ROWS[group].map((row) => (
+                <OptionRow key={row.label} row={row} avatar={avatar} onPick={setAvatar} />
+              ))}
             </div>
             {err && <p className="error-text">{err}</p>}
-            <div className="create__actions row">
+            <div className="create__actions look-editor__actions row">
               <Button variant="ghost" size="lg" onClick={() => setStep('name')}>Back</Button>
               <Button size="lg" variant="green" className="grow" loading={busy} onClick={() => void create()}>
                 Enter Benin City

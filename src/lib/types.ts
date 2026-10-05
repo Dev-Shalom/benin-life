@@ -2,19 +2,61 @@
 
 export type Gender = 'male' | 'female';
 
-export interface AvatarConfig {
+export type BodyType = 'slim' | 'average' | 'thick';
+export type FabricId = 'plain' | 'ankara' | 'adire' | 'asooke' | 'lace';
+
+/** One piece of clothing: style id, fabric and main colour (hex). */
+export interface AvatarGarment {
+  s: string;
+  f: FabricId;
+  c: string;
+}
+
+/**
+ * 3D avatar look (R2). Stored by the server as opaque jsonb (< 4000 chars), so keep it flat and small.
+ * Old saved looks (v1, the 2D SVG avatar) are upgraded on read by `migrateAvatar` in src/art/avatar3d.
+ * `gender` stays a top-level key: the server's update_avatar() reads it.
+ */
+export interface AvatarConfigV2 {
+  v: 2;
   gender: Gender;
-  skin: string; // skin tone id from AVATAR_OPTIONS.skin
-  body: 'slim' | 'average' | 'thick';
+  body: BodyType;
+  skin: string; // skin tone id, e.g. 'tone4'
+  face: string; // face shape: round | oval | square | long | heart | diamond
+  eyes: string;
+  brows: string;
+  nose: string;
+  lips: string;
+  mouth: string; // expression
+  facialHair: string; // 'none' allowed
   hair: string;
   hairColor: string; // hex
+  hat: string; // headwear, 'none' allowed (gele, cap, coral cap...)
+  top: AvatarGarment;
+  bottom: AvatarGarment;
+  shoes: { s: string; c: string };
+  accent: string; // hex: headwear, embroidery, tie, prints
+  accessories: string[]; // e.g. ['coral', 'chain', 'shades']
+  preset: string | null; // last outfit preset applied (label only; every slot stays editable)
+}
+
+/** The current avatar format everywhere in the app. */
+export type AvatarConfig = AvatarConfigV2;
+
+/** Legacy 2D avatar (Phase 1). Only read by the migration. */
+export interface AvatarConfigV1 {
+  gender: Gender;
+  skin: string;
+  body: BodyType;
+  hair: string;
+  hairColor: string;
   eyes: string;
   brows: string;
   mouth: string;
-  facialHair: string; // 'none' allowed
+  facialHair: string;
   outfit: string;
-  outfitColor: string; // hex — primary fabric colour
-  accessories: string[]; // e.g. ['coral_beads', 'gold_chain']
+  outfitColor: string;
+  accessories: string[];
 }
 
 export type SceneType =

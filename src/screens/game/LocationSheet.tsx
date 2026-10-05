@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Avatar } from '../../art/avatar/Avatar';
-import { normalizeAvatar } from '../../art/avatar/catalog';
+import { AvatarPortrait, migrateAvatar } from '../../art/avatar3d';
 import { Scene } from '../../art/Scene';
 import { rpc } from '../../lib/api';
 import { titleCase } from '../../lib/format';
@@ -118,7 +117,7 @@ function PeopleHere({ loc, meId }: { loc: Location; meId: string }) {
     const load = async () => {
       try {
         const list = await rpc<PublicPlayer[]>('players_here', { p_location: loc.id });
-        if (alive) setPeople((list ?? []).filter((x) => x.id !== meId));
+        if (alive) setPeople((list ?? []).filter((x) => x.id !== meId).map((x) => ({ ...x, avatar: migrateAvatar(x.avatar) })));
       } catch {
         if (alive) setPeople([]);
       }
@@ -151,7 +150,7 @@ function PeopleHere({ loc, meId }: { loc: Location; meId: string }) {
           {people.map((x) => (
             <button key={x.id} type="button" className={`person${picked === x.id ? ' is-active' : ''}`}
               onClick={() => setPicked(picked === x.id ? null : x.id)}>
-              <span className="person__face"><Avatar config={normalizeAvatar(x.avatar)} view="portrait" size={44} /></span>
+              <span className="person__face"><AvatarPortrait config={x.avatar} size={44} /></span>
               <span className="person__name">{x.username}</span>
             </button>
           ))}
@@ -159,7 +158,7 @@ function PeopleHere({ loc, meId }: { loc: Location; meId: string }) {
       )}
       {person && (
         <div className="person-card">
-          <span className="person__face"><Avatar config={normalizeAvatar(person.avatar)} view="portrait" size={48} /></span>
+          <span className="person__face"><AvatarPortrait config={person.avatar} size={48} /></span>
           <div className="grow">
             <b>{person.username}</b>
             <div className="muted" style={{ fontSize: 13 }}><Icon name="star" size={12} style={{ display: 'inline' }} /> Street cred {person.street_cred}</div>
