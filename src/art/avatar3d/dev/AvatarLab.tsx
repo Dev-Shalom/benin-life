@@ -1,5 +1,5 @@
 // Dev gallery for the 3D avatar system (route /dev/avatars, not linked anywhere in the app).
-// Sections can be shown alone with ?s=presets|bodies|faces|hair|hats|acc|views|fabrics|portraits|stage|landing|stats
+// Sections can be shown alone with ?s=presets|pviews|bodies|faces|hair|hats|acc|views|fabrics|portraits|stage|landing|stats
 // and turned with &yaw=0.8. Everything renders through the shared portrait renderer (one WebGL context).
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import type { AvatarConfig, Gender } from '../../../lib/types';
@@ -121,6 +121,16 @@ export default function AvatarLab() {
         ))}
       </Section>
 
+      <Section id="pviews" title="Every preset: front / side / back" only={only}>
+        {genders.flatMap((g) => presetsFor(g).flatMap((p) =>
+          [0, Math.PI / 2, Math.PI].map((y) => (
+            <Cell key={g + p.id + y} label={`${p.label} ${['front', 'side', 'back'][Math.round(y / (Math.PI / 2))]}`}>
+              <AvatarPortrait config={applyPreset(defaultAvatar(g), p.id)} view="full" size={size || 110} yaw={y} />
+            </Cell>
+          )),
+        ))}
+      </Section>
+
       <Section id="bodies" title="Body types x skin tones" only={only}>
         {genders.flatMap((g) => BODIES.flatMap((b) => SKIN_TONES.filter((_, i) => i % 2 === (b === 'average' ? 1 : 0)).map((t) => (
           <Cell key={g + b + t.id} label={`${b} · ${t.label}`}>
@@ -130,9 +140,9 @@ export default function AvatarLab() {
       </Section>
 
       <Section id="faces" title="Face shapes" only={only}>
-        {genders.flatMap((g) => opt('face', g).map((f, i) => (
+        {genders.flatMap((g) => opt('face', g).map((f) => (
           <Cell key={g + f.id} label={`${f.label}`}>
-            <AvatarPortrait config={{ ...defaultAvatar(g), face: f.id, hair: g === 'male' ? 'low_cut' : 'bun', skin: SKIN_TONES[(i + 2) % 8].id, facialHair: 'none' }} size={portW} yaw={yaw} />
+            <AvatarPortrait config={{ ...defaultAvatar(g), face: f.id, hair: g === 'male' ? 'low_cut' : 'bun', skin: 'tone3', facialHair: 'none' }} size={portW} yaw={yaw} />
           </Cell>
         )))}
       </Section>

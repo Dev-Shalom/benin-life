@@ -271,7 +271,7 @@ export const OUTFIT_PRESETS: OutfitPreset[] = [
   },
   {
     id: 'yahoo', label: 'Yahoo Boy', emoji: '💸', gender: 'male',
-    build: () => ({ top: g('graphic_tee', BLACK), bottom: g('jeans', BLACK), shoes: { s: 'sneakers', c: W }, hat: 'cap', accent: W, accessories: ['shades', 'watch', 'chain', 'phone'] }),
+    build: () => ({ top: g('graphic_tee', BLACK), bottom: g('jeans', BLACK), shoes: { s: 'sneakers', c: W }, hat: 'cap', accent: '#e0a526', accessories: ['shades', 'watch', 'chain', 'bracelet', 'phone'] }),
   },
   {
     id: 'glam', label: 'Big Girl Glam', emoji: '💅🏾', gender: 'female',
@@ -552,7 +552,7 @@ export function migrateAvatar(raw: unknown): AvatarConfig {
 // ---------------------------------------------------------------------------------------------
 
 /** Bumped whenever the 3D model changes so cached portraits re-render. */
-export const MODEL_VERSION = 2;
+export const MODEL_VERSION = 3;
 
 function stable(x: unknown): string {
   if (Array.isArray(x)) return '[' + x.map(stable).join(',') + ']';

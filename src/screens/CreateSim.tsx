@@ -92,15 +92,13 @@ const ROWS: Record<Group, Row[]> = {
   ],
 };
 
-/** True when the current outfit still matches the preset exactly. */
+/** True when the current outfit still matches the preset exactly (compared after the same normalising applyPreset does). */
 function matchesPreset(a: AvatarConfig, id: string | null): boolean {
-  if (!id) return false;
-  const p = OUTFIT_PRESETS.find((x) => x.id === id);
-  if (!p) return false;
-  const patch = p.build(a.gender);
+  if (!id || !OUTFIT_PRESETS.some((x) => x.id === id)) return false;
+  const p = applyPreset(a, id);
   const same = (x: unknown, y: unknown) => JSON.stringify(x) === JSON.stringify(y);
-  return same(a.top, patch.top) && same(a.bottom, patch.bottom) && same(a.shoes, patch.shoes) && a.hat === patch.hat
-    && a.accent === patch.accent && same([...a.accessories].sort(), [...patch.accessories].sort());
+  return same(a.top, p.top) && same(a.bottom, p.bottom) && same(a.shoes, p.shoes) && a.hat === p.hat
+    && a.accent === p.accent && same([...a.accessories].sort(), [...p.accessories].sort());
 }
 
 function OptionRow({ row, avatar, onPick }: { row: Row; avatar: AvatarConfig; onPick: (a: AvatarConfig) => void }) {

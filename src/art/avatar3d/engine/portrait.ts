@@ -25,6 +25,7 @@ let camera: PerspectiveCamera | null = null;
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
 let webp: boolean | null = null;
 let chain: Promise<unknown> = Promise.resolve();
+let lost = false;
 
 /** Render timings (ms) of the most recent jobs, for the dev gallery. */
 export const portraitStats: { ms: number; tris: number }[] = [];
@@ -32,8 +33,16 @@ export const portraitStats: { ms: number; tris: number }[] = [];
 function ensure() {
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = setTimeout(release, 12000);
+  // The browser can drop our context (tab in background, GPU reset, too many contexts on the page):
+  // start over with a fresh one instead of caching blank images.
+  if (renderer && (lost || renderer.getContext().isContextLost())) release();
   if (renderer) return;
+  lost = false;
   renderer = new WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
+  const canvas = renderer.domElement;
+  canvas.addEventListener('webglcontextlost', () => {
+    if (renderer?.domElement === canvas) lost = true;
+  });
   renderer.setPixelRatio(1);
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = NoToneMapping;
@@ -46,7 +55,7 @@ function ensure() {
 function release() {
   if (!renderer) return;
   renderer.dispose();
-  renderer.forceContextLoss();
+  if (!renderer.getContext().isContextLost()) renderer.forceContextLoss();
   renderer = null;
   scene = null;
   camera = null;
@@ -102,7 +111,8 @@ function renderNow(cfg: AvatarConfig, o: ImageOpts): string {
   }
   cam.updateProjectionMatrix();
   r.render(s, cam);
-  const url = encode(r.domElement);
+  const ok = !lost && !r.getContext().isContextLost();
+  const url = ok ? encode(r.domElement) : '';
   s.remove(ch.root);
   if (shadow) {
     s.remove(shadow);
@@ -111,6 +121,10 @@ function renderNow(cfg: AvatarConfig, o: ImageOpts): string {
   ch.dispose();
   portraitStats.push({ ms: performance.now() - t0, tris: ch.stats.tris });
   if (portraitStats.length > 50) portraitStats.shift();
+  if (!ok) {
+    release();
+    throw new Error('WebGL context lost while rendering a portrait');
+  }
   return url;
 }
 

@@ -85,6 +85,7 @@ export default function App() {
             }
           />
           <Route path="/dev/avatars" element={<AvatarLab />} />
+          {import.meta.env.DEV && <Route path="/dev/create" element={<CreateSim />} /> /* creator without a session, for screenshots */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

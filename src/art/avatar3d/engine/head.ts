@@ -78,10 +78,13 @@ export class HeadSurface {
   constructor(face: string, female: boolean) {
     const m = SHAPES[face] ?? SHAPES.oval;
     this.female = female;
-    this.ys = (m.ys ?? 1) * (female ? 0.965 : 1);
+    // Exaggerate the shape so it still reads in a 46px HUD portrait (and through the narrower female jaw).
+    const amp = female ? (face === 'round' ? 1.9 : 1.55) : face === 'square' ? 1.1 : 1.3;
+    const ex = (k: number | undefined) => (k === undefined ? 1 : Math.max(0.3, 1 + (k - 1) * amp));
+    this.ys = ex(m.ys) * (female ? 0.965 : 1);
     this.keys = KEYS.map(([y, w, df, db, z, n], i) => ({
       y: y * this.ys,
-      w: w * (m.w?.[i] ?? 1) * (female ? FEMALE_W[i] : 1),
+      w: w * ex(m.w?.[i]) * (female ? FEMALE_W[i] : 1),
       df: df * (m.df?.[i] ?? 1),
       db,
       z: z + (m.z?.[i] ?? 0),

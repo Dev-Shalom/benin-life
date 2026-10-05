@@ -1,7 +1,7 @@
 // Assembles a full character from an AvatarConfig: rig, skin, face, hair, clothes, accessories.
 import { Box3, BufferGeometry, Vector3 } from 'three';
 import type { AvatarConfig } from '../../../lib/types';
-import { avatarKey, normalizeAvatar, skinTone } from '../catalog';
+import { avatarKey, migrateAvatar, skinTone } from '../catalog';
 import { bonePositions, makeDims, makeRig, PartBuilder, type BoneName, type Dims, type Profile, type Rig } from './body';
 import { buildClothes } from './clothing';
 import { buildAccessories } from './accessories';
@@ -39,7 +39,7 @@ function seedOf(s: string) {
 
 export function buildCharacter(input: AvatarConfig): Character {
   const t0 = performance.now();
-  const cfg = normalizeAvatar(input);
+  const cfg = migrateAvatar(input); // tolerant of v1 looks, {} and junk
   const female = cfg.gender === 'female';
   const d = makeDims(cfg.gender, cfg.body);
   const rig = makeRig(d);
