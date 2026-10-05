@@ -1,0 +1,37 @@
+# Applies supabase/migrations to the hosted preview database (Supabase cloud).
+# Needs two repository secrets: SUPABASE_ACCESS_TOKEN (supabase.com → Account → Access Tokens)
+# and SUPABASE_DB_PASSWORD (the database password chosen when the project was created).
+name: Supabase preview DB
+
+on:
+  push:
+    branches: [claude/kind-bell-e9reb8, main]
+    paths: ['supabase/migrations/**', '.github/workflows/supabase-deploy.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-preview-db
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: twwttirvesbwjvzjmenp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Check secrets
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::error::Add SUPABASE_ACCESS_TOKEN and SUPABASE_DB_PASSWORD in Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+      - name: Link project
+        run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      - name: Apply migrations
+        run: supabase db push --password "$SUPABASE_DB_PASSWORD" --include-all
