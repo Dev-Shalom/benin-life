@@ -3,7 +3,7 @@
 # Starts local Supabase, applies all migrations fresh, writes .env.local, runs the game.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-npm install
+npm ci
 EXCLUDE=studio,imgproxy,vector,logflare,supavisor,storage-api,postgres-meta,edge-runtime,mailpit
 # Retry once: right after Docker starts, the DB container can report 'not ready'.
 npx supabase start -x "$EXCLUDE" || { sleep 20; npx supabase start -x "$EXCLUDE"; }

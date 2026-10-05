@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 function Run($cmd) { Invoke-Expression $cmd; if ($LASTEXITCODE -ne 0) { throw "Failed: $cmd" } }
 $exclude = 'studio,imgproxy,vector,logflare,supavisor,storage-api,postgres-meta,edge-runtime,mailpit'
-Run 'npm install'
+Run 'npm ci'
 # Retry once: right after Docker starts, the DB container can report 'not ready'.
 npx supabase start -x $exclude
 if ($LASTEXITCODE -ne 0) { Start-Sleep -Seconds 20; Run "npx supabase start -x $exclude" }
