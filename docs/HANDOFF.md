@@ -136,7 +136,8 @@ Draft the Terms of Service and Privacy Policy pages (approved by the user; the s
 - [done] The user's Phase 1 feedback is recorded in docs/FEEDBACK_PHASE1.md, and the Lagos Life references are in docs/references/lagos-life/.
 - [done] 2026-10-05: the user approved Phase R (everything goes 3D, a Lagos Life-style UI, deeper systems). The plan is in docs/REDESIGN_PLAN.md.
 - [done] R1 Look and copy: committed 2026-10-05 and verified (build plus screenshots). The user CONFIRMED 18+ (replace any remaining 16+). The user approved drafting Terms of Service and Privacy Policy pages in Phase 3. Left for R3a: the server strings still say "Papa" (claim_allowance, origin taglines) plus Pidgin seed blurbs.
-- [running] R2 3D engine and characters (if the session died: check git status for uncommitted src/art/avatar3d or similar, verify, commit)
+- [done] 2026-10-05 (cloud): user confirmed the R plan order R2 finish -> R3a -> R3b -> R4 -> R5 -> R6. Decisions: keep the 22 Phase 1 SVG location scenes as the header art in each place's panel; 3D city/home for everyone, with the Phase 1 2D map used ONLY as a fallback on extremely weak/low-data connections (detect e.g. navigator.connection effectiveType 'slow-2g'/'2g' or saveData, plus a manual toggle in Settings).
+- [running] R2 finish (cloud): your local commit 827ee69 has the avatar3d engine, presets, fabrics, face shapes, turntable and the CreateSim switch; still to verify/fix: cached HUD portraits (grid tiles rendered blank in a headless check), no pink in Yahoo preset, phone performance, docs/ASSETS.md.
 - [todo] R3a creator data (DB). The user's NEXT new account must be Nepo.
 - [todo] R3b 5-step creator UI
 - [todo] R4 3D home, HUD dock and phone
