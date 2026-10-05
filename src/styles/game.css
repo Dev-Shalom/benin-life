@@ -915,3 +915,41 @@ html[data-theme] .bl-toaster {
     width: min(400px, calc(100vw - 490px));
   }
 }
+
+/* Wallet panel */
+.wallet {
+  display: grid;
+  gap: 12px;
+}
+.wallet__balances {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.wallet__bal {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-weight: 800;
+}
+.wallet__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+.wallet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.wallet__pack .act__top {
+  align-items: center;
+}
+.wallet__fine {
+  font-size: 12px;
+  color: var(--text-2);
+}
