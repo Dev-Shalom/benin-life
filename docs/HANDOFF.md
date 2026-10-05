@@ -53,9 +53,11 @@ Read this file first, then `docs/BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/DB_COR
 | P1 avatar | `src/art/avatar/*`: layered SVG with 8 skin tones, 14 hairstyles and 23 Benin outfits; `AvatarGallery.tsx` dev page |
 | P1 map | `src/art/map/*`: illustrated Benin map with day and night, pins, travel overlay and pan/zoom; generation takes about 120 ms |
 | P1 scenes A | `src/art/scenes/` (11 scenes, day and night): market, hospital, campus, palace, museum, club, bank, police, motorpark, street, pos |
+| P1 scenes B | `src/art/scenes/` (10 scenes, day and night): farm, home_face_me, home_flat, home_duplex, airport, shrine, workshop, buka, salon, cyber. `office` is Phase 2. Render any scene with `node scripts/render-scenes.mjs <outDir> [scene…]` |
+| Cloud tooling | Skills committed in `.claude/skills/` (svg-creator, emil-design-eng, design-taste-frontend). SQL tests run without Docker: start a local Postgres, load `scripts/supabase-stub.sql` once, then `BL_PSQL="psql -h /tmp -p 54322 -U postgres -d postgres" bash scripts/sql-test.sh …` |
 
 ## In progress or not yet done (Phase 1 wrap-up), in this order
-1. **Scenes B** (`src/art/scenes/_sharedB.tsx`, farm, home_face_me, home_flat, home_duplex, airport, shrine, workshop, plus buka/salon/cyber/office if they're in its scope).
+1. ~~**Scenes B**~~ **DONE** (`src/art/scenes/_sharedB.tsx`, farm, home_face_me, home_flat, home_duplex, airport, shrine, workshop, plus buka/salon/cyber/office if they're in its scope).
    - When this handoff was written, an agent was still working on these on the user's PC. Files may be partial or uncommitted.
    - Check which files exist, render each one day and night, finish any that are missing, and run `npm run build`.
    - The original agent briefs aren't in the repo. The scope comes from ARCHITECTURE §7 and `src/art/Scene.tsx`.
