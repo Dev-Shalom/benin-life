@@ -1,5 +1,6 @@
 // Sim sheet (R4): Profile / Needs / Goals / Skills / People / Career / Settings.
-// Skills, people, career, wishes, perks and feelings arrive in Phase 2; their tabs preview the layout.
+// Career is live since V1-3 (shared UI in src/panels/careers/CareerUI.tsx). Skills, people, wishes,
+// perks and feelings arrive later; their tabs preview the layout.
 // The Profile turntable is the only live 3D view while this sheet is open: Game suspends the 3D home.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +16,7 @@ import { useGame } from '../../state/game';
 import { useUi, type SimTab } from '../../state/ui';
 import { Button, EmptyState, Sheet, Switch, Tabs, toast } from '../../ui';
 import LookPanel from '../creator/LookPanel';
+import { JobCard, PerfBar, Promotion, ShiftStats } from '../../panels/careers/CareerUI';
 
 const TABS: { id: SimTab; label: string }[] = [
   { id: 'profile', label: 'Profile' },
@@ -45,7 +47,7 @@ const PERKS = [
   { name: 'Life of the Party', emoji: '🎉', text: 'Fun drops 25% slower.' },
 ];
 
-const CAREERS = ['💻 Tech', '🩺 Health', '👮 Police', '🏦 Banking', '🛒 Trade', '🗿 Bronze Art', '🛺 Transport', '🎧 Entertainment', '💇 Beauty'];
+const CAREERS = ['💻 Tech', '🏧 PoS & Fintech', '🛒 Trade', '🛺 Transport', '🩺 Health', '🎓 Education'];
 
 function SheetHead({ state }: { state: GameState }) {
   const p = state.profile;
@@ -270,24 +272,40 @@ function PeopleTab() {
   );
 }
 
-function CareerTab() {
+function CareerTab({ state }: { state: GameState }) {
+  const openPhone = useUi((s) => s.openPhone);
+  const career = state.career;
+  const job = career?.job ?? null;
+  if (!job) {
+    return (
+      <div className="sim-tab stack">
+        <section className="sim-card career-card">
+          <span className="career-card__emoji" aria-hidden>🧳</span>
+          <div>
+            <div className="muted">No job yet</div>
+            <div className="career-card__title">Job hunting</div>
+            <div className="muted">Pick a track in the Jobs app and climb from the bottom. Every shift pays.</div>
+          </div>
+        </section>
+        <Button variant="green" block icon="bag" onClick={() => openPhone('jobs')}>Find a job</Button>
+        <div className="chip-row">
+          {CAREERS.map((c) => <span key={c} className="chip">{c}</span>)}
+        </div>
+        {career?.degree && <p className="muted" style={{ fontSize: 13 }}>🎓 You have a UNIBEN degree. Senior Tech and Health roles are open to you.</p>}
+      </div>
+    );
+  }
   return (
     <div className="sim-tab stack">
-      <section className="sim-card career-card">
-        <span className="career-card__emoji" aria-hidden>🧳</span>
-        <div>
-          <div className="muted">No job yet</div>
-          <div className="career-card__title">Job hunting</div>
-          <div className="muted">Careers open soon. Pick a track and climb from the bottom.</div>
-        </div>
-      </section>
-      <div className="chip-row">
-        {CAREERS.map((c) => <span key={c} className="chip">{c}</span>)}
-      </div>
-      <div className="week-strip" aria-hidden>
-        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i}>{d}</span>)}
-      </div>
-      <p className="muted" style={{ fontSize: 13 }}>Your work days and performance will show here.</p>
+      <JobCard job={job} />
+      <PerfBar perf={job.perf_now} />
+      <Promotion job={job} />
+      <ShiftStats job={job} />
+      <p className="muted career-where">
+        <span aria-hidden>📍</span> Work at {job.locations.map((l) => l.name).join(' · ')}
+        {career?.degree ? ' · 🎓 Degree' : ''}
+      </p>
+      <Button variant="ghost" block icon="bag" onClick={() => openPhone('jobs')}>Open the Jobs app</Button>
     </div>
   );
 }
@@ -357,7 +375,7 @@ export function SimSheet({ state }: { state: GameState }) {
       {tab === 'goals' && <GoalsTab state={state} />}
       {tab === 'skills' && <SkillsTab />}
       {tab === 'people' && <PeopleTab />}
-      {tab === 'career' && <CareerTab />}
+      {tab === 'career' && <CareerTab state={state} />}
       {tab === 'settings' && <SettingsTab state={state} />}
     </Sheet>
   );

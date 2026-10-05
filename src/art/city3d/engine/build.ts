@@ -27,7 +27,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HomeBuilder } from '../../home3d/engine/build';
 import {
   AIRPORT, BRIDGE, CAMPUS, DISTRICT_TINTS, FARMLAND, GRA_ZONE, GROVE, KINGS_SQUARE, MARKETS, PALACE, POLICE,
-  RAMAT, RING, RUNWAY, STADIUM, TERMINAL, UBTH, at, inPoly, type Pt,
+  RAMAT, RING, RUNWAY, STADIUM, TECH_HUB, TERMINAL, UBTH, at, inPoly, type Pt,
 } from '../../map/mapGeo';
 import { WS } from '../model';
 import type { CityLayout, Vehicle } from './layout';
@@ -724,6 +724,20 @@ function buildLandmarks(b: HomeBuilder) {
   b.box(0.5, 0.06, 0.14, 0, 1.4, 0, '#d63c32');
   b.box(0.14, 0.06, 0.5, 0, 1.4, 0, '#d63c32');
   b.box(0.5, 0.22, 0.06, 0, 0.82, 0.4, '#d63c32');
+
+  // --- Bronze Tech Hub (V1-3): glass coworking block, laterite-clad wing, solar roof, gold sign
+  at2(TECH_HUB.x, TECH_HUB.y, 0.1);
+  b.box(2.2, 0.03, 1.9, 0, 0.01, 0.2, '#b8aea2');
+  b.box(1.4, 0.95, 0.9, -0.3, 0, 0, '#dfe6e8');
+  b.box(1.42, 0.32, 0.92, -0.3, 0.1, 0, '#9fc3d8', { layer: 'glow' });
+  b.box(1.42, 0.3, 0.92, -0.3, 0.55, 0, '#9fc3d8', { layer: 'glow' });
+  b.box(0.65, 0.95, 0.9, 0.72, 0, 0, '#b5552b');
+  for (const x of [0.5, 0.62, 0.74, 0.86, 0.98]) b.box(0.04, 0.5, 0.02, x, 0.4, 0.46, '#8a5a34');
+  b.cyl(0.12, 0.12, 0.02, 0.72, 0.68, 0.47, '#d9a441', { seg: 12, rx: Math.PI / 2, layer: 'glow' });
+  b.box(2.12, 0.05, 0.96, 0.03, 0.95, 0, '#ece8de');
+  b.box(1.42, 0.09, 0.05, -0.3, 0.45, 0.47, '#1e2030');
+  b.box(0.8, 0.04, 0.04, -0.3, 0.47, 0.5, '#d9a441', { layer: 'glow' });
+  for (const x of [-0.8, -0.4, 0, 0.4]) b.box(0.36, 0.04, 0.6, x, 1.02, -0.04, '#24407e');
 
   // --- Benin Airport: runway, terminal, tower and a parked plane
   {

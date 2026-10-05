@@ -65,7 +65,10 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
     const ids: PanelId[] = [...loc.actions.filter((a) => a !== 'chat'), 'chat'];
     return ids.filter((id, i) => ids.indexOf(id) === i && hasPanel(id));
   }, [loc.actions]);
-  const [tab, setTab] = useState<PanelId | null>(tabs[0] ?? null);
+  const [tab, setTab] = useState<PanelId | null>(() => {
+    const want = useUi.getState().selectedTab;
+    return want && tabs.includes(want) ? want : (tabs[0] ?? null);
+  });
   const current = tab && tabs.includes(tab) ? tab : (tabs[0] ?? null);
 
   if (!here) {

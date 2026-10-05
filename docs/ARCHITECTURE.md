@@ -21,6 +21,8 @@ supabase/migrations/
   20261005000300_time_tuning.sql        P1-TIME
   20261005000400_creator.sql            R3a (traits, dreams, start homes, rent, origin overrides — docs/CREATOR.md)
   20261005000500_bladder.sql            R4 (bladder need, toilet/TV/radio activities, players_online — docs/HUD_HOME.md)
+  20261005000600_r6_fixes.sql           R6 (English server strings, no brand names)
+  20261005000700_careers.sql            V1-3 (career tracks/levels, bronze_tech_hub, jobs RPCs — docs/CAREERS.md)
   20261004001000_economy.sql            P2-ECON
   20261004002000_finance_farm_health.sql P2-FIN
   20261004003000_crime_police.sql       P2-CRIME
@@ -45,7 +47,7 @@ src/art/scenes/<SceneType>.tsx          P1-SCENES-A / P1-SCENES-B (see §7)
 src/art/Scene.tsx                       phase 0 (dispatcher, do not edit)
 src/panels/registry.ts                  phase 0 (do not edit)
 src/panels/ActivitiesPanel.tsx          P1-SHELL
-src/panels/{Jobs,Shop,Market,Housing,Inventory}Panel.tsx         P2-ECON
+src/panels/{Jobs,Shop,Market,Housing,Inventory}Panel.tsx         P2-ECON (JobsPanel + src/panels/careers/* built in V1-3)
 src/panels/{Bank,Pos,Loans,Esusu,Farm,Hospital,Babalawo}Panel.tsx P2-FIN
 src/panels/{Police,Rob,Crimes}Panel.tsx                          P2-CRIME
 src/panels/{Chat,Messages,Profile}Panel.tsx                      P2-SOCIAL
@@ -84,6 +86,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 - `activities` (id text pk, name, scenes text[] (which location scenes offer it), home_only bool, cost bigint, game_minutes int, effects jsonb, night_only bool, sort int)
 - R3a (`docs/CREATOR.md`): `traits` (id, name, emoji, description, effects jsonb, sort, active), `dreams` (id, name, emoji, description, goal jsonb, sort, active), `start_homes` (id, name, emoji, location_id, district, tag, description, weekly_rent, start_cash jsonb per origin, allowed_origins text[], locked_quip, housing_id, sort, active) — select for anon+authenticated; `admin_audit` (admin-only select). `profiles` adds `traits text[]`, `dream`, `start_home`, `home_chosen bool` (default true), `weekly_rent`, `rent_due_at`, `rent_owed`. Trait `effects.decay` multipliers are applied in `bl_decay_row`.
 - R4 (`docs/HUD_HOME.md`): `profiles.bladder` numeric default 100 (100 = comfortable). Decays `needs.bladder_per_hour` × trait `effects.decay.bladder`; at 0, hygiene drops an extra `needs.bladder_empty_hygiene_per_hour`. `bl_adjust_needs` accepts a `bladder` key. New activities `use_toilet` (home), `ease_yourself` / `public_toilet` (paid, outside), `watch_tv`, `listen_radio`.
+- V1-3 (`docs/CAREERS.md`): `career_tracks` (id, name, emoji, category, location_ids, description, skill, sort, active) and `career_levels` (track_id, level, title, pay_per_shift, shift_game_minutes, energy_cost, effects, xp_per_shift, xp_to_next, requirements, perks) — select for anon+authenticated. `profiles` adds `job_started_at`, `job_shifts_in_level`, `job_total_shifts`, `job_shift_day`, `job_shifts_today`, `job_shift_ends_at/pay/xp/perf` (the running shift) and `career_best` jsonb. `get_my_state` gains a read-only `career` block (keep it, with `origin`, `creator` and `rent`, if you redefine it).
 - `origin_tiers` (P1-ORIGIN: id text pk, name, tagline, welcome, chance_key → game_config key of its roll %, is_default (exactly one), sort, perks jsonb) — select for anon+authenticated. See `docs/ORIGIN.md`.
 - Realtime publication `supabase_realtime`: profiles, events, game_config (+ chat tables by P2-SOCIAL).
 
@@ -105,6 +108,9 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 | `players_here` | p_location text | [{id, username, avatar, street_cred, last_seen}] seen within 3 real minutes |
 | `get_public_profile` | p_id uuid | {id, username, avatar, gender, street_cred, job_id, location_id, created_at} |
 | `players_online` | – | {count, minutes} — Sims seen in the last `time.presence_real_minutes` (R4, HUD pill) |
+| `jobs_catalog` | – | tracks + levels + the caller's entry level and requirement checks (V1-3) |
+| `job_apply` / `job_quit` | p_track text / – | {message, …} — apply works from anywhere (V1-3) |
+| `work_shift` / `work_finish` | – | start a shift at the job's place; collect pay/XP/promotion when it ends (V1-3) |
 
 Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location text, p_mode text, p_traffic numeric) returns jsonb` (P1-DB). P2-CRIME may `create or replace` it with a richer version **keeping the signature**.
 
@@ -156,6 +162,7 @@ Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location 
 | ekenwan_room | Ekenwan Face-Me-I-Face-You | ekenwan | home_face_me | 298 | 562 | .40 | 2.0 | f | t | 1.0 | 0 | housing,activities |
 | uniben_hostel (R3a) | UNIBEN Hostel (Ugbowo) | ugbowo | home_face_me | 522 | 140 | .20 | 1.6 | t | t | 1.0 | 0 | housing,activities |
 | uselu_selfcon (R3a) | Uselu Self-Contain | uselu | home_flat | 420 | 228 | .30 | 1.8 | f | t | 1.0 | 0 | housing,activities |
+| bronze_tech_hub (V1-3) | Bronze Tech Hub | ugbowo | office | 535 | 190 | .12 | 1.4 | t | t | 1.1 | 0 | jobs,activities |
 | iguobazuwa_farm | Iguobazuwa Farm Settlement | iguobazuwa | farm | 40 | 300 | .30 | 2.0 | f | f | 1.0 | 22 | farm,jobs |
 
 Positions come from `docs/MAP_GEO.md` (OSM + Wikipedia check of real Benin City, compressed radially) and are applied by `supabase/migrations/20261005000100_map_geo.sql` (two small nudges for pin spacing: ring_road_pos 540,452, police_hq 510,604). Roads to draw (map art, `src/art/map/mapGeo.ts`): Ring Road circle r≈60 at (500,500); each radial road leaves the ring at its real bearing. Ugbowo–Lagos Rd N (bearing ~350) through Uselu (450,270)/(480,235), Ugbowo with UBTH (440,165) west of the road and UNIBEN (480,125) east of it, to Oluku (390,40), then off-map towards Lagos; Siluko Rd NW (~300–314) past (378,378) becoming Upper Siluko Rd towards Iguobazuwa (farm sign, farmland on the NW edge; the farm itself is off-map, `remote_km` 22); Mission Rd NNE (31) past Mission Rd Flats/Mercy Clinic to New Benin Market (595,350), continuing N as Upper Mission Rd; Akpakpava Rd NE (52) over the Ikpoba bridge (≈656,420) to Ramat Park (680,415); from Ramat the Benin–Auchi Rd runs ENE to Aduwawa (820,335) and the Benin–Agbor Rd E/ESE; Sakponba Rd SE/ESE (125) past Ekiosa (595,575) and Baba Osagie (640,615) to Upper Sakponba (700,665); Sapele Rd SSE (165) past Sapele Rd PoS, Santana (560,700) and Bronze Lounge (560,770) off-map S; Airport Rd SW (221) to Benin Airport (330,615); Ekenwan Rd WSW (~245) along the south side of the palace past Ekenwan (298,562); First/Second/Third East Circular run N–S east of the centre (Third East at x≈650). Ikpoba River runs N–S around x≈655–695 between the end of Akpakpava Rd and Ramat Park, then bends SE past Upper Sakponba. Oba's Palace compound is just W of King's Square (≈405,505), outside the ring. GRA = leafy district S of centre between Airport Rd and Sapele Rd (police HQ, Bronze Bank, Kingdom Lounge, GRA Duplex). Exit signs: LAGOS N via Oluku, AUCHI ENE via Aduwawa, AGBOR/Asaba E, SAPELE/Warri S, FARMS/Iguobazuwa NW.
@@ -188,6 +195,7 @@ export interface PanelProps { state: GameState; location: Location; refresh: () 
 - Report: list files created, what you verified (commands + results), and any assumption the user should sanity-check.
 
 ## 9b. Careers (user request — owned by P2-ECON)
+**Built for v1 in V1-3 (launch subset: Tech, PoS & Fintech, Trade, Transport, Health, Education). The live spec is `docs/CAREERS.md`; this section is the long-term plan.**
 - Data-driven tables: `career_tracks` (id, name, category 'official'|'hustle', location_ids text[], description) and `career_levels` (track_id, level int, title, pay_per_shift, shift_game_minutes, energy_cost, xp_to_next, requirements jsonb e.g. {"min_days_in_level":1,"min_street_cred":0,"education":"degree","item":"laptop"}, perks jsonb). `profiles.job_id` = track id, `job_level`, `job_xp` (core columns).
 - Official tracks go lowest → highest (≥6 levels each): **Tech** (Intern → Junior Dev → Mid-level Dev → Senior Dev → Tech Lead → Engineering Manager → CTO) at a new location `bronze_tech_hub` ("Bronze Tech Hub", fictional, Ugbowo/GRA area, scene `office`); **Health** (Ward Attendant → Student Nurse → Staff Nurse → Senior Nurse → Resident Doctor → Consultant → Chief Medical Director) at UBTH/Mercy Clinic; **Police** (Recruit → Constable → Corporal → Sergeant → Inspector → ASP → DPO → Commissioner) at Police HQ; **Banking** (Intern → Teller → Customer Service → Relationship Manager → Branch Manager → Regional Head → MD/CEO) at Bronze Bank; **Education** (UNIBEN: Student → Graduate Assistant → Lecturer II → Lecturer I → Senior Lecturer → Professor → Vice-Chancellor); **Trade** (Market Apprentice → Trader → Shop Owner → Wholesaler → Market Leader (Iyaloja-style) → Distributor); **Bronze Art** (Igun Apprentice → Caster → Master Caster → Guild Elder); **Transport** (Keke Rider → Bus Driver → Park Supervisor → Transport Company Owner); **Entertainment** (Hype Man → DJ → Resident DJ → Club Manager → Promoter → Label Owner); **Beauty** (Salon Apprentice → Barber/Stylist → Senior Stylist → Salon Owner → Beauty Brand CEO); **PoS/Fintech agent** (PoS Attendant → PoS Operator → Super Agent → Aggregator).
 - Hustle tracks (risky, also laddered): **Agbero** (Ticket Boy → Agbero → Park Chairman's Boy → Park Chairman), **Yahoo** (Learner → G-boy → Big Boy → Chairman — each level higher pay AND higher EFCC raid chance).

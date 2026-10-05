@@ -17,6 +17,8 @@ export type SimTab = 'profile' | 'needs' | 'goals' | 'skills' | 'people' | 'care
 
 interface UiStore {
   selectedId: string | null;
+  /** Tab to open first in the location sheet (e.g. 'jobs' from "Go to work"). */
+  selectedTab: PanelId | null;
   panel: OpenPanel | null;
   overlay: Overlay;
   simTab: SimTab;
@@ -26,7 +28,7 @@ interface UiStore {
   homePick: { id: string | null; group: HomeGroup } | null;
   /** Phone app to open with the phone (e.g. 'alerts'). */
   phoneApp: string | null;
-  select: (id: string | null) => void;
+  select: (id: string | null, tab?: PanelId | null) => void;
   openPanel: (id: PanelId, params?: Record<string, unknown>, locationId?: string) => void;
   closePanel: () => void;
   setOverlay: (o: Overlay) => void;
@@ -40,13 +42,14 @@ interface UiStore {
 
 export const useUi = create<UiStore>((set) => ({
   selectedId: null,
+  selectedTab: null,
   panel: null,
   overlay: null,
   simTab: 'profile',
   mapOpen: false,
   homePick: null,
   phoneApp: null,
-  select: (id) => set({ selectedId: id }),
+  select: (id, tab = null) => set({ selectedId: id, selectedTab: tab }),
   openPanel: (id, params, locationId) => set({ panel: { id, params, locationId } }),
   closePanel: () => set({ panel: null }),
   setOverlay: (overlay) => (overlay === 'settings' ? set({ overlay: 'sim', simTab: 'settings' }) : set({ overlay })),

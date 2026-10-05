@@ -56,7 +56,7 @@ language sql as $$ select abs(a - b) < 0.01 $$;
 -- ---------- 0. seed sanity ----------
 do $$
 begin
-  perform pg_temp.assert((select count(*) from locations) = 39, 'expected 39 locations (37 + 2 R3a homes), got ' || (select count(*) from locations));
+  perform pg_temp.assert((select count(*) from locations) = 40, 'expected 40 locations (37 + 2 R3a homes + bronze_tech_hub), got ' || (select count(*) from locations));
   perform pg_temp.assert((select night_risk_mult from locations where id = 'upper_sakponba') = 3.0, 'upper_sakponba night x3');
   perform pg_temp.assert((select night_risk_mult from locations where id = 'third_east') = 3.0, 'third_east night x3');
   perform pg_temp.assert((select count(*) from locations where coalesce(blurb, '') = '') = 0, 'every location has blurb');
@@ -170,7 +170,7 @@ begin
   select count(*) into n from profiles;
   if n <> 1 then raise exception 'TEST FAILED: authenticated sees % profiles (want only own)', n; end if;
   select count(*) into n from locations;
-  if n <> 39 then raise exception 'TEST FAILED: locations not readable'; end if;
+  if n <> 40 then raise exception 'TEST FAILED: locations not readable'; end if;
   ok := false;
   begin update profiles set cash = 999999; exception when insufficient_privilege then ok := true; end;
   if not ok then raise exception 'TEST FAILED: client could update profiles'; end if;
@@ -195,7 +195,7 @@ declare ok boolean := false;
 begin
   begin perform get_my_state(); exception when insufficient_privilege then ok := true; end;
   if not ok then raise exception 'TEST FAILED: anon could call get_my_state'; end if;
-  if (select count(*) from locations) <> 39 then raise exception 'TEST FAILED: anon cannot read locations'; end if;
+  if (select count(*) from locations) <> 40 then raise exception 'TEST FAILED: anon cannot read locations'; end if;
   raise notice 'ok 3b: anon blocked from RPCs, can read catalog';
 end $$;
 reset role;

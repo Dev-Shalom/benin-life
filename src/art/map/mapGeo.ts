@@ -398,6 +398,8 @@ export const GO_SLOW = { x: 728, y: 430 };
 /** UNIBEN sports ground, UBTH hospital sign. */
 export const STADIUM = { x: 514, y: 140 };
 export const UBTH_SIGN = { x: 422, y: 182 };
+/** Bronze Tech Hub plot (V1-3, fictional, Ugbowo near UNIBEN): kept clear of generated buildings. */
+export const TECH_HUB = { x: 535, y: 190, r: 15 };
 /** Sacred grove around the shrine. */
 export const GROVE = { x: 655, y: 632, r: 22 };
 
@@ -528,7 +530,7 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   siluko_rd: { short: 'Siluko Road', tier: 2, side: 'r' },
   ekenwan_room: { short: 'Ekenwan Room', tier: 2, side: 'l' },
   iguobazuwa_farm: { short: 'Iguobazuwa Farm', tier: 1, side: 'r' },
-  bronze_tech_hub: { short: 'Tech Hub', tier: 2, side: 'r' },
+  bronze_tech_hub: { short: 'Tech Hub', tier: 1, side: 'r' },
   uniben_hostel: { short: 'UNIBEN Hostel', tier: 2, side: 'r' },
   uselu_selfcon: { short: 'Uselu Self-con', tier: 2, side: 'l' },
 };

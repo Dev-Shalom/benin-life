@@ -7,6 +7,7 @@ import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { Button, Icon, Modal, ProgressRing, toast } from '../../ui';
 import type { PlayerStatus } from './status';
+import { workFinish } from '../../api/careers';
 
 interface ArriveResult {
   message?: string;
@@ -59,6 +60,36 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
       }
     })();
   }, [due, travelKey, travel, byId, refresh, retryTick]);
+
+  // Collect a finished shift (pay, XP, promotion) when its timer runs out, also after a reload.
+  const shiftEnds = p.job_shift_ends_at ?? null;
+  const shiftDue = Boolean(shiftEnds) && Date.parse(shiftEnds!) <= status.now;
+  const finishing = useRef<string | null>(null);
+  const finishTries = useRef(0);
+  const [finishTick, setFinishTick] = useState(0);
+  useEffect(() => {
+    if (!shiftDue || !shiftEnds || finishing.current === shiftEnds) return;
+    finishing.current = shiftEnds;
+    (async () => {
+      try {
+        const r = await workFinish();
+        finishTries.current = 0;
+        if (r?.message) toast(r.promoted ? `🎉 ${r.message}` : r.message, 'good');
+      } catch (e) {
+        finishTries.current += 1;
+        if (finishTries.current < 4) {
+          window.setTimeout(() => {
+            finishing.current = null;
+            setFinishTick((t) => t + 1);
+          }, 2000);
+        } else {
+          toast(errorMessage(e), 'bad');
+        }
+      } finally {
+        await refresh();
+      }
+    })();
+  }, [shiftDue, shiftEnds, refresh, finishTick]);
 
   // When a timer (busy/jail/hospital) expires, pull fresh state.
   const timersDone = (p.busy_until || p.jailed_until || p.hospitalized_until) && status.busyLeft <= 0 && status.jailLeft <= 0 && status.hospLeft <= 0;

@@ -41,6 +41,7 @@ export const SCENE_EMOJI: Record<SceneType, string> = {
 /** A few places get a more specific emoji than their scene's. */
 const ID_EMOJI: Record<string, string> = {
   uniben_hostel: '🛏️',
+  bronze_tech_hub: '🚀',
   igun_street: '🔥',
   ring_road_pos: '💳',
   third_east: '🛣️',
@@ -97,14 +98,6 @@ export const COMING_SOON: { id: string; x: number; y: number; emoji: string; lab
     emoji: '✈️',
     label: 'Airport link',
     note: 'Fly to Lagos and Abuja from Benin Airport. Coming soon.',
-  },
-  {
-    id: 'tech_hub',
-    x: 535,
-    y: 190,
-    emoji: '💼',
-    label: 'Bronze Tech Hub',
-    note: 'Tech jobs near UNIBEN arrive with careers. Coming soon.',
   },
 ];
 

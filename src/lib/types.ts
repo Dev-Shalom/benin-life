@@ -408,3 +408,95 @@ export interface PlayersOnline {
   count: number;
   minutes: number;
 }
+
+// ---- V1-3: careers (docs/CAREERS.md) ----
+// Server: supabase/migrations/20261005000700_careers.sql.
+
+export interface CareerRequirement {
+  key: 'min_shifts_in_level' | 'item' | 'degree' | 'min_level_track' | 'min_street_cred' | string;
+  label: string;
+  met: boolean;
+  item?: string;
+  track?: string;
+}
+
+export interface CareerJob {
+  track: string;
+  track_name: string;
+  emoji: string;
+  skill: string | null;
+  level: number;
+  title: string;
+  top_level: number;
+  pay_per_shift: number;
+  shift_game_minutes: number;
+  energy_cost: number;
+  xp: number;
+  /** null at the top of the ladder */
+  xp_to_next: number | null;
+  shifts_in_level: number;
+  total_shifts: number;
+  shifts_today: number;
+  max_shifts_per_day: number;
+  /** performance % if a shift started now (from current needs) */
+  perf_now: number;
+  /** pay a shift started now would earn (performance, traits, career.pay_mult) */
+  pay_now: number;
+  started_at: string | null;
+  locations: { id: string; name: string }[];
+  next: { level: number; title: string; pay_per_shift: number; requirements: CareerRequirement[] } | null;
+  pending: { ends_at: string; pay: number; xp: number; perf: number } | null;
+}
+
+export interface CareerState {
+  job: CareerJob | null;
+  degree: boolean;
+  best: Record<string, number>;
+}
+
+export interface GameState {
+  /** Missing only on a server without the careers migration. */
+  career?: CareerState;
+}
+
+export interface Profile {
+  job_shift_ends_at?: string | null;
+}
+
+export interface JobLevelInfo {
+  level: number;
+  title: string;
+  pay_per_shift: number;
+  shift_game_minutes: number;
+  xp_to_next: number | null;
+  requirements: CareerRequirement[];
+}
+
+export interface JobTrack {
+  id: string;
+  name: string;
+  emoji: string;
+  category: 'official' | 'hustle';
+  description: string;
+  skill: string | null;
+  locations: { id: string; name: string }[];
+  entry_level: number;
+  levels: JobLevelInfo[];
+}
+
+/** `jobs_catalog()` */
+export interface JobsCatalog {
+  current: string | null;
+  degree: boolean;
+  tracks: JobTrack[];
+}
+
+/** `work_finish()` */
+export interface WorkFinishResult {
+  message: string | null;
+  pay?: number;
+  xp?: number;
+  perf?: number;
+  promoted?: { level: number; title: string; pay: number };
+  blocked?: { title: string; missing: string[] };
+}

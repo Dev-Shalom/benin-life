@@ -2,7 +2,7 @@
 // Roads, river, zones and density cores all come from the 2D map's data (src/art/map/mapGeo.ts),
 // so every building, tree and car sits where the 2D map (and docs/MAP_GEO.md) says the city is.
 import {
-  AIRPORT, CAMPUS, CORES, FARMLAND, GRA_ZONE, GROVE, KINGS_SQUARE, MARKETS, PALACE, POLICE, RAMAT, RING, RIVER,
+  AIRPORT, CAMPUS, CORES, FARMLAND, GRA_ZONE, GROVE, KINGS_SQUARE, MARKETS, PALACE, POLICE, RAMAT, RING, RIVER, TECH_HUB,
   ROAD_HW, ROADS, RUNWAY, UBTH, at, inPoly, rng, spline, type Pt, type RoadKind, type Spline,
 } from '../../map/mapGeo';
 
@@ -224,7 +224,7 @@ function build(): CityLayout {
   const special = (x: number, y: number) => {
     if (dist(x, y, KINGS_SQUARE.x, KINGS_SQUARE.y) < RING.r + RING.hw + 3 || dist(x, y, RAMAT.x, RAMAT.y) < 22) return true;
     for (const [mx, my, mr] of MARKETS) if (dist(x, y, mx, my) < mr + 2) return true;
-    if (dist(x, y, GROVE.x, GROVE.y) < GROVE.r) return true;
+    if (dist(x, y, GROVE.x, GROVE.y) < GROVE.r || dist(x, y, TECH_HUB.x, TECH_HUB.y) < TECH_HUB.r) return true;
     return inPoly(x, y, CAMPUS) || inPoly(x, y, AIRPORT) || inPoly(x, y, PALACE) || inPoly(x, y, UBTH) || inPoly(x, y, POLICE) || inPoly(x, y, FARMLAND) || inRunway(x, y, 8);
   };
   // motor park pads and the bridge approaches stay clear too

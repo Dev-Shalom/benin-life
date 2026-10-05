@@ -1,5 +1,5 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
-// Built: Ride (destination list -> the existing travel picker), Wallet, Alerts, Bank balances,
+// Built: Ride (destination list -> the existing travel picker), Jobs (V1-3), Wallet, Alerts, Bank balances,
 // Settings (Sim sheet). Everything else opens a "Coming soon" screen. Esc closes the phone.
 import { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -8,10 +8,13 @@ import { WEEKDAYS } from '../../lib/pidgin';
 import type { GameClock, GameState, Location } from '../../lib/types';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
-import { Icon, usePresence } from '../../ui';
+import { Button, Icon, usePresence } from '../../ui';
 import { useEscape } from '../../ui/presence';
 import { weekdayOf } from '../../lib/clock';
 import { AlertsList } from './Overlays';
+import { nearestWorkplace } from '../../api/careers';
+import { JobCard, PerfBar, Promotion, QuitButton, ShiftStats, TrackList } from '../../panels/careers/CareerUI';
+import { useCareerActions, useJobsCatalog } from '../../panels/careers/careerHooks';
 
 interface App {
   id: string;
@@ -105,6 +108,41 @@ function BankApp({ state }: { state: GameState }) {
   );
 }
 
+function JobsApp({ state, onGo }: { state: GameState; onGo: (id: string) => void }) {
+  const { cat, err } = useJobsCatalog();
+  const { busy, apply, quit } = useCareerActions();
+  const byId = useGame((s) => s.locationsById);
+  const job = state.career?.job ?? null;
+  const work = nearestWorkplace(state, byId);
+  const atWork = Boolean(job?.locations.some((l) => l.id === state.profile.location_id)) && !state.travel;
+  return (
+    <div className="phone-app__body jobs-app">
+      {job ? (
+        <>
+          <JobCard job={job} />
+          <PerfBar perf={job.perf_now} />
+          <Promotion job={job} />
+          <ShiftStats job={job} />
+          <div className="row jobs-app__actions">
+            {work && (
+              <Button variant="green" icon={atWork ? 'clock' : 'pin'} className="grow" onClick={() => onGo(work)}>
+                {atWork ? 'Start a shift' : 'Go to work'}
+              </Button>
+            )}
+            <QuitButton busy={busy === 'quit'} onQuit={() => void quit()} />
+          </div>
+        </>
+      ) : (
+        <p className="phone-app__lead">Pick a job and start at the bottom. You get paid at the end of every shift, and good shifts get you promoted.</p>
+      )}
+      <h4 className="jobs-app__head">{job ? 'Other jobs' : 'Who is hiring'}</h4>
+      {!cat && !err && <div className="panel-skel"><span /><span /></div>}
+      {err && <p className="phone-app__lead">{err}</p>}
+      {cat && <TrackList tracks={cat.tracks.filter((t) => t.id !== cat.current)} current={cat.current} busy={busy} onApply={(id) => void apply(id)} />}
+    </div>
+  );
+}
+
 function ComingSoon({ app }: { app: App }) {
   return (
     <div className="phone-soon">
@@ -152,6 +190,11 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
     close();
     setMapOpen(true);
     select(id);
+  };
+  const goWork = (id: string) => {
+    close();
+    setMapOpen(true);
+    select(id, 'jobs');
   };
   const app = APPS.find((a) => a.id === screen);
   const latest = events[0];
@@ -207,6 +250,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                 <span className="phone-app__title"><span aria-hidden>{app.emoji}</span> {app.name}</span>
               </div>
               {app.id === 'ride' ? <RideApp state={state} onPick={pickRide} />
+                : app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
                   : app.id === 'bank' ? <BankApp state={state} />
                     : <ComingSoon app={app} />}

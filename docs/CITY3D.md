@@ -56,7 +56,7 @@ Everything is laid out from the **same map-space data as the 2D map**: `src/art/
 | 🏛️ Gov & services | scenes `police`, `hospital`, `bank` | green rings |
 Chips toggle (several at once). Matching pills get a coloured outline and the rest fade. A one-line caption explains the last chip. `isNightRisky` now lives in `mapGeo.ts` and is shared by the 2D map, the 3D city and the risk labels.
 
-**Coming soon** (yellow pills, tap → toast): "Airport link" at Benin Airport (fly to Lagos/Abuja), "Bronze Tech Hub" at (535,190) near UNIBEN. Add more in `COMING_SOON` (`model.ts`).
+**Coming soon** (yellow pills, tap → toast): "Airport link" at Benin Airport (fly to Lagos/Abuja). Add more in `COMING_SOON` (`model.ts`). The Bronze Tech Hub pill was replaced in V1-3 by the real place (`bronze_tech_hub`, 🚀 pill, tier 1) and a landmark model in `buildLandmarks()` (glass block, laterite wing, solar roof, gold medallion; plot `TECH_HUB` in `mapGeo.ts` kept clear of generated buildings).
 
 ## Day/night
 From the game clock (`hour` float). `cityLight(hour)`: hemisphere + sun colours and strength, sky/fog colour, landmark windows (glass blue by day, warm at night), water, lamp bulbs. At night (`dark > 0.45`): lit window bands on ~55% of buildings (85% of tall ones), warm light pools under the street lamps, the danger glow. Dusk/dawn tint the sky orange.

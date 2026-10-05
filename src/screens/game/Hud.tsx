@@ -16,6 +16,7 @@ import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { Icon, toast } from '../../ui';
 import type { PlayerStatus } from './status';
+import { nearestWorkplace } from '../../api/careers';
 
 function usePlayersOnline(): number | null {
   const [n, setN] = useState<number | null>(null);
@@ -129,6 +130,8 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   const refresh = useGame((s) => s.refresh);
   const pickHome = useUi((s) => s.pickHome);
   const select = useUi((s) => s.select);
+  const setMapOpen = useUi((s) => s.setMapOpen);
+  const byId = useGame((s) => s.locationsById);
   const clean = usePrefs((s) => s.clean);
   const setPrefs = usePrefs((s) => s.set);
   const [claiming, setClaiming] = useState(false);
@@ -136,7 +139,9 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   const tips = lowNeeds(p, 2);
   const dadReady = Boolean(origin?.allowance_claimable);
   const protectedNow = status.protLeft > 0;
-  const count = tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0);
+  const job = state.career?.job ?? null;
+  const workAt = job && status.free && !job.pending && job.shifts_today < job.max_shifts_per_day ? nearestWorkplace(state, byId) : null;
+  const count = tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0);
   const folded = compact && !open && !clean;
 
   // Leaving the map (or switching to clean screen) folds the list again.
@@ -164,7 +169,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   };
 
   if (folded && count > 0) {
-    const icons = [...tips.map((t) => t.emoji), ...(dadReady ? ['💸'] : []), ...(protectedNow ? ['🛡️'] : [])];
+    const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(dadReady ? ['💸'] : []), ...(protectedNow ? ['🛡️'] : [])];
     return (
       <div className="left-rail is-compact">
         <button type="button" className={`rail-summary${dadReady ? ' has-dad' : ''}`} onClick={() => setOpen(true)} aria-expanded={false}
@@ -197,6 +202,16 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
               </span>
             </button>
           ))}
+          {workAt && job && (
+            <button type="button" className="wish-chip wish-chip--work"
+              onClick={() => { setOpen(false); if (workAt !== p.location_id) setMapOpen(true); select(workAt, 'jobs'); }}>
+              <span className="wish-chip__icon" aria-hidden>{job.emoji}</span>
+              <span className="wish-chip__text">
+                <span className="wish-chip__title">Go to work</span>
+                <span className="wish-chip__sub">{job.title} · {nairaShort(job.pay_per_shift)}</span>
+              </span>
+            </button>
+          )}
           {dadReady && origin && (
             <button type="button" className="wish-chip wish-chip--dad" onClick={() => void claimDad()} disabled={claiming}
               aria-label={`${ORIGIN_UI.collectDad} (${nairaShort(origin.allowance_daily)})`}>
