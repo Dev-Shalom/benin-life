@@ -27,6 +27,15 @@ The user wants the game to follow real daily life in Benin City. Waiting on new 
 ## 3. Places / mapping
 - Take note of real places (see `docs/LANDMARKS.md`) and how the map renders them; follow the user's references once they arrive.
 
+## Action timing rule (user, 2026-10-05 night) — **nobody waits long**
+- Every action is short: a few seconds, never minutes. **Sleep: 15 real seconds when energy is near 0**, shorter when less tired
+  (duration scales with how much the need is missing, e.g. `duration = max(min_s, max_s × missing/100)`; sleep max 15 s, min ~3 s).
+- Other activities: ~3–15 s (eat ~3–5 s, bath ~5 s, gym/club ~10–15 s). Work shifts ~15–20 s each. Travel: a few seconds to ~20 s max.
+- **Bars fill live while the action runs** (energy rises smoothly from its start value to the end value over the duration — client
+  interpolates using busy_started_at/busy_until and the action's effects; the server stays authoritative at the end).
+- All of it admin-tunable (`action.*` config: per-activity max seconds, min seconds, scale-by-need on/off; shift seconds; travel max seconds).
+- This replaces `time.real_seconds_per_game_minute`-based durations (that key stays only for accelerated mode/back-compat).
+
 ## What the references show (see NOTES.md "Live places walkthrough")
 - Real-time clock confirmed; activities stay short (5–20 real seconds) → answer to the open question: **keep durations short**.
 - Every place = a **3D interior** you're inside, with **zones** and **action cards** per zone (duration, price/Free/Earns ₦, effect chips, Risky tag),
@@ -38,7 +47,7 @@ The user wants the game to follow real daily life in Benin City. Waiting on new 
 ## Build plan (Phase L "Live places", after V1-8; one agent at a time)
 | # | Step | Scope |
 |---|---|---|
-| L1 | Real Benin time | clock.mode real (WAT), all day/night/rush/banking/rent/daily caps on the real calendar; short action durations kept; needs decay retuned per real hour (admin). |
+| L1 | Real Benin time + short actions | clock.mode real (WAT), all day/night/rush/banking/rent/daily caps on the real calendar; needs decay retuned per real hour (admin); **action timing rule above** (sleep ≤15 s scaled by tiredness, all actions seconds, shifts ~15–20 s, travel ≤~20 s, bars fill live). |
 | L2 | Place interiors + zones | 3D interior per place type (market, buka, club/lounge, bank, hospital, campus, motor park, PoS, police, palace/museum respectful, tech hub, stadium, shrine, street); data-driven `place_zones` + `zone_actions` (activities, jobs, shop items mapped to zones); action cards UI with queue + cancel; mood lines per place × time. Phase-1 SVG scenes stay as the fallback / Lite mode header. |
 | L3 | Crowds | NPC roster (names, presets, lines) spawned by place type × real hour × weekday; real players present; render cap (config `crowd.max_visible`, default ~10), players first; name pills (white NPC / blue @player + green dot); "People N" list; chat bubbles over heads; streaming load pill. |
 | L4 | Map sheet + events | place sheet with description, share link, activity chips, "On today" (Samuel Ogbemudia Stadium matches, Friday/Saturday concerts, market days), travel mode cards + Go; top banners for live/upcoming events. |
