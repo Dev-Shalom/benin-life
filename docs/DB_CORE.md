@@ -47,6 +47,8 @@ P2-CRIME: if you `create or replace` `bl_roll_street_robbery`, also replace `bl_
 
 `get_my_state().profile` is the full `profiles` row minus `banned, needs_updated_at, last_seen, travel_*`. Columns other owners add appear automatically. While a player is travelling, `location_id` stays on the origin until `travel_arrive`.
 
+**Redefined later:** `20261005000200_origin.sql` (P1-ORIGIN) replaces `create_profile` (same signature/validation; starter pack now comes from the rolled origin tier) and `get_my_state` (adds an `origin` block). See `docs/ORIGIN.md`. Group 2 of `core_test.sql` pins `bl.test_rand = 0.99` while creating its players so they are always the default LAPO tier (its start-state asserts stay exact); it resets the setting afterwards.
+
 **`get_my_state` does not write on every call.** `profiles` is realtime-published and the shell refreshes on every change to its own row, so a write on each call would loop forever. Needs decay is computed in memory (`bl_decay_row`); the next gameplay RPC persists it through `bl_me()`, and the result is the same because decay is path-independent. `last_seen` is re-saved only when it is older than `time.last_seen_throttle_real_seconds` (30 s), which is well inside the 3-minute presence window. **P2 owners:** do not add per-call writes to `get_my_state`, and do not write `profiles` from read-only RPCs.
 
 ## Formulas

@@ -119,3 +119,66 @@ export function authErrorPidgin(raw: string): string {
   if (m.includes('signup') && m.includes('disabled')) return 'Sign up close for now. Try again later.';
   return P.somethingWrong;
 }
+
+// ---- Origin (LAPO baby vs Nepo baby) — reveal screen + HUD ----
+export interface OriginCopy {
+  /** Small line above the title. */
+  kicker: string;
+  /** Big title. */
+  title: string;
+  /** Line under the title; `{home}` is replaced with the home location name. */
+  line: string;
+  /** Warm closing line. */
+  cheer: string;
+  /** Short HUD badge text. */
+  badge: string;
+}
+
+export const ORIGIN_COPY: Record<string, OriginCopy> = {
+  nepo: {
+    kicker: 'Omo! You be…',
+    title: 'Nepo baby',
+    line: 'Papa get connection. You don land for {home} with motor for compound and laptop for table.',
+    cheer: 'Enjoy am, but abeg no spoil the family name o.',
+    badge: 'Nepo',
+  },
+  lapo: {
+    kicker: 'You be…',
+    title: 'LAPO baby',
+    line: 'Na hustle go carry you. {home}, small money for pocket, and big dream for head.',
+    cheer: 'Plenty big men for Benin start from one room. Your own story go sweet pass.',
+    badge: 'LAPO',
+  },
+};
+
+/** Copy for a tier, with a generic fallback for tiers added later as data. */
+export function originCopy(id: string, name: string, tagline: string): OriginCopy {
+  return (
+    ORIGIN_COPY[id] ?? {
+      kicker: 'You be…',
+      title: name,
+      line: tagline || 'Life don give you your own start for {home}.',
+      cheer: 'Oya, show Benin wetin you carry.',
+      badge: name.split(' ')[0] ?? name,
+    }
+  );
+}
+
+export const ORIGIN_UI = {
+  rolling: 'Life dey roll the dice…',
+  skip: 'Tap to skip',
+  enter: 'Oya enter Benin',
+  cash: 'For pocket',
+  bank: 'For bank',
+  allowance: 'Papa allowance',
+  perDay: '/ day',
+  headStart: 'Career head start',
+  levels: (n: number) => `+${n} level${n === 1 ? '' : 's'}`,
+  easyLoan: 'LAPO loan',
+  easyLoanValue: 'Easy access (soon)',
+  emptyBag: 'Bag',
+  emptyBagValue: 'Na your hustle go fill am',
+  home: 'Your house',
+  collectPapa: 'Collect Papa money',
+  papaChip: 'Papa',
+};

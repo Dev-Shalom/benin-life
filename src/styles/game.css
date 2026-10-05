@@ -89,6 +89,40 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.hud-portrait-wrap {
+  position: relative;
+  flex: none;
+}
+/* Origin class badge (P1-ORIGIN) */
+.origin-chip {
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  padding: 0 5px 1px;
+  font-size: 8.5px;
+  border-radius: 99px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.origin-chip--nepo {
+  background: var(--grad-bronze);
+  color: #3a2108;
+  box-shadow: 0 0 0 1.5px rgba(18, 16, 40, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.origin-chip--lapo {
+  background: linear-gradient(180deg, #e0895a, #b5552b);
+  color: #fff1e0;
+  box-shadow: 0 0 0 1.5px rgba(18, 16, 40, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.origin-chip--other {
+  background: #3a3560;
+  color: var(--glass-text);
+  box-shadow: 0 0 0 1.5px rgba(18, 16, 40, 0.9);
+}
 .hud-clock {
   display: inline-flex;
   align-items: center;
@@ -178,6 +212,41 @@
   font-size: 11px;
   font-weight: 700;
   color: var(--glass-muted);
+}
+.hud-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.hud-papa {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 5px 4px 9px;
+  border: 0;
+  border-radius: 99px;
+  background: var(--grad-bronze);
+  color: #3a2108;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 0 var(--bronze-deep), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: transform 140ms var(--ease-out);
+}
+.hud-papa:active {
+  transform: scale(0.96);
+}
+.hud-papa:disabled {
+  opacity: 0.75;
+  cursor: progress;
+}
+.hud-papa__amt {
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--ects);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
 }
 .hud-protect {
   align-self: flex-start;
@@ -798,6 +867,10 @@
 /* Toasts on the game screen sit clear of the HUD (data-theme is only set while <Game/> is mounted). */
 html[data-theme] .bl-toaster {
   top: calc(var(--sat) + 150px);
+  /* stay left of the HUD side buttons (bell, settings) so a toast never covers them */
+  left: calc(var(--sal) + 8px);
+  transform: none;
+  width: min(440px, calc(100vw - var(--sal) - var(--sar) - 72px));
 }
 @media (min-width: 900px) {
   html[data-theme] .bl-toaster {

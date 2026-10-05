@@ -16,6 +16,8 @@ scripts/sql-test.sh           phase 0 — run migration(s)+test in a ROLLBACK tr
 supabase/migrations/
   20261004000100_core.sql               P1-DB
   20261004000200_core_seed.sql          P1-DB
+  20261005000100_map_geo.sql            P1-MAP (location positions)
+  20261005000200_origin.sql             P1-ORIGIN (LAPO/Nepo class roll — docs/ORIGIN.md)
   20261004001000_economy.sql            P2-ECON
   20261004002000_finance_farm_health.sql P2-FIN
   20261004003000_crime_police.sql       P2-CRIME
@@ -65,7 +67,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 - Real-time duration of game minutes: `bl_real_seconds(p_game_minutes numeric) -> numeric` = minutes × `time.real_seconds_per_game_minute`.
 
 ### Core tables (P1-DB) — other owners may `alter table ... add column if not exists` in their own migration, never drop/rename.
-- `profiles` (id uuid pk → auth.users, username unique, gender, avatar jsonb, is_admin, banned, cash bigint, bank bigint, hunger/energy/hygiene/fun/social/health/stress numeric, needs_updated_at, location_id → locations, home_location_id, housing_id text, job_id text, job_level int, job_xp int, street_cred int, wanted int, travel_to, travel_mode, travel_started_at, travel_arrives_at, busy_until, busy_label, jailed_until, jail_reason, hospitalized_until, protected_until, charm_strength numeric 0–1, charm_until, last_seen, created_at)
+- `profiles` (id uuid pk → auth.users, username unique, gender, avatar jsonb, is_admin, banned, cash bigint, bank bigint, hunger/energy/hygiene/fun/social/health/stress numeric, needs_updated_at, location_id → locations, home_location_id, housing_id text, job_id text, job_level int, job_xp int, street_cred int, wanted int, travel_to, travel_mode, travel_started_at, travel_arrives_at, busy_until, busy_label, jailed_until, jail_reason, hospitalized_until, protected_until, charm_strength numeric 0–1, charm_until, last_seen, created_at; P1-ORIGIN adds origin text → origin_tiers default 'lapo', allowance_claimed_day int)
 - `locations` (id text pk, name, district, scene, blurb, risk numeric 0–1, night_risk_mult, cctv bool, keke_ok bool, congestion numeric, remote_km numeric, x, y numeric (map space 0–1000), actions text[], sort int)
 - `game_config` (key pk, value jsonb, category, label, description, kind, min, max, updated_at, updated_by)
 - `config_audit` (id, admin_id, key, old_value, new_value, created_at) — written by admin RPCs (P2-ADMIN)
@@ -74,14 +76,16 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 - `items` (id text pk, name, category, price bigint, description, effects jsonb, sold_at text[] (location ids), sellable bool, resale_pct numeric, icon text, sort int) — rows seeded by P2-ECON (P2-FIN may add seeds/charms)
 - `inventory` (user_id, item_id, qty, primary key(user_id,item_id))
 - `activities` (id text pk, name, scenes text[] (which location scenes offer it), home_only bool, cost bigint, game_minutes int, effects jsonb, night_only bool, sort int)
+- `origin_tiers` (P1-ORIGIN: id text pk, name, tagline, welcome, chance_key → game_config key of its roll %, is_default (exactly one), sort, perks jsonb) — select for anon+authenticated. See `docs/ORIGIN.md`.
 - Realtime publication `supabase_realtime`: profiles, events, game_config (+ chat tables by P2-SOCIAL).
 
 ### Core RPCs (P1-DB)
 | RPC | Args | Returns |
 |---|---|---|
-| `create_profile` | p_username text, p_gender text, p_avatar jsonb | GameState |
+| `create_profile` | p_username text, p_gender text, p_avatar jsonb | GameState — rolls the origin tier and applies its starter pack (redefined by P1-ORIGIN) |
 | `update_avatar` | p_avatar jsonb | {message} |
-| `get_my_state` | – | GameState (see `src/lib/types.ts`) — also bumps last_seen |
+| `get_my_state` | – | GameState (see `src/lib/types.ts`) incl. `origin` block (P1-ORIGIN; keep it if you redefine) — also bumps last_seen |
+| `claim_allowance` | – | {message, amount, account:'bank', bank, day} — Papa allowance once per game day (P1-ORIGIN) |
 | `travel_quote` | p_dest text | {dest, km, options:[{mode, label, allowed, reason?, cost, game_minutes, real_seconds, risk_pct}]} |
 | `travel_start` | p_dest text, p_mode text | {message, arrives_at} |
 | `travel_arrive` | – | {message, robbed?: {amount, injured}} — rolls street robbery |
@@ -94,7 +98,7 @@ Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location 
 ## 4. Game rules (baseline numbers = config defaults)
 - Clock: `clock.game_minutes_per_real_minute` = 12 (1 game day = 2 real hours). Game time = minutes since epoch 2026-01-01T00:00Z × speed + `clock.start_hour_offset`(6h). Night = hour ≥ `clock.night_start_hour`(20) or < `clock.night_end_hour`(6).
 - Needs decay per game hour: hunger 4, energy 3, hygiene 2.5, fun 2, social 1.5; stress +1; health −2 per game hour while hunger or energy is 0.
-- Start: cash ₦5,000, home `ekenwan_room`, housing `face_me_ekenwan`, location `ekenwan_room`, new-player protection 120 real minutes.
+- Start: depends on the rolled origin tier (P1-ORIGIN, `docs/ORIGIN.md`). `origin.nepo_pct` 10% → **Nepo baby**: cash ₦50,000, bank ₦500,000, home/location `gra_duplex`, housing `duplex_gra`, items `tokunbo_car,laptop`, career head start 2, Papa allowance ₦5,000/game day. Otherwise **LAPO baby** (default): cash ₦5,000, home/location `ekenwan_room`, housing `face_me_ekenwan`, easy micro-loans (Phase 2 hook). Per-tier keys `origin.<tier>.{start_cash,start_bank,home_location,housing,items,career_head_start,allowance_daily}`; missing ones fall back to `start.*`. New-player protection 120 real minutes for everyone.
 - Travel: km = distance(x,y)/1000 × `travel.city_km_across`(18) + remote_km of each end. Modes (`travel.<mode>.*`): walk 5 km/h ₦0; keke 18 km/h ₦150 + ₦100/km (only if both ends `keke_ok`); bus (ECTS) 15 km/h ₦300 flat; drop 25 km/h ₦500 + ₦250/km; car 30 km/h ₦120/km fuel (needs an inventory item with category `vehicle`). Traffic = avg(congestion) × rush mult 1.8 (07–10, 16–20) × Ramat Park mult 1.6 if either end in district `ikpoba_hill`/`aduwawa` and `traffic.ramat_flyover_open` false. Walk ignores traffic. Real seconds = game minutes × `travel.real_seconds_per_game_minute`(1.0), min 3s.
 - Street robbery p = `crime.npc_base_pct`/100 × zone risk × (night ? night_risk_mult × `crime.night_mult` : 1) × (1 + (traffic−1) × `crime.traffic_weight`) × cash_factor × mode_factor × (1 − charm_strength); cash_factor = min(1.5, 0.3 + cash/`crime.cash_ref`); mode factors walk 1.4 / keke 1.0 / bus 0.8 / drop 0.7 / car 0.6; 0 while protected; cap `crime.npc_max_pct`. Loss = cash × U(`crime.loss_min_pct`,`crime.loss_max_pct`)/100; `crime.injury_pct` chance → health −U(15,35) and suggest UBTH.
 

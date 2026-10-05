@@ -7,6 +7,7 @@ import type { AvatarConfig, GameState, Gender } from '../lib/types';
 import { useGame } from '../state/game';
 import { Button, Icon, Tabs, toast } from '../ui';
 import { Logo } from './Brand';
+import OriginReveal from './OriginReveal';
 
 type Slot = keyof typeof AVATAR_OPTIONS;
 type Step = 'gender' | 'name' | 'look';
@@ -45,11 +46,27 @@ export default function CreateSim() {
   const [slot, setSlot] = useState<Slot>('skin');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Fresh GameState from create_profile, held back from the store until the origin reveal is done
+  // (applying it flips status to 'ready', which redirects to /play).
+  const [revealed, setRevealed] = useState<GameState | null>(null);
 
   const slots = useMemo(() => SLOT_ORDER.filter((s) => optionsFor(s, gender).length > 0), [gender]);
   const previews = useMemo(() => ({ male: defaultAvatar('male'), female: defaultAvatar('female') }), []);
 
   if (status === 'ready') return <Navigate to="/play" replace />;
+
+  if (revealed) {
+    return (
+      <OriginReveal
+        state={revealed}
+        onDone={() => {
+          applyState(revealed);
+          void useGame.getState().refresh();
+          nav('/play', { replace: true });
+        }}
+      />
+    );
+  }
 
   const chooseGender = (g: Gender) => {
     setGender(g);
@@ -80,10 +97,12 @@ export default function CreateSim() {
     setBusy(true);
     try {
       const st = await rpc<GameState>('create_profile', { p_username: username, p_gender: gender, p_avatar: { ...avatar, gender } });
-      toast(`Welcome to Benin, ${username}! Your face-me-I-face-you for Ekenwan dey wait you.`, 'good');
-      if (st && st.profile) applyState(st);
-      else await useGame.getState().refresh();
-      nav('/play', { replace: true });
+      if (st && st.profile) {
+        setRevealed(st); // OriginReveal is the welcome; it enters the game when the player taps
+      } else {
+        await useGame.getState().refresh();
+        nav('/play', { replace: true });
+      }
     } catch (e) {
       const msg = errorMessage(e);
       setErr(msg);

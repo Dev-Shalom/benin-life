@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar } from '../../art/avatar/Avatar';
 import { clockTime, countdown, nairaShort } from '../../lib/format';
-import { NEED_KEYS } from '../../lib/pidgin';
-import type { GameClock, GameState } from '../../lib/types';
+import { rpc, errorMessage } from '../../lib/api';
+import { NEED_KEYS, ORIGIN_UI, originCopy } from '../../lib/pidgin';
+import type { ClaimAllowanceResult, GameClock, GameState } from '../../lib/types';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { Icon, IconButton, NeedBar, toast } from '../../ui';
@@ -16,14 +18,41 @@ export function Hud({ state, clock, status }: { state: GameState; clock: GameClo
   const toggleNeeds = useUi((s) => s.toggleNeeds);
   const unread = useGame((s) => s.unread);
   const nav = useNavigate();
+  const refresh = useGame((s) => s.refresh);
+  const origin = state.origin ?? null;
+  const tier = origin?.id ?? p.origin;
+  const badge = tier ? originCopy(tier, origin?.name ?? tier, origin?.tagline ?? '').badge : null;
+  const [claiming, setClaiming] = useState(false);
+
+  const claimPapa = async () => {
+    if (claiming) return;
+    setClaiming(true);
+    try {
+      const r = await rpc<ClaimAllowanceResult>('claim_allowance');
+      toast(r.message, 'good');
+      await refresh();
+    } catch (e) {
+      toast(errorMessage(e), 'bad');
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   return (
     <>
       <div className="hud-top">
         <div className="hud-card">
           <button type="button" className="hud-id" onClick={() => openPanel('profile', { targetId: p.id })} aria-label="My profile">
-            <span className="hud-portrait">
-              <Avatar config={p.avatar} view="portrait" size={46} />
+            <span className="hud-portrait-wrap">
+              <span className="hud-portrait">
+                <Avatar config={p.avatar} view="portrait" size={46} />
+              </span>
+              {badge && (
+                <span className={`origin-chip origin-chip--${tier === 'nepo' ? 'nepo' : tier === 'lapo' ? 'lapo' : 'other'}`}
+                  title={origin?.name}>
+                  {badge}
+                </span>
+              )}
             </span>
             <span className="hud-id__text">
               <span className="hud-name">{p.username}</span>
@@ -66,9 +95,21 @@ export function Hud({ state, clock, status }: { state: GameState; clock: GameClo
           )}
         </button>
 
-        {status.protLeft > 0 && (
-          <div className="hud-protect" title="New-player protection: nobody fit rob you yet">
-            <Icon name="shield" size={14} /> Protected · {countdown(status.protLeft)}
+        {(status.protLeft > 0 || origin?.allowance_claimable) && (
+          <div className="hud-chips">
+            {status.protLeft > 0 && (
+              <div className="hud-protect" title="New-player protection: nobody fit rob you yet">
+                <Icon name="shield" size={14} /> Protected · {countdown(status.protLeft)}
+              </div>
+            )}
+            {origin?.allowance_claimable && (
+              <button type="button" className="hud-papa" onClick={() => void claimPapa()} disabled={claiming}
+                title={ORIGIN_UI.collectPapa} aria-label={`${ORIGIN_UI.collectPapa} (${nairaShort(origin.allowance_daily)})`}>
+                <Icon name="sparkle" size={14} />
+                {ORIGIN_UI.papaChip}
+                <span className="hud-papa__amt">{nairaShort(origin.allowance_daily)}</span>
+              </button>
+            )}
           </div>
         )}
       </div>

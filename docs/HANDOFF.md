@@ -69,7 +69,7 @@ Read this file first, then `docs/BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/DB_COR
      - The palace compound goes **W** of King's Square.
      - District areas and exit signs.
    - Re-render and check.
-3. **Starting class roll, LAPO baby vs Nepo baby (user request).**
+3. ~~**Starting class roll, LAPO baby vs Nepo baby (user request).**~~ **DONE** (migration `20261005000200_origin.sql`, `supabase/tests/origin_test.sql`, `src/screens/OriginReveal.tsx`, HUD badge + Papa chip; notes in `docs/ORIGIN.md`). Profile panel badge waits for P2-SOCIAL's ProfilePanel.
    - **What the terms mean:** "Nepo baby" is born into wealth and connections. "LAPO baby" comes from a poor background and hustles alone; the name references LAPO Microfinance.
    - **The roll:** at `create_profile` the server rolls a class at random. The chance is admin-tunable with the config key `origin.nepo_pct`, default about 10. Everyone else is a LAPO baby. Keep it data-driven so more tiers can be added later.
    - **What each class sets (all admin-tunable config):** start cash, start bank, home location and housing, starting items (for example, a nepo baby gets a car and a laptop), a career head-start level, and an optional daily allowance from "Papa".

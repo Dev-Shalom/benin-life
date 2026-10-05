@@ -50,6 +50,7 @@ const PATHS: Record<string, string> = {
   camera: 'M4 8h3l2-3h6l2 3h3v11H4V8Z M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
   road: 'M8 3 4 21 M16 3l4 18 M12 4v3 M12 10v3 M12 16v3',
   mail: 'M3 6h18v12H3V6Z M3 7l9 6 9-6',
+  laptop: 'M5 5h14v10H5V5Z M2 19h20l-2-4H4l-2 4Z',
 };
 
 export type IconName = keyof typeof PATHS;

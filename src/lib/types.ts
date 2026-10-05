@@ -166,3 +166,49 @@ export interface PanelProps {
 }
 
 // ---- Owner sections below (append only) ----
+
+// ---- P1-ORIGIN: starting class roll (LAPO baby vs Nepo baby) ----
+// Server: supabase/migrations/20261005000200_origin.sql. Interfaces below merge into Profile / GameState.
+
+/** origin_tiers.id — 'lapo' (default) and 'nepo' today; more tiers can be added as data. */
+export type OriginId = 'lapo' | 'nepo' | (string & {});
+
+export interface Profile {
+  origin: OriginId;
+  /** Game day the Papa allowance was last claimed (null = never). */
+  allowance_claimed_day: number | null;
+}
+
+export interface OriginItem {
+  id: string;
+  name: string;
+  category: string;
+}
+
+/** `get_my_state().origin` — the player's tier and what it gives. */
+export interface OriginInfo {
+  id: OriginId;
+  name: string; // "Nepo baby"
+  tagline: string; // Pidgin
+  perks: Record<string, unknown>; // future hooks, e.g. { micro_loan_access: 'easy' }
+  career_head_start: number; // levels added at first job (Phase 2)
+  allowance_daily: number; // naira per game day, 0 = none
+  allowance_claimable: boolean; // allowance > 0 and not yet claimed this game day
+  start_cash: number;
+  start_bank: number;
+  items: OriginItem[]; // starter items from config
+}
+
+export interface GameState {
+  /** Missing only on a server without the origin migration. */
+  origin?: OriginInfo | null;
+}
+
+/** `claim_allowance()` result. */
+export interface ClaimAllowanceResult {
+  message: string;
+  amount: number;
+  account: 'bank';
+  bank: number; // new bank balance
+  day: number;
+}

@@ -93,6 +93,9 @@ begin
                              ('c', pg_temp.new_user('c@test.bl')), ('d', pg_temp.new_user('d@test.bl')),
                              ('e', pg_temp.new_user('e@test.bl'));
   perform pg_temp.as_user('a');
+  -- Pin the origin roll (20261005000200_origin.sql) to the default tier (LAPO baby) so the
+  -- start-state asserts below are deterministic; a no-op when only the core migrations are loaded.
+  perform set_config('bl.test_rand', '0.99', true);
   -- before creating: no profile
   perform pg_temp.expect_error($q$ select get_my_state() $q$, '%never create%');
 
@@ -150,6 +153,7 @@ begin
   perform pg_temp.as_user('c'); perform create_profile('Ize', 'male', '{}');
   perform pg_temp.as_user('d'); perform create_profile('Dayo', 'male', '{}');
   perform pg_temp.as_user('e'); perform create_profile('Eki', 'female', '{}');
+  perform set_config('bl.test_rand', '', true);
   raise notice 'ok 2: create_profile + GameState shape';
 end $$;
 
