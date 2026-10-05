@@ -2,6 +2,9 @@
 
 This file is kept current after every step. The live status is in `docs/HANDOFF.md`, under the "STATUS LOG" section at the bottom.
 
+**Current state (updated by the cloud session after every step):** Phase R in progress in a cloud session. Done: R1. Running: R2 finish (3D character portraits, Yahoo preset colours, docs). Next: R3a → R3b → R4 → R5 → R6 demo. Decisions: keep Phase 1 SVG place scenes as panel headers; 3D for everyone, the 2D map only as a fallback on extremely weak connections.
+If the cloud session is still working when you start locally, run `git pull` first and don't redo a step marked [running] unless it has been idle for hours.
+
 ```
 You're continuing the "Benin Life" game project: https://github.com/Dev-Shalom/benin-life
 All the latest work is on branch claude/kind-bell-e9reb8. Run: git fetch origin && git checkout claude/kind-bell-e9reb8 && git pull
