@@ -89,7 +89,10 @@ All Phase 1 work is committed on branch `claude/kind-bell-e9reb8` (not yet merge
 - Kingdom Lounge's pin hit circle overlaps Bronze Bank's label at default zoom.
 - On load `get_my_state` is called 3x and `game_config` 2x (harmless).
 
-## Phase 2 (after the user approves the Phase 1 demo), one agent at a time
+## NEXT: Phase R redesign (approved 2026-10-05). See docs/REDESIGN_PLAN.md. Do it BEFORE Phase 2.
+The whole game goes 3D, with a Lagos Life-style light UI, the creator flow, a phone, and the deeper life systems.
+
+## Phase 2 (after the Phase R demo is approved), one agent at a time
 1. **Economy and careers.** Jobs and the career ladders in ARCHITECTURE §9b, including the new `bronze_tech_hub` location (scene `office`, position in MAP_GEO.md), plus market/shop and housing.
 2. **Money.** Bank, PoS fees, esusu, loans (with the LAPO hook), farming at Iguobazuwa, hospital, and the Babalawo (charms that reduce robbery chance).
 3. **Crime.** PvP robbery with CCTV and police catch chance, police, jail and bail, Yahoo and EFCC raids, and agberos.
