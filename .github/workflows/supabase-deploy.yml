@@ -5,7 +5,7 @@ name: Supabase preview DB
 
 on:
   push:
-    branches: [claude/kind-bell-e9reb8, main]
+    branches: [main]
     paths: ['supabase/migrations/**', '.github/workflows/supabase-deploy.yml']
   workflow_dispatch:
 
