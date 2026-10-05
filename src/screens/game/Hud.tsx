@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar } from '../../art/avatar/Avatar';
 import { clockTime, countdown, nairaShort } from '../../lib/format';
@@ -23,6 +23,25 @@ export function Hud({ state, clock, status }: { state: GameState; clock: GameClo
   const tier = origin?.id ?? p.origin;
   const badge = tier ? originCopy(tier, origin?.name ?? tier, origin?.tagline ?? '').badge : null;
   const [claiming, setClaiming] = useState(false);
+  const topRef = useRef<HTMLDivElement>(null);
+
+  // Publish the HUD's real bottom edge so game toasts sit below it even when the needs panel
+  // is open or the chips row wraps (see .bl-toaster in game.css).
+  useLayoutEffect(() => {
+    const el = topRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const sync = () => root.style.setProperty('--hud-bottom', `${Math.round(el.getBoundingClientRect().bottom)}px`);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    window.addEventListener('resize', sync);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', sync);
+      root.style.removeProperty('--hud-bottom');
+    };
+  }, []);
 
   const claimPapa = async () => {
     if (claiming) return;
@@ -40,7 +59,7 @@ export function Hud({ state, clock, status }: { state: GameState; clock: GameClo
 
   return (
     <>
-      <div className="hud-top">
+      <div className="hud-top" ref={topRef}>
         <div className="hud-card">
           <button type="button" className="hud-id" onClick={() => openPanel('profile', { targetId: p.id })} aria-label="My profile">
             <span className="hud-portrait-wrap">

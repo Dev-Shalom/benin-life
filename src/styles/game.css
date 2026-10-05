@@ -901,7 +901,8 @@
 
 /* Toasts on the game screen sit clear of the HUD (data-theme is only set while <Game/> is mounted). */
 html[data-theme] .bl-toaster {
-  top: calc(var(--sat) + 150px);
+  /* --hud-bottom is measured by <Hud/>; the fallback matches the collapsed HUD */
+  top: calc(var(--hud-bottom, calc(var(--sat) + 142px)) + 8px);
   /* stay left of the HUD side buttons (bell, settings) so a toast never covers them */
   left: calc(var(--sal) + 8px);
   transform: none;
