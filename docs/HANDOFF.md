@@ -56,41 +56,36 @@ Read this file first, then `docs/BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/DB_COR
 | P1 scenes B | `src/art/scenes/` (10 scenes, day and night): farm, home_face_me, home_flat, home_duplex, airport, shrine, workshop, buka, salon, cyber. `office` is Phase 2. Render any scene with `node scripts/render-scenes.mjs <outDir> [scene…]` |
 | Cloud tooling | Skills committed in `.claude/skills/` (svg-creator, emil-design-eng, design-taste-frontend). SQL tests run without Docker: start a local Postgres, load `scripts/supabase-stub.sql` once, then `BL_PSQL="psql -h /tmp -p 54322 -U postgres -d postgres" bash scripts/sql-test.sh …` |
 
-## In progress or not yet done (Phase 1 wrap-up), in this order
-1. ~~**Scenes B**~~ **DONE** (`src/art/scenes/_sharedB.tsx`, farm, home_face_me, home_flat, home_duplex, airport, shrine, workshop, plus buka/salon/cyber/office if they're in its scope).
-   - When this handoff was written, an agent was still working on these on the user's PC. Files may be partial or uncommitted.
-   - Check which files exist, render each one day and night, finish any that are missing, and run `npm run build`.
-   - The original agent briefs aren't in the repo. The scope comes from ARCHITECTURE §7 and `src/art/Scene.tsx`.
-2. ~~**Map geography fix.**~~ **DONE** (migration `20261005000100_map_geo.sql`, `supabase/tests/map_geo_test.sql`, render with `node scripts/render-map.mjs <outDir>`). The user asked for the map to match the real Benin City. The research is done and saved in **`docs/MAP_GEO.md`**: verified facts, road bearings, and a full corrected position table.
-   - Write a new migration that updates `locations.x/y` to those values. Don't edit the applied core migration.
-   - Update ARCHITECTURE §5.
-   - Rework `src/art/map/mapGeo.ts` and the related files:
-     - Road directions (Siluko goes **NW**, the Lagos Rd goes **N** to Uselu, Ugbowo and Oluku).
-     - The palace compound goes **W** of King's Square.
-     - District areas and exit signs.
-   - Re-render and check.
-3. ~~**Starting class roll, LAPO baby vs Nepo baby (user request).**~~ **DONE** (migration `20261005000200_origin.sql`, `supabase/tests/origin_test.sql`, `src/screens/OriginReveal.tsx`, HUD badge + Papa chip; notes in `docs/ORIGIN.md`). Profile panel badge waits for P2-SOCIAL's ProfilePanel.
-   - **What the terms mean:** "Nepo baby" is born into wealth and connections. "LAPO baby" comes from a poor background and hustles alone; the name references LAPO Microfinance.
-   - **The roll:** at `create_profile` the server rolls a class at random. The chance is admin-tunable with the config key `origin.nepo_pct`, default about 10. Everyone else is a LAPO baby. Keep it data-driven so more tiers can be added later.
-   - **What each class sets (all admin-tunable config):** start cash, start bank, home location and housing, starting items (for example, a nepo baby gets a car and a laptop), a career head-start level, and an optional daily allowance from "Papa".
-     - LAPO babies get easier micro-loan access, which is a Phase 2 hook.
-     - Nepo babies get much more money and better homes, for example a GRA duplex.
-   - **Code changes:**
-     - Add `profiles.origin` and expose it in GameState and `types.ts`.
-     - Add SQL tests.
-     - Add a fun animated **reveal screen** after character creation ("Omo! You be Nepo baby…" / "LAPO baby — na hustle go carry you…").
-     - Show the class on the profile and HUD.
-4. ~~**Shorter sleep and activities, with a progress ring (user request).**~~ **DONE** (migration `20261005000300_time_tuning.sql`: rate 0.75 and `profiles.busy_started_at`; `src/ui/ProgressRing.tsx` in the busy banner; `supabase/tests/time_test.sql`).
-   - A full sleep currently takes about 40 real minutes (`time.real_seconds_per_game_minute` = 5). The user wants **about 5–8 real minutes**. Set it to about 0.75 so a 480-game-minute sleep takes about 6 min, and keep it admin-tunable.
-   - The busy banner must show a **slow-filling circular progress ring** that completes when the activity ends, like Lagos Life, instead of only a countdown.
-5. ~~**Game-day counter.**~~ **DONE** (config `clock.epoch` = 2026-10-05T00:00:00Z, read by `bl_game_clock` and `src/lib/clock.ts`). The HUD shows "Day 3323" because the clock counts from 2026-01-01. Add a config epoch (launch date) so the count starts near day 1.
-6. ~~**Landing page polish**~~ **DONE** using the `emil-design-eng` and `design-taste-frontend` skills. A good landing page already exists in `src/screens/Landing.tsx`.
-7. ~~**Paystack placeholder.**~~ **DONE** (`src/lib/payments.ts` provider interface + `LIVE_CHECKOUT` flag, placeholder `WalletPanel` that P2-PAY takes over). Add a provider-agnostic `src/lib/payments.ts`, `VITE_PAYSTACK_PUBLIC_KEY` in `.env.example`, and a wallet "Top up" button that says it's coming soon. The user will test real payments with you later and will provide the **test** public key only.
-8. **Phase 1 demo:** click-through DONE in the cloud session (13 steps pass; toast/HUD fix, robbery toast dedupe, danger-zone threshold 1.4, needs label). Waiting for the user's OK on their own run.
-   - Run the full app against local Supabase: `npx supabase start -x studio,imgproxy,vector,logflare,supavisor,storage-api,postgres-meta,edge-runtime,mailpit`, `npx supabase db reset`, `.env.local` from `supabase status`, then `npx vite`.
-   - Click through sign-up, avatar creation, the origin reveal, travel, activities, a robbery and night mode, and fix bugs.
-   - **Check the toast position:** an early screenshot showed the welcome toast overlapping the HUD username.
-   - Hand the user the demo. Optionally deploy a preview (Vercel/Netlify plus a free Supabase project) so they can try it on a phone.
+## Phase 1 status: COMPLETE, waiting for the user's OK (as of 2026-10-05)
+All Phase 1 work is committed on branch `claude/kind-bell-e9reb8` (not yet merged to `main`).
+
+| Item | Where |
+|---|---|
+| Scenes B (10 scenes incl. new `cyber`) | `src/art/scenes/*`, render with `node scripts/render-scenes.mjs <outDir> [scene…]` |
+| Map matches real Benin geography | migration `20261005000100_map_geo.sql`, `supabase/tests/map_geo_test.sql`, `src/art/map/*`, render with `node scripts/render-map.mjs <outDir>`. Two pins nudged from MAP_GEO.md (ring_road_pos 540,452; police_hq 510,604) to avoid overlaps |
+| LAPO baby / Nepo baby roll | migration `20261005000200_origin.sql` (`origin_tiers`, `origin.*` config, `claim_allowance()`, origin block in `get_my_state`), `supabase/tests/origin_test.sql`, `src/screens/OriginReveal.tsx`, HUD badge + Papa chip. Notes: `docs/ORIGIN.md`. Profile-panel badge waits for P2-SOCIAL |
+| 6-min sleep + progress ring + Day 1 epoch | migration `20261005000300_time_tuning.sql` (`time.real_seconds_per_game_minute` 0.75, `profiles.busy_started_at`, `clock.epoch` 2026-10-05), `supabase/tests/time_test.sql`, `src/ui/ProgressRing.tsx` |
+| Landing page polish | `src/screens/Landing.tsx`, `LandingArt.tsx`, `Brand.tsx` (palace silhouette with bronze bird, bus/keke go-slow), landing CSS in `src/styles/screens.css`. LAPO/Nepo numbers on the landing page are hard-coded copies of the `origin.*` defaults |
+| Paystack placeholder | `src/lib/payments.ts` (provider interface, `LIVE_CHECKOUT=false`), placeholder `src/panels/WalletPanel.tsx` (P2-PAY takes it over), `.env.example` keys |
+| Phase 1 demo click-through | 13 steps passed against real local Supabase. Fixes: toasts sit under the measured HUD (`--hud-bottom`), no duplicate toast on street robbery, danger glow / "Danger zone" label threshold 1.4 (only Upper Sakponba + Third East), "Belle" label |
+
+**Run all SQL tests** (after `npx supabase db reset`): `bash scripts/sql-test.sh -- supabase/tests/core_test.sql supabase/tests/map_geo_test.sql supabase/tests/origin_test.sql supabase/tests/time_test.sql`. Without Docker see the Cloud tooling row above.
+
+**One-command demo:** `scripts/demo.ps1` (Windows) or `bash scripts/demo.sh` (Mac/Linux) starts Supabase, resets the DB, writes `.env.local` and opens the game.
+
+### Open questions for the user (ask before/while starting Phase 2)
+1. Jail and hospital use the same `time.real_seconds_per_game_minute` as sleep, so they got ~6.7x shorter. Give crime its own rate key in Phase 2?
+2. Landing page is dark "dusk" theme only. Light theme wanted?
+3. The map compresses distances to the centre, so outer S/W is mostly bush. OK?
+4. Nepo start: ₦50k cash + ₦500k bank + ₦5k/game-day Papa allowance; car ₦2.5M and laptop ₦250k are placeholder prices. OK?
+
+### Small polish noted by the demo verifier (not done, low priority)
+- With a sheet open, toasts overlap the sheet's scene header (and on desktop run ~60px into the right-hand sheet).
+- "Do am" buttons stay enabled while busy (server refuses with a Pidgin error).
+- Sign-in shows two greetings in a row; on /create the welcome toast covers the title briefly.
+- Fully zoomed-out map shows empty bands above/below.
+- Kingdom Lounge's pin hit circle overlaps Bronze Bank's label at default zoom.
+- On load `get_my_state` is called 3x and `game_config` 2x (harmless).
 
 ## Phase 2 (after the user approves the Phase 1 demo), one agent at a time
 1. **Economy and careers.** Jobs and the career ladders in ARCHITECTURE §9b, including the new `bronze_tech_hub` location (scene `office`, position in MAP_GEO.md), plus market/shop and housing.
