@@ -21,7 +21,7 @@
 
 ## Layout
 - **Top:** one white pill. Weekday + game day + time (sun/moon), mood (emoji + label, tap -> Needs), players online (`players_online()` every 60 s; hidden if the call fails), mute (stored in prefs; there is no audio yet), cash with a green "+" (Wallet). Bank lives in the Wallet, the phone's Bank app and the Sim sheet. Under 480 px the mood and "online" labels hide; under 350 px the online count hides.
-- **Left rail** (under the pill): up to 2 wish chips from the lowest needs below 45 ("Eat something", "Use the toilet"...; tap -> the matching furniture at home, else the location sheet), Dad's allowance chip (Nepo), new-player protection, and "Clean screen".
+- **Left rail** (under the pill): up to 2 wish chips from the lowest needs below 45 ("Eat something", "Use the toilet"...; tap -> the matching furniture at home, else the location sheet), Dad's allowance chip (Nepo), new-player protection, and "Clean screen". Under 600 px the chips use a compact size so the rail does not cover the house.
 - **Clean screen** hides the pill, chips, needs card and dock. Status banners stay. The button turns into "Show HUD".
 - **Bottom:** status banners (travel, busy ring, jail, hospital) and the place chip, then the needs card (cached `AvatarPortrait`, origin badge, 6 tiny bars; tap -> Sim sheet Needs) and the **dock: Home · Buy · Map · Phone** (unread alerts badge on Phone). Desktop puts needs, dock and the keyboard button on one row.
 - **Toasts** sit top-centre under the pill (`--hud-bottom` is measured by `TopPill`).
@@ -39,7 +39,7 @@ M map · H home · B buy · P phone · S Sim sheet (Needs) · T things to do her
 - **Only one WebGL canvas on screen:** when the Sim sheet's Profile tab (turntable) or the Edit look sheet opens, `HomeView` takes a still frame (`snapshot()`), unmounts the home canvas and shows the image until the overlay closes.
 - **Drag** rotates the view ±43°, pinch/wheel zooms 0.85-1.9×. A drag never counts as a tap.
 - **Day/night** from the game clock (`engine/light.ts`): hemisphere + sun/moon, warm indoor point light at night, window glass and lamp shades change colour, sky gradient behind the canvas.
-- **Cost:** the room is merged into 4 meshes (solid, glow, glass, screens) with vertex colours: ~2.6k-5.5k triangles, 4 draw calls. The character adds ~37 draw calls and 8k-16k triangles. Whole scene: 41-45 draw calls, 11k-14k triangles.
+- **Cost:** the room is merged into 4 meshes (solid, glow, glass, screens) with vertex colours: ~3.2k-5.5k triangles, 4 draw calls. The character adds ~32-40 draw calls and 8k-16k triangles (hair and outfit decide). Measured in the game (R4 check, SwiftShader): hostel 36 calls / 14.3k tris, self-contain 43 / 19.2k, duplex 44 / 21.0k; a full frame renders in 0.2-0.8 ms (`__home.bench`, dev only).
 - **No WebGL / context lost:** the home's SVG scene (`src/art/scenes/home_*.tsx`) with a "Things to do at home" button.
 
 ### Layouts per housing (`homeLayoutFor(housing_id, scene)`)

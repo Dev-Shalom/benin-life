@@ -2,7 +2,7 @@
 
 This file is kept current after every step. The live status is in `docs/HANDOFF.md`, under the "STATUS LOG" section at the bottom.
 
-**Current state (updated by the cloud session after every step):** Phase R in progress in a cloud session. Done: R1, R2, R3a, R3b. Running: R4 (3D home, new HUD dock, Sim sheet, phone). Next: R5 → R6 demo. Decisions: keep Phase 1 SVG place scenes as panel headers; 3D for everyone, the 2D map only as a fallback on extremely weak connections.
+**Current state (updated by the cloud session after every step):** Phase R in progress in a cloud session. Done: R1, R2, R3a, R3b, R4. Running: R5 (3D Benin city map). Next: R6 demo. Decisions: keep Phase 1 SVG place scenes as panel headers; 3D for everyone, the 2D map only as a fallback on extremely weak connections.
 If the cloud session is still working when you start locally, run `git pull` first and don't redo a step marked [running] unless it has been idle for hours.
 
 ```

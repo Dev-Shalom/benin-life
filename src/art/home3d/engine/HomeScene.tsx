@@ -307,8 +307,9 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
   }, [L, grid, actorRef, invalidate]);
   useEffect(() => {
     const born = performance.now();
+    const holder = actorRef; // a mutable state holder, not a DOM node: read it at unmount on purpose
     return () => {
-      const a = actorRef.current;
+      const a = holder.current;
       // ignore StrictMode's instant remount in dev
       if (performance.now() - born < 1500) return;
       memory = { layout: L.id, pos: a.mode === 'pose' && a.item ? spotOf(a.item).p : a.pos, yaw: a.yaw, at: performance.now() };

@@ -38,6 +38,9 @@ src/ui/                                 P1-SHELL (shared kit: Button, Sheet, Mod
 src/screens/                            P1-SHELL
 src/art/avatar/                         P1-AVATAR
 src/art/map/                            P1-MAP
+src/art/avatar3d/                       R2 (3D characters, turntable, cached portraits — docs/AVATAR3D.md)
+src/art/home3d/                         R4 (3D home dollhouse, lazy; model.ts/nav.ts have no three.js — docs/HUD_HOME.md)
+src/screens/game/                       R4 HUD, dock, Sim sheet, phone, home furniture sheet (docs/HUD_HOME.md)
 src/art/scenes/<SceneType>.tsx          P1-SCENES-A / P1-SCENES-B (see §7)
 src/art/Scene.tsx                       phase 0 (dispatcher, do not edit)
 src/panels/registry.ts                  phase 0 (do not edit)

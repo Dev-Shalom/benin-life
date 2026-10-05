@@ -312,6 +312,41 @@ div.wish-chip {
   transform: scale(0.96);
 }
 
+/* phones: compact chips so the rail does not cover the house (reference: small white chips) */
+@media (max-width: 599px) {
+  .left-rail {
+    gap: 6px;
+    max-width: min(240px, calc(100vw - 20px));
+  }
+  .wish-chip {
+    gap: 8px;
+    padding: 4px 12px 4px 4px;
+    border-radius: 20px;
+  }
+  .wish-chip__icon {
+    width: 28px;
+    height: 28px;
+    font-size: 15px;
+  }
+  .wish-chip__text {
+    gap: 3px;
+  }
+  .wish-chip__title {
+    font-size: 12.5px;
+  }
+  .wish-chip__sub {
+    font-size: 11px;
+  }
+  .wish-chip__bar {
+    width: 88px;
+    height: 3px;
+  }
+  .clean-toggle {
+    padding: 5px 12px 5px 8px;
+    font-size: 12px;
+  }
+}
+
 /* bottom: banners, dock row */
 .game__bottom {
   position: absolute;
