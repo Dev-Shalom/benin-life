@@ -123,16 +123,14 @@ export function authErrorMessage(raw: string): string {
   return P.somethingWrong;
 }
 
-// ---- Origin (LAPO baby vs Nepo baby) — reveal screen + HUD ----
+// ---- Origin (LAPO baby vs Nepo baby): birth lottery reveal + HUD ----
 export interface OriginCopy {
-  /** Small line above the title. */
-  kicker: string;
-  /** Big title. */
+  /** Big title on the reveal. */
   title: string;
-  /** Line under the title; `{home}` is replaced with the home location name. */
+  /** One-line tagline under the title. */
   line: string;
-  /** Warm closing line. */
-  cheer: string;
+  /** Emoji on the big reveal tile. */
+  emoji: string;
   /** Short HUD badge text. */
   badge: string;
 }
@@ -140,18 +138,16 @@ export interface OriginCopy {
 export const ORIGIN_COPY: Record<string, OriginCopy> = {
   // Nepo babies are school-trained: polished English, and it's always "Dad".
   nepo: {
-    kicker: 'You were born a',
-    title: 'Nepo baby',
-    line: "Dad has connections. You're starting out in {home}, with a car in the compound and a laptop on the desk.",
-    cheer: "Enjoy it. Just don't embarrass the family name.",
+    title: 'Nepo Baby!',
+    line: "Dad has connections. Just don't embarrass the family name.",
+    emoji: '👑',
     badge: 'Nepo',
   },
-  // LAPO babies keep a street voice, used lightly.
+  // LAPO babies keep a light street voice.
   lapo: {
-    kicker: 'You were born a',
-    title: 'LAPO baby',
-    line: "Na hustle go carry you. You're starting out in {home}, with small money and a big dream.",
-    cheer: 'Plenty big men for Benin started from one room. Your story starts here.',
+    title: 'LAPO Baby!',
+    line: 'Na hustle go carry you. Small money, big dreams.',
+    emoji: '💪',
     badge: 'LAPO',
   },
 };
@@ -160,31 +156,64 @@ export const ORIGIN_COPY: Record<string, OriginCopy> = {
 export function originCopy(id: string, name: string, tagline: string): OriginCopy {
   return (
     ORIGIN_COPY[id] ?? {
-      kicker: 'You were born',
-      title: name,
-      line: tagline || 'Life has given you your own start in {home}.',
-      cheer: 'Go show Benin City what you can do.',
+      title: `${name}!`,
+      line: tagline || 'Life has given you your own start.',
+      emoji: '🎲',
       badge: name.split(' ')[0] ?? name,
     }
   );
 }
 
 export const ORIGIN_UI = {
+  ask: (name: string) => `Everyone in Benin City is born into something. What was ${name} born into?`,
   rolling: 'Rolling the dice of life…',
   skip: 'Tap to skip',
-  enter: 'Enter Benin City',
-  cash: 'Cash',
-  bank: 'In the bank',
-  allowance: "Dad's allowance",
-  perDay: '/ day',
-  headStart: 'Career head start',
-  levels: (n: number) => `+${n} level${n === 1 ? '' : 's'}`,
-  easyLoan: 'LAPO loan',
-  easyLoanValue: 'Easy access (soon)',
-  emptyBag: 'Bag',
-  emptyBagValue: 'Empty for now',
-  owned: 'Yours',
-  home: 'Your home',
+  once: 'Decided once for your account.',
+  bank: (amount: string) => `${amount} in the bank from day one`,
+  noBank: 'Nothing in the bank yet. Every naira you get, you earn.',
+  item: (name: string) => `Your own ${name}, from day one`,
+  allowance: (amount: string) => `Dad sends ${amount} allowance every game day`,
+  headStart: (n: number) => `Career head start: +${n} level${n === 1 ? '' : 's'} at your first job`,
+  easyLoan: 'LAPO micro-loans are easy to get when you need a push (coming soon)',
+  cashByHome: 'Your starting cash depends on where you choose to live',
+  emptyBag: 'Empty bag for now. Your first buy will taste sweet.',
   collectDad: "Collect Dad's allowance",
   dadChip: 'Dad',
 };
+
+// ---- Character creator (R3b) ----
+export const CREATOR = {
+  steps: ['Look', 'Personality', 'Dream', 'Birth lottery', 'Home'] as const,
+  next: 'Next',
+  continue: 'Continue',
+  shuffle: 'Shuffle the look',
+  logoutConfirm: 'Log out? Your Sim is not saved until you finish the Dream step.',
+  logout: 'Log out',
+  nameLabel: "Your Sim's name",
+  namePlaceholder: 'your_name',
+  nameHelp: '3 to 20 letters, numbers or _. Everyone in Benin City will see it.',
+  nameBad: 'Use 3 to 20 letters, numbers or _ (no spaces or symbols).',
+  nameTaken: (n: string) => `Someone already has "${n}". Try another name.`,
+  body: 'Body',
+  presets: 'Outfit presets',
+  presetsHint: 'A whole look in one tap. Change any piece after.',
+  presetsEdited: 'Edited. Tap the preset again to reset it.',
+  edited: 'Edited',
+  traitsAsk: (n: number, name: string) => `Choose ${n} traits for ${name}.`,
+  traitsSwap: (out: string) => `Swapped out ${out}. You can keep 2.`,
+  traitsMore: (n: number) => `Choose ${n} more`,
+  dreamAsk: (name: string) => `What's ${name}'s big dream?`,
+  dreamPick: 'Pick a dream',
+  creating: 'Rolling the dice…',
+  chooseHome: 'Choose where to live',
+  homeAsk: (name: string, day: string) => `Where will ${name} live? Rent is due every ${day}.`,
+  startWith: (amount: string) => `Start with ${amount}`,
+  rent: (amount: string) => `Rent ${amount}/wk`,
+  pickHome: 'Pick a home',
+  moveIn: 'Move in',
+  seeLottery: 'See the reveal',
+  catalogFailed: "Couldn't load the options. Check your connection.",
+  loading: 'Getting things ready…',
+};
+
+export const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];

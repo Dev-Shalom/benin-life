@@ -1,171 +1,118 @@
-// Origin reveal (P1-ORIGIN): shown once, right after create_profile, before entering the game.
-// Timeline is pure CSS (see "Origin reveal" in screens.css): coin toss ~1.2s → title, home card,
-// perks stagger in, then "Enter Benin City". Tap during the toss to skip. Reduced motion = fades only.
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { AvatarPortrait } from '../art/avatar3d';
-import { Scene } from '../art/Scene';
+// Birth lottery reveal (P1-ORIGIN, rebuilt for the R3b creator). Rendered inside the creator's bottom
+// sheet, right after create_profile_v2 rolled the origin. No home is chosen yet, so it lists what the
+// origin gives (bank, items, Dad's allowance, LAPO's easy loan) and never any percentages.
+//
+// Timeline is pure CSS (see "Birth lottery" in screens.css): a coin toss of about 1.2 s, then the
+// big tile, title and perk rows stagger in. Tap the toss to skip. `replay={false}` (coming back
+// to this step later) shows the result straight away. Reduced motion: no toss movement, fades only.
+import { useState, type CSSProperties } from 'react';
 import { naira } from '../lib/format';
 import { ORIGIN_UI, originCopy } from '../lib/pidgin';
 import type { GameState } from '../lib/types';
-import { Button, Icon } from '../ui';
 
 interface Perk {
-  icon: string;
-  label: string;
-  value: string;
+  emoji: string;
+  text: string;
 }
 
-const COIN_FACE: Record<string, { icon: string; label: string }> = {
-  nepo: { icon: 'crown', label: 'NEPO' },
-  lapo: { icon: 'bolt', label: 'LAPO' },
-};
-
-const CONFETTI_COLORS = ['#f3d28a', '#d9a441', '#f06a55', '#d2342a', '#fbf3e4', '#b0793a'];
-
-/** Deterministic burst so renders are stable (no Math.random in render). */
-function confettiPieces(n: number) {
-  return Array.from({ length: n }, (_, i) => {
-    const a = (i / n) * Math.PI * 2 + (i % 3) * 0.35;
-    const dist = 90 + ((i * 37) % 70);
-    return {
-      '--bx': `${Math.round(Math.cos(a) * dist)}px`,
-      '--by': `${Math.round(Math.sin(a) * dist * 0.7 - 40)}px`,
-      '--rot': `${(i * 67) % 360}deg`,
-      '--dl': `${(i % 5) * 30}ms`,
-      background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-    } as CSSProperties;
-  });
-}
+const COIN: Record<string, string> = { nepo: 'NEPO', lapo: 'LAPO' };
 
 function stagger(ms: number): CSSProperties {
   return { '--d': `${ms}ms` } as CSSProperties;
 }
 
-export default function OriginReveal({ state, onDone }: { state: GameState; onDone: () => void }) {
+/** What this origin gives, as plain sentences. Built from the server's origin info only. */
+function originPerks(state: GameState): Perk[] {
+  const o = state.origin;
+  if (!o) return [{ emoji: '🏠', text: ORIGIN_UI.cashByHome }];
+  const list: Perk[] = [];
+  if (o.start_bank > 0) list.push({ emoji: '🏦', text: ORIGIN_UI.bank(naira(o.start_bank)) });
+  for (const it of o.items ?? []) {
+    list.push({
+      emoji: it.category === 'vehicle' ? '🚗' : it.category === 'gadget' ? '💻' : '🎁',
+      text: ORIGIN_UI.item(it.name),
+    });
+  }
+  if (o.allowance_daily > 0)
+    list.push({
+      emoji: '💸',
+      text: ORIGIN_UI.allowance(naira(o.allowance_daily)),
+    });
+  if (o.career_head_start > 0) list.push({ emoji: '⭐', text: ORIGIN_UI.headStart(o.career_head_start) });
+  if (o.perks?.micro_loan_access === 'easy') list.push({ emoji: '🤝', text: ORIGIN_UI.easyLoan });
+  if (o.start_bank <= 0) list.push({ emoji: '🏦', text: ORIGIN_UI.noBank });
+  if (!o.items?.length) list.push({ emoji: '🎒', text: ORIGIN_UI.emptyBag });
+  list.push({ emoji: '🏠', text: ORIGIN_UI.cashByHome });
+  return list;
+}
+
+export default function OriginReveal({ state, replay = true }: { state: GameState; replay?: boolean }) {
   const p = state.profile;
   const o = state.origin ?? null;
   const tier = o?.id ?? p.origin ?? 'lapo';
   const copy = originCopy(tier, o?.name ?? 'LAPO baby', o?.tagline ?? '');
   const gold = tier === 'nepo';
-  const home = state.location;
-  const [skipped, setSkipped] = useState(false);
-  const [tossed, setTossed] = useState(false);
-
-  // Warm the game chunk while the player enjoys the moment.
-  useEffect(() => {
-    void import('./Game');
-  }, []);
-
-  const front = COIN_FACE[tier] ?? { icon: 'star', label: (copy.badge || tier).toUpperCase() };
-  const backTier = tier === 'lapo' ? 'nepo' : 'lapo';
-  const back = COIN_FACE[backTier];
-
-  const perks = useMemo<Perk[]>(() => {
-    const list: Perk[] = [{ icon: 'cash', label: ORIGIN_UI.cash, value: naira(p.cash) }];
-    if (p.bank > 0) list.push({ icon: 'bank', label: ORIGIN_UI.bank, value: naira(p.bank) });
-    for (const it of o?.items ?? []) {
-      list.push({ icon: it.category === 'vehicle' ? 'car' : it.category === 'gadget' ? 'laptop' : 'bag', label: it.name, value: ORIGIN_UI.owned });
-    }
-    if (o && o.allowance_daily > 0)
-      list.push({ icon: 'sparkle', label: ORIGIN_UI.allowance, value: `${naira(o.allowance_daily)} ${ORIGIN_UI.perDay}` });
-    if (o && o.career_head_start > 0) list.push({ icon: 'star', label: ORIGIN_UI.headStart, value: ORIGIN_UI.levels(o.career_head_start) });
-    if (o?.perks?.micro_loan_access === 'easy') list.push({ icon: 'shield', label: ORIGIN_UI.easyLoan, value: ORIGIN_UI.easyLoanValue });
-    if (!o?.items?.length) list.push({ icon: 'bag', label: ORIGIN_UI.emptyBag, value: ORIGIN_UI.emptyBagValue });
-    return list;
-  }, [p.cash, p.bank, o]);
-
-  const confetti = useMemo(() => (gold ? confettiPieces(18) : []), [gold]);
-  const line = copy.line.replace('{home}', home.name);
+  const [skipped, setSkipped] = useState(!replay);
+  const [tossed, setTossed] = useState(!replay);
+  const perks = originPerks(state);
+  const front = COIN[tier] ?? copy.badge.toUpperCase();
+  const back = tier === 'nepo' ? 'LAPO' : 'NEPO';
 
   return (
-    <div
-      className={`reveal reveal--${gold ? 'gold' : 'warm'}${skipped ? ' is-skipped' : ''}`}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="reveal-title"
-      onClick={() => {
-        if (!tossed && !skipped) setSkipped(true);
-      }}
+    <section
+      className={`lottery lottery--${gold ? 'gold' : 'warm'}${skipped ? ' is-skipped' : ''}`}
+      aria-labelledby="lottery-title"
+      aria-live="polite"
     >
-      {!skipped && !tossed && (
-        <div
-          className="reveal__toss"
-          aria-hidden
-          onAnimationEnd={(e) => {
-            if (e.animationName === 'reveal-toss-out' || e.animationName === 'reveal-fade-out') setTossed(true);
-          }}
-        >
-          <div className="reveal__coin">
-            <div className={`reveal__face reveal__face--${tier in COIN_FACE ? tier : 'other'}`}>
-              <Icon name={front.icon} size={34} stroke={2.4} />
-              <span>{front.label}</span>
-            </div>
-            <div className={`reveal__face reveal__face--back reveal__face--${backTier}`}>
-              <Icon name={back.icon} size={34} stroke={2.4} />
-              <span>{back.label}</span>
-            </div>
-          </div>
-          <p className="reveal__rolling">{ORIGIN_UI.rolling}</p>
-          <p className="reveal__skip">{ORIGIN_UI.skip}</p>
-        </div>
-      )}
+      <p className="lottery__ask">{ORIGIN_UI.ask(p.username)}</p>
 
-      <div className="reveal__inner">
-        <header className="reveal__head">
-          <div className="reveal__rays" aria-hidden />
-          {gold && (
-            <div className="reveal__confetti" aria-hidden>
-              {confetti.map((s, i) => (
-                <i key={i} style={s} />
-              ))}
-            </div>
-          )}
-          <p className="reveal__kicker reveal__in" style={stagger(0)}>{copy.kicker}</p>
-          <h1 id="reveal-title" className="reveal__title reveal__pop">
-            <span className={`reveal__medal reveal__medal--${tier in COIN_FACE ? tier : 'other'}`} aria-hidden>
-              <Icon name={front.icon} size={20} stroke={2.6} />
-            </span>
-            {copy.title}
-          </h1>
-          <p className="reveal__line reveal__in" style={stagger(90)}>{line}</p>
-        </header>
-
-        <figure className="reveal__card reveal__in" style={stagger(160)}>
-          <div className="reveal__scene">
-            <Scene type={home.scene} night={state.clock.is_night} />
-          </div>
-          <div className="reveal__avatar">
-            <AvatarPortrait config={p.avatar} view="full" size={150} />
-          </div>
-          <figcaption className="reveal__home">
-            <Icon name="home" size={14} stroke={2.4} />
-            <span>
-              <small>{ORIGIN_UI.home}</small>
-              {home.name}
-            </span>
-          </figcaption>
-        </figure>
-
-        <ul className="reveal__perks">
-          {perks.map((k, i) => (
-            <li key={k.label} className="reveal__perk reveal__in" style={stagger(260 + i * 60)}>
-              <span className="reveal__perk-icon"><Icon name={k.icon} size={16} stroke={2.3} /></span>
-              <span className="reveal__perk-text">
-                <small>{k.label}</small>
-                <b>{k.value}</b>
+      <div className="lottery__stage">
+        {!tossed && (
+          <button
+            type="button"
+            className="lottery__toss"
+            aria-label={ORIGIN_UI.skip}
+            onClick={() => setSkipped(true)}
+            onAnimationEnd={(e) => {
+              if (e.target === e.currentTarget) setTossed(true);
+            }}
+          >
+            <span className="lottery__coin" aria-hidden>
+              <span className={`lottery__face lottery__face--${tier === 'nepo' ? 'nepo' : 'lapo'}`}>{front}</span>
+              <span className={`lottery__face lottery__face--back lottery__face--${tier === 'nepo' ? 'lapo' : 'nepo'}`}>
+                {back}
               </span>
-            </li>
-          ))}
-        </ul>
+            </span>
+            <span className="lottery__rolling">{ORIGIN_UI.rolling}</span>
+            <span className="lottery__skip">{ORIGIN_UI.skip}</span>
+          </button>
+        )}
 
-        <p className="reveal__cheer reveal__in" style={stagger(300 + perks.length * 60)}>{copy.cheer}</p>
-
-        <div className="reveal__cta reveal__in" style={stagger(380 + perks.length * 60)}>
-          <Button variant={gold ? 'gold' : 'green'} size="lg" block onClick={onDone}>
-            {ORIGIN_UI.enter} <Icon name="chevronRight" size={18} />
-          </Button>
+        <div className="lottery__result" aria-hidden={!tossed && !skipped ? true : undefined}>
+          <div className="lottery__tile lottery__pop" aria-hidden>
+            <span>{copy.emoji}</span>
+          </div>
+          <h2 id="lottery-title" className="lottery__title lottery__in" style={stagger(60)}>
+            {copy.title}
+          </h2>
+          <p className="lottery__line lottery__in" style={stagger(120)}>
+            {copy.line}
+          </p>
+          <ul className="lottery__perks">
+            {perks.map((k, i) => (
+              <li key={k.text} className="lottery__perk lottery__in" style={stagger(200 + i * 55)}>
+                <span className="lottery__perk-emoji" aria-hidden>
+                  {k.emoji}
+                </span>
+                <span>{k.text}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="lottery__once lottery__in" style={stagger(240 + perks.length * 55)}>
+            {ORIGIN_UI.once}
+          </p>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

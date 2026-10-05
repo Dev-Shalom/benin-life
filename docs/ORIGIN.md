@@ -62,6 +62,7 @@ BL_PSQL="psql -h /tmp -p 54322 -U postgres -d postgres" bash scripts/sql-test.sh
 - Helpers `bl_origin_cfg`, `bl_origin_num`, `bl_origin_items`, `bl_roll_origin` and `bl_origin_info` are internal: execute is revoked from public, anon and authenticated.
 
 ## Client
+- *(Superseded by R3b: the reveal is now step 4 of the creator, inside the sheet, after `create_profile_v2`. See `docs/CREATOR.md` "Client (R3b)". The notes below describe the P1 version.)*
 - **CreateSim** holds the `create_profile` GameState locally and shows `OriginReveal`.
   - The flow: a coin toss of about 1.2 s (tap to skip), then the title, the home scene card with the avatar, staggered perk tiles and the "Oya enter Benin" button.
   - The button applies the state and navigates to `/play`.

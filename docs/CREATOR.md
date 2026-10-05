@@ -1,6 +1,6 @@
 # Creator data: traits, dreams, start homes, rent, origin overrides (R3a)
 
-Files: `supabase/migrations/20261005000400_creator.sql`, `supabase/tests/creator_test.sql`, wrappers in `src/api/creator.ts`, types in `src/lib/types.ts` (`// R3a`). The 5-step creator UI is R3b.
+Files: `supabase/migrations/20261005000400_creator.sql`, `supabase/tests/creator_test.sql`, wrappers in `src/api/creator.ts`, types in `src/lib/types.ts` (`// R3a`). The 5-step creator UI (R3b) is `src/screens/CreateSim.tsx` + `src/screens/creator/*` + `src/screens/OriginReveal.tsx`; see "Client (R3b)" below.
 
 Test (after `npx supabase db reset`):
 ```
@@ -27,7 +27,7 @@ rent:    { weekly: number; due_at: string | null; owed: number; enabled: boolean
 ```
 Sims without a home are hidden from `players_here`. `src/api/creator.ts` has `needsHome(state)` and `isNoHomeError(e)`; `GameError` now carries the server `hint`.
 
-**v1 `create_profile`** keeps its all-in-one behaviour (roll incl. `force_next`, origin home, starter pack, welcome) with `traits = '{}'`, `dream = null`, no rent. The current `CreateSim.tsx` still uses it until R3b.
+**v1 `create_profile`** keeps its all-in-one behaviour (roll incl. `force_next`, origin home, starter pack, welcome) with `traits = '{}'`, `dream = null`, no rent. The client no longer calls it (R3b uses v2 only).
 
 ## Tables (RLS on; select for anon + authenticated; writes only via admin/RPC)
 - **`traits`** (id, name, emoji, description, effects jsonb, sort, active). `effects.decay.<need>` multiplies that need's decay rate (`hunger, energy, hygiene, fun, social, stress`); several traits multiply together. Applied in `bl_decay_row`, so decay stays path-independent and `get_my_state` stays read-only. Other keys (`skill_xp`, `work_pay`, `night_fun_bonus`, `party_fun_bonus`, `culture_fun_bonus`, `social_bonus`, `work_performance`, `dirty_stress_mult`, `food_fun_bonus`) are stored for Phase 2. Deactivating a trait hides it from new Sims; existing Sims keep its effect.
@@ -79,3 +79,13 @@ Bank comes from the origin (`origin.nepo.start_bank` ₦500,000, LAPO ₦0), and
 - Dreams: track `dreams.goal` progress on the Goals tab.
 - Housing (P2-ECON): moving house sets `weekly_rent`/`housing_id`/`home_location_id`; eviction reads `rent_owed`; turn `rent.enabled` on once jobs pay.
 - Admin panel: edit the `traits`, `dreams` and `start_homes` rows, the `creator.*`, `rent.*` and `origin.force_next` config, and call `admin_set_origin`.
+
+## Client (R3b)
+- **`CreateSim.tsx`** runs the 5 steps on one live `AvatarStage` (mounted once for the whole flow; the stage shrinks on steps 4-5 on phones). Top bar: back, step title, 5-segment progress, shuffle (Look only), "Next". The step content sits in a bottom sheet with a sticky Continue (phones) or a right-hand panel (desktop >= 900px).
+- **Look** (`creator/LookPanel.tsx`): name (3-20 letters/numbers/_, inline error), Woman/Man, presets with an "Edited" marker, then Outfit / Hair / Face / Skin & body / Extras tabs.
+- **Personality / Dream / Home** (`creator/Panels.tsx`): data from `creator_catalog()` (skeletons while loading, retry on failure). A third trait tap replaces the oldest pick and says so above Continue.
+- **Commit point:** Continue on Dream calls `create_profile_v2` and applies the GameState. A taken or invalid username jumps back to Look with the error under the name field (traits and dream are kept).
+- **Birth lottery** (`OriginReveal.tsx`): coin toss (~1.2 s, tap to skip; fades only with reduced motion), then the tile, title, tagline and perk rows built from `GameState.origin` (bank, items, Dad's allowance, career head start, LAPO's easy loan). No percentages. Copy in `ORIGIN_COPY` / `ORIGIN_UI` (`src/lib/pidgin.ts`). Coming back to the step shows the result without the toss.
+- **Home:** cards from `GameState.creator.homes` (start cash for the origin, weekly rent, tag pill). Locked homes are greyed with the server's `locked_quip`. Move in calls `choose_start_home`, applies the result, refreshes and enters `/play`.
+- **Routing:** `RequirePlayer` (App.tsx) sends `noprofile` and "profile but no home" to `/create`; `/create` with a home redirects to `/play`. A Sim without a home always lands on the Home step (the lottery stays reachable with back or the origin chip).
+

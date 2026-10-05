@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { supabaseConfigured } from './lib/supabase';
 import { useGame } from './state/game';
+import { needsHome } from './api/creator';
 import { LoadingScreen, Toaster } from './ui';
 import { P } from './lib/pidgin';
 import Landing from './screens/Landing';
@@ -25,11 +26,12 @@ function RequireSession({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** Needs a created Sim. Sends new accounts to /create. */
+/** Needs a created Sim with a home. Sends new accounts (and Sims still choosing a home) to /create. */
 function RequirePlayer({ children }: { children: ReactNode }) {
   const status = useGame((s) => s.status);
   const error = useGame((s) => s.error);
-  if (status === 'noprofile') return <Navigate to="/create" replace />;
+  const homeless = useGame((s) => needsHome(s.state));
+  if (status === 'noprofile' || (status === 'ready' && homeless)) return <Navigate to="/create" replace />;
   if (status === 'error') return <ErrorScreen message={error ?? P.somethingWrong} />;
   if (status !== 'ready') return <LoadingScreen text={P.loadingGame} />;
   return <>{children}</>;

@@ -139,7 +139,7 @@ Draft the Terms of Service and Privacy Policy pages (approved by the user; the s
 - [done] 2026-10-05 (cloud): user confirmed the R plan order R2 finish -> R3a -> R3b -> R4 -> R5 -> R6. Decisions: keep the 22 Phase 1 SVG location scenes as the header art in each place's panel; 3D city/home for everyone, with the Phase 1 2D map used ONLY as a fallback on extremely weak/low-data connections (detect e.g. navigator.connection effectiveType 'slow-2g'/'2g' or saveData, plus a manual toggle in Settings).
 - [done] R2 finish (cloud): portraits hardened (visible-only rendering, LRU cap, context-loss recovery, retries, v1 migration safety net), Yahoo black+gold, stronger face shapes, three/r3f vendor chunks, docs/ASSETS.md + docs/AVATAR3D.md, dev route /dev/create. Original note: your local commit 827ee69 has the avatar3d engine, presets, fabrics, face shapes, turntable and the CreateSim switch; still to verify/fix: cached HUD portraits (grid tiles rendered blank in a headless check), no pink in Yahoo preset, phone performance, docs/ASSETS.md.
 - [done] R3a creator data (DB): migration 20261005000400_creator.sql (traits, dreams, start_homes, create_profile_v2, choose_start_home, origin.force_next='nepo' one-shot, admin_set_origin + admin_audit, rent built but rent.enabled=false, Dad copy, moderated seed copy), creator_test.sql, docs/CREATOR.md. Demo scripts now use `supabase migration up` (keeps the user's accounts).
-- [running] R3b 5-step creator UI
-- [todo] R4 3D home, HUD dock and phone
+- [done] R3b 5-step creator UI (src/screens/CreateSim.tsx + src/screens/creator/*, one 3D canvas, resume to Home step, username-taken path). Notes: server username-taken error has no hint (client matches text); test accounts left in the local DB; origin.force_next restored to 'nepo'.
+- [running] R4 3D home, HUD dock and phone
 - [todo] R5 3D Benin city map
 - [todo] R6 demo to the user; wait for their OK, then Phase 2

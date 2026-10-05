@@ -116,7 +116,7 @@ export default function Auth() {
           setInfo('Account created! Check your email to confirm it, then come back and log in.');
           return;
         }
-        toast("Welcome to Benin City! Let's create your Sim.", 'good');
+        // No toast here: it would cover the creator's top bar, which already greets the player.
       } else if (mode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({ email: em, password });
         if (error) throw error;
