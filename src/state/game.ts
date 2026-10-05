@@ -191,7 +191,8 @@ function startLive(uid: string) {
         events: [ev, ...s.events.filter((e) => e.id !== ev.id)].slice(0, 80),
         unread: s.unread + 1,
       }));
-      toast(ev.body ? `${ev.title} — ${ev.body}` : ev.title, eventTone(ev.kind));
+      // Street robbery already has its own modal (StatusBanners); the event stays in Alerts.
+      if (ev.kind !== 'robbed') toast(ev.body ? `${ev.title} — ${ev.body}` : ev.title, eventTone(ev.kind));
       scheduleRefresh(600);
     })
     .subscribe();

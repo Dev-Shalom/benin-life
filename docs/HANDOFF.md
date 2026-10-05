@@ -86,7 +86,7 @@ Read this file first, then `docs/BRIEF.md`, `docs/ARCHITECTURE.md`, `docs/DB_COR
 5. ~~**Game-day counter.**~~ **DONE** (config `clock.epoch` = 2026-10-05T00:00:00Z, read by `bl_game_clock` and `src/lib/clock.ts`). The HUD shows "Day 3323" because the clock counts from 2026-01-01. Add a config epoch (launch date) so the count starts near day 1.
 6. ~~**Landing page polish**~~ **DONE** using the `emil-design-eng` and `design-taste-frontend` skills. A good landing page already exists in `src/screens/Landing.tsx`.
 7. ~~**Paystack placeholder.**~~ **DONE** (`src/lib/payments.ts` provider interface + `LIVE_CHECKOUT` flag, placeholder `WalletPanel` that P2-PAY takes over). Add a provider-agnostic `src/lib/payments.ts`, `VITE_PAYSTACK_PUBLIC_KEY` in `.env.example`, and a wallet "Top up" button that says it's coming soon. The user will test real payments with you later and will provide the **test** public key only.
-8. **Phase 1 demo:**
+8. **Phase 1 demo:** click-through DONE in the cloud session (13 steps pass; toast/HUD fix, robbery toast dedupe, danger-zone threshold 1.4, needs label). Waiting for the user's OK on their own run.
    - Run the full app against local Supabase: `npx supabase start -x studio,imgproxy,vector,logflare,supavisor,storage-api,postgres-meta,edge-runtime,mailpit`, `npx supabase db reset`, `.env.local` from `supabase status`, then `npx vite`.
    - Click through sign-up, avatar creation, the origin reveal, travel, activities, a robbery and night mode, and fix bugs.
    - **Check the toast position:** an early screenshot showed the welcome toast overlapping the HUD username.

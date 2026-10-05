@@ -70,7 +70,7 @@ export type NeedKey = 'hunger' | 'energy' | 'hygiene' | 'fun' | 'social' | 'heal
 export const NEED_KEYS: NeedKey[] = ['hunger', 'energy', 'hygiene', 'fun', 'social', 'health', 'stress'];
 
 export const NEED_META: Record<NeedKey, { label: string; short: string; icon: string; inverted?: boolean }> = {
-  hunger: { label: 'Belle (Food)', short: 'Belle', icon: 'food' },
+  hunger: { label: 'Belle', short: 'Belle', icon: 'food' },
   energy: { label: 'Energy', short: 'Power', icon: 'bolt' },
   hygiene: { label: 'Body clean', short: 'Clean', icon: 'soap' },
   fun: { label: 'Enjoyment', short: 'Enjoy', icon: 'party' },
@@ -91,7 +91,8 @@ export function needMood(key: NeedKey, v: number): 'good' | 'warn' | 'bad' {
 export function riskLabel(p: number): { label: string; tone: 'good' | 'warn' | 'bad' } {
   if (p < 0.15) return { label: 'Calm', tone: 'good' };
   if (p < 0.3) return { label: 'Shine your eye', tone: 'warn' };
-  if (p < 0.5) return { label: 'Risky', tone: 'bad' };
+  if (p < 1.4) return { label: 'Risky', tone: 'bad' };
+  // Same threshold as the map's night danger glow (isNightRisky).
   return { label: 'Danger zone', tone: 'bad' };
 }
 
