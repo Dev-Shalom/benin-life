@@ -67,6 +67,8 @@ export interface CitySceneProps {
   initial?: { x: number; y: number; zoom: number };
   /** Hide the filter chips (dev close-ups). */
   hideChrome?: boolean;
+  /** Dev page: start with these filters on. */
+  initialFilters?: CityFilter[];
   className?: string;
   style?: CSSProperties;
 }
@@ -310,7 +312,7 @@ function City(props: InnerProps) {
   const danger = useMemo(() => {
     const im = new InstancedMesh(fx.plane, fx.m.danger, Math.max(1, risky.length));
     risky.forEach((l, i) => {
-      im.setMatrixAt(i, _mat.compose(_v.set(W(l.x), 0.075, W(l.y)), _q, _s.set(9, 1, 9)));
+      im.setMatrixAt(i, _mat.compose(_v.set(W(l.x), 0.075, W(l.y)), _q, _s.set(11, 1, 11)));
     });
     im.count = risky.length;
     im.renderOrder = 3;
@@ -321,7 +323,7 @@ function City(props: InnerProps) {
 
   const jamRoads = useMemo(() => {
     const congested = locations.filter((l) => l.congestion >= GO_SLOW_MIN);
-    const segs: Pt[][] = [];
+    const segs: [Pt[], number][] = [];
     for (const r of layout.roads) {
       if (r.kind === 'spur' || r.kind === 'dirt') continue;
       let run: Pt[] = [];
@@ -330,17 +332,17 @@ function City(props: InnerProps) {
         const near = congested.some((l) => Math.hypot(p.x - l.x, p.y - l.y) < 26 + (l.congestion - GO_SLOW_MIN) * 60);
         if (near) run.push([p.x, p.y]);
         else if (run.length) {
-          if (run.length > 1) segs.push(run);
+          if (run.length > 1) segs.push([run, r.hw]);
           run = [];
         }
       }
-      if (run.length > 1) segs.push(run);
+      if (run.length > 1) segs.push([run, r.hw]);
     }
-    const geos: BufferGeometry[] = segs.map((s) => routeGeometry(s, 4.5).geo);
+    const geos: BufferGeometry[] = segs.map(([s, hw]) => routeGeometry(s, hw + 0.8).geo);
     const g = new Group();
     for (const geo of geos) {
       const m = new Mesh(geo, fx.m.jam);
-      m.position.y = -0.03;
+      m.position.y = -0.025;
       m.renderOrder = 3;
       g.add(m);
     }
@@ -378,6 +380,17 @@ function City(props: InnerProps) {
     return { pts, geo, lengths, total: lengths[lengths.length - 1] || 1, mesh, keke, dest, shown: -1 };
   }, [tFrom, tTo, fx]);
   useEffect(() => () => route?.geo.dispose(), [route]);
+  // a new trip: frame the whole route
+  useEffect(() => {
+    if (!route) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of route.pts) {
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+    }
+    const span = Math.max(x1 - x0, (y1 - y0) * 0.8) * WS;
+    flyTo(view.current, W((x0 + x1) / 2), W((y0 + y1) / 2), clamp(span * 1.5, 14, 80));
+    invalidate();
+  }, [route, view, invalidate]);
   const targetProgress = travel?.progress ?? 0;
   const progressRef = useRef(targetProgress);
   useEffect(() => {
@@ -471,8 +484,8 @@ function City(props: InnerProps) {
     if (sel.visible) sel.scale.setScalar(Math.max(1, v.zoom * 0.03) * 1.3);
     const night = lt.dark > 0.45;
     danger.visible = risky.length > 0 && (night || dangerOn);
-    if (danger.visible) fx.m.danger.opacity = night ? 0.45 + pulse * 0.4 : 0.35;
-    if (jamOn) fx.m.jam.opacity = 0.35 + pulse * 0.35;
+    if (danger.visible) fx.m.danger.opacity = night ? 0.7 + pulse * 0.3 : 0.45;
+    if (jamOn) fx.m.jam.opacity = 0.5 + pulse * 0.3;
     filterRings.visible = filterRings.count > 0;
 
     // travel marker
@@ -503,7 +516,7 @@ function City(props: InnerProps) {
       labels.current.me = { x: mx, y: my };
     }
 
-    placeLabels(labels.current, ctl.current, size, v.zoom, Boolean(cur || route));
+    placeLabels(labels.current, ctl.current, size, v.zoom, { top: insetTop + (props.hideChrome ? 0 : 50), bottom: insetBottom });
   });
 
   /* ---------- API ---------- */
@@ -592,9 +605,15 @@ function flyTo(v: View, tx: number, tz: number, zoom: number) {
 type Box = [number, number, number, number];
 const hit = (a: Box, b: Box) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
 
-function placeLabels(L: LabelState, ctl: Controller | null, size: { width: number; height: number }, zoom: number, _hasMe: boolean) {
+function placeLabels(L: LabelState, ctl: Controller | null, size: { width: number; height: number }, zoom: number, reserve: { top: number; bottom: number }) {
   if (!ctl) return;
-  const taken: Box[] = [];
+  // screen areas covered by the HUD, the filter chips and the zoom buttons
+  const blocked: Box[] = [
+    [-1e4, -1e4, 1e4, reserve.top],
+    [-1e4, size.height - reserve.bottom, 1e4, 1e4],
+    [size.width - 64, size.height / 2 - 84, 1e4, size.height / 2 + 84],
+  ];
+  const taken: Box[] = [...blocked];
   const dots: Box[] = [];
   const order = L.items;
   for (const it of order) {
@@ -659,6 +678,9 @@ function setState(L: LabelState, key: string, el: HTMLElement, s: string) {
   el.dataset.s = s;
 }
 
+/** The big landmarks win label space over other places. */
+const LANDMARKS = new Set(['national_museum', 'oba_palace', 'oba_market', 'uniben', 'ubth', 'benin_airport', 'ramat_park', 'police_hq']);
+
 const Labels = memo(function Labels(props: {
   locations: Location[];
   currentId?: string;
@@ -680,7 +702,7 @@ const Labels = memo(function Labels(props: {
       const tier = placeTier(l.id);
       const isF = filters.some((f) => matchesFilter(f, l, crowd));
       const must = l.id === selectedId || l.id === currentId || l.id === travelTo;
-      const prio = l.id === selectedId ? 1 : l.id === currentId ? 2 : l.id === travelTo ? 3 : isF ? 4 : tier === 1 ? 6 : 8;
+      const prio = l.id === selectedId ? 1 : l.id === currentId ? 2 : l.id === travelTo ? 3 : isF ? 4 : LANDMARKS.has(l.id) ? 5 : tier === 1 ? 6 : 8;
       out.push({ key: l.id, kind: 'place', x: l.x, y: l.y, prio: prio + (crowd?.[l.id] ? -0.5 : 0), tier, must });
     }
     for (const c of COMING_SOON) out.push({ key: 'soon:' + c.id, kind: 'soon', x: c.x, y: c.y, prio: 7, tier: 1, must: false });
@@ -775,7 +797,7 @@ export default function CityScene(props: CitySceneProps) {
   const dragMoved = useRef(false);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
-  const [filters, setFilters] = useState<CityFilter[]>(savedFilters);
+  const [filters, setFilters] = useState<CityFilter[]>(props.initialFilters ?? savedFilters);
   const motion = useMemo(() => !reduceMotion(), []);
   const night = cityLight(hour).dark > 0.45;
   const byId = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
@@ -833,7 +855,7 @@ export default function CityScene(props: CitySceneProps) {
     const el = wrap.current;
     if (!c || !el) return;
     const zoom = zoomTo ?? Math.min(v.zoom, 34);
-    // where would the place land if it were the target? put it ~32% from the top instead
+    // where would the place land if it were the target? shift it into the part the sheet leaves free
     const save = { tx: v.tx, tz: v.tz, zoom: v.zoom };
     v.tx = W(mx);
     v.tz = W(my);
@@ -841,11 +863,17 @@ export default function CityScene(props: CitySceneProps) {
     c.apply();
     const r = el.getBoundingClientRect();
     const g = new Vector3();
-    const ok = c.groundAt(r.left + r.width / 2, r.top + r.height * 0.32, g);
+    // phones: the sheet covers the lower ~45%, so aim just above it; desktop: the sheet is a
+    // 460px panel on the right, so aim at the middle of what is left
+    const wide = r.width >= 900;
+    const sx = wide ? (r.width - 460) / 2 : r.width / 2;
+    const sy = wide ? r.height * 0.5 : Math.min(r.height * 0.4, r.height * 0.56 - 60);
+    const ok = c.groundAt(r.left + sx, r.top + sy, g);
     Object.assign(v, save);
     c.apply();
+    const dx = ok ? g.x - W(mx) : 0;
     const dz = ok ? g.z - W(my) : 0;
-    flyTo(v, W(mx), W(my) - dz, zoom);
+    flyTo(v, W(mx) - dx, W(my) - dz, zoom);
   }, []);
 
   const lastSel = useRef<string | undefined>(undefined);

@@ -410,7 +410,7 @@ function build(): CityLayout {
     trees.push({ x, y, r, c: Math.floor(rand() * 4), palm });
   };
   // GRA: leafy
-  for (let n = 0; n < 700; n++) {
+  for (let n = 0; n < 520; n++) {
     const a = rand() * Math.PI * 2;
     const rr = Math.sqrt(rand()) * GRA_ZONE.r * 1.1;
     addTree(GRA_ZONE.x + Math.cos(a) * rr, GRA_ZONE.y + Math.sin(a) * rr, R(3.2, 5.5), rand() < 0.18);
@@ -430,7 +430,7 @@ function build(): CityLayout {
   for (let s = 0; s < river.length; s += 3) {
     const p = at(river, s);
     for (const side of [1, -1]) {
-      if (rand() < 0.6) continue;
+      if (rand() < 0.7) continue;
       const off = R(9, 24);
       const x = p.x - Math.sin(p.a) * side * off;
       const y = p.y + Math.cos(p.a) * side * off;
@@ -446,7 +446,7 @@ function build(): CityLayout {
   // palace compound trees
   for (const [x, y] of [[392, 492], [420, 486], [390, 515], [421, 520]] as const) addTree(x, y, 3.2, true, true);
   // outskirts bush + scattered compound trees and palms
-  for (let n = 0; n < 4200; n++) {
+  for (let n = 0; n < 2600; n++) {
     const x = R(-90, 1090);
     const y = R(-90, 1090);
     const u = urban(x, y);

@@ -4,6 +4,7 @@
 import { useMemo, useState } from 'react';
 import { CityView } from '../CityView';
 import { DEV_LOCATIONS } from './fixture';
+import type { CityFilter } from '../model';
 
 const PRESETS: Record<string, { x: number; y: number; zoom: number }> = {
   city: { x: 500, y: 480, zoom: 60 },
@@ -42,6 +43,7 @@ export default function CityLab() {
         travel={travel}
         initial={initial}
         hideChrome={q.has('bare')}
+        initialFilters={(q.get('filters')?.split(',') as CityFilter[] | undefined) ?? undefined}
         insetTop={q.has('bare') ? 0 : 70}
         insetBottom={q.has('bare') ? 0 : 110}
       />

@@ -345,6 +345,9 @@
 .game:has(.c3-top) .left-rail:not(.is-clean) {
   top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 58px);
 }
+.game:has(.c3-caption) .left-rail:not(.is-clean) {
+  top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 96px);
+}
 
 /* ---------- controls ---------- */
 .c3-ctrls {

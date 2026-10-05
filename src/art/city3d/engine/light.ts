@@ -39,11 +39,11 @@ export function cityLight(hour: number): CityLight {
   let sky = mix('#cfe5f1', '#16203f', dark);
   if (dusk > 0) sky = mix(sky, '#f0b48a', Math.max(0, dusk) * 0.5);
   return {
-    hemiSky: base.hemiSky,
+    hemiSky: mix(base.hemiSky, '#8fa2e0', dark * 0.5),
     hemiGround: base.hemiGround,
-    hemi: lerp(1.6, 0.75, dark),
+    hemi: lerp(1.6, 1.05, dark),
     sun: base.sun,
-    sunI: lerp(2.0, 0.3, dark),
+    sunI: lerp(2.0, 0.45, dark),
     sunDir: base.sunDir,
     sky,
     dark,

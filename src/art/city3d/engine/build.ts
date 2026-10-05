@@ -63,7 +63,7 @@ class Flat {
     for (let i = 0; i < segs; i++) {
       const a = base + i * 2;
       const b = base + ((i + 1) % n) * 2;
-      this.idx.push(a, a + 1, b, a + 1, b + 1, b);
+      this.idx.push(a, b, a + 1, a + 1, b, b + 1);
     }
   }
   /** Quad from 4 map-space corners (counter-clockwise seen from above). */
@@ -194,7 +194,7 @@ function windowTexture(): CanvasTexture {
   c.height = 16;
   const g = c.getContext('2d')!;
   g.fillStyle = '#ffffff';
-  for (let i = 0; i < 4; i++) if (i !== 2) g.fillRect(4 + i * 16, 4, 8, 8);
+  for (let i = 0; i < 4; i++) if (i !== 2) g.fillRect(2 + i * 16, 2, 11, 12);
   return new CanvasTexture(c);
 }
 
@@ -263,9 +263,9 @@ export function buildCity(L: CityLayout): CityMeshes {
     solid: keep(new MeshLambertMaterial({ vertexColors: true, flatShading: true })),
     glow: keep(new MeshBasicMaterial({ vertexColors: true, color: '#9db4c4' })),
     water: keep(new MeshLambertMaterial({ color: '#3d8fb8' })),
-    windows: keep(new MeshBasicMaterial({ color: '#ffd27a', map: keep(windowTexture()), transparent: true, alphaTest: 0.5 })),
+    windows: keep(new MeshBasicMaterial({ color: '#ffdc8a', map: keep(windowTexture()), transparent: true, alphaTest: 0.5 })),
     bulbs: keep(new MeshBasicMaterial({ color: '#d8d2c4' })),
-    pools: keep(new MeshBasicMaterial({ color: '#ffcf7a', map: keep(radialTexture()), transparent: true, opacity: 0.55, depthWrite: false, blending: AdditiveBlending })),
+    pools: keep(new MeshBasicMaterial({ color: '#ffcf7a', map: keep(radialTexture()), transparent: true, opacity: 0.8, depthWrite: false, blending: AdditiveBlending })),
     shadow: keep(new MeshBasicMaterial({ color: '#2a1a10', transparent: true, opacity: 0.16, depthWrite: false })),
   };
   const nightOnly: Object3D[] = [];
@@ -289,6 +289,17 @@ export function buildCity(L: CityLayout): CityMeshes {
         const a = j * (N + 1) + i;
         f.idx.push(a, a + N + 1, a + 1, a + 1, a + N + 1, a + N + 2);
       }
+    // a wide skirt of bush beyond the generated ground, so a zoomed-out view never shows an edge
+    const sk = BUSH.clone().lerp(_b.set('#6f9d48'), 0.5);
+    const o = [-2400, 3400];
+    const inn = [-100, 1100];
+    const ring: [number, number][][] = [
+      [[o[0], o[0]], [o[0], o[1]], [inn[0], inn[1]], [inn[0], inn[0]]],
+      [[inn[0], inn[1]], [o[0], o[1]], [o[1], o[1]], [inn[1], inn[1]]],
+      [[inn[1], inn[1]], [o[1], o[1]], [o[1], o[0]], [inn[1], inn[0]]],
+      [[inn[1], inn[0]], [o[1], o[0]], [o[0], o[0]], [inn[0], inn[0]]],
+    ];
+    for (const q of ring) f.quad(q, -0.002, '#' + sk.getHexString());
     // crop fields on the NW farmland (Iguobazuwa side)
     for (let y = 175; y < 440; y += 12)
       for (let x = 0; x < 185; x += 22) {
@@ -419,7 +430,7 @@ export function buildCity(L: CityLayout): CityMeshes {
       for (let l = 0; l < levels; l++) {
         _o.position.set(W(b.x), b.h * (levels === 1 ? 0.5 : 0.32 + l * 0.38), W(b.y));
         _o.rotation.set(0, -b.a, 0);
-        _o.scale.set(b.w * WS * 1.02, Math.min(0.18, b.h * 0.34), b.d * WS * 1.02);
+        _o.scale.set(b.w * WS * 1.02, Math.min(0.2, b.h * 0.4), b.d * WS * 1.02);
         _o.updateMatrix();
         bands.setMatrixAt(j++, _o.matrix);
       }
@@ -455,7 +466,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     canopyGeo.deleteAttribute('uv');
     const leafMat = keep(new MeshLambertMaterial({ flatShading: true }));
     const canopy = new InstancedMesh(canopyGeo, leafMat, T.length);
-    const trunkGeo = keep(new CylinderGeometry(0.5, 0.65, 1, 5));
+    const trunkGeo = keep(new CylinderGeometry(0.5, 0.65, 1, 4, 1, true));
     trunkGeo.translate(0, 0.5, 0);
     trunkGeo.deleteAttribute('uv');
     const barkMat = keep(new MeshLambertMaterial({ color: '#7a5233', flatShading: true }));
@@ -524,7 +535,7 @@ export function buildCity(L: CityLayout): CityMeshes {
       _o.updateMatrix();
       bulbs.setMatrixAt(i, _o.matrix);
       _o.position.set(W(x), 0.07, W(y));
-      _o.scale.set(1.5, 1, 1.5);
+      _o.scale.set(2.2, 1, 2.2);
       _o.updateMatrix();
       pools.setMatrixAt(i, _o.matrix);
     });
@@ -655,13 +666,13 @@ function buildLandmarks(b: HomeBuilder) {
     turret(-0.75, -0.25, 0.5, 0.75);
     turret(0.75, -0.25, 0.5, 0.75);
     // bronze bird (the Bird of Prophecy) on the tallest roof
-    const by = 0.55 + 1.35 - 0.05;
-    b.box(0.05, 0.16, 0.05, 0, by, -0.15, '#8a5a2b');
-    b.box(0.22, 0.1, 0.09, 0, by + 0.16, -0.15, '#b0793a');
-    b.box(0.08, 0.09, 0.08, 0.13, by + 0.22, -0.15, '#c08a45');
-    b.box(0.08, 0.03, 0.03, 0.2, by + 0.24, -0.15, '#d9a441');
-    b.box(0.12, 0.03, 0.3, -0.02, by + 0.2, -0.15, '#a46c32', { rx: 0.35 });
-    b.box(0.1, 0.06, 0.06, -0.14, by + 0.18, -0.15, '#a46c32');
+    const by = 0.55 + 1.35 - 0.06;
+    b.box(0.07, 0.2, 0.07, 0, by, -0.15, '#8a5a2b');
+    b.box(0.36, 0.15, 0.14, 0, by + 0.2, -0.15, '#b0793a');
+    b.box(0.13, 0.13, 0.12, 0.2, by + 0.3, -0.15, '#c08a45');
+    b.box(0.13, 0.04, 0.05, 0.31, by + 0.33, -0.15, '#d9a441');
+    b.box(0.2, 0.04, 0.52, -0.03, by + 0.28, -0.15, '#a46c32', { rx: 0.3 });
+    b.box(0.16, 0.09, 0.1, -0.22, by + 0.26, -0.15, '#a46c32');
     // ceremonial gate facing King's Square (east)
     b.box(0.14, 0.62, 0.14, 1.6, 0, -0.45, '#9e4329');
     b.box(0.14, 0.62, 0.14, 1.6, 0, 0.25, '#9e4329');
@@ -685,7 +696,7 @@ function buildLandmarks(b: HomeBuilder) {
   }
 
   // --- UNIBEN gate on the Ugbowo road (campus to the east of the road)
-  at2(463, 128, Math.PI / 2 - 0.15);
+  at2(471, 128, -0.15);
   for (const z of [-0.55, 0.55]) {
     b.box(0.16, 0.75, 0.16, 0, 0, z, '#f2efe6');
     b.box(0.2, 0.08, 0.2, 0, 0.75, z, '#1f7a3f');
