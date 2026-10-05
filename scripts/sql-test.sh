@@ -5,6 +5,7 @@
 # Usage:
 #   bash scripts/sql-test.sh supabase/migrations/A.sql [B.sql ...] -- supabase/tests/x_test.sql
 #   bash scripts/sql-test.sh -- supabase/tests/x_test.sql      # migrations already applied
+#   BL_PSQL="psql -h /tmp -p 54322 -U postgres -d postgres" bash scripts/sql-test.sh ...  # no Docker
 #
 # Prints NOTICE output; exits non-zero on the first error.
 set -euo pipefail
@@ -27,6 +28,12 @@ done
   cat supabase/tests/_helpers.sql; echo
   for f in "${tests[@]}"; do echo "-- >>> $f"; cat "$f"; echo; done
   echo "rollback;"
-} | MSYS_NO_PATHCONV=1 docker exec -i "$CONTAINER" psql -U postgres -d postgres -q -v ON_ERROR_STOP=1
+} | if [[ -n "${BL_PSQL:-}" ]]; then
+  # Plain Postgres (no Docker), e.g. BL_PSQL="psql -h /tmp -p 54322 -U postgres -d postgres".
+  # Load scripts/supabase-stub.sql into that database once first.
+  $BL_PSQL -q -v ON_ERROR_STOP=1
+else
+  MSYS_NO_PATHCONV=1 docker exec -i "$CONTAINER" psql -U postgres -d postgres -q -v ON_ERROR_STOP=1
+fi
 
 echo "SQL-TEST OK (rolled back)"
