@@ -500,3 +500,75 @@ export interface WorkFinishResult {
   promoted?: { level: number; title: string; pay: number };
   blocked?: { title: string; missing: string[] };
 }
+
+// ---- V1-4: shops, Bag, ChopNow, rent on (docs/SHOPS.md) ----
+// Server: supabase/migrations/20261005000800_shops.sql.
+
+/** 'use' = eat/drink/use from the Bag; 'boost' = used up by an activity (soap + bath); 'keep' = owned (laptop). */
+export type ItemKind = 'use' | 'boost' | 'keep';
+
+/** Need deltas, or `{ boost: { <activity id>: needs } }`. */
+export type ItemEffects = Record<string, number> & { boost?: Record<string, Record<string, number>> };
+
+export interface ItemBase {
+  id: string;
+  name: string;
+  category: 'food' | 'drink' | 'hygiene' | 'health' | 'phone' | 'gadget' | 'vehicle' | 'souvenir' | (string & {});
+  icon: string | null;
+  description: string;
+  effects: ItemEffects;
+}
+
+/** `get_my_state().inventory` entry (only qty > 0). */
+export interface InventoryItem extends ItemBase {
+  qty: number;
+  price: number;
+  kind: ItemKind;
+  sellable: boolean;
+  /** what a market pays for one (0 when not sellable) */
+  resale_price: number;
+}
+
+export interface ShopItem extends ItemBase {
+  price: number;
+  kind: ItemKind;
+  sellable: boolean;
+  resale_price: number;
+  owned: number;
+  affordable: boolean;
+}
+
+/** `shop_list(p_location)` */
+export interface ShopList {
+  location: { id: string; name: string; scene: SceneType };
+  here: boolean;
+  sell_here: boolean;
+  cash: number;
+  items: ShopItem[];
+}
+
+export interface FoodMenuItem extends ItemBase {
+  shop_price: number;
+  /** delivery price of one */
+  price: number;
+  owned: number;
+}
+
+/** `food_menu()` */
+export interface FoodMenu {
+  markup_pct: number;
+  min_fee: number;
+  cash: number;
+  bank: number;
+  items: FoodMenuItem[];
+}
+
+export interface RentState {
+  /** Percent of sleep/nap energy kept while rent is owed (rent.owed_sleep_energy_pct). */
+  owed_sleep_pct?: number;
+}
+
+export interface GameState {
+  /** Missing only on a server without the shops migration. */
+  inventory?: InventoryItem[];
+}

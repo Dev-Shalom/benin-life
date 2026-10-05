@@ -5,7 +5,9 @@ import { gameDuration, naira } from '../../lib/format';
 import type { CareerJob, CareerRequirement, JobTrack } from '../../lib/types';
 import { Button, Icon } from '../../ui';
 import { shortName } from '../../art/map/mapGeo';
-import { perfHint } from './careerHooks';
+import { perfHint, useItemSellers } from './careerHooks';
+import { useGame } from '../../state/game';
+import { useUi } from '../../state/ui';
 
 export function JobCard({ job }: { job: CareerJob }) {
   return (
@@ -44,11 +46,35 @@ function ReqList({ reqs }: { reqs: CareerRequirement[] }) {
           <span>
             {r.label}
             {r.key === 'degree' && !r.met && <span className="req-list__hint"> · reach Graduate Assistant in Education (UNIBEN)</span>}
-            {r.key === 'item' && !r.met && <span className="req-list__hint"> · shops open soon</span>}
+            {r.key === 'item' && !r.met && <ItemShopLink item={r.item} />}
           </span>
         </li>
       ))}
     </ul>
+  );
+}
+
+/** "Buy one at Bronze Tech Hub": opens the nearest place that sells the item on its Shop tab (V1-4). */
+function ItemShopLink({ item }: { item?: string }) {
+  const sellers = useItemSellers(item);
+  const byId = useGame((s) => s.locationsById);
+  const here = useGame((s) => s.state?.location);
+  const closeAll = useUi((s) => s.closeAll);
+  const select = useUi((s) => s.select);
+  const setMapOpen = useUi((s) => s.setMapOpen);
+  if (!sellers?.length) return null;
+  const near = [...sellers].filter((id) => byId[id])
+    .sort((a, b) => (here ? Math.hypot(byId[a].x - here.x, byId[a].y - here.y) - Math.hypot(byId[b].x - here.x, byId[b].y - here.y) : 0))[0];
+  if (!near) return null;
+  const go = () => {
+    closeAll();
+    if (here?.id !== near) setMapOpen(true);
+    select(near, 'shop');
+  };
+  return (
+    <button type="button" className="req-list__link" onClick={go}>
+      Buy one at {shortName(near, byId[near].name)} <Icon name="chevronRight" size={12} stroke={2.8} />
+    </button>
   );
 }
 

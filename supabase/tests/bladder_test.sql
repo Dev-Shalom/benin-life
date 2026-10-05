@@ -3,6 +3,8 @@
 -- players_online(). Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/bladder_test.sql
 -- Rolled back at the end. Time with bl.test_offset_seconds.
+-- Rent is ON since V1-4; keep it off here so time travel never charges rent and moves cash.
+update public.game_config set value = 'false' where key = 'rent.enabled';
 
 create or replace function pg_temp.b_advance(p_seconds numeric) returns numeric
 language plpgsql as $$

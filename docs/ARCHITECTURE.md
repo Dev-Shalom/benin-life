@@ -23,6 +23,7 @@ supabase/migrations/
   20261005000500_bladder.sql            R4 (bladder need, toilet/TV/radio activities, players_online — docs/HUD_HOME.md)
   20261005000600_r6_fixes.sql           R6 (English server strings, no brand names)
   20261005000700_careers.sql            V1-3 (career tracks/levels, bronze_tech_hub, jobs RPCs — docs/CAREERS.md)
+  20261005000800_shops.sql              V1-4 (items, shops, Bag, ChopNow, rent ON + pay_rent — docs/SHOPS.md)
   20261004001000_economy.sql            P2-ECON
   20261004002000_finance_farm_health.sql P2-FIN
   20261004003000_crime_police.sql       P2-CRIME
@@ -47,7 +48,7 @@ src/art/scenes/<SceneType>.tsx          P1-SCENES-A / P1-SCENES-B (see §7)
 src/art/Scene.tsx                       phase 0 (dispatcher, do not edit)
 src/panels/registry.ts                  phase 0 (do not edit)
 src/panels/ActivitiesPanel.tsx          P1-SHELL
-src/panels/{Jobs,Shop,Market,Housing,Inventory}Panel.tsx         P2-ECON (JobsPanel + src/panels/careers/* built in V1-3)
+src/panels/{Jobs,Shop,Market,Housing,Inventory}Panel.tsx         P2-ECON (JobsPanel + src/panels/careers/* built in V1-3; Shop, Inventory + src/panels/shop/* in V1-4)
 src/panels/{Bank,Pos,Loans,Esusu,Farm,Hospital,Babalawo}Panel.tsx P2-FIN
 src/panels/{Police,Rob,Crimes}Panel.tsx                          P2-CRIME
 src/panels/{Chat,Messages,Profile}Panel.tsx                      P2-SOCIAL
@@ -87,6 +88,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 - R3a (`docs/CREATOR.md`): `traits` (id, name, emoji, description, effects jsonb, sort, active), `dreams` (id, name, emoji, description, goal jsonb, sort, active), `start_homes` (id, name, emoji, location_id, district, tag, description, weekly_rent, start_cash jsonb per origin, allowed_origins text[], locked_quip, housing_id, sort, active) — select for anon+authenticated; `admin_audit` (admin-only select). `profiles` adds `traits text[]`, `dream`, `start_home`, `home_chosen bool` (default true), `weekly_rent`, `rent_due_at`, `rent_owed`. Trait `effects.decay` multipliers are applied in `bl_decay_row`.
 - R4 (`docs/HUD_HOME.md`): `profiles.bladder` numeric default 100 (100 = comfortable). Decays `needs.bladder_per_hour` × trait `effects.decay.bladder`; at 0, hygiene drops an extra `needs.bladder_empty_hygiene_per_hour`. `bl_adjust_needs` accepts a `bladder` key. New activities `use_toilet` (home), `ease_yourself` / `public_toilet` (paid, outside), `watch_tv`, `listen_radio`.
 - V1-3 (`docs/CAREERS.md`): `career_tracks` (id, name, emoji, category, location_ids, description, skill, sort, active) and `career_levels` (track_id, level, title, pay_per_shift, shift_game_minutes, energy_cost, effects, xp_per_shift, xp_to_next, requirements, perks) — select for anon+authenticated. `profiles` adds `job_started_at`, `job_shifts_in_level`, `job_total_shifts`, `job_shift_day`, `job_shifts_today`, `job_shift_ends_at/pay/xp/perf` (the running shift) and `career_best` jsonb. `get_my_state` gains a read-only `career` block (keep it, with `origin`, `creator` and `rent`, if you redefine it).
+- V1-4 (`docs/SHOPS.md`): `items` seeded (food, drinks, hygiene, health, phone, laptop ₦45,000, souvenir); `items.effects` = need deltas (use), `{"boost":{"<activity>":{…}}}` (used up by that activity) or `{}` (keep). 13 more locations got the `shop` action. `get_my_state` gains a read-only `inventory` block and `rent.owed_sleep_pct` (keep both, with `origin`, `creator`, `rent`, `career`, if you redefine it). `do_activity` redefined (boost items, rent penalty). Trigger `game_config_rent_switch` rolls overdue rent days forward when `rent.enabled` goes false → true. **`rent.enabled` is true since V1-4.**
 - `origin_tiers` (P1-ORIGIN: id text pk, name, tagline, welcome, chance_key → game_config key of its roll %, is_default (exactly one), sort, perks jsonb) — select for anon+authenticated. See `docs/ORIGIN.md`.
 - Realtime publication `supabase_realtime`: profiles, events, game_config (+ chat tables by P2-SOCIAL).
 
@@ -111,6 +113,10 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 | `jobs_catalog` | – | tracks + levels + the caller's entry level and requirement checks (V1-3) |
 | `job_apply` / `job_quit` | p_track text / – | {message, …} — apply works from anywhere (V1-3) |
 | `work_shift` / `work_finish` | – | start a shift at the job's place; collect pay/XP/promotion when it ends (V1-3) |
+| `shop_list` / `shop_buy` | p_location / p_item, p_qty | shop items here (read) / buy with cash at a place in `sold_at` (V1-4) |
+| `item_use` / `item_sell` | p_item / p_item, p_qty | eat/drink/use one from the Bag / sell at a market for `resale_pct` (V1-4) |
+| `food_menu` / `food_order` | – / p_item, p_qty | ChopNow menu at delivery prices / order to the Bag, bank first then cash (V1-4) |
+| `pay_rent` | – | settle rent owed from anywhere, bank first then cash, partial OK (V1-4) |
 
 Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location text, p_mode text, p_traffic numeric) returns jsonb` (P1-DB). P2-CRIME may `create or replace` it with a richer version **keeping the signature**.
 

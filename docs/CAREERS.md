@@ -120,7 +120,7 @@ Balance notes: a starter shift (₦2,000-3,500) buys 1.5-2 buka meals (~₦1,500
 minutes of work) pay ₦6,000-10,500, so a LAPO baby covers food and the cheapest rent (₦1,000-1,500 a week) on
 day one and the ₦4,000 self-contain after a couple of days. Top levels pay ₦25,000-120,000 a shift. At 100 %
 performance the first promotion takes 4 shifts (2 game days with the cap); a full 7-level ladder is ~90 shifts (~30 game
-days, ~60 real hours of play). LAPO Tech interns are gated at Intern until they own a laptop (shops arrive in V1-4).
+days, ~60 real hours of play). LAPO Tech interns are gated at Intern until they own a laptop: since V1-4 it costs ₦45,000 at Bronze Tech Hub or the Ugbowo Wi-Fi joint (~16 real hours of intern savings), and the unmet requirement links to the nearest seller's Shop tab (`docs/SHOPS.md`).
 
 ## Admin tuning
 - **Config** (category `career`): `career.max_shifts_per_game_day`, `career.min_energy`, `career.min_hunger`,

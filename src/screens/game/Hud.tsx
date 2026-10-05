@@ -17,6 +17,7 @@ import { useUi } from '../../state/ui';
 import { Icon, toast } from '../../ui';
 import type { PlayerStatus } from './status';
 import { nearestWorkplace } from '../../api/careers';
+import { bestFood } from '../../api/shops';
 
 function usePlayersOnline(): number | null {
   const [n, setN] = useState<number | null>(null);
@@ -131,12 +132,17 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   const pickHome = useUi((s) => s.pickHome);
   const select = useUi((s) => s.select);
   const setMapOpen = useUi((s) => s.setMapOpen);
+  const openPanel = useUi((s) => s.openPanel);
+  const openPhone = useUi((s) => s.openPhone);
   const byId = useGame((s) => s.locationsById);
   const clean = usePrefs((s) => s.clean);
   const setPrefs = usePrefs((s) => s.set);
   const [claiming, setClaiming] = useState(false);
   const [open, setOpen] = useState(false);
   const tips = lowNeeds(p, 2);
+  const food = bestFood(state);
+  // "Eat something": food in the Bag first, then the home kitchen, else ChopNow (V1-4).
+  const eatSub = food ? `${food.icon ?? ''} ${food.name} in your Bag`.trim() : atHome ? null : 'Order on ChopNow';
   const dadReady = Boolean(origin?.allowance_claimable);
   const protectedNow = status.protLeft > 0;
   const job = state.career?.job ?? null;
@@ -163,6 +169,8 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
 
   const onTip = (k: NeedKey) => {
     setOpen(false);
+    if (k === 'hunger' && food) return openPanel('inventory');
+    if (k === 'hunger' && !atHome) return openPhone('food');
     const g = NEED_GROUP[k];
     if (atHome && g) pickHome({ id: null, group: g });
     else select(p.location_id);
@@ -198,6 +206,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
               <span className="wish-chip__icon" style={{ background: `${NEED_META[t.key].color}22` }} aria-hidden>{t.emoji}</span>
               <span className="wish-chip__text">
                 <span className="wish-chip__title">{t.text}</span>
+                {t.key === 'hunger' && eatSub && <span className="wish-chip__sub">{eatSub}</span>}
                 <span className="wish-chip__bar"><span style={{ width: `${t.value}%`, background: NEED_META[t.key].color }} /></span>
               </span>
             </button>

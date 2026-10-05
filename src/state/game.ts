@@ -57,7 +57,7 @@ function normalizeState(raw: GameState): GameState {
 /** Guess a toast tone from an event kind. */
 export function eventTone(kind: string): ToastKind {
   const k = kind.toLowerCase();
-  if (/rob|arrest|jail|raid|injur|hospital|theft|stolen|fine|ban|loss|fail|caught|wanted|debt|default/.test(k)) return 'bad';
+  if (/rob|arrest|jail|raid|injur|hospital|theft|stolen|fine|ban|loss|fail|caught|wanted|debt|default|owed/.test(k)) return 'bad';
   if (/pay|salary|wage|harvest|reward|win|bonus|deposit|credit|topup|top_up|gift|grant|promot|level|sold|release/.test(k)) return 'good';
   return 'info';
 }
@@ -192,8 +192,8 @@ function startLive(uid: string) {
         unread: s.unread + 1,
       }));
       // Street robbery already has its own modal (StatusBanners); hire/promotion already toast from the
-      // RPC result (job_apply / work_finish). The events stay in Alerts.
-      if (!['robbed', 'hired', 'promoted'].includes(ev.kind)) toast(ev.body ? `${ev.title}${/[.!?…]$/.test(ev.title) ? '' : ':'} ${ev.body}` : ev.title, eventTone(ev.kind));
+      // RPC result (job_apply / work_finish), and so does pay_rent (data.settle). The events stay in Alerts.
+      if (!['robbed', 'hired', 'promoted'].includes(ev.kind) && !(ev.data as { settle?: boolean } | null)?.settle) toast(ev.body ? `${ev.title}${/[.!?…]$/.test(ev.title) ? '' : ':'} ${ev.body}` : ev.title, eventTone(ev.kind));
       scheduleRefresh(600);
     })
     .subscribe();

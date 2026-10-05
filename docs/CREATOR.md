@@ -56,7 +56,7 @@ Bank comes from the origin (`origin.nepo.start_bank` ₦500,000, LAPO ₦0), and
 ## Rent
 - `rent_due_at` = the first `rent.due_weekday` (5 = Saturday) at 00:00 game time that is at least `rent.first_due_grace_game_days` (1) game days after moving in; afterwards each following Saturday (computed from the game clock each time, so it survives clock-config changes). Game day 1 counts as Monday; `bl_game_clock` now returns `weekday` (0 = Mon … 6 = Sun).
 - **Charging** happens lazily in `bl_me()` (`bl_charge_rent`), never in `get_my_state`. For every rent day passed (at most `rent.max_catchup_weeks` = 4 charged at once; older weeks are forgiven) it takes `rent_owed + weekly_rent × weeks`, **bank first, then cash**, ledger reason `rent`; any shortfall goes to `rent_owed` and a `rent_owed` event ("Landlord don knock!"); full payment writes a `rent_paid` event. It never raises for lack of money. Eviction is the P2-ECON housing hook (read `rent_owed`).
-- **`rent.enabled` defaults to false**: Phase 1 has no income except the Nepo allowance, so LAPO babies would just bleed out. While off, the due date silently rolls forward, so switching it on (P2-ECON, when jobs exist) never back-charges.
+- **`rent.enabled` is ON since V1-4** (`20261005000800_shops.sql`, `docs/SHOPS.md`). It was seeded false in R3a (no income before jobs). While off, the due date silently rolls forward in gameplay calls; V1-4 adds a trigger that rolls every overdue due date forward whenever it is switched on, so turning it on never back-charges. V1-4 also adds `pay_rent()` (phone Houses app) and a light penalty while owing: sleep/nap energy × `rent.owed_sleep_energy_pct` (60 %).
 
 ## Origin overrides (FEEDBACK item 12)
 - **`origin.force_next`** (text: `''` or an `origin_tiers` id; a config trigger rejects anything else). `bl_roll_origin()` checks it first: when set, that tier wins, the key resets to `''` and a `config_audit` row (admin_id null) records the reset. It is one-shot and lives in the same transaction as the profile insert, so a failed create leaves it armed. Works for v1 and v2.
@@ -67,7 +67,7 @@ Bank comes from the origin (`origin.nepo.start_bank` ₦500,000, LAPO ₦0), and
   - A Sim still choosing a home gets no top-up: `choose_start_home` pays the new tier's pack at move-in.
 
 ## Config (all admin-tunable)
-`origin.force_next` "nepo" (one-shot) · `creator.trait_count` 2 · `creator.arrival_location` "uselu_park" (validated) · `rent.enabled` false · `rent.due_weekday` 5 · `rent.first_due_grace_game_days` 1 · `rent.max_catchup_weeks` 4.
+`origin.force_next` "nepo" (one-shot) · `creator.trait_count` 2 · `creator.arrival_location` "uselu_park" (validated) · `rent.enabled` false (seed; **true since V1-4**) · `rent.due_weekday` 5 · `rent.first_due_grace_game_days` 1 · `rent.max_catchup_weeks` 4.
 
 ## Copy pass (FEEDBACK items 1 and 2)
 - "Dad" replaces "Papa" in origin taglines and welcome text, the allowance config labels and every `claim_allowance` message.
@@ -77,7 +77,7 @@ Bank comes from the origin (`origin.nepo.start_bank` ₦500,000, LAPO ₦0), and
 ## Phase 2 hooks
 - Skills: read `traits.effects.skill_xp` for XP multipliers; the `*_bonus` keys are for activity fun/social boosts.
 - Dreams: track `dreams.goal` progress on the Goals tab.
-- Housing (P2-ECON): moving house sets `weekly_rent`/`housing_id`/`home_location_id`; eviction reads `rent_owed`; turn `rent.enabled` on once jobs pay.
+- Housing (P2-ECON): moving house sets `weekly_rent`/`housing_id`/`home_location_id`; eviction reads `rent_owed`. (`rent.enabled` was turned on in V1-4.)
 - Admin panel: edit the `traits`, `dreams` and `start_homes` rows, the `creator.*`, `rent.*` and `origin.force_next` config, and call `admin_set_origin`.
 
 ## Client (R3b)

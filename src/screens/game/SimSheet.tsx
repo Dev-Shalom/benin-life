@@ -115,6 +115,9 @@ function ProfileTab({ state, onEditLook }: { state: GameState; onEditLook: () =>
   const home = catalog?.homes.find((h) => h.id === p.start_home);
   const homeLoc = byId[p.home_location_id];
   const rentDay = WEEKDAYS[catalog?.rent_weekday ?? 5];
+  const openPhone = useUi((s) => s.openPhone);
+  const openPanel = useUi((s) => s.openPanel);
+  const bagCount = (state.inventory ?? []).reduce((n, i) => n + i.qty, 0);
   return (
     <div className="sim-tab stack">
       <div className="sim-stage">
@@ -133,9 +136,24 @@ function ProfileTab({ state, onEditLook }: { state: GameState; onEditLook: () =>
             <div className="sim-home__name">{home?.name ?? homeLoc?.name ?? 'Your place'}</div>
             <div className="muted sim-home__sub">
               {p.weekly_rent > 0 ? `Rent ${naira(p.weekly_rent)} a week, due every ${rentDay}` : 'No rent to pay'}
-              {state.rent && !state.rent.enabled && p.weekly_rent > 0 ? ' (not charged yet)' : ''}
+              {state.rent && !state.rent.enabled && p.weekly_rent > 0 ? ' (collection paused)' : ''}
             </div>
+            {p.rent_owed > 0 && <div className="sim-home__owed">You owe {naira(p.rent_owed)} rent</div>}
           </div>
+          <Button size="sm" variant={p.rent_owed > 0 ? 'green' : 'ghost'} onClick={() => openPhone('houses')}>
+            {p.rent_owed > 0 ? 'Pay' : 'Rent'}
+          </Button>
+        </div>
+      </section>
+      <section className="sim-card">
+        <h4 className="sim-card__title">Bag</h4>
+        <div className="sim-home">
+          <span className="sim-home__emoji" aria-hidden>🎒</span>
+          <div className="grow">
+            <div className="sim-home__name">{bagCount > 0 ? `${bagCount} ${bagCount === 1 ? 'thing' : 'things'}` : 'Empty'}</div>
+            <div className="muted sim-home__sub">{bagCount > 0 ? (state.inventory ?? []).slice(0, 6).map((i) => i.icon || '📦').join(' ') : 'Buy food at markets and bukas, or order on ChopNow.'}</div>
+          </div>
+          <Button size="sm" variant="ghost" icon="bag" onClick={() => openPanel('inventory')}>Open</Button>
         </div>
       </section>
       <section className="sim-card">

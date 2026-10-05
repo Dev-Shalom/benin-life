@@ -2,7 +2,7 @@
 
 This file is kept current after every step. The live status is in `docs/HANDOFF.md`, under the "STATUS LOG" section at the bottom.
 
-**Current state (updated by the cloud session after every step):** Phase R in progress in a cloud session. Done: R1–R6 (Phase R complete). Done V1-3 jobs. Running: V1-4 shops + rent. Next: the rest of the V1 launch steps in docs/V1_PLAN.md (jobs, shops+rent, bank, chat, admin, launch check). Preview: https://benin-life.vercel.app (deploys main; only verified work goes to main). Decisions: keep Phase 1 SVG place scenes as panel headers; 3D for everyone, the 2D map only as a fallback on extremely weak connections.
+**Current state (updated by the cloud session after every step):** Phase R in progress in a cloud session. Done: R1–R6 (Phase R complete). Done V1-3 jobs, V1-4 shops + rent. Running: V1-5 bank. Next: the rest of the V1 launch steps in docs/V1_PLAN.md (jobs, shops+rent, bank, chat, admin, launch check). Preview: https://benin-life.vercel.app (deploys main; only verified work goes to main). Decisions: keep Phase 1 SVG place scenes as panel headers; 3D for everyone, the 2D map only as a fallback on extremely weak connections.
 `main` is kept identical to `claude/kind-bell-e9reb8` (fast-forwarded after every verified step; Vercel deploys `main`). If the cloud session is still working when you start locally, run `git pull` first and don't redo a step marked [running] unless it has been idle for hours.
 
 ```

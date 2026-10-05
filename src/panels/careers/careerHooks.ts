@@ -6,6 +6,7 @@ import { getCfg } from '../../lib/config';
 import { gameDuration, realDuration } from '../../lib/format';
 import type { JobsCatalog } from '../../lib/types';
 import { useGame } from '../../state/game';
+import { supabase } from '../../lib/supabase';
 import { toast } from '../../ui';
 
 /** "5 hrs · about 3m 45s" (game length + real length at the current speed). */
@@ -68,3 +69,26 @@ export function useCareerActions(after?: () => void) {
   };
 }
 
+
+const sellersCache = new Map<string, Promise<string[]>>();
+
+/** Location ids that sell an item (items.sold_at), cached for the session. V1-4. */
+export function useItemSellers(itemId: string | undefined): string[] | null {
+  const [ids, setIds] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!itemId) return;
+    let alive = true;
+    let p = sellersCache.get(itemId);
+    if (!p) {
+      p = Promise.resolve(supabase.from('items').select('sold_at').eq('id', itemId).maybeSingle())
+        .then(({ data }) => ((data?.sold_at as string[] | undefined) ?? []))
+        .catch(() => []);
+      sellersCache.set(itemId, p);
+    }
+    void p.then((v) => alive && setIds(v));
+    return () => {
+      alive = false;
+    };
+  }, [itemId]);
+  return ids;
+}

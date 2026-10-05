@@ -2808,3 +2808,426 @@ kbd {
 .jobs-app .job-stats div {
   background: var(--surface-2);
 }
+
+/* ---------- V1-4: shops, Bag, ChopNow, Houses ---------- */
+.items {
+  display: grid;
+  gap: 10px;
+}
+.item {
+  padding: 12px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+}
+.item.is-locked .item__icon,
+.item.is-locked .item__name {
+  opacity: 0.6;
+}
+.item__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.item__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--e1);
+  font-family: var(--font-emoji);
+  font-size: 25px;
+  line-height: 1;
+}
+.item__icon--food { background: #fff4e6; }
+.item__icon--drink { background: #eaf4ff; }
+.item__icon--hygiene { background: #e8f8f5; }
+.item__icon--health { background: #fdeef3; }
+.item__icon--phone { background: #f0eeff; }
+.item__icon--gadget { background: #eef1f5; }
+.item__icon--souvenir { background: #fbf1e3; }
+.item__name {
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.item__owned {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  background: var(--green-50);
+  color: var(--green-700);
+  font-size: 11.5px;
+  font-weight: 700;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+.item__desc {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.item__price {
+  flex: none;
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+}
+.item__price b {
+  font-size: 15px;
+  color: var(--green-700);
+}
+.item__price span {
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.item__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+.item__chips:empty {
+  display: none;
+}
+.item .chip:not(.good):not(.bad):not(.warn) {
+  background: #fff;
+}
+.item__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.item__note {
+  margin-top: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.item__qty {
+  min-width: 34px;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--r-pill);
+  background: #fff;
+  box-shadow: var(--e1);
+}
+.qty__btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.qty__btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+.qty__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.qty__minus {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: currentColor;
+}
+.qty__val {
+  min-width: 22px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.shop__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.shop__greet {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-style: italic;
+  color: var(--text-2);
+}
+.shop__cash {
+  flex: none;
+  padding: 4px 11px;
+  border-radius: var(--r-pill);
+  background: var(--green-50);
+  color: var(--green-700);
+  font-size: 13px;
+}
+.shop__cat {
+  margin: 4px 2px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.shop__sell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: var(--amber-50);
+  font-size: 13.5px;
+  color: var(--amber-800);
+}
+.bag__lead {
+  font-size: 14px;
+  color: var(--text-2);
+}
+.chop__hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  color: #fff;
+  background: linear-gradient(140deg, #e2452c, #ff8a6b);
+  box-shadow: var(--e2);
+}
+.chop__hero-emoji {
+  font-family: var(--font-emoji);
+  font-size: 34px;
+}
+.chop__hero-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+.chop__hero-sub {
+  font-size: 12.5px;
+  opacity: 0.92;
+}
+.chop__tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 10px;
+}
+.chop__tab {
+  padding: 7px 13px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: #fff;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  box-shadow: var(--e1);
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.chop__tab:active {
+  transform: scale(0.96);
+}
+.chop__tab.is-on {
+  background: var(--ink);
+  color: #fff;
+}
+.chop__money {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.chop .item,
+.houses .item {
+  background: #fff;
+  box-shadow: var(--e1);
+}
+.house-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
+  color: #fff;
+  background: linear-gradient(140deg, #c96a1f, #f2a65a);
+  box-shadow: var(--e2);
+}
+.house-card__emoji {
+  font-family: var(--font-emoji);
+  font-size: 34px;
+}
+.house-card__label {
+  font-size: 12.5px;
+  opacity: 0.85;
+}
+.house-card__name {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.house-card__sub {
+  font-size: 12.5px;
+  opacity: 0.85;
+}
+.rent-owed {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--e1), inset 0 0 0 1.5px rgba(224, 71, 58, 0.35);
+}
+.rent-owed__top {
+  display: flex;
+  gap: 10px;
+}
+.rent-owed__top > span {
+  font-family: var(--font-emoji);
+  font-size: 26px;
+}
+.rent-owed__title {
+  font-weight: 800;
+  color: var(--red-600);
+}
+.rent-owed__body {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.rent-owed__note {
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: center;
+}
+.rent-rows .bank-row {
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+.rent-rows__due {
+  display: grid;
+  justify-items: end;
+  text-align: right;
+}
+.rent-rows__due span {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.bank-row b.is-bad {
+  color: var(--red-600);
+}
+.bank-row b.is-good {
+  color: var(--green-700);
+}
+.buy-choices {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.buy-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out), background-color var(--t-fast) ease;
+}
+.buy-choice:active {
+  transform: scale(0.98);
+}
+@media (hover: hover) {
+  .buy-choice:hover {
+    background: var(--surface-3);
+  }
+}
+.buy-choice__emoji {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--e1);
+  font-family: var(--font-emoji);
+  font-size: 26px;
+}
+.buy-choice__title {
+  display: block;
+  font-weight: 800;
+  font-size: 15.5px;
+}
+.buy-choice__sub {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.buy-tip {
+  padding: 4px 4px 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.buy-mode-head {
+  margin-bottom: 10px;
+}
+.buy-mode-head + .buy-grid .buy-card {
+  opacity: 0.75;
+}
+.req-list__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--green-50);
+  color: var(--green-700);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.req-list__link:active {
+  transform: scale(0.97);
+}
+.sim-home__owed {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--red-600);
+}
+.rent-rows .bank-row > span {
+  white-space: nowrap;
+}

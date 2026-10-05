@@ -2,6 +2,9 @@
 -- no_home guard, rent, origin.force_next, admin_set_origin, Dad copy. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/creator_test.sql
 -- Rolled back at the end. Rolls forced with bl.test_rand, time with bl.test_offset_seconds.
+-- Rent is ON since V1-4 (20261005000800_shops.sql); these tests start with it off on purpose (the
+-- "while off the due date rolls" path) and switch it on in group 6.
+update public.game_config set value = 'false' where key = 'rent.enabled';
 
 -- ---------- local helpers (standalone; safe if other test files defined them) ----------
 create or replace function pg_temp.expect_error(p_sql text, p_like text) returns void
@@ -98,7 +101,7 @@ begin
     perform pg_temp.assert(exists (select 1 from game_config where key = k and label <> '' and category <> ''), 'config ' || k);
   end loop;
   perform pg_temp.assert(bl_cfg('creator.trait_count') = 2, 'two traits per Sim');
-  perform pg_temp.assert(not bl_cfg_bool('rent.enabled'), 'rent charging off by default');
+  perform pg_temp.assert((select jsonb_typeof(value) from game_config where key = 'rent.enabled') = 'boolean', 'rent.enabled is a bool');
   -- RLS + helper privileges
   foreach k in array array['traits','dreams','start_homes','admin_audit'] loop
     perform pg_temp.assert((select relrowsecurity from pg_class where oid = ('public.' || k)::regclass), 'RLS on ' || k);

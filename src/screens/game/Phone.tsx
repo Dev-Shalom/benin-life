@@ -1,7 +1,8 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
-// Built: Ride (destination list -> the existing travel picker), Jobs (V1-3), Wallet, Alerts, Bank balances,
-// Settings (Sim sheet). Everything else opens a "Coming soon" screen. Esc closes the phone.
-import { useMemo, useRef, useState } from 'react';
+// Built: Ride (destination list -> the existing travel picker), Jobs (V1-3), ChopNow + Houses (V1-4, lazy),
+// Wallet, Alerts, Bank balances, Settings (Sim sheet). Everything else opens a "Coming soon" screen.
+// Esc closes the phone.
+import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { clockTime, naira, districtName } from '../../lib/format';
 import { WEEKDAYS } from '../../lib/pidgin';
@@ -15,6 +16,9 @@ import { AlertsList } from './Overlays';
 import { nearestWorkplace } from '../../api/careers';
 import { JobCard, PerfBar, Promotion, QuitButton, ShiftStats, TrackList } from '../../panels/careers/CareerUI';
 import { useCareerActions, useJobsCatalog } from '../../panels/careers/careerHooks';
+
+const FoodApp = lazy(() => import('./phone/FoodApp'));
+const HousesApp = lazy(() => import('./phone/HousesApp'));
 
 interface App {
   id: string;
@@ -234,6 +238,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                     <span className="app-icon__tile" style={{ background: a.bg }} aria-hidden>
                       {a.emoji}
                       {a.id === 'alerts' && unread > 0 && <span className="app-icon__badge">{unread > 99 ? '99+' : unread}</span>}
+                      {a.id === 'houses' && (state.rent?.owed ?? 0) > 0 && <span className="app-icon__badge">!</span>}
                     </span>
                     <span className="app-icon__name">{a.name}</span>
                   </button>
@@ -253,7 +258,12 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                 : app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
                   : app.id === 'bank' ? <BankApp state={state} />
-                    : <ComingSoon app={app} />}
+                    : app.id === 'food' || app.id === 'houses' ? (
+                      <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
+                        {app.id === 'food' ? <FoodApp state={state} /> : <HousesApp state={state} />}
+                      </Suspense>
+                    )
+                      : <ComingSoon app={app} />}
             </div>
           )}
           <button type="button" className="phone__home-bar" onClick={() => setScreen(screen === 'home' ? 'lock' : 'home')}

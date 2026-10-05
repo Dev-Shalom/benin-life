@@ -22,14 +22,15 @@
 
 ## Layout
 - **Top:** one white pill. Weekday + game day + time (sun/moon), mood (emoji + label, tap -> Needs), players online (`players_online()` every 60 s; hidden if the call fails), mute (stored in prefs; there is no audio yet), cash with a green "+" (Wallet). Bank lives in the Wallet, the phone's Bank app and the Sim sheet. Under 480 px the mood and "online" labels hide; under 350 px the online count hides.
-- **Left rail** (under the pill): up to 2 wish chips from the lowest needs below 45 ("Eat something", "Use the toilet"...; tap -> the matching furniture at home, else the location sheet), **"Go to work"** (V1-3: shown while the Sim has a job, is free and has shifts left today; tap -> the map + the nearest workplace's sheet on the Work tab), Dad's allowance chip (Nepo), new-player protection, and "Clean screen". Under 600 px the chips use a compact size so the rail does not cover the house.
+- **Left rail** (under the pill): up to 2 wish chips from the lowest needs below 45 ("Eat something", "Use the toilet"...; tap -> the matching furniture at home, else the location sheet; V1-4: "Eat something" opens the Bag when it holds food (sub-line "🍛 Jollof … in your Bag"), else the kitchen at home, else ChopNow), **"Go to work"** (V1-3: shown while the Sim has a job, is free and has shifts left today; tap -> the map + the nearest workplace's sheet on the Work tab), Dad's allowance chip (Nepo), new-player protection, and "Clean screen". Under 600 px the chips use a compact size so the rail does not cover the house.
 - **Clean screen** hides the pill, chips, needs card and dock. Status banners stay. The button turns into "Show HUD".
 - **Bottom:** status banners (travel, busy ring, jail, hospital) and the place chip, then the needs card (cached `AvatarPortrait`, origin badge, 6 tiny bars; tap -> Sim sheet Needs) and the **dock: Home · Buy · Map · Phone** (unread alerts badge on Phone). Desktop puts needs, dock and the keyboard button on one row.
 - **Toasts** sit top-centre under the pill (`--hud-bottom` is measured by `TopPill`).
 - **Views:** at home (`location_id === home_location_id`, not travelling) the 3D home shows unless the player opened the map; everywhere else the map: the **3D city** (R5, `CityView`, see `docs/CITY3D.md`), with the 2D map only as the lite fallback. Only one of the two canvases is ever mounted. Arriving home switches back to the home view.
   - Home: at home -> home view; away -> map + the home location sheet (travel picker).
-  - Buy: "Buy mode, coming soon" sheet (Phase 2 catalogue preview).
+  - Buy (V1-4): the Buy sheet: **Bag** (opens the `inventory` panel), **ChopNow** (phone food app) and a tip about Shop tabs, then the "Buy mode · Coming soon" furniture preview.
   - Map: the map; the location sheet works as before.
+- **Location sheet Shop tab** (V1-4, `src/panels/ShopPanel.tsx`, `docs/SHOPS.md`): places with the `shop` action list their items (emoji, price, need chips, owned count, quantity stepper, Buy). `select(id, 'shop')` opens it (the career requirement "Own a fairly-used laptop" links there).
 - **Location sheet Work tab** (V1-3): places with the `jobs` action show **Work** (`src/panels/JobsPanel.tsx`): your job card + "Work a shift · ₦X · 5 hrs" (disabled with the reason when busy, too tired/hungry or done for today) where your job works, and the jobs hiring at that place. `useUi().select(id, tab)` opens a place on a given tab ("Go to work" uses `'jobs'`). The busy banner shows "Working: <title>" with the ring; `StatusBanners` calls `work_finish()` when the shift ends and toasts the pay (and a promotion).
   - Phone: the phone overlay.
 
@@ -68,7 +69,7 @@ Add a `HomeLayout` to `LAYOUTS` (house `w`/`d`, `lot` incl. yard, floor/patch co
 
 ## Sim sheet
 Tabs Profile / Needs / Goals / Skills / People / Career / Settings (`useUi().openSim(tab)`; `setOverlay('settings')` still works and opens Settings).
-- Profile: live turntable, @name, Edit look (creator `LookPanel` without the name field, saves with `update_avatar`), home + weekly rent, dream, traits.
+- Profile: live turntable, @name, Edit look (creator `LookPanel` without the name field, saves with `update_avatar`), home + weekly rent (+ rent owed and a Rent/Pay button -> Houses app, V1-4), Bag card (count, emoji preview, Open), dream, traits.
 - Needs: the 6 needs with %, Health and Stress, "Feelings arrive soon", traits.
 - Goals: dream card (progress starts in Phase 2), origin card, wishes and perks previews.
 - Career (V1-3, `docs/CAREERS.md`): job card (track · level, title, ₦/shift, shift length), performance bar with a hint, next promotion with XP bar and requirement checklist, shifts today / at this level / total, workplaces, "Open the Jobs app". Without a job: "Find a job" (opens the phone's Jobs app).
@@ -76,7 +77,7 @@ Tabs Profile / Needs / Goals / Skills / People / Career / Settings (`useUi().ope
 - Settings: sound effects, music, **Lite map for weak network** (`prefs.liteMap`; `CityView` reads it together with `isSlowNetwork()`), notifications placeholder, account email, admin button, log out, 18+ note.
 
 ## Phone
-Lock screen (game time, weekday, latest unread alert) -> tap or swipe up -> app grid. Built apps: **KekeGo** (Ride: places by distance -> map + the location sheet's travel picker), **Jobs** (V1-3: current job card, performance, promotion, Go to work / Start a shift, Quit (two taps), every track with where, starting title/pay and its full ladder; Apply / Switch), **Wallet** (Wallet panel), **Alerts** (events list; marks read), **Bronze Bank** (balances), **Settings** (Sim sheet). `openPhone('jobs')` opens straight into the Jobs app. Messages, Contacts, ChopNow (food), Houses, Cars, Health, Invest, EdoBet, Family, Hustle, Edo Gov and Police open a "Coming soon" screen. The home bar goes back to the grid; Esc or "Close" closes the phone.
+Lock screen (game time, weekday, latest unread alert) -> tap or swipe up -> app grid. Built apps: **KekeGo** (Ride: places by distance -> map + the location sheet's travel picker), **Jobs** (V1-3: current job card, performance, promotion, Go to work / Start a shift, Quit (two taps), every track with where, starting title/pay and its full ladder; Apply / Switch), **ChopNow** (V1-4, lazy `phone/FoodApp.tsx`: food/drink tabs at delivery prices, Order with quantity -> Bag), **Houses** (V1-4, lazy `phone/HousesApp.tsx`: home card, rent owed + Pay now, weekly rent, next rent day, moving-house teaser; red "!" on the tile while owing), **Wallet** (Wallet panel), **Alerts** (events list; marks read), **Bronze Bank** (balances), **Settings** (Sim sheet). `openPhone('jobs')` opens straight into the Jobs app (`'food'`, `'houses'` likewise). Messages, Contacts, Cars, Health, Invest, EdoBet, Family, Hustle, Edo Gov and Police open a "Coming soon" screen. The home bar goes back to the grid; Esc or "Close" closes the phone.
 
 ### Add a phone app
 Add an entry to `APPS` in `Phone.tsx` (`id`, fictional `name`, emoji, tile gradient, `pitch` for the coming-soon screen). To build it, render its screen in the `app && (...)` switch or make `launch()` open a panel/sheet. Never use a real brand name.
