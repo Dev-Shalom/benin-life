@@ -24,8 +24,10 @@ export function TaskPill({ state, status }: { state: GameState; status: PlayerSt
   const setCurrent = useTasks((s) => s.setCurrent);
   const activities = useCatalog((s) => s.activities);
 
-  const busy = status.busyLeft > 0 && status.busyEndMs !== null;
-  const now = Math.max(useLiveNow(busy), status.now);
+  const ticking = status.busyLeft > 0 && status.busyEndMs !== null;
+  const now = Math.max(useLiveNow(ticking), status.now);
+  // the live clock decides (status.busyLeft only ticks once a second)
+  const busy = ticking && status.busyEndMs! > now;
   const shift = Boolean(p.job_shift_ends_at && p.busy_until && p.job_shift_ends_at === p.busy_until);
 
   let pill: React.ReactNode = null;
@@ -61,17 +63,18 @@ export function TaskPill({ state, status }: { state: GameState; status: PlayerSt
         )}
       </div>
     );
-  } else if (current && current.phase !== 'running') {
+  } else if (current && !(current.phase === 'running' && current.busyUntil && Date.parse(current.busyUntil) <= now)) {
+    // 'running' with no busy timer seen yet = the RPC answered, fresh state is on its way
     const walking = current.phase === 'walking';
-    const label = walking ? `Walking to ${current.group ? WALK_TO[current.group] : 'it'}…` : `Starting ${current.name}…`;
+    const label = walking ? `Walking to ${current.group ? WALK_TO[current.group] : 'it'}…` : 'Starting…';
     pill = (
-      <div className={`task-pill is-${current.phase}`} role="status">
+      <div className={`task-pill is-${walking ? 'walking' : 'starting'}`} role="status">
         <span className="task-pill__icon" aria-hidden>{current.icon}</span>
         <span className="task-pill__body">
           <span className="task-pill__row">
-            <span className="task-pill__name" title={current.name}>{walking ? label : shortName(current.name)}</span>
+            <span className="task-pill__name" title={current.name}>{shortName(current.name)}</span>
           </span>
-          <span className="task-pill__sub">{walking ? shortName(current.name) : 'Starting…'}</span>
+          <span className="task-pill__sub">{walking ? label : 'Starting…'}</span>
           <span className="task-pill__bar is-waiting"><span /></span>
         </span>
         {walking && (

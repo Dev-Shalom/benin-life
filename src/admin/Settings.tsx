@@ -9,6 +9,7 @@ import { fmtValue, timeShort, useLoad } from './util';
 
 const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: string }> = {
   action: { title: 'Action timing', emoji: '⚡', blurb: 'Every action takes a few real seconds: shifts, trips, jail and hospital. Per-activity seconds live in Content → Activities.' },
+  sim: { title: 'Sim movement', emoji: '🚶', blurb: 'How fast the Sim walks at home (the stride and step rate follow, so the feet never slide).' },
   time: { title: 'Time & speed', emoji: '⏱️', blurb: 'Old game-minute timing (used when Action timing is game_minutes) and presence.' },
   clock: { title: 'Game clock', emoji: '🕰️', blurb: 'Real Benin time or the old fast clock, night hours and the launch day.' },
   origin: { title: 'Origin (LAPO / Nepo)', emoji: '👶', blurb: 'Who is born rich, and what each origin starts with.' },
@@ -36,6 +37,8 @@ const QUICK: { key: string; hint: string }[] = [
   { key: 'action.shift_seconds', hint: 'Real seconds one work shift takes.' },
   { key: 'action.travel_max_seconds', hint: 'No trip takes longer than this (real seconds).' },
   { key: 'action.scale_by_need', hint: 'Actions are shorter when the need is nearly full (sleep is 15 s only when exhausted).' },
+  { key: 'sim.walk_speed', hint: 'How fast the Sim walks at home, in metres per second (1.9 = a brisk walk).' },
+  { key: 'action.queue_max', hint: 'How many tasks a player can line up at once.' },
   { key: 'origin.nepo_pct', hint: 'Chance a new player is born a Nepo baby.' },
   { key: 'origin.force_next', hint: 'The very next new account gets this origin, then it switches itself off.' },
   { key: 'origin.lapo.start_cash', hint: 'Cash a LAPO baby starts with (the home choice can change it).' },

@@ -23,15 +23,15 @@ export function queueMax(): number {
   return Math.max(1, Math.round(Number(getCfg('action.queue_max', 5)) || 5));
 }
 
-/** Add an activity to the queue (shows the toast for 'queued' / 'full'). */
+/** Add an activity to the queue (a toast when it is full). */
 export function queueTask(a: { id: string; name: string; home_only?: boolean }, locationId: string): 'now' | 'queued' | 'full' {
   const max = queueMax();
   const r = useTasks.getState().add(
     { id: a.id, name: a.name, icon: activityIcon(a.id), group: a.home_only ? activityGroup(a.id) : null, locationId },
     max,
   );
+  // 'queued' needs no toast: the chip appearing in the left column is the feedback
   if (r === 'full') toast(`Your queue is full (${max} tasks). Remove one first.`, 'bad');
-  else if (r === 'queued') toast(`Added to your queue: ${a.name}`, 'info');
   return r;
 }
 
@@ -79,9 +79,11 @@ export function useTaskRunner(state: GameState | null, homeLive: boolean) {
       if (!c || c.uid !== uid) return;
       useTasks.getState().patchCurrent({ phase: 'starting' });
       try {
-        const res = await rpc<{ message?: string; busy_until?: string }>('do_activity', { p_activity: c.id });
+        const res = await rpc<{ message?: string; busy_until?: string; used?: string[]; rent_penalty?: boolean }>('do_activity', { p_activity: c.id });
         if (useTasks.getState().current?.uid === uid) useTasks.getState().patchCurrent({ phase: 'running', busyUntil: res?.busy_until });
-        toast(res?.message ?? 'Done!', 'good');
+        // the pill already says it started; toast only when the server has more to say (items used,
+        // the landlord knocking), so toasts don't cover the left column for every task
+        if ((res?.used?.length ?? 0) > 0 || res?.rent_penalty) toast(res?.message ?? 'Done!', 'good');
       } catch (e) {
         toast(errorMessage(e), 'bad');
         const hint = e instanceof GameError ? e.hint : undefined;

@@ -45,6 +45,11 @@ Phones get a bottom tab bar and full-screen detail panes; desktops get a sidebar
 | `life.welcome_enabled` | Welcome-back screen (house, Sim, money, Continue / New life / Log out) on/off. Category "Welcome back & new life". |
 | `life.welcome_after_minutes` | In the same tab, the welcome-back screen shows again after this many real minutes away (default 30). A new tab always shows it once. |
 | `life.restart_enabled` | Players may start a **New life** (default on): the old Sim is archived in `profile_archive`, the account stays, the creator runs again (origin roll, `origin.force_next` applies). Audited as `life_restart`. |
+| `sim.walk_speed` | (M2, category "Sim movement") How fast the Sim walks at home in trousers, m/s (default 1.9, range 0.5–4). Stride and step rate follow, so the feet never slide. |
+| `sim.robe_speed_mult` | Walk speed in a long robe / wrapper / maxi as a share of `sim.walk_speed` (default 0.7; skirts sit halfway). |
+| `sim.tired_slowdown` | How much slower a very tired Sim walks (default 0.18 = 18 % at full tiredness). |
+| `action.queue_max` | (M2, Action timing) How many tasks a player can line up, the running one included (default 5, range 1–20). |
+| `home.walk_max_share_pct` | Not used since M2 (the Sim always walks first, the action starts on arrival). Kept for older clients. |
 | `life.restart_cooldown_hours` | Hours a player must wait between new lives (default 0 = no wait). |
 
 Changes go live at once: `game_config` is in the realtime publication and `src/lib/config.ts` updates every client on each change (and reloads after a reconnect). Content tables are read fresh by the game's RPCs (e.g. a new item price shows in the shop on the next open).

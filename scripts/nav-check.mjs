@@ -118,9 +118,11 @@ console.log('locomotion');
   ok(near(w.pos, [3, 2], 1e-6), `ends exactly on the last point (${w.pos.map((v) => v.toFixed(4))})`);
   ok(Math.abs(loco.angleTo(w.yaw, 0)) < 0.03, 'turns to the final facing');
   ok(turnedBeforeMoving > 1.0 && !movedBeforeTurn, `turns on the spot before walking off (${turnedBeforeMoving.toFixed(2)} rad first)`);
-  ok(maxSpeed <= 1.15 + 1e-6 && maxSpeed > 0.9, `cruise speed reached, not exceeded (${maxSpeed.toFixed(2)} m/s)`);
-  ok(maxJump < 0.03, `no teleport: largest step ${(maxJump * 100).toFixed(1)} cm at 60 fps`);
-  ok(maxAccel < 3, `speed eases (peak accel ${maxAccel.toFixed(2)} m/s²)`);
+  // M2: the default cruise is 1.9 m/s (config sim.walk_speed); limits scale with it
+  const cruise = loco.DEFAULT_GAIT.cruise;
+  ok(maxSpeed <= cruise + 1e-6 && maxSpeed > cruise * 0.78, `cruise speed reached, not exceeded (${maxSpeed.toFixed(2)} of ${cruise} m/s)`);
+  ok(maxJump < cruise / 60 + 0.002, `no teleport: largest step ${(maxJump * 100).toFixed(1)} cm at 60 fps`);
+  ok(maxAccel < 3 * (cruise / 1.15), `speed eases (peak accel ${maxAccel.toFixed(2)} m/s²)`);
 
   // re-target mid-walk keeps the speed (no stop-start)
   const v = loco.makeWalker([0, 0], Math.PI / 2);
@@ -139,6 +141,21 @@ console.log('locomotion');
     if (z.seg >= z.path.length || z.path.length === 0) atEnd = z.speed;
   }
   ok(atEnd >= 0 && atEnd < 0.35, `arrives slow (${atEnd.toFixed(2)} m/s at the last point)`);
+  // M2 stopWalk (a cancelled walk to a task): eases to a stop within a short distance, no snap
+  const s2 = loco.makeWalker([0, 0], Math.PI / 2);
+  loco.walkPath(s2, [[0, 0], [6, 0]]);
+  for (let i = 0; i < 120; i++) loco.stepWalker(s2, 1 / 60);
+  const x0 = s2.pos[0];
+  const v0 = s2.speed;
+  loco.stopWalk(s2);
+  let stopped = false;
+  let jump = 0;
+  for (let i = 0; i < 120 && !stopped; i++) {
+    const before = s2.pos[0];
+    stopped = loco.stepWalker(s2, 1 / 60).arrived;
+    jump = Math.max(jump, s2.pos[0] - before);
+  }
+  ok(stopped && s2.pos[0] - x0 < 0.05 && jump < 0.04, `stopWalk stops at once from ${v0.toFixed(2)} m/s (${((s2.pos[0] - x0) * 100).toFixed(1)} cm further)`);
 }
 
 // ---------------------------------------------------------------- the real home layouts
