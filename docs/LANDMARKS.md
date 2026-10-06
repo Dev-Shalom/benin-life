@@ -5,7 +5,9 @@ Research below was done with web search; addresses are as listed publicly. Map p
 our 1000×1000 map space using the bearings in `docs/MAP_GEO.md` (King's Square = 500,500; ~80 units/km near the centre).
 Verify each spot on OSM before seeding.
 
-**Brand decision needed:** BRIEF.md said private businesses use fictional names. The user is now asking for real ones
+**DECIDED (user, 2026-10-06): use the ACTUAL names of real Benin places** (ShopRite, Kada Cinemas, Mama Ebo, Versus Lounge, Havana, Cube, Protea, Golden Tulip, Ogba Zoo, Samuel Ogbemudia Stadium, and so on), and set `world.real_brands` on by default. This covers top-tier clubs, lounges, hotels, malls, food places and premium housing areas (GRA: Aideyan Rd, Ikpokpan Rd, Ugbor, Estate Gate). Earlier note, kept for history:
+
+~~Brand decision needed:~~ BRIEF.md said private businesses use fictional names. The user is now asking for real ones
 (ShopRite, Kada, Mama Ebo). Real public landmarks (zoo, stadium, statue, park) are fine. For private brands, either use the real
 name (the user's call, maybe with permission from the business — also a sponsorship opportunity, like Lagos Life's billboards)
 or a close nod ("Shop-Right", "Kadda Cinema"). Default until the user decides: **real public landmarks now; private brands

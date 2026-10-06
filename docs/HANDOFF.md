@@ -159,3 +159,21 @@ Draft the Terms of Service and Privacy Policy pages (approved by the user; the s
   - Scale: ₦950 · ₦12.5K · ₦1.2M · ₦3.4B · ₦1.1T · ₦2Q (quadrillion). Full amounts keep comma grouping (₦1,250,000,000,000). Hover or tap shows the full amount.
   - **Where:** src/lib/format.ts (`naira` / `nairaShort`), plus the HUD money pill, bank, shops, jobs, phone apps and the admin pages. Money is stored as bigint, which holds up to about ₦9.2 quintillion; JS is exact to about 9e15.
   - **Admin "Grant money"** (admin_grant_money already exists): the amount input accepts shorthand ("500K", "2.5M", "5B", "1T"), shows a live formatted preview, offers quick buttons (+1M, +1B, +1T), and asks for confirmation on huge amounts. Check that no config cap or validation blocks trillion amounts. Add SQL tests for large grants and a UI screenshot.
+- [todo] **Starter homes by origin (user, 2026-10-06).**
+  - **LAPO babies** start with trench basics only:
+    - a water drum and a bucket (for bathing)
+    - ONE small stool (no sofa)
+    - a small stove (kerosene or a single gas burner) for cooking
+    - a mat or thin foam mattress
+    - nothing out of the ordinary for someone starting from the trenches
+  - **Nepo babies** start with moderate, decent furniture: a proper bed, a sofa, a TV, a fridge and a gas cooker. Nice, but not mansion-level.
+  - Starting furniture is data-driven per origin and per start home, and editable in admin.
+  - Make the 3D home rendering (R4) and the actions that depend on furniture match. For example, LAPO bathing uses the bucket, and cooking uses the stove.
+- [todo] **Real housing (user):** a housing ladder using real Benin areas and types:
+  - face-me-I-face-you, self-contain and mini-flat in real neighbourhoods
+  - an Ikpokpan Rd apartment
+  - an Aideyan Rd duplex
+  - an Estate Gate mansion (GRA)
+  - Rent and buy prices are admin-editable.
+- [todo] **Real landmarks with their REAL names (user decided, see docs/LANDMARKS.md):** big clubs and lounges (Versus, Havana, Cube, Club De Medici, Vibes), hotels (Protea, Golden Tulip), Benin City Mall/ShopRite, Kada Plaza, Mama Ebo, Ogba Zoo, Samuel Ogbemudia Stadium, Emotan Statue, and so on. Build them together with the L2 interiors, so the places you enter are the real ones.
+- Order after L1: money format → starter homes by origin → L2 interiors (real landmarks + housing included) → L3 crowds → L4 events.
