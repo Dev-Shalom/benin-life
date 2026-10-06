@@ -771,8 +771,8 @@ function House(props: HomeSceneProps & {
       },
     };
     onReady?.(api);
-    if (import.meta.env.DEV) Object.assign(window, { __home: api, __homeActor: actorRef.current, __homeLayout: L, __homeGrid: grid });
-  }, [gl, scene, camera, room, onReady, actorRef, L, grid, cx, cz, size]);
+    if (import.meta.env.DEV) Object.assign(window, { __home: api, __homeActor: actorRef.current, __homeLayout: L, __homeGrid: grid, __homeChar: ch });
+  }, [gl, scene, camera, room, onReady, actorRef, L, grid, cx, cz, size, ch]);
 
   /** A real tap: little movement, short, one finger (not the end of a drag, orbit or pinch). */
   const isTap = (e: ThreeEvent<MouseEvent>) => {
