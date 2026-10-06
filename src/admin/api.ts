@@ -23,7 +23,8 @@ export type Row = Record<string, unknown>;
 
 export type AdminTable =
   | 'origin_tiers' | 'traits' | 'dreams' | 'start_homes' | 'career_tracks' | 'career_levels'
-  | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture' | 'starter_furniture';
+  | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture' | 'starter_furniture'
+  | 'place_zones' | 'zone_actions' | 'place_moods';
 
 export interface PlayerRow {
   id: string;

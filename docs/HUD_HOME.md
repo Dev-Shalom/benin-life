@@ -26,7 +26,7 @@
 - **Clean screen** hides the pill, chips, needs card and dock. Status banners stay. The button turns into "Show HUD".
 - **Bottom:** status banners (travel, busy ring, jail, hospital) and the place chip, then the needs card (cached `AvatarPortrait`, origin badge, 6 tiny bars; tap -> Sim sheet Needs) and the **dock: Home · Buy · Map · Phone** (unread alerts badge on Phone). Desktop puts needs, dock and the keyboard button on one row.
 - **Toasts** sit top-centre under the pill (`--hud-bottom` is measured by `TopPill`).
-- **Views:** at home (`location_id === home_location_id`, not travelling) the 3D home shows unless the player opened the map; everywhere else the map: the **3D city** (R5, `CityView`, see `docs/CITY3D.md`), with the 2D map only as the lite fallback. Only one of the two canvases is ever mounted. Arriving home switches back to the home view.
+- **Views:** at home (`location_id === home_location_id`, not travelling) the 3D home shows unless the player opened the map; **at any other place (L2) the place's 3D interior + place card show** unless the player opened the map (docs/PLACES.md; arriving somewhere takes you inside, "Go inside" on the map chip / place sheet steps back in); on the road the map: the **3D city** (R5, `CityView`, see `docs/CITY3D.md`), with the 2D map only as the lite fallback. Only one of the two canvases is ever mounted. Arriving home switches back to the home view.
   - Home: at home -> home view; away -> map + the home location sheet (travel picker).
   - Buy (V1-4): the Buy sheet: **Bag** (opens the `inventory` panel), **Chowdeck** (phone food app) and a tip about Shop tabs, then the "Buy mode · Coming soon" furniture preview.
   - Map: the map; the location sheet works as before.

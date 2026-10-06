@@ -27,6 +27,7 @@ interface Activity {
   sort: number;
   description?: string | null;
   needs_furniture?: boolean | null;
+  location_ids?: string[] | null;
 }
 
 function EffectChips({ effects }: { effects: Record<string, number> | null }) {
@@ -74,12 +75,13 @@ export default function ActivitiesPanel({ state, location, close }: PanelProps) 
         setList([]);
         return;
       }
-      setList(((data ?? []) as Activity[]).filter((a) => !a.home_only || atHome));
+      // L2: some activities only happen at certain places (Mama Ebo's pepper rice)
+      setList(((data ?? []) as Activity[]).filter((a) => (!a.home_only || atHome) && (!a.location_ids?.length || a.location_ids.includes(location.id))));
     })();
     return () => {
       alive = false;
     };
-  }, [location.scene, atHome]);
+  }, [location.scene, location.id, atHome]);
 
   // M2: every task goes through the queue (home ones walk to their furniture first; others start at
   // once). Idle: close to show the walk / the progress pill; busy: line it up and keep the list open.

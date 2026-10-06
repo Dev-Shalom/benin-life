@@ -61,7 +61,14 @@ language sql as $$ select abs(a - b) < 0.01 $$;
 -- ---------- 0. seed sanity ----------
 do $$
 begin
-  perform pg_temp.assert((select count(*) from locations) = 40, 'expected 40 locations (37 + 2 R3a homes + bronze_tech_hub), got ' || (select count(*) from locations));
+  -- 37 core + 2 R3a homes + bronze_tech_hub; later migrations (L2 landmarks) add more, so check the 40 are there
+  perform pg_temp.assert((select count(*) from locations where id in ('national_museum','oba_market','ring_road_pos','oba_palace','igun_street',
+    'mama_osas_buka','new_benin_market','new_benin_pos','mercy_clinic','mission_rd_flats','uselu_market','fresh_cut_salon','uselu_park','uniben',
+    'ubth','back_gate_joint','wifi_joint','oluku_park','ramat_park','oregbeni_market','aduwawa_park','aduwawa_room','third_east','ekiosa_market',
+    'baba_shrine','upper_sakponba','santana_market','sapele_pos','bronze_lounge','police_hq','bronze_bank','gra_duplex','kingdom_lounge',
+    'benin_airport','siluko_rd','ekenwan_room','iguobazuwa_farm','uniben_hostel','uselu_selfcon','bronze_tech_hub')) = 40,
+    'expected the 40 core locations, got ' || (select count(*) from locations));
+  perform set_config('bl.test_loc_count', (select count(*) from locations)::text, true);
   perform pg_temp.assert((select night_risk_mult from locations where id = 'upper_sakponba') = 3.0, 'upper_sakponba night x3');
   perform pg_temp.assert((select night_risk_mult from locations where id = 'third_east') = 3.0, 'third_east night x3');
   perform pg_temp.assert((select count(*) from locations where coalesce(blurb, '') = '') = 0, 'every location has blurb');
@@ -175,7 +182,7 @@ begin
   select count(*) into n from profiles;
   if n <> 1 then raise exception 'TEST FAILED: authenticated sees % profiles (want only own)', n; end if;
   select count(*) into n from locations;
-  if n <> 40 then raise exception 'TEST FAILED: locations not readable'; end if;
+  if n <> current_setting('bl.test_loc_count')::int then raise exception 'TEST FAILED: locations not readable'; end if;
   ok := false;
   begin update profiles set cash = 999999; exception when insufficient_privilege then ok := true; end;
   if not ok then raise exception 'TEST FAILED: client could update profiles'; end if;
@@ -200,7 +207,7 @@ declare ok boolean := false;
 begin
   begin perform get_my_state(); exception when insufficient_privilege then ok := true; end;
   if not ok then raise exception 'TEST FAILED: anon could call get_my_state'; end if;
-  if (select count(*) from locations) <> 40 then raise exception 'TEST FAILED: anon cannot read locations'; end if;
+  if (select count(*) from locations) <> current_setting('bl.test_loc_count')::int then raise exception 'TEST FAILED: anon cannot read locations'; end if;
   raise notice 'ok 3b: anon blocked from RPCs, can read catalog';
 end $$;
 reset role;

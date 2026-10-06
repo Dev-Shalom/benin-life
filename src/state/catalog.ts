@@ -21,6 +21,8 @@ export interface ActivityRow {
   sort: number;
   /** Offered at home only with a piece of furniture that lists it (starter furniture). */
   needs_furniture?: boolean | null;
+  /** L2: emoji for cards and the task pill. */
+  icon?: string | null;
 }
 
 /** Can the player do this home activity with the furniture they own? (null furniture = not loaded: allow) */

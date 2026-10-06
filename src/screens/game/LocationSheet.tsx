@@ -94,8 +94,10 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
     );
   }
 
+  const atHome = loc.id === state.profile.home_location_id;
   return (
     <div className="loc-body">
+      {!atHome && <GoInside />}
       <PeopleHere loc={loc} meId={state.profile.id} />
       {status.blockedReason && (
         <p className="travel-blocked"><Icon name="info" size={16} /> {status.blockedReason}</p>
@@ -187,5 +189,18 @@ function PeopleHere({ loc, meId }: { loc: Location; meId: string }) {
         </div>
       )}
     </section>
+  );
+}
+
+/** L2: from the map (or the sheet over the interior), step inside the place you are at. */
+function GoInside() {
+  const mapOpen = useUi((s) => s.mapOpen);
+  const setMapOpen = useUi((s) => s.setMapOpen);
+  const closeAll = useUi((s) => s.closeAll);
+  if (!mapOpen) return null;
+  return (
+    <button type="button" className="where-enter loc-enter" onClick={() => { closeAll(); setMapOpen(false); }}>
+      Go inside <Icon name="chevronRight" size={14} />
+    </button>
   );
 }

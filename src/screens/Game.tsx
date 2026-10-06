@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HomeView, LAYOUTS, activityGroup, furnishLayout, homeLayoutFor, itemGroup, type FurnitureItem } from '../art/home3d';
 import { CityView } from '../art/city3d';
+import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
 import { serverNow, useGameClock } from '../lib/clock';
 import { devHourOverride, looksNight } from '../lib/daylight';
 import { setSoundScene } from '../lib/sound';
@@ -30,6 +31,7 @@ import { StatusBanners } from './game/StatusBanners';
 import { deriveStatus } from './game/status';
 import { useTaskRunner } from './game/TaskRunner';
 import { useTasks } from '../state/tasks';
+import { PlaceCard, usePlaceInterior, usePlayersAt } from './game/PlaceCard';
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
@@ -53,7 +55,7 @@ function useInsets() {
     window.addEventListener('resize', on);
     return () => window.removeEventListener('resize', on);
   }, []);
-  return w >= 900 ? { top: 84, bottom: 108 } : { top: 128, bottom: 176 };
+  return w >= 900 ? { top: 84, bottom: 108, narrow: false } : { top: 128, bottom: 176, narrow: true };
 }
 
 export default function Game() {
@@ -131,6 +133,8 @@ export default function Game() {
   }, [furnKey, loadFurniture]);
   const atHome = Boolean(p && !state?.travel && p.location_id === p.home_location_id);
   const showHome = atHome && !mapOpen;
+  // L2: anywhere else (not on the road) you are INSIDE the place: its 3D interior + the place card
+  const showPlace = Boolean(p && state && !state.travel && !atHome && !mapOpen);
   // V1-6: stay subscribed to the chat of the place you are at (unread dot while the sheet is closed).
   useChatLive(state && !state.travel ? state.location.id : null, p?.id ?? null);
   const chatUnread = useChat((s) => s.unread);
@@ -142,12 +146,21 @@ export default function Game() {
     setMapOpen(false);
   }, [closeAll, setMapOpen]);
 
-  // Coming back home switches to the home view.
+  // Coming back home switches to the home view; arriving at any other place takes you inside it (L2).
   const wasHome = useRef(atHome);
   useEffect(() => {
     if (atHome && !wasHome.current) setMapOpen(false);
     wasHome.current = atHome;
   }, [atHome, setMapOpen]);
+  const arrivedAt = state && !state.travel ? state.location.id : null;
+  const lastArrived = useRef(arrivedAt);
+  useEffect(() => {
+    if (arrivedAt && lastArrived.current !== arrivedAt) {
+      setMapOpen(false);
+      setPlaceZone(null);
+    }
+    lastArrived.current = arrivedAt;
+  }, [arrivedAt, setMapOpen]);
 
   // The home activity running now -> which furniture the Sim goes to.
   const busyUntil = p?.busy_until ?? null;
@@ -205,8 +218,60 @@ export default function Game() {
   // M2: the action queue. Tasks walk first (3D home on screen), then start; see game/TaskRunner.ts.
   const suspendHomeNow = (overlay === 'sim' && simTab === 'profile') || overlay === 'look';
   const homeLive = showHome && Boolean(p) && furnitureOf === p?.id && !suspendHomeNow;
-  const runner = useTaskRunner(state, homeLive);
+  const placeLive = showPlace && !suspendHomeNow && state ? state.location.id : null;
+  const runner = useTaskRunner(state, homeLive, placeLive);
   const taskPhase = useTasks((s) => s.current?.phase ?? null);
+  const taskCurrent = useTasks((s) => s.current);
+
+  // ---- L2 place interior: zones + cards (server), real players + background people (capped)
+  const [placeZone, setPlaceZone] = useState<string | null>(null);
+  const [placeBump, setPlaceBump] = useState(0);
+  const interior = usePlaceInterior(showPlace && state ? state.location.id : null, hourF, placeBump);
+  const playersHere = usePlayersAt(showPlace && state ? state.location.id : null, p?.id ?? '');
+  const placeRoom = useMemo(() => (interior.data ? roomFor(interior.data.location.scene, interior.data.zones) : null), [interior.data]);
+  const placeGrid = useMemo(() => (interior.data && placeRoom ? buildPlaceGrid(placeRoom, interior.data.zones) : null), [interior.data, placeRoom]);
+  const crowdCap = Math.max(0, Math.min(30, Number(cfg('crowd.max_visible', 10)) || 0));
+  const npcPerZone = Math.max(0, Math.min(6, Number(cfg('places.npc_per_zone', 2)) || 0));
+  const hourInt = Math.floor(hourF);
+  const crowdPlan = useMemo(() => {
+    if (!interior.data || !placeRoom || !placeGrid) return { shown: [], total: 0 };
+    return planCrowd({
+      placeId: interior.data.location.id, scene: interior.data.location.scene, hour: hourInt, room: placeRoom, zones: interior.data.zones,
+      grid: placeGrid, players: playersHere, perZone: npcPerZone, cap: crowdCap, closed: !interior.data.open,
+    });
+  }, [interior.data, placeRoom, placeGrid, playersHere, npcPerZone, crowdCap, hourInt]);
+  // the first zone is picked on the way in, so its action cards show at once
+  useEffect(() => {
+    if (interior.data && !placeZone && interior.data.zones.length) setPlaceZone(interior.data.zones[0].key);
+  }, [interior.data, placeZone]);
+  // re-read the cards when money / the Bag change (owned counts, "In your Bag")
+  const cashKey = p ? `${p.cash}:${p.bank}:${p.job_id ?? ''}:${p.job_level}` : '';
+  const lastCashKey = useRef(cashKey);
+  useEffect(() => {
+    if (!showPlace) return;
+    if (lastCashKey.current !== cashKey) {
+      lastCashKey.current = cashKey;
+      const t = window.setTimeout(() => setPlaceBump((n) => n + 1), 600);
+      return () => window.clearTimeout(t);
+    }
+  }, [cashKey, showPlace]);
+  // the zone whose action runs now (the task we walked to, else the zone that offers the busy activity)
+  const placeBusyZone = useMemo(() => {
+    if (!showPlace || !p || !busyActive) return null;
+    if (taskCurrent?.phase === 'running' && taskCurrent.zone && taskCurrent.locationId === p.location_id) return taskCurrent.zone;
+    const z = interior.data?.zones.find((zz) => zz.actions.some((a) => a.kind === 'activity' && a.name === p.busy_label));
+    return z?.key ?? null;
+  }, [showPlace, p, busyActive, taskCurrent, interior.data]);
+  // what the HUD covers at the bottom (place card + dock), so the room is framed above it
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const [bottomH, setBottomH] = useState(0);
+  useEffect(() => {
+    const el = bottomRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setBottomH(Math.round(el.getBoundingClientRect().height)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const layoutId = p ? homeLayoutFor(p.housing_id, (state && byId[state.location.id]?.scene) ?? state?.location.scene) : 'face_me';
   const furnished = useMemo(() => furnishLayout(LAYOUTS[layoutId], furniture), [layoutId, furniture]);
@@ -230,11 +295,48 @@ export default function Game() {
     robeMult: Math.min(1.5, Math.max(0.3, Number(cfg('sim.robe_speed_mult', 0.7)) || 0.7)),
     tiredSlow: Math.min(0.8, Math.max(0, Number(cfg('sim.tired_slowdown', 0.18)))),
   };
-  const dockActive: DockId | null = overlay === 'phone' ? 'phone' : overlay === 'buy' ? 'buy' : showHome ? 'home' : 'map';
+  const dockActive: DockId | null = overlay === 'phone' ? 'phone' : overlay === 'buy' ? 'buy' : showHome ? 'home' : showPlace ? null : 'map';
+  // phones: the room sits above the card; desktop: the card may cover the front strip (the room reads bigger)
+  const placeInsetBottom = clean ? 40 : Math.max(insets.bottom, Math.min(Math.round((bottomH + 12) * (insets.narrow ? 1 : 0.62)), Math.round(window.innerHeight * 0.62)));
   return (
-    <div className={`game${skyNight ? ' is-night' : ''}${clean ? ' is-clean' : ''}${showHome ? ' is-home' : ' is-map'}`}>
+    <div className={`game${skyNight ? ' is-night' : ''}${clean ? ' is-clean' : ''}${showHome ? ' is-home' : showPlace ? ' is-place' : ' is-map'}`}>
       <div className="game__map">
-        {showHome && furnitureOf !== p.id ? (
+        {showPlace && !interior.data ? (
+          <div className="home3d home3d--loading"><span className="home3d__loader" aria-label="Loading the place" /><span className="place-loading">Walking in…</span></div>
+        ) : showPlace && interior.data ? (
+          <PlaceView
+            key={interior.data.location.id}
+            placeId={interior.data.location.id}
+            placeName={interior.data.location.name}
+            scene={interior.data.location.scene}
+            zones={interior.data.zones}
+            avatar={p.avatar}
+            hour={hourF}
+            closed={!interior.data.open}
+            crowd={crowdPlan.shown}
+            selectedZone={placeZone}
+            onPickZone={setPlaceZone}
+            task={runner.placeTask}
+            onTaskArrive={runner.onTaskArrive}
+            onTaskCancel={runner.onTaskCancel}
+            onWalkDone={runner.onWalkDone}
+            busyZone={placeBusyZone}
+            walkLock={busyActive ? `${busyLabel ?? 'Busy'} first, then you can walk` : taskPhase === 'starting' ? 'Starting, one moment' : null}
+            walk={walk}
+            mood={simPosture(p)}
+            suspended={suspendHome}
+            paused={Boolean(panel || selectedId || (overlay && !suspendHome))}
+            insetTop={clean ? 70 : insets.top}
+            insetBottom={placeInsetBottom}
+            fallbackScene={here.scene}
+            fallbackAction={
+              <button type="button" className="where-chip home3d__fallback-btn" onClick={() => select(here.id)}>
+                <span className="grow"><span className="where-chip__name">Things to do here</span></span>
+                <Icon name="chevronUp" size={14} />
+              </button>
+            }
+          />
+        ) : showHome && furnitureOf !== p.id ? (
           <div className="home3d home3d--loading"><span className="home3d__loader" aria-label="Loading your home" /></div>
         ) : showHome ? (
           <HomeView
@@ -283,9 +385,9 @@ export default function Game() {
       </div>
 
       {!clean && <TopPill state={state} clock={clock} />}
-      <LeftRail state={state} status={status} atHome={atHome} compact={!showHome} />
+      <LeftRail state={state} status={status} atHome={atHome} compact={!showHome && (!showPlace || insets.narrow)} />
 
-      <div className="game__bottom">
+      <div className="game__bottom" ref={bottomRef}>
         <div className="game__banners">
           <StatusBanners state={state} status={status} />
           {!clean && !state.travel && chatUnread > 0 && (
@@ -294,15 +396,27 @@ export default function Game() {
               <span className="chat-chip__dot" aria-hidden /> <Icon name="chat" size={15} /> {chatUnread > 9 ? '9+' : chatUnread} new in chat
             </button>
           )}
-          {!clean && !state.travel && !showHome && (
-            <button type="button" className="where-chip" onClick={() => select(here.id)}>
-              <span className="where-chip__dot" />
-              <span className="grow">
-                <span className="where-chip__label">You're at</span>
-                <span className="where-chip__name">{atHome ? 'Home' : here.name}</span>
-              </span>
-              <span className="where-chip__go">Open <Icon name="chevronUp" size={14} /></span>
-            </button>
+          {!clean && showPlace && (
+            <PlaceCard state={state} data={interior.data} error={interior.error} zone={placeZone} onZone={setPlaceZone}
+              peopleCount={crowdPlan.total + 1} moodSeconds={Number(cfg('places.mood_seconds', 7)) || 7}
+              onMap={() => onDock('map')} onHome={goHome} atHome={atHome} />
+          )}
+          {!clean && !state.travel && !showHome && !showPlace && (
+            <div className="where-row">
+              <button type="button" className="where-chip" onClick={() => select(here.id)}>
+                <span className="where-chip__dot" />
+                <span className="grow">
+                  <span className="where-chip__label">You're at</span>
+                  <span className="where-chip__name">{atHome ? 'Home' : here.name}</span>
+                </span>
+                <span className="where-chip__go">Open <Icon name="chevronUp" size={14} /></span>
+              </button>
+              {!atHome && (
+                <button type="button" className="where-enter" onClick={() => { closeAll(); setMapOpen(false); }}>
+                  Go inside <Icon name="chevronRight" size={14} />
+                </button>
+              )}
+            </div>
           )}
           {!clean && showHome && (
             <button type="button" className="home-chip" onClick={() => select(here.id)}>

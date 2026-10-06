@@ -36,6 +36,13 @@ export const SCENE_EMOJI: Record<SceneType, string> = {
   salon: '💈',
   cyber: '💻',
   office: '💼',
+  mall: '🛒',
+  cinema: '🎬',
+  hotel: '🏨',
+  zoo: '🦁',
+  stadium: '🏟️',
+  monument: '🗽',
+  car_dealer: '🚘',
 };
 
 /** A few places get a more specific emoji than their scene's. */
@@ -45,6 +52,9 @@ const ID_EMOJI: Record<string, string> = {
   igun_street: '🔥',
   ring_road_pos: '💳',
   third_east: '🛣️',
+  mama_ebo: '🌶️',
+  rome_club: '🪩',
+  versus_lounge: '🍸',
 };
 
 export const placeEmoji = (l: Pick<Location, 'id' | 'scene'>) => ID_EMOJI[l.id] ?? SCENE_EMOJI[l.scene] ?? '📍';

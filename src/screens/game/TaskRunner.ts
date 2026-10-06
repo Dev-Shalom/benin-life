@@ -12,7 +12,7 @@ import { serverNow } from '../../lib/clock';
 import { getCfg } from '../../lib/config';
 import type { GameState } from '../../lib/types';
 import { useGame } from '../../state/game';
-import { activityIcon, useTasks } from '../../state/tasks';
+import { activityIcon, useTasks, type TaskKind } from '../../state/tasks';
 import { toast } from '../../ui';
 
 /** Walks to a task longer than this (real ms) give up and start anyway (e.g. the canvas went away). */
@@ -23,11 +23,32 @@ export function queueMax(): number {
   return Math.max(1, Math.round(Number(getCfg('action.queue_max', 5)) || 5));
 }
 
-/** Add an activity to the queue (a toast when it is full). */
-export function queueTask(a: { id: string; name: string; home_only?: boolean }, locationId: string): 'now' | 'queued' | 'full' {
+/** L2: extra details for tasks queued inside a place interior. */
+export interface PlaceTaskOpts {
+  kind?: TaskKind;
+  /** Zone key to walk to first. */
+  zone?: string | null;
+  /** "the bar" */
+  walkTo?: string;
+  icon?: string;
+  qty?: number;
+}
+
+/** Add an activity (or, inside a place, a shift / purchase) to the queue (a toast when it is full). */
+export function queueTask(a: { id: string; name: string; home_only?: boolean }, locationId: string, opts: PlaceTaskOpts = {}): 'now' | 'queued' | 'full' {
   const max = queueMax();
   const r = useTasks.getState().add(
-    { id: a.id, name: a.name, icon: activityIcon(a.id), group: a.home_only ? activityGroup(a.id) : null, locationId },
+    {
+      id: a.id,
+      name: a.name,
+      icon: opts.icon ?? activityIcon(a.id),
+      group: a.home_only && !opts.zone ? activityGroup(a.id) : null,
+      locationId,
+      kind: opts.kind,
+      zone: opts.zone ?? null,
+      walkTo: opts.walkTo,
+      qty: opts.qty,
+    },
     max,
   );
   // 'queued' needs no toast: the chip appearing in the left column is the feedback
@@ -49,6 +70,11 @@ export async function stopRunning(): Promise<void> {
   }
 }
 
+export interface PlaceTask {
+  key: string;
+  zone: string;
+}
+
 export interface HomeTask {
   key: string;
   activity: string;
@@ -59,7 +85,7 @@ export interface HomeTask {
  * Runs the queue. `homeLive`: the 3D home is on screen and can walk the Sim (else tasks start at once).
  * Returns what the HomeScene needs.
  */
-export function useTaskRunner(state: GameState | null, homeLive: boolean) {
+export function useTaskRunner(state: GameState | null, homeLive: boolean, placeLive: string | null = null) {
   const current = useTasks((s) => s.current);
   const queue = useTasks((s) => s.queue);
   const holdUntil = useTasks((s) => s.holdUntil);
@@ -79,11 +105,20 @@ export function useTaskRunner(state: GameState | null, homeLive: boolean) {
       if (!c || c.uid !== uid) return;
       useTasks.getState().patchCurrent({ phase: 'starting' });
       try {
-        const res = await rpc<{ message?: string; busy_until?: string; used?: string[]; rent_penalty?: boolean }>('do_activity', { p_activity: c.id });
+        type Res = { message?: string; busy_until?: string; used?: string[]; rent_penalty?: boolean; robbed?: { amount?: number } | null };
+        const kind = c.kind ?? 'activity';
+        const res =
+          kind === 'shift'
+            ? await rpc<Res>('work_shift')
+            : kind === 'buy'
+              ? await rpc<Res>('shop_buy', { p_item: c.id, p_qty: Math.max(1, c.qty ?? 1) })
+              : await rpc<Res>('do_activity', { p_activity: c.id });
         if (useTasks.getState().current?.uid === uid) useTasks.getState().patchCurrent({ phase: 'running', busyUntil: res?.busy_until });
         // the pill already says it started; toast only when the server has more to say (items used,
-        // the landlord knocking), so toasts don't cover the left column for every task
-        if ((res?.used?.length ?? 0) > 0 || res?.rent_penalty) toast(res?.message ?? 'Done!', 'good');
+        // the landlord knocking, a purchase, a pickpocket), so toasts don't cover the left column for every task
+        if (kind === 'buy') toast(res?.message ?? 'Bought!', 'good');
+        else if (res?.robbed) toast(res?.message ?? 'Omo! Somebody dipped hand for your pocket.', 'bad');
+        else if ((res?.used?.length ?? 0) > 0 || res?.rent_penalty) toast(res?.message ?? 'Done!', 'good');
       } catch (e) {
         toast(errorMessage(e), 'bad');
         const hint = e instanceof GameError ? e.hint : undefined;
@@ -139,7 +174,8 @@ export function useTaskRunner(state: GameState | null, homeLive: boolean) {
       // no 3D home to walk in (map opened, canvas suspended) or the walk takes too long: start now
       if (walkT0.current?.uid !== current.uid) walkT0.current = { uid: current.uid, at: Date.now() };
       const waited = Date.now() - walkT0.current.at;
-      if (!homeLive || waited > WALK_TIMEOUT_MS) void start(current.uid);
+      const live = current.zone ? placeLive === current.locationId : homeLive;
+      if (!live || waited > WALK_TIMEOUT_MS) void start(current.uid);
       else later(WALK_TIMEOUT_MS - waited + 50);
       return () => window.clearTimeout(timer);
     }
@@ -159,11 +195,13 @@ export function useTaskRunner(state: GameState | null, homeLive: boolean) {
       return () => window.clearTimeout(timer);
     }
     const next = queue[0];
-    const walk = Boolean(next.group) && homeLive && next.locationId === p.home_location_id && p.location_id === p.home_location_id;
+    const walk = next.zone
+      ? placeLive === next.locationId && p.location_id === next.locationId
+      : Boolean(next.group) && homeLive && next.locationId === p.home_location_id && p.location_id === p.home_location_id;
     const c = useTasks.getState().popNext(walk ? 'walking' : 'starting');
     if (c && !walk) void start(c.uid);
     return () => window.clearTimeout(timer);
-  }, [p, state, current, queue, holdUntil, homeLive, tick, refresh, start]);
+  }, [p, state, current, queue, holdUntil, homeLive, placeLive, tick, refresh, start]);
 
   const onTaskArrive = useCallback(
     (key: string) => {
@@ -185,5 +223,8 @@ export function useTaskRunner(state: GameState | null, homeLive: boolean) {
 
   const homeTask: HomeTask | null =
     current?.phase === 'walking' && current.group ? { key: current.uid, activity: current.id, group: current.group } : null;
-  return { homeTask, onTaskArrive, onTaskCancel, onWalkDone };
+  // L2: a queued task inside a place walks to its zone first
+  const placeTask: PlaceTask | null =
+    current?.phase === 'walking' && current.zone ? { key: current.uid, zone: current.zone } : null;
+  return { homeTask, placeTask, onTaskArrive, onTaskCancel, onWalkDone };
 }

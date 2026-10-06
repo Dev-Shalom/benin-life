@@ -86,3 +86,36 @@ User example: Kada Cinema. Later we'll collect top landmarks for Lagos, Abuja an
 
 ## Update (user, 2026-10-06)
 Keep the real names (ShopRite, Kada, Mama Ebo, Protea, clubs, Ogba Zoo, Ogbe Stadium, Emotan Statue) and mix in made-up local names. Add car dealers and top clubs — see docs/SHIP_TODAY.md (L2+ section).
+
+## Seeded in L2 (2026-10-06, `supabase/migrations/20261006001300_places.sql`)
+Real names as the user decided, plus two made-up local places. Positions follow the table above, nudged so
+every pin stays ≥ 34 map units from the others (`map_geo_test.sql`). Every place has a 3D interior (docs/PLACES.md).
+
+| id | Name | Type (scene) | Map (x, y) | Hours | What you can do |
+|---|---|---|---|---|---|
+| `emotan_statue` | Emotan Statue | monument | 468, 482 | – | Photo at the statue (free), hear Emotan's story (₦500), people-watch |
+| `kada_plaza` | Kada Plaza (Kada Cinemas) | cinema | 554, 605 | 10 AM – midnight | Film ₦3,500, VIP recliner ₦9,000, arcade; Kada fried chicken, popcorn |
+| `benin_city_mall` | Benin City Mall (ShopRite) | mall | 575, 665 | 9 AM – 10 PM | ShopRite aisles (cornflakes, noodles, soap, laptop...), Genesis Cinema, food court, mall stroll |
+| `mama_ebo` | Mama Ebo Pepper Rice | buka | 405, 588 | – | Pepper rice + turkey ₦3,500 (**sells out 12–3 PM**, 40 % chance, "Pepper rice don finish!"), soups, jollof pack |
+| `protea_hotel` | Protea Hotel Emotan | hotel | 509, 642 | – | Pool ₦7,500, luxury suite sleep ₦60,000, lounge cocktails ₦12,000, buffet ₦15,000 |
+| `golden_tulip` | Golden Tulip Essential | hotel | 486, 670 | – | Same hotel actions |
+| `ogba_zoo` | Ogba Zoo & Nature Park | zoo | 290, 690 | 8 AM – 6 PM | Lions & chimps ₦2,000, feed the ostriches, picnic, snacks |
+| `ogbemudia_stadium` | Samuel Ogbemudia Stadium | stadium | 372, 532 | – | Match day (popular stand ₦1,000, VIP ₦10,000), jog the track, gate snacks |
+| `club_360` | 360 Signature | club | 483, 706 | 9 PM – 5 AM | Club set (below) |
+| `club_de_medici` | Club De Medici | club | 386, 638 | 9 PM – 5 AM | Club set |
+| `rome_club` | Rome Night Club | club | 530, 735 | 9 PM – 5 AM | Club set |
+| `cube_nightlife` | Cube Nightlife | club | 445, 582 | 9 PM – 5 AM | Club set |
+| `versus_lounge` | Versus Lounge | club | 432, 616 | 9 PM – 5 AM | Club set |
+| `owambe_republic` | Owambe Republic (made-up) | club | 735, 560 | 9 PM – 5 AM | Club set |
+| `ighodalo_cars` | Ighodalo Car Deals | car_dealer | 528, 815 | – | Corolla, Kia Rio, Camry, Lexus RX; test drive, haggle |
+| `sdd_motors` | SDD Motors | car_dealer | 585, 740 | – | Corolla, Camry, Lexus RX, brand-new Hilux; test drive, haggle |
+| `tokunbo_lot` | Sapele Rd Tokunbo Lot (made-up) | car_dealer | 575, 850 | – | Corolla, Kia Rio (no showroom) |
+
+**Club set** (all clubs, incl. Bronze Lounge and Kingdom Lounge, which now also open 9 PM – 5 AM): bar
+(chapman, cold Star ₦1,500, champagne ₦45,000, pepper soup), dance floor (dance free, night out ₦3,000, **spray
+money ₦50,000 — Risky**), DJ booth (**hype man shout-out ₦100,000, +5 street cred**), VIP section (**table +
+bottle service ₦150,000, +3 street cred**, "VIP prices for your table"), sports screen, restroom.
+**Cars**: Tokunbo Corolla ₦2.5M, fairly-used Kia Rio ₦1.8M, Camry "Muscle" ₦6.5M, Lexus RX 350 ₦18M,
+brand-new Hilux ₦45M; paid bank first, then cash; one of each; any car unlocks the "Your car" ride mode.
+Not seeded yet: Chicken Republic, Mr Bigg's, Savealot Fun Park, Camplink, MOWAA, Government House, other
+clubs (Club Vibes, Havana, FJO), Otos Autos, Dominion Automobile, Mandilas Toyota.

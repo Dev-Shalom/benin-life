@@ -63,7 +63,9 @@ export type SceneType =
   | 'market' | 'hospital' | 'campus' | 'palace' | 'museum' | 'club' | 'bank' | 'police'
   | 'motorpark' | 'street' | 'pos'
   | 'home_face_me' | 'home_flat' | 'home_duplex' | 'farm' | 'airport' | 'shrine'
-  | 'workshop' | 'buka' | 'salon' | 'cyber' | 'office';
+  | 'workshop' | 'buka' | 'salon' | 'cyber' | 'office'
+  // L2 landmarks (docs/PLACES.md)
+  | 'mall' | 'cinema' | 'hotel' | 'zoo' | 'stadium' | 'monument' | 'car_dealer';
 
 export type PanelId =
   | 'activities' | 'jobs' | 'shop' | 'market_p2p' | 'housing' | 'inventory'
@@ -88,6 +90,9 @@ export interface Location {
   y: number;
   actions: PanelId[];
   sort: number;
+  /** L2: opening hours (Benin clock), null = always open. close_hour may be below open_hour (past midnight). */
+  open_hour?: number | null;
+  close_hour?: number | null;
 }
 
 export interface Profile {

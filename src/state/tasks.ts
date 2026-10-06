@@ -8,10 +8,20 @@
 import { create } from 'zustand';
 import type { HomeGroup } from '../art/home3d/model';
 
+export type TaskKind = 'activity' | 'shift' | 'buy';
+
 export interface TaskItem {
   uid: string;
-  /** Activity id (do_activity). */
+  /** Activity id (do_activity), item id ('buy': shop_buy) or the job track ('shift': work_shift). */
   id: string;
+  /** L2: what the task calls on arrival (default 'activity'). */
+  kind?: TaskKind;
+  /** L2: the place-interior zone to walk to first (zone key), or null. */
+  zone?: string | null;
+  /** L2: "the bar" for "Walking to the bar…" (place zones). */
+  walkTo?: string;
+  /** 'buy': how many. */
+  qty?: number;
   name: string;
   icon: string;
   /** Home furniture group to walk to first, or null (no walk: starts at once). */

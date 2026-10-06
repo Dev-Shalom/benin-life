@@ -37,7 +37,11 @@ export function TaskPill({ state, status }: { state: GameState; status: PlayerSt
     const frac = busyFraction(p, now) ?? (start && end > start ? Math.min(1, Math.max(0, (now - start) / (end - start))) : 0);
     const left = Math.max(0, Math.ceil((end - now) / 1000));
     const act = activities?.find((a) => a.name === p.busy_label);
-    const icon = shift ? (state.career?.job?.emoji ?? '💼') : activityIcon(act?.id ?? (current?.phase === 'running' ? current.id : null), '⏳');
+    const icon = shift
+      ? (state.career?.job?.emoji ?? '💼')
+      : current?.phase === 'running' && current.kind !== 'buy'
+        ? current.icon
+        : act?.icon ?? activityIcon(act?.id ?? null, '⏳');
     const label = p.busy_label ?? 'Busy';
     const pay = shift ? Math.floor((Number(p.job_shift_pay ?? 0) * frac) / 10) * 10 : 0;
     const xp = shift ? Math.floor(Number(p.job_shift_xp ?? 0) * frac) : 0;
@@ -66,7 +70,7 @@ export function TaskPill({ state, status }: { state: GameState; status: PlayerSt
   } else if (current && !(current.phase === 'running' && current.busyUntil && Date.parse(current.busyUntil) <= now)) {
     // 'running' with no busy timer seen yet = the RPC answered, fresh state is on its way
     const walking = current.phase === 'walking';
-    const label = walking ? `Walking to ${current.group ? WALK_TO[current.group] : 'it'}…` : 'Starting…';
+    const label = walking ? `Walking to ${current.walkTo ?? (current.group ? WALK_TO[current.group] : 'it')}…` : 'Starting…';
     pill = (
       <div className={`task-pill is-${walking ? 'walking' : 'starting'}`} role="status">
         <span className="task-pill__icon" aria-hidden>{current.icon}</span>

@@ -1,5 +1,5 @@
 // Content tables: homes, furniture, starter furniture, traits, dreams, careers, items, activities, places,
-// origins, banned words.
+// place zones / zone actions / mood lines (L2 interiors, docs/PLACES.md), origins, banned words.
 // Reads with admin_table_rows, writes with admin_row_upsert (server whitelists columns + types).
 import { useMemo, useState } from 'react';
 import { toast } from '../ui';
@@ -114,6 +114,10 @@ const DEFS: TableDef[] = [
       { key: 'scenes', label: 'Scenes', type: 'list' }, { key: 'home_only', label: 'Home only', type: 'bool' },
       { key: 'needs_furniture', label: 'Needs furniture (home)', type: 'bool', help: 'Offered at home only when the player owns a piece that lists it (Furniture → Activities)' },
       { key: 'night_only', label: 'Night only', type: 'bool' }, { key: 'sort', label: 'Sort order', type: 'int' },
+      { key: 'icon', label: 'Icon (emoji, action cards)', type: 'textnull' },
+      { key: 'location_ids', label: 'Only at these places (ids)', type: 'list', help: 'Empty = every place of its scenes, e.g. mama_ebo' },
+      { key: 'risky', label: 'Risky (street robbery roll here)', type: 'bool' },
+      { key: 'rush', label: 'Rush hour sell-out', type: 'json', help: '{} = never. {"from": 12, "to": 15, "pct": 40, "line": "Pepper rice don finish!"}' },
     ],
   },
   {
@@ -128,7 +132,52 @@ const DEFS: TableDef[] = [
       { key: 'remote_km', label: 'Extra km (outskirts)', type: 'num' },
       { key: 'actions', label: 'Actions', type: 'list', help: 'e.g. shop, bank, pos, chat' },
       { key: 'blurb', label: 'Blurb', type: 'long' }, { key: 'sort', label: 'Sort order', type: 'int' },
+      { key: 'open_hour', label: 'Opens at (hour 0–23, empty = always open)', type: 'intnull', help: 'Benin time. Clubs: 21' },
+      { key: 'close_hour', label: 'Closes at (hour 0–24, empty = always open)', type: 'intnull', help: 'Can be after midnight: 5 = 5 AM' },
     ],
+  },
+  {
+    id: 'zones', table: 'place_zones', title: 'Place zones', emoji: '🧭', blurb: 'Spots inside each place (by place type, or one place). Position in metres: x right, z towards the camera. A place zone with the same key replaces the type\'s zone; switch it off to hide it.',
+    pk: ['id'], insert: true, inline: ['x', 'z'],
+    titleOf: (r) => `${r.icon} ${r.label}`, subOf: (r) => `${r.scene ?? `place ${r.location_id}`} · ${r.zone_key} · ${r.prop} at ${r.x},${r.z}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'label', label: 'Label', type: 'text' }, { key: 'icon', label: 'Icon (emoji)', type: 'text' },
+      { key: 'scene', label: 'Place type (scene)', type: 'textnull', help: 'e.g. club, market, hotel — or leave empty and set a place id' },
+      { key: 'location_id', label: 'Only this place (id)', type: 'textnull', help: 'e.g. mama_ebo' },
+      { key: 'zone_key', label: 'Zone key', type: 'text' },
+      { key: 'prop', label: '3D prop', type: 'text', help: 'stall, bar, dance_floor, dj_booth, vip, counter, tables, seats, shelves, aisles, cars, pool, stands, pitch, statue, restroom… (docs/PLACES.md)' },
+      { key: 'x', label: 'x (m)', type: 'num' }, { key: 'z', label: 'z (m)', type: 'num' },
+      { key: 'w', label: 'Width (m)', type: 'num' }, { key: 'd', label: 'Depth (m)', type: 'num' },
+      { key: 'rot', label: 'Facing (0 camera, 1 right, 2 back, 3 left)', type: 'int' },
+      { key: 'note', label: 'Note strip under the cards', type: 'textnull' },
+      { key: 'sort', label: 'Sort order', type: 'int' }, { key: 'active', label: 'Active', type: 'bool' },
+    ],
+    newRow: { scene: 'club', location_id: null, zone_key: 'new_zone', label: 'New zone', icon: '📍', prop: 'tables', x: 5, z: 5, w: 2, d: 2, rot: 0, note: null, sort: 50, active: true },
+  },
+  {
+    id: 'zone_actions', table: 'zone_actions', title: 'Zone actions', emoji: '🃏', blurb: 'The action cards in each zone: an activity, a job track, a shop item, or a place tab (shop, jobs, bank, pos).',
+    pk: ['id'], insert: true,
+    titleOf: (r) => `${r.zone_id} → ${r.kind}: ${r.ref}`, subOf: (r) => `${r.label ? `"${r.label}" · ` : ''}sort ${r.sort}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'zone_id', label: 'Zone id', type: 'text', help: 'e.g. club.bar' },
+      { key: 'kind', label: 'Kind', type: 'text', help: 'activity | job | shop | panel' },
+      { key: 'ref', label: 'Reference', type: 'text', help: 'activity id, career track id, item id, or tab (shop, jobs, bank, pos)' },
+      { key: 'label', label: 'Card title (optional)', type: 'textnull' }, { key: 'icon', label: 'Icon (optional)', type: 'textnull' },
+      { key: 'sort', label: 'Sort order', type: 'int' }, { key: 'active', label: 'Active', type: 'bool' },
+    ],
+    newRow: { zone_id: 'club.bar', kind: 'activity', ref: 'lounge_chill', label: null, icon: null, sort: 50, active: true },
+  },
+  {
+    id: 'moods', table: 'place_moods', title: 'Mood lines', emoji: '💬', blurb: 'The rotating line on the place card, per place type or place and part of the day.',
+    pk: ['id'], insert: true,
+    titleOf: (r) => `${r.icon} ${r.line}`, subOf: (r) => `${r.scene ?? `place ${r.location_id}`} · ${r.part}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'line', label: 'Line', type: 'text' }, { key: 'icon', label: 'Icon (emoji)', type: 'text' },
+      { key: 'scene', label: 'Place type (scene)', type: 'textnull' }, { key: 'location_id', label: 'Only this place (id)', type: 'textnull' },
+      { key: 'part', label: 'Part of day', type: 'text', help: 'any | morning | afternoon | evening | night' },
+      { key: 'sort', label: 'Sort order', type: 'int' }, { key: 'active', label: 'Active', type: 'bool' },
+    ],
+    newRow: { scene: 'club', location_id: null, part: 'night', icon: '✨', line: 'The DJ is warming up', sort: 50, active: true },
   },
   {
     id: 'origins', table: 'origin_tiers', title: 'Origins', emoji: '👶', blurb: 'LAPO / Nepo copy and perks. Chances and start money live in Settings → Origin.',
@@ -149,7 +198,7 @@ const DEFS: TableDef[] = [
 
 const SHORT: Record<string, string> = {
   price: 'Price', weekly_rent: 'Rent / week', rest_pct: 'Rest %', cost: 'Cost', game_minutes: 'Minutes', max_seconds: 'Max sec', risk: 'Risk 0–1',
-  pay_per_shift: 'Pay', shift_game_minutes: 'Minutes', xp_per_shift: 'XP', xp_to_next: 'XP to next',
+  pay_per_shift: 'Pay', shift_game_minutes: 'Minutes', xp_per_shift: 'XP', xp_to_next: 'XP to next', x: 'x', z: 'z',
 };
 const rowKey = (def: TableDef, r: Row) => def.pk.map((k) => String(r[k])).join('|');
 const fmtField = (f: Field, v: unknown): string => (v === null || v === undefined ? '' : f.type === 'list' ? (v as string[]).join(', ') : f.type === 'json' ? JSON.stringify(v, null, 2) : String(v));

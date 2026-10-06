@@ -28,6 +28,7 @@ supabase/migrations/
   20261005001000_chat.sql               V1-6 (location chat, reports, blocks — docs/CHAT.md)
   20261005001100_admin.sql              V1-7 (admin RPCs, owner claim, admin.* config hidden — docs/ADMIN.md)
   20261006001100_life_restart.sql       S2 (welcome back config, profile_archive, life_restart, chat/audit FKs -> auth.users — docs/HUD_HOME.md)
+  20261006001300_places.sql             L2 (place_zones, zone_actions, place_moods, opening hours, landmarks, cars, place_interior — docs/PLACES.md)
   20261004001000_economy.sql            P2-ECON
   20261004002000_finance_farm_health.sql P2-FIN
   20261004003000_crime_police.sql       P2-CRIME
@@ -47,6 +48,7 @@ src/art/avatar/                         P1-AVATAR
 src/art/map/                            P1-MAP
 src/art/avatar3d/                       R2 (3D characters, turntable, cached portraits — docs/AVATAR3D.md)
 src/art/home3d/                         R4 (3D home dollhouse, lazy; model.ts/nav.ts have no three.js — docs/HUD_HOME.md)
+src/art/place3d/                        L2 (3D place interiors, lazy; model.ts has no three.js — docs/PLACES.md)
 src/screens/game/                       R4 HUD, dock, Sim sheet, phone, home furniture sheet (docs/HUD_HOME.md)
 src/art/scenes/<SceneType>.tsx          P1-SCENES-A / P1-SCENES-B (see §7)
 src/art/Scene.tsx                       phase 0 (dispatcher, do not edit)
@@ -98,6 +100,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 - V1-6 (`docs/CHAT.md`): `chat_messages` (id, location_id, user_id, username snapshot, body, created_at, hidden), `chat_reports`, `chat_blocks`, `chat_banned_words` (admin-editable profanity list). Clients may select `chat_messages` (RLS: not hidden, at the caller's current `profiles.location_id`, author not blocked by the caller) and their own `chat_blocks`; no client writes. `profiles` adds `chat_muted_until`. Config category `chat`. The Chat tab renders at every location without a `chat` action.
 - `origin_tiers` (P1-ORIGIN: id text pk, name, tagline, welcome, chance_key → game_config key of its roll %, is_default (exactly one), sort, perks jsonb) — select for anon+authenticated. See `docs/ORIGIN.md`.
 - S2 (`docs/HUD_HOME.md` "S2 welcome back"): `profile_archive` (id, user_id → auth.users, life_no, username, origin, cash, bank, profile jsonb, extra jsonb, archived_at; select own). `chat_messages.user_id`, `chat_reports.reporter_id`, `chat_blocks.*`, `admin_audit.admin_id/target_user`, `config_audit.admin_id` reference `auth.users` (not `profiles`) so they survive `life_restart`. Trigger `profiles_carry_life` copies `is_admin` and a running `chat_muted_until` from the last archived life into a new profile.
+- L2 (`docs/PLACES.md`): `place_zones` (zones per place type `scene` or per `location_id`, prop + position), `zone_actions` (zone → activity / job track / shop item / tab; a trigger checks the reference), `place_moods` (mood lines per type/place × part of day) — select for anon+authenticated, admin-editable. `locations` adds `open_hour`/`close_hour` (null = always open; enforced by `do_activity` and `shop_buy`, hint `closed`). `activities` adds `location_ids`, `risky`, `rush`, `icon`. New scenes: mall, cinema, hotel, zoo, stadium, monument, car_dealer. `shop_buy` pays vehicles bank first (`cars.bank_first`).
 - Realtime publication `supabase_realtime`: profiles, events, game_config, chat_messages (V1-6; the client subscribes to INSERT with `location_id=eq.<current place>`, one channel at a time).
 
 ### Core RPCs (P1-DB)
@@ -138,6 +141,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 | `admin_stats` / `admin_audit_list` / `admin_chat_reports` | – / p_limit / p_include_hidden | dashboard numbers (today = WAT midnight) / config + admin audit merged, newest first / reported messages (V1-7) |
 | `admin_claim` | – | caller becomes admin if their auth email is in `admin.bootstrap_emails` (audited) — the only admin RPC open to non-admins (V1-7) |
 | `life_restart` | – | {message, archive_id, life_no} — archive + delete the caller's profile (account kept, creator runs again); `life.restart_enabled`, `life.restart_cooldown_hours` (S2) |
+| `place_interior` | p_location (default: where you are) | {location, here, home, open, opens, hours, night, part, moods, zones:[{key,label,icon,prop,x,z,w,d,rot,note,actions:[...]}]} — the 3D interior + place card in one read (L2) |
 | `bank_transfer` | p_username, p_amount, p_note | bank→bank to another player from anywhere; fee, daily amount/count limits, cooldown, new-account wait; ledger `transfer_out`/`transfer_fee`/`transfer_in`, events to both (V1-5) |
 
 Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location text, p_mode text, p_traffic numeric) returns jsonb` (P1-DB). P2-CRIME may `create or replace` it with a richer version **keeping the signature**.

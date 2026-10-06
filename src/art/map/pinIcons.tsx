@@ -32,6 +32,13 @@ export const PIN_STYLE: Record<SceneType, PinStyle> = {
   salon: { c1: '#ec7bb0', c2: '#a02c68', ink: '#fffaf0' },
   cyber: { c1: '#5c62dc', c2: '#252886', ink: '#fffaf0', accent: '#7ee0c5' },
   office: { c1: '#3fb8c9', c2: '#155a78', ink: '#f2fbff', accent: '#d9a441' },
+  mall: { c1: '#ef5a6f', c2: '#a3182f', ink: '#fffaf0', accent: '#f3d28a' },
+  cinema: { c1: '#3a3f6e', c2: '#151832', ink: '#f3d28a', accent: '#f06a55' },
+  hotel: { c1: '#4fa3c7', c2: '#1d5874', ink: '#fffaf0', accent: '#f3d28a' },
+  zoo: { c1: '#8bbf4a', c2: '#3f6e1c', ink: '#fffaf0', accent: '#d9a441' },
+  stadium: { c1: '#2fa36b', c2: '#125a38', ink: '#fffaf0', accent: '#fffaf0' },
+  monument: { c1: '#c9a26a', c2: '#6e4f26', ink: '#fff6dc', accent: '#d2342a' },
+  car_dealer: { c1: '#6c7a89', c2: '#2c3540', ink: '#fffaf0', accent: '#f3cf5e' },
 };
 
 export const SCENES = Object.keys(PIN_STYLE) as SceneType[];
@@ -239,6 +246,75 @@ export function PinGlyph({ scene }: { scene: SceneType }): JSX.Element {
           <path d="M-5.6,-5.4L1.6,-8.6L6.4,-6.2" {...sw} stroke={acc} strokeWidth={1.4} />
           <path d="M-3.8,-3.2H-0.2M-3.8,-0.4H-0.2M-3.8,2.4H-0.2M3,-3.4V5.6" {...sw} stroke="#155a78" strokeWidth={1.1} />
           <path d="M-8,8H8.4" {...sw} stroke={acc} strokeWidth={1.6} />
+        </g>
+      );
+    // L2 landmark types
+    case 'mall':
+      // shopping trolley
+      return (
+        <g>
+          <path d="M-8,-6.5H-5.4L-3.2,3.4H5.6L7.6,-3.6H-4.4" {...sw} stroke={ink} strokeWidth={1.7} />
+          <path d="M-3,-1.2H6.4" {...sw} stroke={acc} strokeWidth={1.3} />
+          <circle cx={-2} cy={6.6} r={1.6} fill={ink} />
+          <circle cx={4.6} cy={6.6} r={1.6} fill={ink} />
+        </g>
+      );
+    case 'cinema':
+      // clapperboard
+      return (
+        <g>
+          <path d="M-7.5,-2H7.5V7H-7.5Z" fill={ink} />
+          <path d="M-7.8,-3.4L6.8,-7.6L7.6,-4.8L-7,-0.6Z" fill={acc} />
+          <path d="M-4.2,-4.4L-2.4,-1.4M0.4,-5.8L2.2,-2.8M4.6,-7L6,-4.2" {...sw} stroke={st.c2} strokeWidth={1.2} />
+        </g>
+      );
+    case 'hotel':
+      // bed + star
+      return (
+        <g>
+          <path d="M-8,6.5V-3M-8,2H8V6.5M-8,2V-0.4H8V2" {...sw} stroke={ink} strokeWidth={1.7} />
+          <rect x={-6.6} y={-3.4} width={4.4} height={2.6} rx={1.2} fill={ink} />
+          <path d="M3.6,-8.4L4.6,-6.2L7,-6L5.2,-4.4L5.8,-2L3.6,-3.3L1.4,-2L2,-4.4L0.2,-6L2.6,-6.2Z" fill={acc} />
+        </g>
+      );
+    case 'zoo':
+      // paw print
+      return (
+        <g fill={ink}>
+          <ellipse cx={0} cy={3.2} rx={4.4} ry={3.8} />
+          <circle cx={-5.6} cy={-1.8} r={1.9} />
+          <circle cx={-2.2} cy={-5.6} r={1.9} />
+          <circle cx={2.2} cy={-5.6} r={1.9} />
+          <circle cx={5.6} cy={-1.8} r={1.9} />
+        </g>
+      );
+    case 'stadium':
+      // ball in an oval stand
+      return (
+        <g>
+          <ellipse cx={0} cy={1} rx={8.2} ry={6} {...sw} stroke={ink} strokeWidth={1.6} />
+          <circle cx={0} cy={1} r={3.4} fill={ink} />
+          <path d="M0,-0.6L1.5,0.5L0.9,2.3H-0.9L-1.5,0.5Z" fill={st.c2} />
+        </g>
+      );
+    case 'monument':
+      // statue on a plinth
+      return (
+        <g>
+          <circle cx={0} cy={-6} r={2.2} fill={ink} />
+          <path d="M-2.8,-3.4H2.8L3.6,3H-3.6Z" fill={ink} />
+          <path d="M-6,3.4H6V5.4H-6ZM-7.4,5.8H7.4V8H-7.4Z" fill={acc} />
+        </g>
+      );
+    case 'car_dealer':
+      // car with a price tag
+      return (
+        <g>
+          <path d="M-8,3.6V0.6L-5.6,-3.4H3.2L6.4,0.6H8V3.6Z" fill={ink} />
+          <circle cx={-4.4} cy={4.4} r={2} fill={st.c2} stroke={ink} strokeWidth={1.2} />
+          <circle cx={4.4} cy={4.4} r={2} fill={st.c2} stroke={ink} strokeWidth={1.2} />
+          <path d="M-3.8,-2.2H1.8L3.6,0.2H-3.8Z" fill={st.c2} opacity={0.6} />
+          <path d="M2.2,-8.4H7.6V-5L5.2,-3.6L2.2,-5Z" fill={acc} />
         </g>
       );
     default:

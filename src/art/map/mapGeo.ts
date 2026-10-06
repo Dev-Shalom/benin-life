@@ -533,6 +533,24 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   bronze_tech_hub: { short: 'Tech Hub', tier: 1, side: 'r' },
   uniben_hostel: { short: 'UNIBEN Hostel', tier: 2, side: 'r' },
   uselu_selfcon: { short: 'Uselu Self-con', tier: 2, side: 'l' },
+  // L2 landmarks (docs/LANDMARKS.md): the big ones label from far away, the clubs/dealers when zoomed in
+  emotan_statue: { short: 'Emotan Statue', tier: 2, side: 'r' },
+  kada_plaza: { short: 'Kada Plaza', tier: 2, side: 'r' },
+  benin_city_mall: { short: 'Benin City Mall', tier: 1, side: 'r' },
+  mama_ebo: { short: 'Mama Ebo', tier: 2, side: 'l' },
+  protea_hotel: { short: 'Protea Hotel', tier: 2, side: 'b' },
+  golden_tulip: { short: 'Golden Tulip', tier: 2, side: 'l' },
+  ogba_zoo: { short: 'Ogba Zoo', tier: 1, side: 'b' },
+  ogbemudia_stadium: { short: 'Ogbe Stadium', tier: 1, side: 'l' },
+  club_360: { short: '360 Signature', tier: 2, side: 'b' },
+  club_de_medici: { short: 'Club De Medici', tier: 2, side: 'l' },
+  rome_club: { short: 'Rome Night Club', tier: 2, side: 'l' },
+  cube_nightlife: { short: 'Cube Nightlife', tier: 2, side: 'l' },
+  versus_lounge: { short: 'Versus Lounge', tier: 2, side: 'l' },
+  owambe_republic: { short: 'Owambe Republic', tier: 2, side: 'r' },
+  ighodalo_cars: { short: 'Ighodalo Cars', tier: 2, side: 'l' },
+  sdd_motors: { short: 'SDD Motors', tier: 2, side: 'r' },
+  tokunbo_lot: { short: 'Tokunbo Lot', tier: 2, side: 'r' },
 };
 
 export function shortName(id: string, name: string): string {
