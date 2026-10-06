@@ -29,9 +29,14 @@ import { avatarKey } from '../../avatar3d/catalog';
 import { buildCharacter } from '../../avatar3d/engine/character';
 import { applyPose, capturePose, cruiseSpeed, mixPose, poseGait, poseIdle, poseLife, POSE_SIZE, resetRig, stepLength } from '../../avatar3d/engine/anim';
 import { makeShadow } from '../../avatar3d/engine/scene';
+<<<<<<< HEAD
+import { actorFor, furnishLayout, GROUP_META, itemGroup, KINDS, LAYOUTS, type FurnitureItem, type HomeGroup, type HomeLayoutId, type HomePose } from '../model';
+import { buildGrid, findPath, footprint, randomFree, toLayout, type P2 } from '../nav';
+=======
 import { GROUP_META, itemGroup, KINDS, LAYOUTS, pieceFor, type FurnitureItem, type HomeGroup, type HomeLayout, type HomeLayoutId, type HomePose } from '../model';
 import { buildGrid, footprint, planPath, randomFree, toLayout, type P2 } from '../nav';
 import { angleTo, DEFAULT_GAIT, makeWalker, place, stepWalker, walkPath, type Gait, type Walker } from '../../sim/locomotion';
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
 import { homeLight } from './light';
 import { mixHex } from '../../../lib/daylight';
 import { poseCook, poseLie, poseScrub, poseSit, sitRootY } from './poses';
@@ -51,6 +56,16 @@ export interface HomeApi {
 
 export interface HomeSceneProps {
   layoutId: HomeLayoutId;
+<<<<<<< HEAD
+  /** The player's furniture ids (server `profiles.furniture`); null/undefined = the classic full room. */
+  owned?: readonly string[] | null;
+  avatar: AvatarConfig;
+  /**
+   * The home activity running now (key changes with each new run), or null. `seconds` = real seconds
+   * left when it started: a short action gets a quick walk (or none) so the Sim isn't walking for most of it.
+   */
+  busy: { group: HomeGroup; key: string; seconds?: number } | null;
+=======
   /** The layout with the player's own furniture (furnishLayout); keep it memoised. Default: LAYOUTS[layoutId]. */
   layout?: HomeLayout;
   avatar: AvatarConfig;
@@ -59,6 +74,7 @@ export interface HomeSceneProps {
   busy: { group: HomeGroup; key: string; activity?: string; seconds?: number } | null;
   /** Largest share of an action the walk to the furniture may take (0-1, default 0.15). */
   walkShare?: number;
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
   /** Game hour as a float (14.5 = 2:30 pm). */
   hour: number;
   paused?: boolean;
@@ -108,12 +124,21 @@ const BASE_YAW = Math.PI / 4;
 const YAW_RANGE = 0.75;
 const ZOOM_MIN = 0.85;
 const ZOOM_MAX = 1.9;
+<<<<<<< HEAD
+const WALK_SPEED = 1.15; // m/s
+/** Short actions: the walk to the furniture may use at most this share of the action's time... */
+const WALK_SHARE = 0.2;
+/** ...and never more than this many seconds; faster than MAX_HURRY x walking speed -> just appear there. */
+const WALK_MAX_S = 2.5;
+const MAX_HURRY = 3;
+=======
 /** Pre-walk to a tapped piece only when it takes at most this long (s); the sheet opens at once anyway. */
 const PREWALK_MAX_S = 7;
 /** Pose-to-pose blend (stand up, sit down, back to idle after a task), seconds. */
 const BLEND_S = 0.42;
 /** Tap marker fade, seconds. */
 const MARK_S = 0.7;
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
 /** Where the Sim was when the canvas last unmounted (so a short suspend doesn't replay the arrival). */
 let memory: { layout: string; pos: P2; yaw: number; at: number } | null = null;
 const _v = new Vector3();
@@ -128,6 +153,17 @@ interface Actor {
   /** After the walk: what to do on arrival. */
   then: 'idle' | 'pose';
   nextWander: number;
+<<<<<<< HEAD
+  faceTo: number | null;
+  /** Walking speed for the current path (m/s). */
+  speed: number;
+}
+
+function pathLength(path: P2[]): number {
+  let len = 0;
+  for (let i = 1; i < path.length; i++) len += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+  return len;
+=======
   /** Walk-cycle phase in cycles (advanced by distance, so the feet don't slide). */
   phase: number;
   /** Smoothed walk weight 0..1 (idle <-> walk blend). */
@@ -140,6 +176,7 @@ interface Actor {
   noBlend: boolean;
   /** Needs full-rate frames (walking, blending, marker fading). */
   hot: boolean;
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
 }
 
 function Driver({ view, actor, paused, spin }: { view: React.MutableRefObject<View>; actor: React.MutableRefObject<Actor>; paused: boolean; spin: boolean }) {
@@ -166,11 +203,17 @@ function Driver({ view, actor, paused, spin }: { view: React.MutableRefObject<Vi
   return null;
 }
 
+<<<<<<< HEAD
+/** Memory key: the layout plus its pieces (a different furniture set starts fresh at the door). */
+function memKey(L: { id: string; furniture: FurnitureItem[] }): string {
+  return `${L.id}:${L.furniture.length}:${L.furniture.map((f) => f.id).join(',')}`;
+=======
 /** Height of a piece's invisible tap box (tall pieces must stay tappable over what stands in front). */
 function pickHeight(f: FurnitureItem): number {
   if (f.kind.includes('stall') || f.kind === 'bucket_bath' || f.kind === 'pit_toilet' || f.kind === 'shower') return 1.8;
   if (f.kind === 'fridge' || f.kind === 'wardrobe' || f.kind === 'bunk' || f.kind === 'locker') return 1.7;
   return 1.1;
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
 }
 
 function spotOf(item: FurnitureItem): { p: P2; yaw: number } {
@@ -180,6 +223,13 @@ function spotOf(item: FurnitureItem): { p: P2; yaw: number } {
   return { p, yaw: ((item.rot ?? 0) * Math.PI) / 2 + ly };
 }
 
+<<<<<<< HEAD
+function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; actorRef: React.MutableRefObject<Actor> }) {
+  const { layoutId, owned, avatar, busy, hour, selectedId, onPick, onReady, insetTop = 0, insetBottom = 0, view, actorRef } = props;
+  const ownedKey = owned ? [...owned].sort().join(',') : null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const L = useMemo(() => furnishLayout(LAYOUTS[layoutId], owned), [layoutId, ownedKey]);
+=======
 function House(props: HomeSceneProps & {
   view: React.MutableRefObject<View>;
   actorRef: React.MutableRefObject<Actor>;
@@ -188,6 +238,7 @@ function House(props: HomeSceneProps & {
 }) {
   const { layoutId, avatar, busy, hour, selectedId, onPick, onReady, insetTop = 0, insetBottom = 0, view, actorRef } = props;
   const L = props.layout ?? LAYOUTS[layoutId];
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
   const { gl, scene, camera, size, invalidate } = useThree();
   const cx = (L.lot[0] + L.lot[2]) / 2;
   const cz = (L.lot[1] + L.lot[3]) / 2;
@@ -402,10 +453,14 @@ function House(props: HomeSceneProps & {
   // only unmounted for a moment, e.g. while the Sim sheet turntable was open)
   useEffect(() => {
     const a = actorRef.current;
+<<<<<<< HEAD
+    const mem = memory && memory.layout === memKey(L) && performance.now() - memory.at < 10 * 60_000 ? memory : null;
+=======
     const mem = memory && memory.layout === L.id && performance.now() - memory.at < 10 * 60_000 ? memory : null;
     a.item = null;
     a.hurry = 1;
     a.idleSince = nowS();
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
     if (mem) {
       place(a.w, mem.pos, mem.yaw);
       a.mode = 'idle';
@@ -420,6 +475,7 @@ function House(props: HomeSceneProps & {
     place(a.w, doorPt, Math.atan2(first[0] - doorPt[0], first[1] - doorPt[1]));
     walkPath(a.w, plan.points, L.home[2]);
     a.mode = 'walk';
+    a.speed = WALK_SPEED;
     a.then = 'idle';
     a.nextWander = performance.now() + 20000;
     invalidate();
@@ -431,7 +487,11 @@ function House(props: HomeSceneProps & {
       const a = holder.current;
       // ignore StrictMode's instant remount in dev
       if (performance.now() - born < 1500) return;
+<<<<<<< HEAD
+      memory = { layout: memKey(L), pos: a.mode === 'pose' && a.item ? spotOf(a.item).p : a.pos, yaw: a.yaw, at: performance.now() };
+=======
       memory = { layout: L.id, pos: a.mode === 'pose' && a.item ? spotOf(a.item).p : a.w.pos, yaw: a.w.yaw, at: performance.now() };
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
     };
   }, [L, actorRef]);
 
@@ -466,6 +526,33 @@ function House(props: HomeSceneProps & {
         const from = a.mode === 'pose' && a.item ? spotOf(a.item).p : a.w.pos;
         if (a.mode === 'pose') place(a.w, from, a.w.yaw);
         a.item = item;
+<<<<<<< HEAD
+        a.path = findPath(grid, from, s.p);
+        a.seg = 1;
+        a.mode = 'walk';
+        a.then = 'pose';
+        a.faceTo = s.yaw;
+        a.speed = WALK_SPEED;
+        // short action: hurry (or just be there) so the Sim spends the action at the piece, not walking to it
+        const secs = busy.seconds;
+        if (secs !== undefined && Number.isFinite(secs)) {
+          const len = pathLength(a.path);
+          const budget = Math.min(WALK_MAX_S, Math.max(0, secs) * WALK_SHARE);
+          if (len / WALK_SPEED > budget) {
+            if (budget <= 0.05 || len / budget > WALK_SPEED * MAX_HURRY) {
+              a.pos = s.p;
+              a.yaw = s.yaw;
+              a.mode = 'pose';
+            } else {
+              a.speed = len / budget;
+            }
+          }
+        }
+        if (first) {
+          // the activity was already running when the home opened: be there already
+          a.pos = s.p;
+          a.yaw = s.yaw;
+=======
         // short actions start at once: the walk may take at most `walkShare` of the action; a walk
         // up to 1.4x that hurries; a longer one is skipped (the Sim is placed there)
         const plan = planPath(grid, from, s.p, { round: 0.22 });
@@ -479,6 +566,7 @@ function House(props: HomeSceneProps & {
           // spot blends there (no pop); a far one is placed at once.
           a.noBlend = first || plan.length > 1.6;
           place(a.w, s.p, s.yaw);
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
           a.mode = 'pose';
         }
       }
@@ -600,20 +688,62 @@ function House(props: HomeSceneProps & {
     if (a.mode === 'idle' && !busy && !props.walkLock && performance.now() > a.nextWander && now - a.idleSince > 6) {
       const p = randomFree(grid, rnd, [0.4, 0.4, L.w - 0.4, L.d - 0.4]);
       a.nextWander = performance.now() + 16000 + rnd() * 18000;
+<<<<<<< HEAD
+      if (p) {
+        a.path = findPath(grid, a.pos, p);
+        a.seg = 1;
+        a.mode = 'walk';
+        a.speed = WALK_SPEED;
+        a.then = 'idle';
+        a.faceTo = null;
+      }
+=======
       if (p) walkTo(p);
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
     }
 
     // ---- locomotion
     if (a.mode === 'walk') {
+<<<<<<< HEAD
+      let move = a.speed * step;
+      while (move > 0 && a.seg < a.path.length) {
+        const tgt = a.path[a.seg];
+        const dx = tgt[0] - a.pos[0];
+        const dz = tgt[1] - a.pos[1];
+        const dist = Math.hypot(dx, dz);
+        if (dist < 1e-4) {
+          a.seg++;
+          continue;
+        }
+        const want = Math.atan2(dx, dz);
+        let dy = want - a.yaw;
+        dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+        a.yaw += dy * Math.min(1, step * 10);
+        if (dist <= move) {
+          a.pos = [tgt[0], tgt[1]];
+          move -= dist;
+          a.seg++;
+        } else {
+          a.pos = [a.pos[0] + (dx / dist) * move, a.pos[1] + (dz / dist) * move];
+          move = 0;
+        }
+      }
+      if (a.seg >= a.path.length) {
+=======
       const r = stepWalker(a.w, step, gait, a.hurry * (1 - 0.18 * tired + 0.05 * happy));
       // the feet keep pace with the ground: phase by distance over the current stride
       a.phase += r.moved / (2 * stepLength(ch, Math.max(0.25, a.gait)));
       // turning on the spot: small shuffling steps
       if (a.w.turning) a.phase += (r.turned * 0.16) / (2 * stepLength(ch, 0.3));
       if (r.arrived) {
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
         a.mode = a.then === 'pose' ? 'pose' : 'idle';
         a.idleSince = now;
       }
+<<<<<<< HEAD
+      poseWalk(ch, t, Math.min(2, a.speed / WALK_SPEED));
+=======
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
     }
     const gaitTarget = a.mode === 'walk' ? Math.max(Math.min(1, a.w.speed / gait.cruise), a.w.turning ? 0.3 : 0) : 0;
     a.gait += (gaitTarget - a.gait) * (1 - Math.exp(-step * 9));
@@ -849,6 +979,10 @@ function House(props: HomeSceneProps & {
 }
 
 export default function HomeScene(props: HomeSceneProps) {
+<<<<<<< HEAD
+  const view = useRef<View>({ yaw: BASE_YAW, zoom: 1, dragging: false, visible: true });
+  const actor = useRef<Actor>({ pos: [0, 0], yaw: 0, mode: 'idle', path: [], seg: 0, pose: 'stand', item: null, then: 'idle', nextWander: 0, faceTo: null, speed: WALK_SPEED });
+=======
   const view = useRef<View>({
     yaw: BASE_YAW,
     zoom: 1,
@@ -879,6 +1013,7 @@ export default function HomeScene(props: HomeSceneProps) {
     hintTimer.current = window.setTimeout(() => setTapHint(null), 1600);
   };
   useEffect(() => () => window.clearTimeout(hintTimer.current), []);
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
   const wrap = useRef<HTMLDivElement>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ d: number; zoom: number } | null>(null);

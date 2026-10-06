@@ -1,6 +1,10 @@
 // Dev page for the 3D home: /dev/home?l=flat&h=21.5&busy=bed (dev server only).
 // l = hostel | face_me | self_contain | flat | duplex, h = game hour, busy = a HomeGroup,
+<<<<<<< HEAD
+// f = lapo | nepo (preview a starter furniture set) or a comma list of furniture ids; none = the full room.
+=======
 // o = lapo | nepo (the seeded starter furniture set; omit for the full default furnishing).
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
 import { useMemo, useState } from 'react';
 import { defaultAvatar } from '../../avatar3d';
 import { HomeView } from '../HomeView';
@@ -32,12 +36,26 @@ export default function HomeLab() {
   const [hour, setHour] = useState(Number(q.get('h') ?? 10));
   const [busy, setBusy] = useState<HomeGroup | null>((q.get('busy') as HomeGroup) || null);
   const [picked, setPicked] = useState<string | null>(null);
+<<<<<<< HEAD
+  const owned = useMemo(() => {
+    const f = q.get('f');
+    if (!f) return null;
+    if (f === 'lapo') return ['water_drum', 'bucket', 'stool', 'kerosene_stove', 'foam_mattress'];
+    if (f === 'nepo') return ['water_drum', 'bucket', 'bed', 'sofa', 'tv', 'fridge', 'gas_cooker', 'wardrobe', 'standing_fan', 'rug', 'centre_table'];
+    return f.split(',');
+  }, [q]);
+  const avatar = useMemo(() => defaultAvatar(q.get('g') === 'female' ? 'female' : 'male'), [q]);
+  return (
+    <div style={{ position: 'fixed', inset: 0 }}>
+      <HomeView layoutId={layout} owned={owned} avatar={avatar} hour={hour} busy={busy ? { group: busy, key: busy } : null}
+=======
   const [origin, setOrigin] = useState<string>(q.get('o') ?? '');
   const furnished = useMemo(() => furnishLayout(LAYOUTS[layout], SETS[origin] ?? null), [layout, origin]);
   const avatar = useMemo(() => defaultAvatar(q.get('g') === 'female' ? 'female' : 'male'), [q]);
   return (
     <div style={{ position: 'fixed', inset: 0 }}>
       <HomeView layoutId={layout} layout={furnished} avatar={avatar} hour={hour} busy={busy ? { group: busy, key: busy } : null}
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
         selectedId={picked} onPick={(f) => setPicked(f.id)} fallbackScene="home_flat" insetTop={70} insetBottom={110} />
       <div style={{ position: 'fixed', left: 8, top: 8, display: 'flex', gap: 6, flexWrap: 'wrap', zIndex: 5 }}>
         {(Object.keys(LAYOUTS) as HomeLayoutId[]).map((l) => (

@@ -186,6 +186,9 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
             <Btn disabled={busy || pick === p.origin} onClick={() => run(() => adminApi.setOrigin(id, pick, perks))}>Set origin</Btn>
           </section>
 
+          <FurnitureBox key={String(p.furniture ?? '')} owned={(p.furniture as string[] | null) ?? null} busy={busy}
+            onSave={(list) => run(() => adminApi.setFurniture(id, list))} />
+
           <section className="adm-box">
             <h3 className="adm-h3">Access</h3>
             <div className="adm-btnrow">
@@ -282,5 +285,28 @@ export default function Players() {
         {sel && <Detail key={sel} id={sel} onClose={() => setSel(null)} onChanged={reload} />}
       </div>
     </div>
+  );
+}
+
+/** The player's own furniture: tap pieces on/off and save, or reset to the starter set for origin + home. */
+function FurnitureBox({ owned, busy, onSave }: { owned: string[] | null; busy: boolean; onSave: (list: string[] | null) => void }) {
+  const { data: catalog } = useLoad(() => adminApi.tableRows('furniture'));
+  const [sel, setSel] = useState<string[]>(owned ?? []);
+  const changed = [...sel].sort().join(',') !== [...(owned ?? [])].sort().join(',');
+  const toggle = (fid: string) => setSel((cur) => (cur.includes(fid) ? cur.filter((x) => x !== fid) : [...cur, fid]));
+  return (
+    <section className="adm-box">
+      <h3 className="adm-h3">Furniture</h3>
+      <div className="adm-chips">
+        {(catalog ?? []).map((f) => (
+          <button key={String(f.id)} type="button" className={`adm-chip${sel.includes(String(f.id)) ? ' is-on' : ''}`}
+            title={String(f.id)} onClick={() => toggle(String(f.id))}>{String(f.emoji)} {String(f.name)}</button>
+        ))}
+      </div>
+      <div className="adm-btnrow">
+        <Btn disabled={busy || !changed} onClick={() => onSave(sel)}>Save furniture</Btn>
+        <ConfirmButton tone="ghost" disabled={busy} confirmText="Tap again: reset" onConfirm={() => onSave(null)}>Reset to starter set</ConfirmButton>
+      </div>
+    </section>
   );
 }

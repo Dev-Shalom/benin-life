@@ -681,3 +681,47 @@ export interface Profile {
   job_shift_pay?: number | null;
   job_shift_xp?: number | null;
 }
+
+// ---- Starter homes by origin: furniture (docs/HUD_HOME.md "Furniture") ----
+// Server: supabase/migrations/20261006000400_starter_furniture.sql.
+
+export interface Profile {
+  /** The Sim's own furniture ids (null = unknown: the classic full room, no gating). */
+  furniture?: string[] | null;
+}
+
+/** One home activity as the Sim's furniture allows it (`get_my_state().home.activities[id]`). */
+export interface HomeActivityInfo {
+  requires: string | null;
+  ok: boolean;
+  /** The furniture piece used (null = needs nothing, or missing). */
+  via: string | null;
+  /** The activity's name with this furniture ("Bucket bath"). Also the busy label while it runs. */
+  label: string;
+  /** Percent of the activity's good effects (bed 110, mat 95). */
+  pct: number;
+  /** Why it can't be done (when !ok). */
+  reason: string | null;
+}
+
+export interface HomeFurnitureItem {
+  id: string;
+  name: string;
+  emoji: string;
+  kind: string;
+  provides: string[];
+  /** Comes with the house (shower, bathtub, hall bunk) rather than owned. */
+  fixture: boolean;
+}
+
+export interface HomeInfo {
+  furniture: string[] | null;
+  fixtures: string[];
+  items: HomeFurnitureItem[];
+  activities: Record<string, HomeActivityInfo>;
+}
+
+export interface GameState {
+  /** Missing only on a server without the starter-furniture migration. */
+  home?: HomeInfo;
+}

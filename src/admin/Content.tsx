@@ -1,5 +1,9 @@
+<<<<<<< HEAD
+// Content tables: homes, furniture, traits, dreams, careers, items, activities, places, origins, banned words.
+=======
 // Content tables: homes, furniture, starter furniture, traits, dreams, careers, items, activities, places,
 // origins, banned words.
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
 // Reads with admin_table_rows, writes with admin_row_upsert (server whitelists columns + types).
 import { useMemo, useState } from 'react';
 import { toast } from '../ui';
@@ -27,12 +31,33 @@ const DEFS: TableDef[] = [
       { key: 'start_cash', label: 'Start cash per origin', type: 'json', help: '{"lapo": 8000, "nepo": 80000}' },
       { key: 'allowed_origins', label: 'Only for origins', type: 'list', help: 'Comma-separated, empty = everyone (e.g. nepo)' },
       { key: 'locked_quip', label: 'Locked message', type: 'text' },
+      { key: 'furniture', label: 'Starter furniture per origin', type: 'json',
+        help: 'Furniture ids each origin moves in with, e.g. {"lapo": ["water_drum","bucket","stool","kerosene_stove","foam_mattress"], "nepo": ["bed","sofa","tv","fridge","gas_cooker"]}. Missing origin = Settings → Origin → starter furniture. Only new Sims; existing players keep theirs (Players → Furniture to reset one).' },
+      { key: 'fixtures', label: 'Comes with the house', type: 'list', help: 'Furniture ids built into the house, e.g. shower, bathtub, hostel_bunk' },
       { key: 'location_id', label: 'Map place id', type: 'text' }, { key: 'housing_id', label: 'Housing id (3D layout)', type: 'text' },
       { key: 'district', label: 'District', type: 'text' }, { key: 'tag', label: 'Tag', type: 'text' },
       { key: 'description', label: 'Description', type: 'long' }, { key: 'sort', label: 'Sort order', type: 'int' },
       { key: 'active', label: 'Active (shown in the creator)', type: 'bool' },
     ],
-    newRow: { emoji: '🏠', weekly_rent: 0, start_cash: { lapo: 5000, nepo: 50000 }, allowed_origins: [], sort: 100, active: true, location_id: 'ekenwan_room', housing_id: 'face_me_ekenwan' },
+    newRow: { emoji: '🏠', weekly_rent: 0, start_cash: { lapo: 5000, nepo: 50000 }, allowed_origins: [], sort: 100, active: true, location_id: 'ekenwan_room', housing_id: 'face_me_ekenwan',
+      furniture: { lapo: ['water_drum', 'bucket', 'stool', 'kerosene_stove', 'foam_mattress'], nepo: ['bed', 'sofa', 'tv', 'fridge', 'gas_cooker'] }, fixtures: [] },
+  },
+  {
+    id: 'furniture', table: 'furniture', title: 'Furniture', emoji: '🛋️', blurb: 'Home furniture: what each piece lets you do at home, its activity name and how well it works.',
+    pk: ['id'], insert: true,
+    titleOf: (r) => `${r.emoji} ${r.name}`,
+    subOf: (r) => `${(r.provides as string[]).length ? (r.provides as string[]).join(', ') : 'decor'}${Object.keys((r.activity_pct as Row) ?? {}).length ? ` · ${Object.entries(r.activity_pct as Row).map(([k, v]) => `${k} ${v}%`).join(', ')}` : ''}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'name', label: 'Name', type: 'text' }, { key: 'emoji', label: 'Emoji', type: 'text' },
+      { key: 'provides', label: 'Lets you', type: 'list', help: 'sleep, bath, cook, tv, radio (needed by home activities); seat, cold, water are descriptive' },
+      { key: 'activity_pct', label: 'Effect % per activity', type: 'json', help: 'e.g. {"sleep": 110, "nap": 110} = 10% more energy than the base. Keep it small.' },
+      { key: 'labels', label: 'Activity name with this piece', type: 'json', help: 'e.g. {"bathe": "Bucket bath"}' },
+      { key: 'rank', label: 'Rank (the best piece is used)', type: 'int' },
+      { key: 'kind', label: '3D look', type: 'text', help: 'Model kind in the 3D home (src/art/home3d/model.ts). New kinds need code.' },
+      { key: 'description', label: 'Description', type: 'long' }, { key: 'sort', label: 'Sort order', type: 'int' },
+      { key: 'active', label: 'Active', type: 'bool' },
+    ],
+    newRow: { emoji: '🪑', kind: 'stool', provides: [], activity_pct: {}, labels: {}, rank: 0, sort: 200, active: true },
   },
   {
     id: 'furniture', table: 'furniture', title: 'Furniture', emoji: '🛋️', blurb: 'Home furniture pieces: 3D look, where they stand and the home activities they host.',
@@ -112,7 +137,12 @@ const DEFS: TableDef[] = [
       { key: 'game_minutes', label: 'Duration (game minutes, old timing only)', type: 'int' },
       { key: 'effects', label: 'Effects', type: 'json', help: 'e.g. {"energy": 90, "stress": -10}' },
       { key: 'scenes', label: 'Scenes', type: 'list' }, { key: 'home_only', label: 'Home only', type: 'bool' },
+<<<<<<< HEAD
+      { key: 'requires', label: 'Needs furniture that lets you…', type: 'textnull', help: 'Home only: sleep, bath, cook, tv or radio. Empty = nothing needed.' },
+      { key: 'requires_note', label: 'Shown when the furniture is missing', type: 'text' },
+=======
       { key: 'needs_furniture', label: 'Needs furniture (home)', type: 'bool', help: 'Offered at home only when the player owns a piece that lists it (Furniture → Activities)' },
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
       { key: 'night_only', label: 'Night only', type: 'bool' }, { key: 'sort', label: 'Sort order', type: 'int' },
     ],
   },

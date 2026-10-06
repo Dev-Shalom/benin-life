@@ -153,10 +153,22 @@ export default function Game() {
   const busyActive = Boolean(busyUntil && Date.parse(busyUntil) > now);
   const busyGroup = useMemo(() => {
     if (!busyUntil || !busyLabel || !busyActive) return null;
+<<<<<<< HEAD
+    // the busy label is the furniture label ("Bucket bath") when the server gave one, else the activity name
+    const homeActs = state?.home?.activities ?? {};
+    const byLabel = Object.keys(homeActs).find((id) => homeActs[id].label === busyLabel);
+    const a = byLabel ? { id: byLabel } : activities?.find((x) => x.name === busyLabel && x.home_only);
+    if (!a) return null;
+    const started = p?.busy_started_at ? Date.parse(p.busy_started_at) : now;
+    return { group: activityGroup(a.id), key: busyUntil, seconds: (Date.parse(busyUntil) - started) / 1000 };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busyUntil, busyLabel, busyActive, activities, state?.home]);
+=======
     const a = activities?.find((x) => x.name === busyLabel && x.home_only);
     const seconds = Math.max(0, (Date.parse(busyUntil) - serverNow()) / 1000);
     return a ? { group: activityGroup(a.id), key: busyUntil, activity: a.id, seconds } : null;
   }, [busyUntil, busyLabel, busyActive, activities]);
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
 
   const goHome = useCallback(() => {
     if (!p) return;
@@ -227,8 +239,12 @@ export default function Game() {
         ) : showHome ? (
           <HomeView
             layoutId={layout}
+<<<<<<< HEAD
+            owned={p.furniture ?? null}
+=======
             layout={furnished}
             walkShare={walkShare}
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
             avatar={p.avatar}
             busy={busyGroup}
             walkLock={busyActive ? `${busyLabel ?? 'Busy'} first, then you can walk` : null}
