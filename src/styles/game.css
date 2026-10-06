@@ -5067,3 +5067,164 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .people-row__line { margin-top: 2px; font-size: 13px; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .people-row__dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
 .people-list__more { margin: 8px 0 0; font-size: 13px; color: var(--muted, #6b7280); text-align: center; }
+
+/* ---- P2 club hype: banner (the hype man's line), app-wide ticker, hype rows in chat ---- */
+.hype-banner-wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  justify-content: center;
+  padding: 0 16px;
+  pointer-events: none;
+}
+.hype-banner {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: min(520px, 100%);
+  padding: 10px 14px 11px 10px;
+  border: 1px solid rgba(243, 210, 138, 0.38);
+  border-radius: 16px;
+  text-align: left;
+  color: #fff;
+  background:
+    linear-gradient(100deg, rgba(217, 164, 65, 0.22), transparent 42%),
+    rgba(14, 12, 34, 0.86);
+  box-shadow: 0 10px 28px rgba(6, 4, 20, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transform-origin: 50% 0;
+  animation: hype-in 320ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  transition: transform 160ms ease-out;
+}
+.hype-banner:active { transform: scale(0.98); }
+.hype-banner.is-out { animation: hype-out 180ms ease-out both; }
+.hype-banner.is-shutdown {
+  border-color: rgba(255, 140, 80, 0.6);
+  background:
+    linear-gradient(100deg, rgba(240, 106, 85, 0.32), rgba(217, 164, 65, 0.12) 50%, transparent 80%),
+    rgba(20, 10, 26, 0.9);
+}
+.hype-banner__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  font: 20px/1 var(--font-emoji);
+  background: rgba(243, 210, 138, 0.16);
+  animation: hype-icon 520ms cubic-bezier(0.23, 1, 0.32, 1) 120ms both;
+}
+.hype-banner__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hype-banner__who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 11px/1.3 var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-soft, #f3d28a);
+}
+.hype-banner__live {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: #fff;
+  background: #e0473a;
+}
+.hype-banner__text { font: 600 14px/1.38 var(--font-body); text-wrap: pretty; }
+@keyframes hype-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes hype-out {
+  to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+@keyframes hype-icon {
+  from { transform: scale(0.7) rotate(-12deg); }
+  to { transform: none; }
+}
+.hype-ticker {
+  position: absolute;
+  left: 50%;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  padding: 7px 14px 7px 11px;
+  border-radius: 999px;
+  font: 600 13px/1.3 var(--font-display);
+  color: #fff;
+  background: #151233;
+  border: 1px solid rgba(243, 210, 138, 0.34);
+  box-shadow: 0 6px 18px rgba(6, 4, 20, 0.35);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: hype-ticker-in 300ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.hype-ticker.is-out { animation: hype-ticker-out 180ms ease-out both; }
+.hype-ticker__text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hype-ticker__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f06a55;
+  box-shadow: 0 0 0 3px rgba(240, 106, 85, 0.25);
+}
+@keyframes hype-ticker-in {
+  from { opacity: 0; transform: translate(-50%, -120%); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes hype-ticker-out {
+  to { opacity: 0; transform: translate(-50%, -60%); }
+}
+.place3d__bubble.is-hype {
+  max-width: min(260px, 70vw);
+  color: #fff;
+  background: #1c1640;
+  border: 1px solid rgba(243, 210, 138, 0.5);
+  font-weight: 700;
+}
+.chat-hype {
+  align-self: center;
+  max-width: 92%;
+  margin: 4px auto;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font: 600 13px/1.4 var(--font-body);
+  color: #fff;
+  background: linear-gradient(100deg, rgba(217, 164, 65, 0.25), transparent 50%), #1c1640;
+}
+.chat-hype__who {
+  display: block;
+  margin-bottom: 2px;
+  font: 700 10.5px/1.3 var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-soft, #f3d28a);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hype-banner, .hype-banner.is-out, .hype-banner__icon { animation-name: hype-fade; animation-duration: 200ms; }
+  .hype-banner.is-out { animation-direction: reverse; }
+  .hype-ticker, .hype-ticker.is-out { animation: none; }
+}
+@keyframes hype-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 599px) {
+  .hype-banner { padding: 8px 12px 9px 8px; gap: 8px; border-radius: 14px; }
+  .hype-banner__icon { width: 30px; height: 30px; font-size: 17px; border-radius: 10px; }
+  .hype-banner__text {
+    font-size: 13px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

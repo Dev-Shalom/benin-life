@@ -53,6 +53,7 @@ import { applyFeelRender, makeFan, makeFeelMats, makeSteam, sampleFrames, tickFe
 import { looksNight } from '../../../lib/daylight';
 import { buildCrowdRig, type CrowdRig } from '../../avatar3d/engine/crowd';
 import { poseCrowd } from './crowdPose';
+import { readBeat } from '../../../lib/sound';
 import { makeAgents, stepAgents, type Agent } from './wander';
 
 /** F1: camera height / distance (was 0.82): lower and more cinematic. */
@@ -649,6 +650,8 @@ function Interior(props: PlaceSceneProps & {
     lastT.current = t;
     const n = frameN.current++;
     const reduced = view.current.reduced;
+    // P2: everyone moves to the club's beat (a silent clock at the BPM when audio is off)
+    const bt = readBeat();
     // P1: rigs follow their agent every frame (a cheap transform); the walk cycle advances by distance
     for (const r of rigs.current.values()) {
       const ag = agents[r.idx];
@@ -666,13 +669,13 @@ function Interior(props: PlaceSceneProps & {
       const ag = agents[r.idx];
       if (!p) continue;
       const g = ag ? ag.gait : 0;
-      if (g <= 0.01) poseCrowd(r.rig.ch, p.motion, t, r.salt, reduced);
+      if (g <= 0.01) poseCrowd(r.rig.ch, p.motion, t, r.salt, reduced, bt);
       else if (g >= 0.98) {
         resetRig(r.rig.ch);
         r.rig.ch.root.position.y = 0;
         poseGait(r.rig.ch, ag.phase, 1, { reduced, strideScale: 0.85 });
       } else {
-        poseCrowd(r.rig.ch, p.motion === 'sit' ? 'idle' : p.motion, t, r.salt, reduced);
+        poseCrowd(r.rig.ch, p.motion === 'sit' ? 'idle' : p.motion, t, r.salt, reduced, bt);
         capturePose(r.rig.ch, r.bufA);
         resetRig(r.rig.ch);
         poseGait(r.rig.ch, ag.phase, g, { reduced, strideScale: 0.85 });
@@ -717,7 +720,7 @@ function Interior(props: PlaceSceneProps & {
       // P1: a cheap walk: glide with a bob, the legs "stride" (scaled in depth), a slight lean
       const stride = gw > 0 ? Math.abs(Math.sin(ag!.phase * Math.PI)) * gw : 0;
       const still = 1 - gw;
-      const bounce = (p.lively && !reduced ? Math.abs(Math.sin(t * 5.2 + salts[ci])) * 0.09 * still : 0) + stride * 0.035;
+      const bounce = (p.lively && !reduced ? bt.pulse * (bt.hypeAge < 3 ? 0.17 : 0.085) * (0.8 + 0.2 * Math.sin(salts[ci])) * still : 0) + stride * 0.035;
       const sway = p.lively && !reduced ? Math.sin(t * 2.6 + salts[ci]) * 0.35 * still : 0;
       const breathe = 1 + Math.sin(t * 1.6 + salts[ci]) * 0.012;
       _q.setFromAxisAngle(_yAxis, yaw0 + sway);
@@ -1116,7 +1119,13 @@ function Interior(props: PlaceSceneProps & {
     }
     // F1: club light cycle / sweep, fluorescent flicker, fan, steam (only at the idle frame rate)
     if (q.motion && !view.current.reduced) {
-      tickFeel(feel, closed ? rigClosed : rig, t, lightGain.current, true);
+      // P2: the club lights breathe with the beat (a soft swell, not a strobe; reduced motion never gets here)
+      let lg = lightGain.current;
+      if (rig.cycle && !closed) {
+        const b = readBeat();
+        lg *= 1 + 0.12 * b.pulse + (b.hypeAge < 2.5 ? 0.1 * (1 - b.hypeAge / 2.5) : 0);
+      }
+      tickFeel(feel, closed ? rigClosed : rig, t, lg, true);
       if (fan) fan.rotation.y = t * 3.4;
       steam?.update(t);
     }
@@ -1157,7 +1166,13 @@ function Interior(props: PlaceSceneProps & {
         }
         _v.set(bx - cx, by, bz - cz).project(camera);
         const sx = ((_v.x + 1) / 2) * size.width;
-        const sy = ((1 - _v.y) / 2) * size.height;
+        let sy = ((1 - _v.y) / 2) * size.height;
+        // P2: the hype man's bubble stays clear of the hype banner (phones: he stands right under it)
+        if (el.classList.contains('is-hype')) {
+          const ban = document.querySelector('.hype-banner');
+          const wr = gl.domElement.getBoundingClientRect();
+          if (ban) sy = Math.max(sy, ban.getBoundingClientRect().bottom - wr.top + el.offsetHeight + 34);
+        }
         el.style.opacity = '1';
         el.style.transform = `translate3d(${sx}px, ${sy}px, 0) translate(-50%, calc(-100% - ${who === 'me' ? 4 : 24}px))`;
       }
@@ -1319,11 +1334,12 @@ export default function PlaceScene(props: PlaceSceneProps) {
   const pillRefs = useRef(new Map<string, HTMLSpanElement>());
   // ---- L3 speech bubbles (NPC lines on tap / now and then, location chat over the speaker)
   const bubbleRefs = useRef(new Map<string, HTMLSpanElement>());
-  const [bubbles, setBubbles] = useState<{ who: string; text: string; kind: 'npc' | 'player' | 'me'; n: number }[]>([]);
+  const [bubbles, setBubbles] = useState<{ who: string; text: string; kind: 'npc' | 'player' | 'me' | 'hype'; n: number }[]>([]);
   const bubbleTimers = useRef(new Map<string, number>());
   const bubbleN = useRef(0);
-  const say = (who: string, text: string, ms: number, kind: 'npc' | 'player' | 'me') => {
-    const t = text.length > 110 ? text.slice(0, 107) + '…' : text;
+  const say = (who: string, text: string, ms: number, kind: 'npc' | 'player' | 'me' | 'hype') => {
+    const max = kind === 'hype' ? 160 : 110;
+    const t = text.length > max ? text.slice(0, max - 3) + '…' : text;
     bubbleN.current += 1;
     const n = bubbleN.current;
     setBubbles((b) => [...b.filter((x) => x.who !== who), { who, text: t, kind, n }]);
@@ -1360,6 +1376,21 @@ export default function PlaceScene(props: PlaceSceneProps) {
     };
     window.addEventListener('bl:npc-say', on);
     return () => window.removeEventListener('bl:npc-say', on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // P2: a club announcement: the hype man says the line (bubble over him); falls back to the DJ
+  useEffect(() => {
+    const on = (e: Event) => {
+      const text = (e as CustomEvent<{ text: string }>).detail?.text;
+      if (!text) return;
+      const crowd = crowdRef.current;
+      const mc = crowd.find((c) => !c.player && c.motion === 'hype') ?? crowd.find((c) => !c.player && c.motion === 'dj');
+      // the banner carries the full line; over his head he shouts just the first bit
+      const short = /^.{8,}?[!?.](?=\s|$)/.exec(text)?.[0] ?? text;
+      if (mc) say(mc.id, short, 7000, 'hype');
+    };
+    window.addEventListener('bl:hype', on);
+    return () => window.removeEventListener('bl:hype', on);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // background chatter: now and then someone says a line (low frequency; never while paused / hidden)

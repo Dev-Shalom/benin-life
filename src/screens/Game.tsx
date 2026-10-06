@@ -7,7 +7,7 @@ import { CityView } from '../art/city3d';
 import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
 import { serverNow, useGameClock } from '../lib/clock';
 import { devHourOverride, looksNight } from '../lib/daylight';
-import { setSoundPlace, setSoundScene, type PlaceSound } from '../lib/sound';
+import { setPlaceTrack, setSoundPlace, setSoundScene, type PlaceSound } from '../lib/sound';
 import { useConfig } from '../lib/config';
 import { simPosture } from '../lib/mood';
 import { randomGreeting } from '../lib/pidgin';
@@ -33,6 +33,8 @@ import { deriveStatus } from './game/status';
 import { useTaskRunner } from './game/TaskRunner';
 import { useTasks } from '../state/tasks';
 import { PlaceCard, usePlaceInterior, usePlacePeople, usePlayersAt } from './game/PlaceCard';
+import { HypeBanner, HypeTicker } from './game/Hype';
+import { useHypeLive } from '../state/hype';
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
@@ -232,7 +234,8 @@ export default function Game() {
   const [placeZone, setPlaceZone] = useState<string | null>(null);
   const [placeBump, setPlaceBump] = useState(0);
   const interior = usePlaceInterior(showPlace && state ? state.location.id : null, hourF, placeBump);
-  // F1: per-place ambience (club bass, buka chatter + pots, bank hum, market, a neighbour's generator at night)
+  // F1 + P2: per-place soundtrack (club amapiano, buka radio, market, stadium, cinema, hotel lounge, motor park,
+  // bank hum, a neighbour's generator at night)
   const placeScene: string = state?.location.scene ?? '';
   const placeOpen = interior.data ? interior.data.open : true;
   const placeSound: PlaceSound = showPlace
@@ -240,9 +243,19 @@ export default function Game() {
       : placeScene === 'club' ? 'club'
       : placeScene === 'buka' || placeScene === 'restaurant' ? 'buka'
       : placeScene === 'bank' || placeScene === 'hospital' ? 'bank'
-      : placeScene === 'market' || placeScene === 'motorpark' || placeScene === 'street' ? 'market' : null
+      : placeScene === 'market' || placeScene === 'street' ? 'market'
+      : placeScene === 'motorpark' ? 'motorpark'
+      : placeScene === 'stadium' ? 'stadium'
+      : placeScene === 'cinema' ? 'cinema'
+      : placeScene === 'hotel' ? 'lounge' : null
     : showHome && skyNight && (placeScene === 'home_face_me' || placeScene === 'hostel') ? 'generator' : null;
   useEffect(() => { setSoundPlace(placeSound); }, [placeSound]);
+  // P2: a licensed club track (admin) replaces the synthesized amapiano groove
+  const clubTrackUrl = String(cfg('music.club_track_url', '') ?? '');
+  useEffect(() => { setPlaceTrack(clubTrackUrl); }, [clubTrackUrl]);
+  // P2: club hype (server announcements over Realtime): the club channel while inside a club, the ticker always
+  const inClub = showPlace && placeScene === 'club';
+  useHypeLive(inClub && state ? state.location.id : null, p?.id ?? null);
   const playersHere = usePlayersAt(showPlace && state ? state.location.id : null, p?.id ?? '');
   const placeRoom = useMemo(() => (interior.data ? roomFor(interior.data.location.scene, interior.data.zones) : null), [interior.data]);
   const placeGrid = useMemo(() => (interior.data && placeRoom ? buildPlaceGrid(placeRoom, interior.data.zones) : null), [interior.data, placeRoom]);
@@ -408,6 +421,8 @@ export default function Game() {
       </div>
 
       {!clean && <TopPill state={state} clock={clock} />}
+      {inClub && <HypeBanner mcName={people?.npcs.find((n) => n.motion === 'hype')?.name ?? 'The hype man'} top={(clean ? 70 : insets.top) + 6} />}
+      <HypeTicker top={insets.narrow ? 14 : 72} />
       <LeftRail state={state} status={status} atHome={atHome} compact={!showHome && (!showPlace || insets.narrow)} />
 
       <div className="game__bottom" ref={bottomRef}>

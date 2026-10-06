@@ -235,6 +235,43 @@ heaviest rooms; set it to 3 to be strictly under).
 The cars add ~12k triangles to the dealer room (still 1 merged mesh, +0 calls); the user lifted the triangle guide.
 Walking costs CPU only (a few short A* plans per second, at most 2 per frame). `bench()` stays 0.3–1.5 ms.
 
+## P2 hype (migration `20261006001700_hype.sql`, tests `supabase/tests/hype_test.sql`)
+Big spenders in a club get hyped by the MC, live, and the biggest spends go out app-wide. Server-authoritative:
+clients can only read.
+### Server
+- **`place_announcements`** (id, location_id, user_id, username, kind, amount, qty, text, ticker, global, created_at).
+  RLS on, `select` for authenticated, no insert / update / delete grants. In `supabase_realtime` (added only when the
+  publication exists and the table isn't in it yet). Old rows are cleaned now and then (`hype.retention_hours`).
+- **`hype_templates`** (id, kind, line, ticker, sort, active): the MC's lines in Naija hype style, two per kind,
+  admin-editable in **Content → Hype lines**. Placeholders `{name}` `{place}` `{count}` `{bottles}` `{amount}`.
+- **`bl_hype_announce(user, place, kind, amount, qty, force)`** (server only, not executable by clients) is the
+  only writer. It is called from the re-created **`do_activity`** (VIP table → `vip`, spray money → `spray`, hype man
+  shout-out → `shoutout`, Shut down the club → `shutdown`) and **`shop_buy`** (club bottle → `bottles`, counted over
+  `hype.bottle_window_s` from the ledger, so "E don pop 3 bottles" counts up). Only in places whose scene is `club`.
+  Both functions return the row as `hype` (null when none).
+- **Rate limits:** one announcement per player per `hype.cooldown_s` (the spend itself always goes through; Shut down
+  the club always announces in the club); spends ≥ `hype.global_min` set `global` + a `ticker` line, at most one per
+  `hype.global_cooldown_s` app-wide.
+- **Shut down the club** (`shut_down_club`, DJ zone card, 🔥): costs `hype.shutdown_cost` (₦2M; a trigger on
+  `game_config` keeps the card price in sync), + `hype.shutdown_cred` street cred, and buys a round for every other
+  player in the club (+`hype.round_fun` fun, +`hype.round_social` social). With the default threshold it always goes
+  app-wide (unless another ticker ran in the last 90 s).
+### Client
+- `src/state/hype.ts`: one Realtime channel on the club you're inside (`location_id=eq.<club>`) and one app-wide
+  (`global=eq.true`). The last 30 min of the club's lines load on entry (chat).
+- Club row → **banner** at the top of the place view (`src/screens/game/Hype.tsx`, rise + fade in 320 ms, out 180 ms,
+  tap to close, queue of 3, 7 s each), a **bubble over the hype man** (MC Lightning at 360 Signature; the DJ when no
+  hype man is drawn), the same line in the **club chat** as a hype row, the **Doremi stinger** + the crowd's "ayyy",
+  and ~3 s of reactions: the hype man points and jumps, the DJ and dancers throw their hands up, the simple figures
+  jump higher, the lights swell a touch.
+- Global row → a slim **ticker** under the HUD for 6 s with a soft two-note cue, for everyone not in that club.
+- **On the beat:** `readBeat()` (src/lib/sound.ts) drives the dancers' steps / arm swings / bob, the hype man and DJ
+  nods, the instanced figures' bounce and a soft light swell on each beat (+12 % light gain at the beat, decaying; no
+  strobe). Reduced motion: smaller moves, no jumps, no light pulse. Audio off: a silent clock at 113 BPM.
+### Check
+`bash scripts/sql-test.sh -- supabase/tests/hype_test.sql` (announce + text, no client writes, cooldown, global flag
+and cooldown, Shut down the club, bottles count up, non-club spends silent, publication + admin spec).
+
 ## Not done here (next steps)
 - L3 leftovers: rigs don't rebuild when the graphics tier changes mid-visit (they do on the next visit); no streaming
   "Loading…" pill. (P1 did the wandering and put the DJ behind the booth.)

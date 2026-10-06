@@ -85,3 +85,37 @@ buka warm, bank cool), but nothing reads as neon and faces / pills stay readable
   saturated, the pink club lamp is paler, the club hemisphere a little brighter (faces).
 - **Overlay** (`game.css`): vignette 0.28 → 0.14 (dark rooms 0.5 → 0.28) over a wider clear centre; grain 0.07 → 0.04.
 - Low tier unchanged in kind (no fog, no pools). Before / after: scratchpad `p1/light-*-before-after.png`.
+
+## P2: place soundtracks, the beat clock and the hype sounds (2026-10-06)
+All original and synthesized (no songs, no samples); `src/lib/music.ts` holds the synth, `src/lib/sound.ts` plays it.
+- **One scheduler** (100 ms tick, ~0.3 s lookahead, WebAudio-timed) for the place you're in; nothing runs while the
+  tab is hidden (the context is suspended and the tick skips). After a stall it skips ahead instead of bursting.
+- **Sample bank, not per-note synthesis:** kick, clap, rim, shaker, hats, the log drum (C2), a vocal "ah" chop,
+  a Karplus-Strong pluck and a crowd bed are computed once in JS per sample rate; piano stabs and pads are rendered
+  once per chord and cached. A hit is one `AudioBufferSourceNode` (+ a gain node only for velocity / a short gate).
+  Pitch and slides come from `playbackRate`.
+- **Club = amapiano, 113 BPM**, 16th grid with swing: the log drum (pitched, sliding hits on the Fm9 – Bbm9 – Ebmaj9 –
+  Dbmaj9 roots), shakers on every 16th, offbeat hats + an open hat, a soft kick on the beat, clap on 2 and 4 with rim
+  fills, jazzy electric-piano stabs (7ths / 9ths), a pad, vocal-chop blips. Six sections (16 / 16 / 8 breakdown with a
+  low-pass sweep and a rim build / 16 / 16 / 8) and each pass through the arrangement picks other log and stab
+  patterns, so it never loops exactly. It replaced the F1 club kick + bass.
+- **Other places:** buka = a radio (band-passed) alternating every 24 bars between a highlife guitar pattern (118 BPM)
+  and an Afrobeats groove (104 BPM), with a burst of static between songs, over the F1 chatter + pots; market =
+  hawker calls (chop syllables with pitch moves) over a bustle bed; stadium = a crowd roar bed, "clap clap, clap-clap-
+  clap, o-le!" chants every 10–18 s and random cheers; cinema = a slow low-passed minor pad with a soft boom; hotel
+  lounge = ii-V-I jazz keys, a walking bass and brushes (84 BPM, swung); motor park = horns + "Ring road!" conductor
+  calls. Bank hum and the generator stay drones. Home: no radio (the background music already plays there).
+- **Levels:** each place has a bus level (club 0.12 → a groove peak of ~0.05 after the master), the background music
+  ducks to 15 % in places with a soundtrack. Music setting + mute apply; nothing starts before the first tap.
+- **Licensed track hook:** `setPlaceTrack(url)` / admin `music.club_track_url` (empty by default) loops an audio file
+  in clubs instead of the synth (an `<audio>` element, paused while hidden).
+- **Beat clock:** `readBeat()` returns one mutated object `{ bpm, phase, n, pulse, audible, hypeAge }`, read each frame
+  by PlaceScene / crowdPose (no allocation). It follows the playing groove (context time minus output latency); with
+  audio off or blocked it is a silent clock at 113 BPM, so the visuals still move to the beat.
+- **Doremi stinger** (`stingerOn`): a bright detuned-saw do-re-mi-fa-sol-do arpeggio, a noise whoosh sweeping
+  300 Hz → 6 kHz and an air-horn-ish swell of three detuned saws (~1.5 s). Plays on the Sound (SFX) bus with each club
+  announcement; the groove ducks under it, then the crowd's "ayyy" (`cheerOn`: formant-filtered detuned voices + the
+  crowd bed) rises on the music bus. The app-wide ticker gets a soft two-note bell (`softCueOn`).
+- **Offline proof:** `renderOffline(kind, secs)` in music.ts renders any track / the stinger to WAV with an
+  OfflineAudioContext (dev: `window.__blSound.render`). Club 8 s: RMS 0.159, peak 0.746 (master 0.8); the strongest
+  onset period is 0.54 s ≈ 113 BPM.

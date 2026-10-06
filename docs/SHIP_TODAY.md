@@ -47,7 +47,7 @@ The user finds the map "looking weird". Improve the 3D city's look: clearer road
 
 **M2 notes (agent, 2026-10-06, not committed):** details in docs/HUD_HOME.md "M2 movement & task feel". (1) Walk 1.15 → **1.9 m/s** (robes 0.72 → 1.33), stride + cadence scale with speed, admin keys `sim.walk_speed` / `sim.robe_speed_mult` / `sim.tired_slowdown`. (2) Every task walks first (M1 pathing) and `do_activity` is called **on arrival**; the 15 % / 1.4× / placed-there rules are gone; × or a floor tap drops the walking task; errors toast and the queue goes on; no-furniture tasks start at once. (3) Progress pill moved to the **left column** (icon, name, thin live bar, seconds, ×; shift pay counter kept); bottom busy banner removed. (4) **Queue** (zustand, max `action.queue_max` = 5, full toast, × and ↑ per chip, cleared on logout / leaving / travel / jail / hospital / server busy). New `activity_stop()` RPC for the × on a running task (keeps the share earned so far, no refund). (5) Bent legs: `restPose()` never straightened the knees, so a sit's 1.45 rad knee bend leaked into standing; fixed + `scripts/pose-check.mjs` + dev `__legCheck`. Migration `20261006001200_sim_feel.sql`, tests `sim_feel_test.sql`.
 
-## L2+. Places, crowds, events, landmarks — [L2 + L3 done; L4 events next] (first L2 agent hit a usage limit before changing anything)
+## L2+. Places, crowds, events, landmarks — [L2 + L3 done; L4 events running] (first L2 agent hit a usage limit before changing anything)
 As in docs/REAL_LIFE_PLAN.md. Landmarks (docs/LANDMARKS.md): keep the REAL names the user chose (ShopRite/Benin City Mall, Kada Plaza, Mama Ebo, Protea, Golden Tulip, Ogba Zoo, Ogbe/Samuel Ogbemudia Stadium, Emotan Statue, real clubs) and **mix in local made-up names** so it isn't built only on real brands. Add:
 - **Car dealers** (buy cars): real Benin options along Sapele Rd — e.g. Ighodalo Car Deals (Km 5 Sapele Rd), SDD Motors (174 Sapele Rd), Otos Autos (near Santana Market), Dominion Automobile; official Toyota (Mandilas, 45 Benin–Agbor Rd). Pick 1–2 real + a made-up "Tokunbo lot".
 - **Top clubs with hype men & big spenders**: 360 Signature (GRA, 1st Ugbor Rd), Club De Medici (23 Benoni off Airport Rd, GRA), Rome Night Club ("biggest in Benin"), Club Vibes (DJ + hype man), Cube Nightlife, Versus Lounge, Havana. Club actions: table/bottle service (VIP prices), "spray money", hype man shout-out (costly, + street cred), dance.
@@ -87,7 +87,7 @@ NPC + chat speech bubbles, "+N more here". Admin → Content → People (NPCs) /
 - **Queue circles:** running pill + up to 2 circles to its right ("+N" badge), tap = popover with Move up / Remove, FLIP shift animation when the next task starts; `action.queue_max` 5 → 7 (only if untouched), `crowd.rigs_high` 4 → 6 (only if untouched).
 - Migration `20261006001600_polish.sql`, tests `polish_test.sql` (18/18 suites pass; `crowds_test` roster range and `sim_feel_test` queue default widened for P1), nav/pose/place checks pass, fresh-DB apply OK. Not done: the owned car parked outside the home (optional).
 
-## P2. Club hype and party vibe (user, 2026-10-06 night): [running]
+## P2. Club hype and party vibe (user, 2026-10-06 night): [done]
 Different from Lagos Life:
 - **Big-spender announcements:** when a player buys a VIP table or bottles, sprays money, books the hype man or "shuts down the club", **everyone in that club** sees a hype-man announcement, live: a banner and a speech bubble from MC Lightning, e.g. "Make una hail @Nosa! E don buy 5 bottles of Ace, e wan shut down 360 tonight!". The feed is also visible in the club's chat.
   - Bigger spends (above an admin threshold) also go out **app-wide** as a ticker ("@Nosa is shutting down 360 Signature 🔥").
@@ -96,6 +96,27 @@ Different from Lagos Life:
 - **Background music in clubs: peak amapiano.** Log drums, shakers, piano stabs, a deep bass groove, kept subtle under the game but with the beat felt; the lights pulse with the beat. **Copyright:** we can't ship real songs like "Funk 18" without a licence, so the game generates original amapiano-style grooves. Later, admin can upload licensed tracks (the user brings the rights).
 - **The party is alive:** dancers move to the beat, the DJ and hype man react to announcements, the crowd cheers, and the lights sync to the beat (subtle).
 - **Same treatment for other places:** each place type gets a fitting live soundtrack and moments, e.g. the buka radio playing highlife and Afrobeats instrumentals, market hawker calls, the stadium crowd chanting on match day, the cinema.
+
+**P2 notes (agent, 2026-10-06, not committed; status marker left for the lead):**
+- **Announcements (server-only):** `place_announcements` (RLS read for signed-in players, no client writes, in
+  `supabase_realtime`) + admin-editable MC lines `hype_templates` (Content → Hype lines). Written only by
+  `bl_hype_announce()` from the re-created `do_activity` (VIP table, spray money, hype man shout-out, **Shut down the
+  club**) and `shop_buy` (club bottles, counted over a window: "E don pop 3 bottles"). Per-player cooldown
+  `hype.cooldown_s` (30 s), app-wide ticker for spends ≥ `hype.global_min` (₦500k) with `hype.global_cooldown_s` (90 s).
+- **Shut down the club** (DJ zone, 🔥): ₦2M (`hype.shutdown_cost`, card price follows), +25 street cred, a round
+  (+fun +social) for everyone else in the club, always announced in the club.
+- **Client:** club banner (animated, tap to close) + bubble over MC Lightning + hype row in the club chat + Doremi
+  stinger + crowd "ayyy"; the hype man points and jumps, DJ / dancers cheer. Global: a slim ticker for 6 s with a soft
+  cue for everyone not in that club.
+- **Sound** (`src/lib/music.ts`, played by `src/lib/sound.ts`, one scheduler): original amapiano groove at 113 BPM in
+  clubs (log drum, swung shakers, kick, clap, piano 7th/9th stabs, pad, vocal-chop blips, 6 sections), buka radio
+  (highlife ↔ Afrobeats), market hawkers, stadium chants, cinema pad, hotel-lounge jazz keys, motor-park horns and
+  conductor calls. Licensed-track hook `setPlaceTrack(url)` / `music.club_track_url` (empty). Home radio not added
+  (the background music already plays at home).
+- **Beat:** `readBeat()` drives the dancers, hype man / DJ, instanced figures and a soft light swell (no strobe; off in
+  reduced motion); a silent 113 BPM clock when audio is off.
+- Migration `20261006001700_hype.sql`, tests `supabase/tests/hype_test.sql`; details in docs/PLACES.md "P2 hype",
+  docs/ADMIN.md (hype.* and music.club_track_url), docs/FEEL_PLAN.md "P2".
 
 ## LATER: private jets and planes (user)
 A place to buy private jets and planes, tied to the airport feature (fly to Lagos, Abuja or PH). Not started.

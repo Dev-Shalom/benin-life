@@ -2,10 +2,14 @@
 //   SFX      click on buttons/taps (one delegated listener), cues: money in, action done, alert, error
 //   music    a soft highlife-flavoured pad + pluck loop; slower, minor chords at night
 //   ambience city bed (filtered noise) with distant horns by day, crickets at night
+//   places   P2: each place's own soundtrack from src/lib/music.ts (club amapiano groove, buka radio, market,
+//            stadium, cinema, hotel lounge, motor park), one scheduler; readBeat() = the beat clock for visuals;
+//            playHype() = the "Doremi" stinger + crowd cheer for club announcements (soft cue for the ticker)
 // Rules: nothing starts before the first user gesture (autoplay policy); SFX follow Settings "Sound
 // effects", music + ambience follow "Music"; the HUD mute silences all. The context is suspended while
 // the tab is hidden. Music/ambience only play inside the game (setSoundScene from Game.tsx).
 import { usePrefs } from './prefs';
+import { CLUB_BPM, Engine, cheerOn, makeTrack, renderOffline, softCueOn, stingerOn, type Track, type TrackKind } from './music';
 
 export type Cue = 'click' | 'money' | 'done' | 'alert' | 'error';
 
@@ -186,13 +190,24 @@ function tuneAmbience() {
   ambFilter.frequency.setTargetAtTime(scene.night ? 260 : 480, t, 1.5);
 }
 
-// ---------- F1: per-place ambience (follows the Music setting, like the city bed) ----------
-export type PlaceSound = 'club' | 'buka' | 'bank' | 'market' | 'generator' | null;
+// ---------- F1 + P2: per-place soundtracks (follow the Music setting, like the city bed) ----------
+// One scheduler (100 ms tick, ~0.3 s lookahead) drives the place's track from src/lib/music.ts: the club's
+// amapiano groove, the buka radio, market hawkers, stadium chants, cinema pad, hotel-lounge keys, motor park.
+// Bank / hospital hum and a neighbour's generator stay simple drones. Paused while the tab is hidden.
+export type PlaceSound = 'club' | 'buka' | 'bank' | 'market' | 'generator' | 'stadium' | 'cinema' | 'lounge' | 'motorpark' | null;
+// bus levels, matched to the old background music (a groove peak of ~0.04 after the master): felt, not loud
+const PLACE_LEVEL: Record<string, number> = { club: 0.12, buka: 0.1, market: 0.24, stadium: 0.2, cinema: 0.14, lounge: 0.09, motorpark: 0.28 };
 let placeSound: PlaceSound = null;
 let placeTimer: number | null = null;
-let placeNext = 0;
-let placeBeat = 0;
+let placeBus: GainNode | null = null;
+let placeEngine: Engine | null = null;
+let placeTrack: Track | null = null;
+let placeTick = 0;
 let placeDrone: { osc: OscillatorNode[]; g: GainNode } | null = null;
+let duckUntil = 0;
+// a licensed club track (admin: music.club_track_url) replaces the synth groove when set
+let clubTrackUrl = '';
+let fileAudio: HTMLAudioElement | null = null;
 
 function placeVoices() {
   // a murmur of talk: a few short low saw 'syllables' through a lowpass
@@ -203,27 +218,13 @@ function placeVoices() {
 }
 
 function schedulePlace() {
-  if (!ctx || ctx.state !== 'running' || !placeSound) return;
+  if (!ctx || ctx.state !== 'running' || !placeSound || document.hidden) return;
   const now = ctx.currentTime;
-  if (placeSound === 'club') {
-    // four-on-the-floor kick + an off-beat bass note, ~118 bpm, muffled as if through the wall of the dance floor
-    const beat = 60 / 118;
-    if (placeNext < now) placeNext = now + 0.05;
-    while (placeNext < now + 0.4) {
-      tone(58, placeNext, 0.22, { gain: 0.42, release: 0.24, glide: 40, dest: ambBus });
-      const bass = [33, 33, 36, 31][Math.floor(placeBeat / 4) % 4];
-      tone(hz(bass), placeNext + beat / 2, beat * 0.4, { type: 'square', gain: 0.07, release: beat * 0.45, cutoff: 260, dest: ambBus });
-      if (placeBeat % 2 === 1) tone(6000, placeNext, 0.03, { type: 'square', gain: 0.01, release: 0.03, cutoff: 9000, dest: ambBus });
-      placeNext += beat;
-      placeBeat++;
-    }
-    return;
-  }
-  if (placeSound === 'buka' || placeSound === 'market') {
+  placeTrack?.schedule(now + 0.3);
+  // the old F1 murmur + pots under the buka radio and the market calls
+  if (++placeTick % 6 === 0 && (placeSound === 'buka' || placeSound === 'market')) {
     if (Math.random() < (placeSound === 'market' ? 0.75 : 0.5)) placeVoices();
-    // pots / spoons (buka), a seller's call (market)
     if (placeSound === 'buka' && Math.random() < 0.18) tone(1900 + Math.random() * 900, now + 0.05, 0.05, { type: 'triangle', gain: 0.03, release: 0.18, dest: ambBus });
-    if (placeSound === 'market' && Math.random() < 0.08) tone(420 + Math.random() * 120, now + 0.05, 0.5, { type: 'sawtooth', gain: 0.02, release: 0.4, cutoff: 900, glide: 360, dest: ambBus });
   }
 }
 
@@ -249,6 +250,21 @@ function startDrone(freqs: number[], type: OscillatorType, cutoff: number, gain:
 function stopPlace() {
   if (placeTimer !== null) window.clearInterval(placeTimer);
   placeTimer = null;
+  placeTrack?.stop();
+  placeTrack = null;
+  if (placeBus && ctx) {
+    const b = placeBus;
+    b.gain.cancelScheduledValues(ctx.currentTime);
+    b.gain.setTargetAtTime(0, ctx.currentTime, 0.25);
+    window.setTimeout(() => { try { b.disconnect(); } catch { /* gone */ } }, 1500);
+  }
+  placeBus = null;
+  placeEngine = null;
+  if (fileAudio) {
+    fileAudio.pause();
+    fileAudio.src = '';
+    fileAudio = null;
+  }
   if (placeDrone && ctx) {
     const d = placeDrone;
     d.g.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
@@ -263,19 +279,99 @@ function applyPlace() {
     if (ctx && musicTimer !== null) fade(musicBus, musicOn() ? VOL.music : 0);
     return;
   }
-  // the club's own beat replaces most of the background music
-  if (musicTimer !== null) fade(musicBus, placeSound === 'club' ? VOL.music * 0.25 : VOL.music * 0.7);
+  // the place's own soundtrack replaces most of the background music
+  if (musicTimer !== null) fade(musicBus, placeSound in PLACE_LEVEL ? VOL.music * 0.15 : VOL.music * 0.7);
   if (placeSound === 'bank') startDrone([100, 50.3], 'sine', 400, 0.05); // AC + fluorescent hum
   if (placeSound === 'generator') startDrone([47, 94.5], 'sawtooth', 170, 0.06); // "I better pass my neighbour"
-  placeNext = 0;
-  placeTimer = window.setInterval(schedulePlace, placeSound === 'club' ? 150 : 600);
+  const level = PLACE_LEVEL[placeSound];
+  if (level) {
+    placeBus = ctx.createGain();
+    placeBus.gain.setValueAtTime(0, ctx.currentTime);
+    placeBus.gain.linearRampToValueAtTime(level, ctx.currentTime + 1.5);
+    placeBus.connect(master);
+    if (placeSound === 'club' && clubTrackUrl) {
+      try {
+        fileAudio = new Audio(clubTrackUrl);
+        fileAudio.loop = true;
+        fileAudio.volume = Math.min(1, level * 2.5 * VOL.master);
+        void fileAudio.play().catch(() => {});
+      } catch { fileAudio = null; }
+    }
+    if (!fileAudio) {
+      placeEngine = new Engine(ctx, placeBus);
+      placeTrack = makeTrack(placeSound as TrackKind, placeEngine, ctx.currentTime + 0.15);
+    }
+  }
+  placeTick = 0;
+  placeTimer = window.setInterval(schedulePlace, 100);
+  schedulePlace();
 }
 
-/** Game.tsx: the ambience of the place you're in (null = just the city / home bed). */
+/** Game.tsx: the soundtrack of the place you're in (null = just the city / home bed). */
 export function setSoundPlace(k: PlaceSound) {
   if (k === placeSound) return;
   placeSound = k;
   if (unlocked && ensureCtx()) applyPlace();
+}
+
+/** A licensed club track (music.club_track_url) replaces the synthesized groove; '' / null = the synth. */
+export function setPlaceTrack(url: string | null) {
+  const u = (url ?? '').trim();
+  if (u === clubTrackUrl) return;
+  clubTrackUrl = u;
+  if (placeSound === 'club' && unlocked && ensureCtx()) applyPlace();
+}
+
+// ---------- P2: the beat clock (visuals read it every frame, no allocation) ----------
+let hypeAt = -1e9;
+const beatState = { bpm: CLUB_BPM, phase: 0, n: 0, pulse: 0, audible: false, hypeAge: 1e9 };
+export type BeatClock = Readonly<typeof beatState>;
+/** Current beat: phase 0..1, beat count, a 1 -> 0 pulse on each beat, seconds since the last hype moment.
+ *  Follows the playing groove; with audio off a silent clock runs at the club BPM. Mutates one object. */
+export function readBeat(): BeatClock {
+  const tr = placeTrack;
+  let b: number;
+  if (ctx && tr && tr.bpm > 0 && ctx.state === 'running') {
+    const lat = (ctx as AudioContext & { outputLatency?: number }).outputLatency || 0;
+    b = Math.max(0, ((ctx.currentTime - lat - tr.t0) * tr.bpm) / 60);
+    beatState.bpm = tr.bpm;
+    beatState.audible = true;
+  } else {
+    beatState.bpm = CLUB_BPM;
+    beatState.audible = false;
+    b = (performance.now() / 1000) * (CLUB_BPM / 60);
+  }
+  beatState.n = Math.floor(b);
+  beatState.phase = b - beatState.n;
+  beatState.pulse = Math.exp(-beatState.phase * 5);
+  beatState.hypeAge = performance.now() / 1000 - hypeAt;
+  return beatState;
+}
+
+/** P2: a club announcement: the Doremi stinger (Sound setting) + the crowd's "ayyy" (Music setting), and the
+ *  visuals' hype moment (DJ / hype man / crowd react). 'global' = the soft cue for the app-wide ticker. */
+export function playHype(kind: 'club' | 'global') {
+  if (kind === 'club') hypeAt = performance.now() / 1000;
+  if (!unlocked || !ensureCtx() || ctx!.state !== 'running') return;
+  const t = ctx!.currentTime + 0.03;
+  if (kind === 'global') {
+    if (sfxOn()) softCueOn(ctx!, sfxBus, t);
+    return;
+  }
+  if (sfxOn()) stingerOn(ctx!, sfxBus, t, 1.5);
+  if (placeBus && musicOn() && placeSound === 'club') {
+    // duck the groove under the stinger, then the crowd cheers
+    const lvl = PLACE_LEVEL.club;
+    if (t > duckUntil) {
+      placeBus.gain.cancelScheduledValues(t);
+      placeBus.gain.setValueAtTime(lvl, t);
+      placeBus.gain.linearRampToValueAtTime(lvl * 0.45, t + 0.12);
+      placeBus.gain.setValueAtTime(lvl * 0.45, t + 1.3);
+      placeBus.gain.linearRampToValueAtTime(lvl, t + 2.2);
+      duckUntil = t + 2.2;
+    }
+    cheerOn(ctx!, placeBus, t + 1.0, 1.1);
+  }
 }
 
 // ---------- start / stop ----------
@@ -311,7 +407,7 @@ function apply() {
     fade(musicBus, VOL.music);
     fade(ambBus, VOL.amb);
     if (placeSound && placeTimer === null) applyPlace();
-    else if (placeSound) fade(musicBus, placeSound === 'club' ? VOL.music * 0.25 : VOL.music * 0.7);
+    else if (placeSound) fade(musicBus, placeSound in PLACE_LEVEL ? VOL.music * 0.15 : VOL.music * 0.7);
   } else if (musicTimer !== null || ambSrc) {
     fade(musicBus, 0, 0.6);
     fade(ambBus, 0, 0.6);
@@ -357,8 +453,14 @@ export function initSound() {
   }, true);
   document.addEventListener('visibilitychange', () => {
     if (!ctx || !unlocked) return;
-    if (document.visibilityState === 'hidden') void ctx.suspend().catch(() => {});
-    else void ctx.resume().catch(() => {});
+    if (document.visibilityState === 'hidden') {
+      void ctx.suspend().catch(() => {});
+      fileAudio?.pause();
+    } else {
+      void ctx.resume().catch(() => {});
+      if (fileAudio) void fileAudio.play().catch(() => {});
+    }
   });
   usePrefs.subscribe(apply);
+  if (import.meta.env.DEV) (window as unknown as { __blSound?: unknown }).__blSound = { render: renderOffline, playHype, readBeat, setPlaceTrack };
 }

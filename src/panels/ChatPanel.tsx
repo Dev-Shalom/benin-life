@@ -9,6 +9,7 @@ import { errorMessage, GameError } from '../lib/api';
 import { useConfig } from '../lib/config';
 import type { ChatMessage, PanelProps } from '../lib/types';
 import { useChat } from '../state/chat';
+import { useHype, type Announcement } from '../state/hype';
 import { Button, EmptyState, Icon, Spinner, toast } from '../ui';
 
 const REASONS = ['Insults', 'Spam', 'Scam', 'Sexual', 'Other'];
@@ -21,12 +22,20 @@ function timeOf(iso: string) {
   }
 }
 
+function mergeHype(msgs: ChatMessage[], hype: Announcement[]): (ChatMessage | Announcement)[] {
+  if (!hype.length) return msgs;
+  return [...msgs, ...hype].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+}
+
 export default function ChatPanel({ state, location }: PanelProps) {
   const { cfg } = useConfig();
   const maxLen = cfg('chat.max_len', 200);
   const rateSec = cfg('chat.rate_seconds', 3);
   const enabled = cfg('chat.enabled', true);
   const messages = useChat((s) => s.messages);
+  // P2: the hype man's announcements in this club show in the chat as hype lines
+  const hypeLoc = useHype((s) => s.locationId);
+  const hypeRows = useHype((s) => s.recent);
   const status = useChat((s) => s.status);
   const error = useChat((s) => s.error);
   const chatLoc = useChat((s) => s.locationId);
@@ -66,7 +75,7 @@ export default function ChatPanel({ state, location }: PanelProps) {
   useLayoutEffect(() => {
     const el = listRef.current;
     if (el && stick.current) el.scrollTop = el.scrollHeight;
-  }, [messages.length]);
+  }, [messages.length, hypeRows.length]);
 
   if (!here || chatLoc !== location.id) {
     return <EmptyState icon="chat" title="Chat is for people here" body="Go to this place to chat with the people around." />;
@@ -149,7 +158,12 @@ export default function ChatPanel({ state, location }: PanelProps) {
         {status === 'ready' && messages.length === 0 && (
           <div className="chat__empty"><p>It's quiet here. Say hello to the people around!</p></div>
         )}
-        {messages.map((m) => (
+        {mergeHype(messages, hypeLoc === location.id ? hypeRows : []).map((m) => 'kind' in m ? (
+          <div key={`h${m.id}`} className="chat-hype" role="note">
+            <span className="chat-hype__who">🎤 Hype man · {timeOf(m.created_at)}</span>
+            {m.text}
+          </div>
+        ) : (
           <div key={m.id} className={`chat-msg${m.mine ? ' is-mine' : ''}${menu === m.id ? ' is-open' : ''}`}>
             <span className="chat-msg__face" aria-hidden>
               {m.avatar ? <AvatarPortrait config={m.avatar} size={32} /> : <span className="chat-msg__initial">{m.username.slice(0, 1).toUpperCase()}</span>}

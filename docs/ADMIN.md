@@ -63,8 +63,18 @@ Phones get a bottom tab bar and full-screen detail panes; desktops get a sidebar
 | `cars.bank_first` | Buying a car at a dealer takes the bank balance first, then cash (default on; cars cost millions). |
 | `travel.bicycle.*`, `travel.motorcycle.*` | (P1, category travel) Own bicycle / motorcycle when the player has no car: speed (12 / 35 km/h), base cost and cost per km (bicycle free; motorcycle ₦40/km fuel). The bicycle ignores traffic; the motorcycle feels about a third of it. The "Your own …" option still uses mode `car` and its robbery risk. |
 | `places.p1_people_seeded` | (P1) One-shot flag: the P1 migration raised the empty all-day crowd profiles (staff on duty) and opened the Tokunbo Lot's luxury corner once. Leave it on. |
+| `hype.enabled` | (P2, category "hype") The club hype man announces big spends (banner, bubble over him, chat line, Doremi stinger) and the biggest go app-wide. Off = silent. |
+| `hype.cooldown_s` | At most one announcement per player in this many seconds (default 30). The spend still goes through; "Shut down the club" always announces in the club. |
+| `hype.global_min` | Spends at or above this (default ₦500,000) also show as a slim ticker to everyone in the game (~6 s). |
+| `hype.global_cooldown_s` | At most one app-wide ticker in this many seconds (default 90), so the screen never floods. |
+| `hype.bottle_window_s` | Bottles one player buys in this window (default 300 s) count up in one line ("E don pop 3 bottles"). |
+| `hype.shutdown_cost` | Price of "Shut down the club" (default ₦2,000,000, cash). The card price follows. |
+| `hype.shutdown_cred` | Street cred for shutting down the club (default 25). |
+| `hype.round_fun` / `hype.round_social` | What every other player in the club gets from the round (default +10 fun / +8 social). |
+| `hype.retention_hours` | Announcements older than this are cleaned up (default 24). |
+| `music.club_track_url` | (P2, category "music") Empty (default) = the game's own synthesized amapiano groove in clubs. Set a URL to an audio file you hold the rights to and clubs loop it instead (Music setting / mute still apply). |
 
-Changes go live at once: `game_config` is in the realtime publication and `src/lib/config.ts` updates every client on each change (and reloads after a reconnect). Content tables are read fresh by the game's RPCs (e.g. a new item price shows in the shop on the next open).
+Changes go live at once: `game_config` is in the realtime publication and `src/lib/config.ts` updates every client on each change (and reloads after a reconnect). The MC's announcement lines are in **Content → Hype lines** (P2: kind, club line, ticker line; placeholders {name} {place} {count} {bottles} {amount}). Content tables are read fresh by the game's RPCs (e.g. a new item price shows in the shop on the next open).
 
 ## Security
 - Every admin RPC starts with `bl_admin_guard()` → `bl_is_admin()` (is_admin and not banned). The `/admin` route check is only a door. Helpers (`bl_admin_*`) are revoked from clients; RPCs are revoked from `anon`.

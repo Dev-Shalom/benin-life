@@ -242,6 +242,18 @@ const DEFS: TableDef[] = [
     newRow: { scene: 'market', days: 'all', from_hour: 7, to_hour: 12, npcs: 40, sort: 0, active: true },
   },
   {
+    id: 'hype', table: 'hype_templates', title: 'Hype lines', emoji: '🎤', blurb: 'What the club hype man (MC Lightning) says when a player spends big (P2). One line is picked at random per kind. Placeholders: {name} {place} {count} {bottles} {amount}. The ticker line is the app-wide one for spends at or above Settings → hype.global_min.',
+    pk: ['id'], insert: true,
+    titleOf: (r) => String(r.line), subOf: (r) => `${r.kind}${r.ticker ? ` · ticker: ${r.ticker}` : ''}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'kind', label: 'Kind', type: 'text', help: 'vip | bottles | spray | shoutout | shutdown' },
+      { key: 'line', label: 'Club line (banner, bubble, chat)', type: 'long', help: 'e.g. Make una hail @{name}! E don pop {bottles} — {place} na una own tonight!' },
+      { key: 'ticker', label: 'App-wide ticker line', type: 'text', help: 'e.g. 🔥 @{name} is shutting down {place}' },
+      { key: 'sort', label: 'Sort order', type: 'int' }, { key: 'active', label: 'Active', type: 'bool' },
+    ],
+    newRow: { kind: 'vip', line: 'Make una hail @{name}! {place}, shout!', ticker: '🔥 @{name} is balling at {place}', sort: 10, active: true },
+  },
+  {
     id: 'origins', table: 'origin_tiers', title: 'Origins', emoji: '👶', blurb: 'LAPO / Nepo copy and perks. Chances and start money live in Settings → Origin.',
     pk: ['id'], insert: false, titleOf: (r) => String(r.name), subOf: (r) => String(r.tagline),
     fields: [
