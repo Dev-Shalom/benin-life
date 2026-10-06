@@ -156,6 +156,8 @@ export interface LifeOpts {
   reduced?: boolean;
   /** Seconds since the Sim last stood still. Fidgets and look-arounds fade in over ~1.5 s. */
   idleFor?: number;
+  /** Walk only (M2): stride scale from `gaitFor` (longer steps for a faster walk). */
+  strideScale?: number;
 }
 
 const smooth = (a: number, b: number, x: number) => ease((x - a) / (b - a));
@@ -322,16 +324,44 @@ export function poseLife(c: Character, t: number, salt = 0, o: LifeOpts = {}) {
   }
 }
 
-/** Step length (m, world) of this character at gait weight w (0..1). */
-export function stepLength(c: Character, w: number): number {
-  const amp = 0.42 * c.stride * (0.35 + 0.65 * Math.max(0, Math.min(1, w)));
+/** Step length (m, world) of this character at gait weight w (0..1). `scale` (M2) lengthens the stride
+ * for a faster walk (see `gaitFor`). */
+export function stepLength(c: Character, w: number, scale = 1): number {
+  const amp = 0.42 * c.stride * scale * (0.35 + 0.65 * Math.max(0, Math.min(1, w)));
   return 2 * c.dims.hipY * c.dims.scale * Math.sin(amp);
 }
 
-/** Cruise speed for this stride: about 2.25 steps a second, but never below 0.72 m/s (short steps in a
- * wrapper get a quicker cadence instead; the phase follows the distance, so the feet never slide). */
+/** Cruise speed for this stride (M1): about 2.25 steps a second, at least 0.72 m/s. Kept for reference;
+ * the home now uses `gaitFor`. */
 export function cruiseSpeed(c: Character, base = 1.15): number {
   return Math.min(base, Math.max(0.72, stepLength(c, 1) * 2.25));
+}
+
+export interface WalkTuning {
+  /** Trouser walk speed, m/s (config sim.walk_speed). */
+  speed: number;
+  /** Robe / wrapper speed as a share of `speed` (config sim.robe_speed_mult). Skirts sit halfway. */
+  robeMult: number;
+}
+
+export const DEFAULT_WALK: WalkTuning = { speed: 1.9, robeMult: 0.7 };
+
+/**
+ * M2: cruise speed and stride scale for this outfit. Speed: trousers walk at `speed`, a robe/wrapper
+ * (stride 0.38) at `speed × robeMult`, in between by stride. Stride and cadence both grow with speed,
+ * like a real walk: cadence ≈ 1.6 + 0.35·v steps/s, the step length makes up the rest (the stride
+ * scale is capped so a wrapper keeps its short quick steps instead of splitting the cloth). The phase
+ * still follows the distance, so the feet never slide at any speed.
+ */
+export function gaitFor(c: Character, t: WalkTuning = DEFAULT_WALK): { cruise: number; strideScale: number } {
+  const k = Math.max(0, Math.min(1, (c.stride - 0.38) / 0.62));
+  const mult = t.robeMult + (1 - t.robeMult) * k;
+  const cruise = Math.max(0.4, t.speed * mult);
+  const cadence = 1.6 + 0.35 * cruise;
+  const leg = 2 * c.dims.hipY * c.dims.scale;
+  const amp = Math.asin(Math.min(0.9, cruise / cadence / leg));
+  const strideScale = Math.max(1, Math.min(c.stride < 0.9 ? 1.5 : 1.35, amp / (0.42 * c.stride)));
+  return { cruise, strideScale };
 }
 
 /**
@@ -351,7 +381,7 @@ export function poseGait(c: Character, phase: number, w = 1, o: LifeOpts = {}) {
   const p = phase * Math.PI * 2;
   const s = Math.sin(p);
   const cp = Math.cos(p);
-  const A = 0.42 * k * (0.35 + 0.65 * ww);
+  const A = 0.42 * k * (o.strideScale ?? 1) * (0.35 + 0.65 * ww);
   // legs: left thigh forward while sin p > 0; a leg swings forward while its thigh angle grows
   rig.thighL.rotation.x = -A * s;
   rig.thighR.rotation.x = A * s;
@@ -386,4 +416,22 @@ export function poseGait(c: Character, phase: number, w = 1, o: LifeOpts = {}) {
   // head stays steady: undo most of the twist, a small nod with each step
   rig.neck.rotation.set(0.02 + 0.1 * tired, 0.06 * ww * s, 0);
   rig.head.rotation.set(-0.02 + 0.012 * ww * Math.abs(cp) + 0.08 * tired - 0.04 * happy, 0.04 * ww * s, 0);
+}
+
+// ---------------------------------------------------------------------------------------------
+// M2 leg check: after a task pose ends and the blend back finishes, every leg joint must match the
+// idle pose exactly (HomeScene checks this in dev, scripts/pose-check.mjs in node).
+export const LEG_BONES = ['thighL', 'shinL', 'footL', 'thighR', 'shinR', 'footR'] as const;
+const LEG_IDX = LEG_BONES.map((n) => BONES.indexOf(n));
+
+/** Largest leg-joint rotation difference (radians) between two pose buffers. */
+export function legRotationDiff(a: Float32Array, b: Float32Array): number {
+  let worst = 0;
+  for (const j of LEG_IDX) {
+    for (let r = 3; r < 6; r++) {
+      const d = a[j * 6 + r] - b[j * 6 + r];
+      worst = Math.max(worst, Math.abs(Math.atan2(Math.sin(d), Math.cos(d))));
+    }
+  }
+  return worst;
 }

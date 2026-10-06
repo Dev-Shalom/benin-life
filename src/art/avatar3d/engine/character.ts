@@ -214,6 +214,13 @@ export function buildCharacter(input: AvatarConfig): Character {
 }
 
 export function restPose(rig: Rig, d: Dims) {
+  // M2: every joint a pose may bend goes back to straight here (knees, hips, spine). Before, the shins
+  // and the body/chest twist were left as the last pose set them, so a sit (knees 1.45 rad) leaked into
+  // the stand-up when the next pose only called restPose ("bent legs after watching TV").
+  rig.body.rotation.set(0, 0, 0);
+  rig.chest.rotation.set(0, 0, 0);
+  rig.shinL.rotation.set(0, 0, 0);
+  rig.shinR.rotation.set(0, 0, 0);
   rig.armL.rotation.set(0, 0, d.armOut);
   rig.armR.rotation.set(0, 0, -d.armOut);
   rig.foreL.rotation.set(-0.16, 0, 0.02);

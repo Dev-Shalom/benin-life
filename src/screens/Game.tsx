@@ -28,6 +28,8 @@ import { Phone } from './game/Phone';
 import { LookSheet, SimSheet } from './game/SimSheet';
 import { StatusBanners } from './game/StatusBanners';
 import { deriveStatus } from './game/status';
+import { useTaskRunner } from './game/TaskRunner';
+import { useTasks } from '../state/tasks';
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
@@ -200,6 +202,12 @@ export default function Game() {
     [pickHome],
   );
 
+  // M2: the action queue. Tasks walk first (3D home on screen), then start; see game/TaskRunner.ts.
+  const suspendHomeNow = (overlay === 'sim' && simTab === 'profile') || overlay === 'look';
+  const homeLive = showHome && Boolean(p) && furnitureOf === p?.id && !suspendHomeNow;
+  const runner = useTaskRunner(state, homeLive);
+  const taskPhase = useTasks((s) => s.current?.phase ?? null);
+
   const layoutId = p ? homeLayoutFor(p.housing_id, (state && byId[state.location.id]?.scene) ?? state?.location.scene) : 'face_me';
   const furnished = useMemo(() => furnishLayout(LAYOUTS[layoutId], furniture), [layoutId, furniture]);
 
@@ -217,7 +225,11 @@ export default function Game() {
   // full-screen panels and overlays.
   const coveredMap = Boolean(panel || (overlay && !suspendHome));
   const layout = layoutId;
-  const walkShare = Math.max(0, Number(cfg('home.walk_max_share_pct', 15)) || 0) / 100;
+  const walk = {
+    speed: Math.min(4, Math.max(0.5, Number(cfg('sim.walk_speed', 1.9)) || 1.9)),
+    robeMult: Math.min(1.5, Math.max(0.3, Number(cfg('sim.robe_speed_mult', 0.7)) || 0.7)),
+    tiredSlow: Math.min(0.8, Math.max(0, Number(cfg('sim.tired_slowdown', 0.18)))),
+  };
   const dockActive: DockId | null = overlay === 'phone' ? 'phone' : overlay === 'buy' ? 'buy' : showHome ? 'home' : 'map';
   return (
     <div className={`game${skyNight ? ' is-night' : ''}${clean ? ' is-clean' : ''}${showHome ? ' is-home' : ' is-map'}`}>
@@ -228,10 +240,14 @@ export default function Game() {
           <HomeView
             layoutId={layout}
             layout={furnished}
-            walkShare={walkShare}
+            walk={walk}
             avatar={p.avatar}
             busy={busyGroup}
-            walkLock={busyActive ? `${busyLabel ?? 'Busy'} first, then you can walk` : null}
+            task={runner.homeTask}
+            onTaskArrive={runner.onTaskArrive}
+            onTaskCancel={runner.onTaskCancel}
+            onWalkDone={runner.onWalkDone}
+            walkLock={busyActive ? `${busyLabel ?? 'Busy'} first, then you can walk` : taskPhase === 'starting' ? 'Starting, one moment' : null}
             mood={simPosture(p)}
             hour={hourF}
             suspended={suspendHome}
@@ -288,7 +304,7 @@ export default function Game() {
               <span className="where-chip__go">Open <Icon name="chevronUp" size={14} /></span>
             </button>
           )}
-          {!clean && showHome && status.free && (
+          {!clean && showHome && (
             <button type="button" className="home-chip" onClick={() => select(here.id)}>
               <span aria-hidden>🏠</span> <span className="home-chip__name">{here.name.replace(/ \(.*\)$/, '')}</span>
               <span className="home-chip__go">Things to do <Icon name="chevronUp" size={13} /></span>

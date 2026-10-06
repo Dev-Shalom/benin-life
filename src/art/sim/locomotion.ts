@@ -29,7 +29,8 @@ export interface Gait {
   turnRate: number;
 }
 
-export const DEFAULT_GAIT: Gait = { cruise: 1.15, brake: 1.5, turnRate: 4.2 };
+// M2: a brisk default walk (the home passes the admin-tunable sim.walk_speed; see anim.gaitFor)
+export const DEFAULT_GAIT: Gait = { cruise: 1.9, brake: 2.2, turnRate: 5 };
 
 export function makeWalker(pos: P2 = [0, 0], yaw = 0): Walker {
   return { pos: [pos[0], pos[1]], yaw, speed: 0, accel: 0, path: [], seg: 0, faceTo: null, turning: false };
@@ -57,6 +58,15 @@ export function place(w: Walker, pos: P2, yaw: number) {
   w.accel = 0;
   w.path = [];
   w.seg = 0;
+  w.faceTo = null;
+  w.turning = false;
+}
+
+/** Stop walking as soon as an eased stop allows (M2: a cancelled walk to a task). Keeps the speed, so
+ * stepWalker bleeds it off over a few frames instead of freezing mid-stride. */
+export function stopWalk(w: Walker) {
+  w.path = [w.pos];
+  w.seg = 1;
   w.faceTo = null;
   w.turning = false;
 }

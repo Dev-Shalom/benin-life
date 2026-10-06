@@ -1,13 +1,15 @@
 // "Things to do": activities offered at this location's scene. P1-SHELL.
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { rpc, errorMessage } from '../lib/api';
-import { useGameClock } from '../lib/clock';
+import { serverNow, useGameClock } from '../lib/clock';
 import { activitySeconds, secondsLabel, useActionConfig } from '../lib/live';
 import { naira } from '../lib/format';
 import { NEED_KEYS, NEED_META, type NeedKey } from '../lib/pidgin';
 import type { PanelProps } from '../lib/types';
-import { Button, EmptyState, Icon, toast } from '../ui';
+import { Button, EmptyState, Icon } from '../ui';
+import { useTasks } from '../state/tasks';
+import { queueTask } from '../screens/game/TaskRunner';
+import { deriveStatus } from '../screens/game/status';
 import { hasFurnitureFor, useCatalog } from '../state/catalog';
 
 interface Activity {
@@ -49,10 +51,10 @@ function EffectChips({ effects }: { effects: Record<string, number> | null }) {
   );
 }
 
-export default function ActivitiesPanel({ state, location, refresh, close }: PanelProps) {
+export default function ActivitiesPanel({ state, location, close }: PanelProps) {
   const [list, setList] = useState<Activity[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const queued = useTasks((s) => (s.current ? 1 : 0) + s.queue.length);
   const { clock } = useGameClock(5000);
   const cfg = useActionConfig();
   const atHome = state.profile.home_location_id === location.id;
@@ -79,18 +81,14 @@ export default function ActivitiesPanel({ state, location, refresh, close }: Pan
     };
   }, [location.scene, atHome]);
 
-  const doIt = async (a: Activity) => {
-    setBusyId(a.id);
-    try {
-      const res = await rpc<{ message?: string }>('do_activity', { p_activity: a.id });
-      toast(res?.message ?? 'Done!', 'good');
-      await refresh();
-      close(); // like the home furniture sheet: show the city and the progress ring
-    } catch (e) {
-      toast(errorMessage(e), 'bad');
-    } finally {
-      setBusyId(null);
-    }
+  // M2: every task goes through the queue (home ones walk to their furniture first; others start at
+  // once). Idle: close to show the walk / the progress pill; busy: line it up and keep the list open.
+  const status = deriveStatus(state, serverNow());
+  const idle = status.free && queued === 0;
+  const blocked = status.traveling || status.jailLeft > 0 || status.hospLeft > 0 || state.profile.location_id !== location.id;
+  const doIt = (a: Activity) => {
+    const r = queueTask(a, location.id);
+    if (r === 'now') close();
   };
 
   // home actions that need a piece of furniture (TV, sofa, fridge, stool) show only with that piece
@@ -116,7 +114,7 @@ export default function ActivitiesPanel({ state, location, refresh, close }: Pan
       {shown.map((a) => {
         const nightLocked = a.night_only && !clock.is_night;
         const broke = a.cost > state.profile.cash;
-        const disabled = nightLocked || broke;
+        const disabled = nightLocked || broke || blocked;
         return (
           <article key={a.id} className={`act${disabled ? ' is-locked' : ''}`}>
             <div className="act__top">
@@ -129,9 +127,9 @@ export default function ActivitiesPanel({ state, location, refresh, close }: Pan
                   {a.night_only && <span className="chip warn"><Icon name="moon" size={12} /> Night only</span>}
                 </div>
               </div>
-              <Button size="sm" variant={a.cost > 0 ? 'primary' : 'green'} loading={busyId === a.id}
-                disabled={disabled || (busyId !== null && busyId !== a.id)} onClick={() => void doIt(a)}>
-                {nightLocked ? 'Night only' : broke ? 'Not enough cash' : 'Do it'}
+              <Button size="sm" variant={a.cost > 0 ? 'primary' : 'green'}
+                disabled={disabled} onClick={() => doIt(a)}>
+                {nightLocked ? 'Night only' : broke ? 'Not enough cash' : idle ? 'Do it' : 'Add to queue'}
               </Button>
             </div>
             <EffectChips effects={a.effects} />

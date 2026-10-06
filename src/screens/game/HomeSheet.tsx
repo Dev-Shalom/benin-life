@@ -1,17 +1,18 @@
 // Tapped furniture in the 3D home -> the matching home activities (activities table, home_only,
-// grouped by ACTIVITY_GROUP) -> do_activity. The Sim walks to the piece when the activity starts.
+// grouped by ACTIVITY_GROUP) -> the M2 action queue: the Sim walks to the piece first, and do_activity
+// (the server timer) starts on arrival (game/TaskRunner.ts). While something runs, "Add to queue".
 import { useEffect, useMemo, useState } from 'react';
 import { activityGroup, GROUP_META, type HomeGroup } from '../../art/home3d';
-import { rpc, errorMessage } from '../../lib/api';
 import { useGameClock } from '../../lib/clock';
 import { activitySeconds, secondsLabel, useActionConfig } from '../../lib/live';
 import { naira } from '../../lib/format';
 import { NEED_KEYS, NEED_META, type NeedKey } from '../../lib/pidgin';
 import type { GameState } from '../../lib/types';
 import { hasFurnitureFor, useCatalog, type ActivityRow } from '../../state/catalog';
-import { useGame } from '../../state/game';
+import { useTasks } from '../../state/tasks';
+import { queueTask } from './TaskRunner';
 import { useUi } from '../../state/ui';
-import { Button, Icon, Sheet, toast } from '../../ui';
+import { Button, Icon, Sheet } from '../../ui';
 import type { PlayerStatus } from './status';
 
 /** Which groups a tapped piece shows (relaxing spots also list TV/radio). */
@@ -51,13 +52,12 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
   const pick = useUi((s) => s.homePick);
   const pickHome = useUi((s) => s.pickHome);
   const setOverlay = useUi((s) => s.setOverlay);
-  const refresh = useGame((s) => s.refresh);
+  const queued = useTasks((s) => (s.current ? 1 : 0) + s.queue.length);
   const activities = useCatalog((s) => s.activities);
   const loadActivities = useCatalog((s) => s.loadActivities);
   const furniture = useCatalog((s) => s.furniture);
   const { clock } = useGameClock(5000);
   const cfg = useActionConfig();
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [last, setLast] = useState(pick);
   if (pick && pick !== last) setLast(pick);
   const shown = pick ?? last;
@@ -79,18 +79,12 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
   );
 
   const close = () => pickHome(null);
-  const doIt = async (a: ActivityRow) => {
-    setBusyId(a.id);
-    try {
-      const res = await rpc<{ message?: string }>('do_activity', { p_activity: a.id });
-      toast(res?.message ?? 'Done!', 'good');
-      close();
-      await refresh();
-    } catch (e) {
-      toast(errorMessage(e), 'bad');
-    } finally {
-      setBusyId(null);
-    }
+  // idle: close the sheet so the walk shows; busy: line it up and keep the sheet open for more
+  const idle = status.free && queued === 0;
+  const blocked = status.traveling || status.jailLeft > 0 || status.hospLeft > 0;
+  const doIt = (a: ActivityRow) => {
+    const r = queueTask(a, state.location.id);
+    if (r === 'now') close();
   };
 
   return (
@@ -104,7 +98,7 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
           </div>
         </div>
       }>
-      {status.blockedReason && <p className="travel-blocked"><Icon name="info" size={16} /> {status.blockedReason}</p>}
+      {blocked && status.blockedReason && <p className="travel-blocked"><Icon name="info" size={16} /> {status.blockedReason}</p>}
       {group === 'wardrobe' ? (
         <div className="stack">
           <p className="muted">Try on a new look. Your outfit, hair and accessories can all change.</p>
@@ -119,7 +113,7 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
           {list.map((a) => {
             const nightLocked = a.night_only && !clock.is_night;
             const broke = a.cost > state.profile.cash;
-            const disabled = nightLocked || broke || !status.free;
+            const disabled = nightLocked || broke || blocked;
             return (
               <article key={a.id} className={`act${nightLocked || broke ? ' is-locked' : ''}`}>
                 <div className="act__top">
@@ -130,9 +124,8 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
                       <span className="chip">{a.cost > 0 ? naira(a.cost) : 'Free'}</span>
                     </div>
                   </div>
-                  <Button size="sm" variant="green" loading={busyId === a.id}
-                    disabled={disabled || (busyId !== null && busyId !== a.id)} onClick={() => void doIt(a)}>
-                    {nightLocked ? 'Night only' : broke ? 'Not enough cash' : 'Do it'}
+                  <Button size="sm" variant="green" disabled={disabled} onClick={() => doIt(a)}>
+                    {nightLocked ? 'Night only' : broke ? 'Not enough cash' : idle ? 'Do it' : 'Add to queue'}
                   </Button>
                 </div>
                 <Effects effects={a.effects} />

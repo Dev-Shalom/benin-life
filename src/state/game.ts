@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { RealtimeChannel, Session } from '@supabase/supabase-js';
 import { supabase, supabaseConfigured } from '../lib/supabase';
 import { startPresence, stopPresence } from './presence';
+import { useTasks } from './tasks';
 import { playCue } from '../lib/sound';
 import { rpc, errorMessage, GameError } from '../lib/api';
 import { syncServerTime } from '../lib/clock';
@@ -170,6 +171,7 @@ export const useGame = create<GameStore>((set, get) => ({
 
   signOut: async () => {
     stopLive();
+    useTasks.getState().clear(); // M2: the action queue never outlives the session
     await supabase.auth.signOut();
     set({ state: null, status: 'idle', events: [], unread: 0, error: null });
   },
@@ -236,6 +238,7 @@ export function initAuth(): void {
     useGame.setState({ session, authReady: true });
     if (uid !== prevUid) {
       stopLive();
+      useTasks.getState().clear();
       useGame.setState({ state: null, status: uid ? 'loading' : 'idle', events: [], unread: 0, error: null });
       if (uid) void useGame.getState().refresh();
     }

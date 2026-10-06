@@ -344,6 +344,214 @@ div.wish-chip {
   transform: scale(0.96);
 }
 
+/* M2 task pill + queue (left column, under the top bar; the centre stays clear) */
+.task-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  width: 248px;
+  max-width: 100%;
+}
+.task-col > * {
+  pointer-events: auto;
+}
+.task-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 6px 6px 6px;
+  border-radius: 18px;
+  background: var(--glass-strong);
+  color: var(--ink);
+  box-shadow: var(--e2), inset 0 0 0 1px var(--line);
+  animation: bl-rise 200ms var(--ease-out);
+}
+.task-pill__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--green-50);
+  font-family: var(--font-emoji);
+  font-size: 16px;
+}
+.task-pill.is-walking .task-pill__icon,
+.task-pill.is-starting .task-pill__icon {
+  background: var(--surface-2);
+}
+.task-pill__body {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.task-pill__row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.task-pill__name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-pill__time {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.task-pill__sub {
+  font-size: 11px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.task-pill__bar {
+  display: block;
+  height: 3px;
+  border-radius: 9px;
+  background: #e6ebf1;
+  overflow: hidden;
+}
+.task-pill__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--green-500);
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+/* walking / starting: the timer has not started yet; a soft sweep says "on the way" */
+.task-pill__bar.is-waiting > span {
+  width: 35%;
+  background: var(--green-200, #a7e3c4);
+  transform: none;
+  animation: task-wait 1.2s cubic-bezier(0.77, 0, 0.175, 1) infinite alternate;
+}
+@keyframes task-wait {
+  from { transform: translateX(-10%); }
+  to { transform: translateX(200%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .task-pill__bar.is-waiting > span {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}
+.task-pill__x,
+.task-chip__btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: transform 140ms var(--ease-out), background-color 140ms ease;
+}
+.task-pill__x:active,
+.task-chip__btn:active {
+  transform: scale(0.9);
+}
+@media (hover: hover) and (pointer: fine) {
+  .task-pill__x:hover,
+  .task-chip__btn:hover {
+    background: var(--red-50);
+    color: var(--red-600);
+  }
+}
+.task-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0 0 0 10px;
+  list-style: none;
+  max-width: 100%;
+}
+.task-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 2px 3px 2px 3px;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: var(--e1), inset 0 0 0 1px var(--line);
+  animation: bl-rise 180ms var(--ease-out);
+}
+.task-chip__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-family: var(--font-emoji);
+  font-size: 12px;
+}
+.task-chip__name {
+  min-width: 0;
+  max-width: 130px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 2px;
+}
+.task-chip__btn {
+  width: 22px;
+  height: 22px;
+}
+@media (max-width: 599px) {
+  .task-col {
+    width: 200px;
+  }
+  .task-pill {
+    padding: 4px;
+    gap: 6px;
+    border-radius: 16px;
+  }
+  .task-pill__icon {
+    width: 26px;
+    height: 26px;
+    font-size: 14px;
+  }
+  .task-pill__name {
+    font-size: 12px;
+  }
+  .task-pill__x {
+    width: 24px;
+    height: 24px;
+  }
+  .task-chip__name {
+    max-width: 110px;
+  }
+}
+
 /* map view: the rail folds into one summary chip so it does not cover the city */
 .rail-summary {
   display: inline-flex;

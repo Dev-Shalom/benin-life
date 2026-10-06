@@ -27,11 +27,11 @@ import {
 import type { AvatarConfig } from '../../../lib/types';
 import { avatarKey } from '../../avatar3d/catalog';
 import { buildCharacter } from '../../avatar3d/engine/character';
-import { applyPose, capturePose, cruiseSpeed, mixPose, poseGait, poseIdle, poseLife, POSE_SIZE, resetRig, stepLength } from '../../avatar3d/engine/anim';
+import { applyPose, capturePose, DEFAULT_WALK, gaitFor, legRotationDiff, mixPose, poseGait, poseIdle, poseLife, POSE_SIZE, resetRig, stepLength } from '../../avatar3d/engine/anim';
 import { makeShadow } from '../../avatar3d/engine/scene';
 import { GROUP_META, itemGroup, KINDS, LAYOUTS, pieceFor, type FurnitureItem, type HomeGroup, type HomeLayout, type HomeLayoutId, type HomePose } from '../model';
 import { buildGrid, footprint, planPath, randomFree, toLayout, type P2 } from '../nav';
-import { angleTo, DEFAULT_GAIT, makeWalker, place, stepWalker, walkPath, type Gait, type Walker } from '../../sim/locomotion';
+import { angleTo, DEFAULT_GAIT, makeWalker, place, stepWalker, stopWalk, walkPath, type Gait, type Walker } from '../../sim/locomotion';
 import { homeLight } from './light';
 import { mixHex } from '../../../lib/daylight';
 import { poseCook, poseLie, poseScrub, poseSit, sitRootY } from './poses';
@@ -54,11 +54,19 @@ export interface HomeSceneProps {
   /** The layout with the player's own furniture (furnishLayout); keep it memoised. Default: LAYOUTS[layoutId]. */
   layout?: HomeLayout;
   avatar: AvatarConfig;
-  /** The home activity running now (key changes with each new run), or null. `seconds` = real seconds
-   * left; the Sim only walks to the piece when the walk fits in `walkShare` of that, else it is there at once. */
+  /** The home activity running now on the server (key changes with each new run), or null. M2: the Sim
+   * normally already stands at the piece (it walked there before the action started); if not, it walks. */
   busy: { group: HomeGroup; key: string; activity?: string; seconds?: number } | null;
-  /** Largest share of an action the walk to the furniture may take (0-1, default 0.15). */
-  walkShare?: number;
+  /** M2: a queued task the Sim should walk to now (before its action starts), or null. The scene calls
+   * `onTaskArrive(key)` on arrival (at once when the task has no piece of furniture). */
+  task?: { key: string; activity: string; group: HomeGroup } | null;
+  onTaskArrive?: (key: string) => void;
+  /** M2: a floor tap stopped the walk to `task` (the player took over). */
+  onTaskCancel?: (key: string) => void;
+  /** M2: a walk the player asked for (floor tap) ended. */
+  onWalkDone?: () => void;
+  /** M2: walk tuning from config (sim.walk_speed, sim.robe_speed_mult, sim.tired_slowdown). */
+  walk?: { speed: number; robeMult: number; tiredSlow: number };
   /** Game hour as a float (14.5 = 2:30 pm). */
   hour: number;
   paused?: boolean;
@@ -125,15 +133,17 @@ interface Actor {
   mode: 'idle' | 'walk' | 'pose';
   pose: HomePose;
   item: FurnitureItem | null;
-  /** After the walk: what to do on arrival. */
-  then: 'idle' | 'pose';
+  /** After the walk: what to do on arrival ('task' = report the arrival so the action can start). */
+  then: 'idle' | 'pose' | 'task';
+  /** The task being walked to (M2), or null. */
+  taskKey: string | null;
+  /** The player asked for this walk (floor tap): report when it ends. */
+  manual: boolean;
   nextWander: number;
   /** Walk-cycle phase in cycles (advanced by distance, so the feet don't slide). */
   phase: number;
   /** Smoothed walk weight 0..1 (idle <-> walk blend). */
   gait: number;
-  /** Speed scale for this walk (>1 = hurrying to a short action). */
-  hurry: number;
   /** performance.now()/1000 when the Sim last came to a stop (fidgets fade in after). */
   idleSince: number;
   /** Skip the pose blend on the next change (a far jump: placed at once). */
@@ -359,8 +369,14 @@ function House(props: HomeSceneProps & {
     invalidate();
     return () => ch.dispose();
   }, [ch, actorObj, invalidate]);
-  // the gait for this outfit: short steps in a wrapper walk slower, never faster than the feet
-  const gait = useMemo<Gait>(() => ({ ...DEFAULT_GAIT, cruise: cruiseSpeed(ch, DEFAULT_GAIT.cruise) }), [ch]);
+  // M2 the gait for this outfit (admin-tunable speed; a wrapper walks slower with short quick steps).
+  // Stride and cadence grow with the speed; the phase follows the distance, so the feet never slide.
+  const walkSpeed = props.walk?.speed ?? DEFAULT_WALK.speed;
+  const robeMult = props.walk?.robeMult ?? DEFAULT_WALK.robeMult;
+  const tune = useMemo(() => gaitFor(ch, { speed: walkSpeed, robeMult }), [ch, walkSpeed, robeMult]);
+  const gait = useMemo<Gait>(() => ({ ...DEFAULT_GAIT, cruise: tune.cruise, brake: 1.5 * Math.max(1, tune.cruise / 1.15) }), [tune]);
+  const propsRef = useRef(props);
+  propsRef.current = props;
   // pose buffers (idle, walk, blend source, last frame) and the last frame's placement
   const buf = useMemo(
     () => ({
@@ -373,6 +389,9 @@ function House(props: HomeSceneProps & {
       havePrev: false,
       blendT0: -1,
       key: '',
+      /** M2 leg check: the blend back from a task pose is under way (dev check when it ends). */
+      fromTask: false,
+      check: new Float32Array(POSE_SIZE),
     }),
     // a new character = new buffers (no blend from the old body)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -404,7 +423,6 @@ function House(props: HomeSceneProps & {
     const a = actorRef.current;
     const mem = memory && memory.layout === L.id && performance.now() - memory.at < 10 * 60_000 ? memory : null;
     a.item = null;
-    a.hurry = 1;
     a.idleSince = nowS();
     if (mem) {
       place(a.w, mem.pos, mem.yaw);
@@ -436,17 +454,19 @@ function House(props: HomeSceneProps & {
   }, [L, actorRef]);
 
   /** Walk to a point in layout space (client-side only). Returns where the walk ends. */
-  const walkTo = (to: P2, opts: { snap?: boolean; faceTo?: number | null; then?: 'idle' | 'pose'; hurry?: number } = {}) => {
+  const walkTo = (to: P2, opts: { snap?: boolean; faceTo?: number | null; then?: 'idle' | 'pose' | 'task'; manual?: boolean } = {}) => {
     const a = actorRef.current;
     const plan = planPath(grid, a.w.pos, to, { snapEnd: opts.snap, round: 0.22 });
     walkPath(a.w, plan.points, opts.faceTo ?? null);
     a.mode = 'walk';
     a.then = opts.then ?? 'idle';
-    a.hurry = opts.hurry ?? 1;
+    a.manual = Boolean(opts.manual);
+    if (a.then !== 'task') a.taskKey = null;
     return plan;
   };
 
-  // a home activity started or ended
+  // a home activity started or ended (M2: no more "placed there" or hurried walks; the Sim walked to
+  // the piece before the action started, so it normally just sits / lies down where it stands)
   const busyKey = busy ? `${busy.group}:${busy.key}` : null;
   const firstBusy = useRef(true);
   useEffect(() => {
@@ -456,6 +476,7 @@ function House(props: HomeSceneProps & {
     if (busy) {
       const item = pieceFor(L, busy.activity, busy.group);
       a.pose = GROUP_META[busy.group].pose;
+      a.taskKey = null;
       if (!item) {
         a.mode = 'pose';
         a.item = null;
@@ -466,18 +487,16 @@ function House(props: HomeSceneProps & {
         const from = a.mode === 'pose' && a.item ? spotOf(a.item).p : a.w.pos;
         if (a.mode === 'pose') place(a.w, from, a.w.yaw);
         a.item = item;
-        // short actions start at once: the walk may take at most `walkShare` of the action; a walk
-        // up to 1.4x that hurries; a longer one is skipped (the Sim is placed there)
-        const plan = planPath(grid, from, s.p, { round: 0.22 });
-        const share = Math.max(0, props.walkShare ?? 0.15);
-        const walkS = plan.length / gait.cruise;
-        const budget = busy.seconds === undefined ? Infinity : busy.seconds * share;
-        if (!first && walkS <= budget * 1.4) {
-          walkTo(s.p, { faceTo: s.yaw, then: 'pose', hurry: Math.max(1, Math.min(1.4, walkS / Math.max(0.01, budget))) });
+        const far = Math.hypot(from[0] - s.p[0], from[1] - s.p[1]) > 0.35;
+        if (first) {
+          // already running when the home opened: be there already
+          a.noBlend = true;
+          place(a.w, s.p, s.yaw);
+          a.mode = 'pose';
+        } else if (far) {
+          // started somewhere else (another device, the map): a real walk, then the pose
+          walkTo(s.p, { faceTo: s.yaw, then: 'pose' });
         } else {
-          // already running when the home opened, or a short action: be there already. A near
-          // spot blends there (no pop); a far one is placed at once.
-          a.noBlend = first || plan.length > 1.6;
           place(a.w, s.p, s.yaw);
           a.mode = 'pose';
         }
@@ -499,6 +518,49 @@ function House(props: HomeSceneProps & {
     invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busyKey, L, grid]);
+
+  // M2: walk to the next queued task; the action (and its timer) starts only when the Sim gets there
+  const task = props.task ?? null;
+  const taskKey = task?.key ?? null;
+  useEffect(() => {
+    const a = actorRef.current;
+    if (!task) {
+      // cancelled (the x on the pill): stop where the Sim is, with an eased stop
+      if (a.mode === 'walk' && a.then === 'task') {
+        stopWalk(a.w);
+        a.then = 'idle';
+      }
+      a.taskKey = null;
+      invalidate();
+      return;
+    }
+    if (a.taskKey === task.key) return;
+    const item = pieceFor(L, task.activity, task.group);
+    if (a.mode === 'pose') {
+      // still holding the last task's pose (its end not seen yet): stand up beside that piece first
+      if (a.item) place(a.w, spotOf(a.item).p, a.w.yaw);
+      a.mode = 'idle';
+      a.item = null;
+    }
+    if (!item) {
+      // nothing to walk to: start at once
+      a.taskKey = null;
+      propsRef.current.onTaskArrive?.(task.key);
+      return;
+    }
+    const s = spotOf(item);
+    a.taskKey = task.key;
+    a.nextWander = performance.now() + 45000;
+    if (Math.hypot(a.w.pos[0] - s.p[0], a.w.pos[1] - s.p[1]) < 0.05 && Math.abs(angleTo(a.w.yaw, s.yaw)) < 0.05 && a.mode !== 'walk') {
+      a.taskKey = null;
+      propsRef.current.onTaskArrive?.(task.key);
+      return;
+    }
+    walkTo(s.p, { faceTo: s.yaw, then: 'task' });
+    a.taskKey = task.key;
+    invalidate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskKey, L, grid]);
 
   // ---- S2 orbit camera: circles the whole island; one zoom that fits every angle (no pumping)
   const orbitOn = props.orbit !== undefined;
@@ -597,7 +659,7 @@ function House(props: HomeSceneProps & {
     const tired = mood?.tired ?? 0;
     const happy = mood?.happy ?? 0;
 
-    if (a.mode === 'idle' && !busy && !props.walkLock && performance.now() > a.nextWander && now - a.idleSince > 6) {
+    if (a.mode === 'idle' && !busy && !props.task && !props.walkLock && performance.now() > a.nextWander && now - a.idleSince > 6) {
       const p = randomFree(grid, rnd, [0.4, 0.4, L.w - 0.4, L.d - 0.4]);
       a.nextWander = performance.now() + 16000 + rnd() * 18000;
       if (p) walkTo(p);
@@ -605,14 +667,25 @@ function House(props: HomeSceneProps & {
 
     // ---- locomotion
     if (a.mode === 'walk') {
-      const r = stepWalker(a.w, step, gait, a.hurry * (1 - 0.18 * tired + 0.05 * happy));
+      const tiredSlow = Math.max(0, Math.min(0.8, props.walk?.tiredSlow ?? 0.18));
+      const r = stepWalker(a.w, step, gait, 1 - tiredSlow * tired + 0.05 * happy);
       // the feet keep pace with the ground: phase by distance over the current stride
-      a.phase += r.moved / (2 * stepLength(ch, Math.max(0.25, a.gait)));
+      a.phase += r.moved / (2 * stepLength(ch, Math.max(0.25, a.gait), tune.strideScale));
       // turning on the spot: small shuffling steps
       if (a.w.turning) a.phase += (r.turned * 0.16) / (2 * stepLength(ch, 0.3));
       if (r.arrived) {
-        a.mode = a.then === 'pose' ? 'pose' : 'idle';
+        const then = a.then;
+        const key = a.taskKey;
+        const manual = a.manual;
+        a.mode = then === 'pose' ? 'pose' : 'idle';
+        a.then = 'idle';
+        a.manual = false;
         a.idleSince = now;
+        if (then === 'task' && key) {
+          a.taskKey = null;
+          // defer out of the frame loop (the parent starts the action: a store update + RPC)
+          window.setTimeout(() => propsRef.current.onTaskArrive?.(key), 0);
+        } else if (manual) window.setTimeout(() => propsRef.current.onWalkDone?.(), 0);
       }
     }
     const gaitTarget = a.mode === 'walk' ? Math.max(Math.min(1, a.w.speed / gait.cruise), a.w.turning ? 0.3 : 0) : 0;
@@ -653,12 +726,12 @@ function House(props: HomeSceneProps & {
     } else if (a.gait <= 0) {
       poseLife(ch, t, salt, life);
     } else if (a.gait >= 0.995) {
-      poseGait(ch, a.phase, 1, life);
+      poseGait(ch, a.phase, 1, { ...life, strideScale: tune.strideScale });
     } else {
       // speeding up / slowing down: idle and walk mixed by the gait weight
       poseLife(ch, t, salt, life);
       capturePose(ch, buf.idle);
-      poseGait(ch, a.phase, a.gait, life);
+      poseGait(ch, a.phase, a.gait, { ...life, strideScale: tune.strideScale });
       capturePose(ch, buf.walk);
       const g = a.gait;
       applyPose(ch, mixPose(buf.walk, buf.idle, buf.walk, g * g * (3 - 2 * g)));
@@ -667,6 +740,7 @@ function House(props: HomeSceneProps & {
     // ---- blend between states (sit down, lie down, stand up, back to idle after a task)
     const stateKey = a.mode === 'pose' ? `pose:${a.pose}:${a.item?.id ?? ''}` : 'free';
     if (stateKey !== buf.key) {
+      buf.fromTask = buf.key.startsWith('pose:') && stateKey === 'free';
       if (buf.havePrev && !a.noBlend && !view.current.reduced) {
         buf.from.set(buf.prev);
         for (let i = 0; i < 6; i++) buf.fromXf[i] = buf.prevXf[i];
@@ -680,8 +754,21 @@ function House(props: HomeSceneProps & {
     let blending = false;
     if (buf.blendT0 >= 0) {
       const u = (now - buf.blendT0) / BLEND_S;
-      if (u >= 1) buf.blendT0 = -1;
-      else {
+      if (u >= 1) {
+        buf.blendT0 = -1;
+        // M2 leg check (dev): back from a task pose and standing, the legs must be exactly the idle pose
+        if (import.meta.env.DEV && buf.fromTask && a.mode === 'idle' && a.gait <= 0) {
+          capturePose(ch, buf.walk);
+          poseLife(ch, t, salt, life);
+          capturePose(ch, buf.check);
+          applyPose(ch, buf.walk);
+          const diff = legRotationDiff(buf.walk, buf.check);
+          (window as { __legCheck?: { diff: number; ok: boolean; at: number }[] }).__legCheck ??= [];
+          (window as unknown as { __legCheck: { diff: number; ok: boolean; at: number }[] }).__legCheck.push({ diff, ok: diff < 1e-5, at: performance.now() });
+          if (diff >= 1e-5) console.error(`[home] legs not back to idle after a task pose (max diff ${diff.toFixed(4)} rad)`);
+        }
+        buf.fromTask = false;
+      } else {
         blending = true;
         const e = u * u * (3 - 2 * u); // ease in-out
         capturePose(ch, buf.walk);
@@ -795,7 +882,7 @@ function House(props: HomeSceneProps & {
     onPick?.(item);
     // walk over while the sheet opens (client-side only; a long walk is left for the action rule)
     const a = actorRef.current;
-    if (props.walkLock || a.mode === 'pose') return;
+    if (props.walkLock || props.task || a.mode === 'pose') return;
     const s = spotOf(item);
     const plan = planPath(grid, a.w.pos, s.p, { round: 0.22 });
     if (plan.length / gait.cruise <= PREWALK_MAX_S && plan.length > 0.15) {
@@ -813,9 +900,15 @@ function House(props: HomeSceneProps & {
       hint(e, props.walkLock || 'Busy right now');
       return;
     }
+    // a tap while walking to a task: the player takes over, that task is dropped (M2)
+    if (a.mode === 'walk' && a.then === 'task' && a.taskKey) {
+      const key = a.taskKey;
+      a.taskKey = null;
+      props.onTaskCancel?.(key);
+    }
     // layout space = world + the group's centring offset
     const to: P2 = [e.point.x + cx, e.point.z + cz];
-    const plan = walkTo(to, { snap: true });
+    const plan = walkTo(to, { snap: true, manual: true });
     a.nextWander = performance.now() + 45000;
     tapMark.position.set(plan.end[0], 0.035, plan.end[1]);
     tapMark.visible = true;
@@ -862,10 +955,11 @@ export default function HomeScene(props: HomeSceneProps) {
     pose: 'stand',
     item: null,
     then: 'idle',
+    taskKey: null,
+    manual: false,
     nextWander: 0,
     phase: 0,
     gait: 0,
-    hurry: 1,
     idleSince: 0,
     noBlend: false,
     hot: false,

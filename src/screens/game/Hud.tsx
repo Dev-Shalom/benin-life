@@ -22,6 +22,7 @@ import { Icon, toast } from '../../ui';
 import type { PlayerStatus } from './status';
 import { nearestWorkplace } from '../../api/careers';
 import { bestFood } from '../../api/shops';
+import { TaskPill } from './TaskPill';
 
 /** Players online: the live Realtime Presence count (S1, no polling); while presence is not synced
  *  (Realtime down or still joining) falls back to `players_online()` (last_seen) every 60 s. */
@@ -236,6 +237,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
     const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...(protectedNow ? ['🛡️'] : [])];
     return (
       <div className="left-rail is-compact">
+        <TaskPill state={state} status={status} />
         <button type="button" className={`rail-summary${dadReady ? ' has-dad' : ''}`} onClick={() => setOpen(true)} aria-expanded={false}
           aria-label={`Tips and status (${count}). Show`}>
           <span className="rail-summary__icons" aria-hidden>
@@ -249,6 +251,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
 
   return (
     <div className={`left-rail${clean ? ' is-clean' : ''}${compact ? ' is-compact' : ''}`}>
+      <TaskPill state={state} status={status} />
       {compact && open && !clean && (
         <button type="button" className="rail-summary is-open" onClick={() => setOpen(false)} aria-expanded aria-label="Hide tips and status">
           <span className="rail-summary__label">Hide</span>
