@@ -1,4 +1,4 @@
-// Phone "ChopNow" app (V1-4): order food and drinks to wherever you are, at a delivery markup.
+// Phone "Chowdeck" app (V1-4): order food and drinks to wherever you are, at a delivery markup.
 // Paid by transfer (bank) first, the rest in cash. The order lands straight in the Bag.
 import { useEffect, useState } from 'react';
 import { foodMenu, foodOrder } from '../../../api/shops';

@@ -36,6 +36,7 @@ import { roadRoute } from '../route';
 import { buildCity, kekeGeometry, pinGeometry, radialTexture, ringGeometry, routeGeometry } from './build';
 import { getCityLayout } from './layout';
 import { cityLight } from './light';
+import { mixHex, smoothstep } from '../../../lib/daylight';
 import { at, type Pt } from '../../map/mapGeo';
 import '../city3d.css';
 
@@ -198,8 +199,8 @@ function City(props: InnerProps) {
     g.add(hemi, sun, sun.target);
     return { g, hemi, sun };
   }, []);
-  const hourKey = Math.round(hour * 6);
-  const lt = useMemo(() => cityLight(hourKey / 6), [hourKey]);
+  const hourKey = Math.round(hour * 60); // S1: re-light every minute (continuous curve, one redraw)
+  const lt = useMemo(() => cityLight(hourKey / 60), [hourKey]);
   useEffect(() => {
     lights.hemi.color.set(lt.hemiSky);
     lights.hemi.groundColor.set(lt.hemiGround);
@@ -211,7 +212,11 @@ function City(props: InnerProps) {
     city.mats.water.color.set(lt.water);
     city.mats.bulbs.color.set(lt.bulbs);
     city.mats.shadow.opacity = 0.16 * (1 - lt.dark * 0.6);
-    for (const o of city.nightOnly) o.visible = lt.dark > 0.45;
+    // street-light pools fade in/out; window bands go from unlit glass to warm light (no pop)
+    const glowK = smoothstep(0.08, 0.85, lt.dark);
+    for (const o of city.nightOnly) o.visible = lt.dark > 0.08;
+    city.mats.pools.opacity = 0.8 * glowK;
+    city.mats.windows.color.set(mixHex('#56606e', '#ffdc8a', glowK));
     const sky = new Color(lt.sky);
     scene.background = sky;
     if (!scene.fog) scene.fog = new Fog(sky, 50, 200);

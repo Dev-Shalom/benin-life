@@ -23,7 +23,7 @@ supabase/migrations/
   20261005000500_bladder.sql            R4 (bladder need, toilet/TV/radio activities, players_online — docs/HUD_HOME.md)
   20261005000600_r6_fixes.sql           R6 (English server strings, no brand names)
   20261005000700_careers.sql            V1-3 (career tracks/levels, bronze_tech_hub, jobs RPCs — docs/CAREERS.md)
-  20261005000800_shops.sql              V1-4 (items, shops, Bag, ChopNow, rent ON + pay_rent — docs/SHOPS.md)
+  20261005000800_shops.sql              V1-4 (items, shops, Bag, Chowdeck, rent ON + pay_rent — docs/SHOPS.md)
   20261005000900_bank.sql               V1-5 (bank counter, PoS, phone transfers, money history — docs/BANK.md)
   20261005001000_chat.sql               V1-6 (location chat, reports, blocks — docs/CHAT.md)
   20261005001100_admin.sql              V1-7 (admin RPCs, owner claim, admin.* config hidden — docs/ADMIN.md)
@@ -121,7 +121,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 | `work_shift` / `work_finish` | – | start a shift at the job's place; collect pay/XP/promotion when it ends (V1-3) |
 | `shop_list` / `shop_buy` | p_location / p_item, p_qty | shop items here (read) / buy with cash at a place in `sold_at` (V1-4) |
 | `item_use` / `item_sell` | p_item / p_item, p_qty | eat/drink/use one from the Bag / sell at a market for `resale_pct` (V1-4) |
-| `food_menu` / `food_order` | – / p_item, p_qty | ChopNow menu at delivery prices / order to the Bag, bank first then cash (V1-4) |
+| `food_menu` / `food_order` | – / p_item, p_qty | Chowdeck menu at delivery prices / order to the Bag, bank first then cash (V1-4) |
 | `pay_rent` | – | settle rent owed from anywhere, bank first then cash, partial OK (V1-4) |
 | `bank_info` / `bank_history` / `bank_recipient` | – / p_limit / p_username | balances, hours, PoS charge, transfer limits, places (read) / ledger with friendly labels (read) / check a username (V1-5) |
 | `bank_deposit` / `bank_withdraw` | p_amount | free, at a place with `bank` (Bronze Bank), banking hours `bank.open_hour`–`bank.close_hour` (V1-5) |

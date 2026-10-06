@@ -1,4 +1,4 @@
-// The keyboard shortcuts help sheet and the dock's Buy sheet (R4; V1-4 adds the Bag and ChopNow, with
+// The keyboard shortcuts help sheet and the dock's Buy sheet (R4; V1-4 adds the Bag and Chowdeck, with
 // Buy mode still a teaser).
 import { SHORTCUTS } from './shortcuts';
 import { useGame } from '../../state/game';
@@ -71,7 +71,7 @@ export function BuySheet() {
         <button type="button" className="buy-choice" onClick={() => openPhone('food')}>
           <span className="buy-choice__emoji" aria-hidden>🛵</span>
           <span className="grow">
-            <span className="buy-choice__title">ChopNow</span>
+            <span className="buy-choice__title">Chowdeck</span>
             <span className="buy-choice__sub">Order food to wherever you are</span>
           </span>
           <Icon name="chevronRight" size={18} stroke={2.4} />

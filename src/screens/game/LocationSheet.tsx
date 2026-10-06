@@ -9,6 +9,7 @@ import { hasPanel, PANEL_LABELS } from '../../panels/registry';
 import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
+import { usePresenceStore, usePresentAt } from '../../state/presence';
 import { Button, Icon, Sheet, Spinner, Tabs } from '../../ui';
 import { PanelHost } from './PanelHost';
 import type { PlayerStatus } from './status';
@@ -119,6 +120,11 @@ function PeopleHere({ loc, meId }: { loc: Location; meId: string }) {
   const [people, setPeople] = useState<PublicPlayer[] | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
 
+  // S1: the list reloads the moment someone connects at / leaves this place (Realtime Presence),
+  // with a slow poll as a safety net. While presence is live, only connected players are shown.
+  const presentHere = usePresentAt(loc.id);
+  const presenceLive = usePresenceStore((s) => s.online !== null);
+  const connected = usePresenceStore((s) => s.ids);
   useEffect(() => {
     let alive = true;
     const load = async () => {
@@ -129,15 +135,17 @@ function PeopleHere({ loc, meId }: { loc: Location; meId: string }) {
         if (alive) setPeople([]);
       }
     };
-    void load();
-    const id = window.setInterval(load, 30_000);
+    const t = window.setTimeout(load, 250); // debounce presence bursts
+    const id = window.setInterval(load, presenceLive ? 120_000 : 30_000);
     return () => {
       alive = false;
+      window.clearTimeout(t);
       window.clearInterval(id);
     };
-  }, [loc.id, meId]);
+  }, [loc.id, meId, presentHere, presenceLive]);
+  const shown = people && presenceLive ? people.filter((x) => connected.has(x.id)) : people;
 
-  const person = people?.find((x) => x.id === picked);
+  const person = shown?.find((x) => x.id === picked);
   const canRob = hasPanel('rob');
   const canProfile = hasPanel('profile');
 
@@ -146,15 +154,15 @@ function PeopleHere({ loc, meId }: { loc: Location; meId: string }) {
       <div className="people__head">
         <Icon name="people" size={16} />
         <span>People here</span>
-        {people && <span className="chip">{people.length}</span>}
+        {shown && <span className="chip">{shown.length}</span>}
       </div>
-      {!people ? (
+      {!shown ? (
         <div className="people__row"><Spinner size={18} /></div>
-      ) : people.length === 0 ? (
+      ) : shown.length === 0 ? (
         <p className="people__empty">{P.noPeople}</p>
       ) : (
         <div className="people__row">
-          {people.map((x) => (
+          {shown.map((x) => (
             <button key={x.id} type="button" className={`person${picked === x.id ? ' is-active' : ''}`}
               onClick={() => setPicked(picked === x.id ? null : x.id)}>
               <span className="person__face"><AvatarPortrait config={x.avatar} size={44} /></span>

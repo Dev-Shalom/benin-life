@@ -1,9 +1,38 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { execSync } from 'node:child_process'
+import { defineConfig, type Plugin } from 'vite'
+
+// S1 update notice: every build gets an id (git SHA + build time). It is baked into the app as
+// import.meta.env.VITE_BUILD_ID and written to dist/version.json; open tabs poll that file and offer
+// a Refresh when it changes (src/lib/update.ts).
+function gitSha(): string {
+  const env = process.env.VERCEL_GIT_COMMIT_SHA
+  if (env) return env.slice(0, 7)
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+  } catch {
+    return 'nogit'
+  }
+}
+const BUILT_AT = new Date().toISOString()
+const BUILD_ID = `${gitSha()}-${Date.now().toString(36)}`
+
+function versionFile(): Plugin {
+  return {
+    name: 'bl-version-json',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ id: BUILD_ID, built_at: BUILT_AT }) + '\n' })
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), versionFile()],
+  define: {
+    'import.meta.env.VITE_BUILD_ID': JSON.stringify(BUILD_ID),
+  },
   build: {
     rolldownOptions: {
       output: {

@@ -1,6 +1,6 @@
 // Per-device preferences (R4): sound, music, mute, lite map, clean screen. Stored in localStorage
-// (every access in try/catch: private mode, blocked storage). There is no audio yet; these only
-// remember the player's choice so the sound work and R5's lite map can read them.
+// (every access in try/catch: private mode, blocked storage). src/lib/sound.ts (S1) reads mute/sfx/music;
+// R5's lite map reads liteMap.
 import { create } from 'zustand';
 
 export interface Prefs {
@@ -15,7 +15,7 @@ export interface Prefs {
 }
 
 const KEY = 'bl.prefs.v1';
-const DEFAULTS: Prefs = { muted: false, sfx: true, music: false, liteMap: false, clean: false };
+const DEFAULTS: Prefs = { muted: false, sfx: true, music: true, liteMap: false, clean: false };
 
 function load(): Prefs {
   try {

@@ -27,6 +27,7 @@ import { makeShadow } from '../../avatar3d/engine/scene';
 import { GROUP_META, itemGroup, KINDS, LAYOUTS, pieceFor, type FurnitureItem, type HomeGroup, type HomeLayout, type HomeLayoutId, type HomePose } from '../model';
 import { buildGrid, findPath, footprint, randomFree, toLayout, type P2 } from '../nav';
 import { homeLight } from './light';
+import { mixHex } from '../../../lib/daylight';
 import { poseCook, poseLie, poseScrub, poseSit, sitRootY } from './poses';
 import { buildRoom } from './room';
 
@@ -245,9 +246,9 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
     g.add(hemi, sun, lamp);
     return { g, hemi, sun, lamp };
   }, [L]);
-  const hourKey = Math.round(hour * 6); // re-light every 10 game minutes
+  const hourKey = Math.round(hour * 60); // S1: re-light every minute (continuous curve, one redraw)
   useEffect(() => {
-    const lt = homeLight(hourKey / 6);
+    const lt = homeLight(hourKey / 60);
     lights.hemi.color.set(lt.hemiSky);
     lights.hemi.groundColor.set(lt.hemiGround);
     lights.hemi.intensity = lt.hemi;
@@ -258,7 +259,7 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
     lights.sun.target.updateMatrixWorld();
     lights.lamp.intensity = lt.lamp;
     mats.glass.color.set(lt.glass);
-    mats.glow.color.set(lt.night ? '#ffffff' : '#e9e2d4');
+    mats.glow.color.set(mixHex('#e9e2d4', '#ffffff', lt.dark));
     invalidate();
   }, [hourKey, lights, mats, cx, cz, invalidate]);
 

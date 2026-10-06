@@ -5,7 +5,7 @@ Status markers: [todo] / [running] / [done]. Keep this file + HANDOFF STATUS LOG
 ## 0. Starter homes by origin — [done] (see HANDOFF STATUS LOG). Partial work committed as `5c237bc Starter homes WIP snapshot`; if a session dies, resume from it (don't start over).
 Then push branch → main (it also carries the "full amount under ₦100,000" migration 000900; order 000400 before 000900).
 
-## S1. Quick polish batch — [running]
+## S1. Quick polish batch — [done]
 1. **Names** (some things are shared by Lagos and Benin — use what Benin people actually use):
    - Phone betting app **EdoBet → "BetNaija"**.
    - **KekeGo → a "Ride" app**: book what you ride — keke, ECTS bus/danfo-style bus, okada (if allowed), drop/cab, own car — with prices/times (reuses the travel quote), like a ride-hailing app.
@@ -17,7 +17,9 @@ Then push branch → main (it also carries the "full amount under ₦100,000" mi
 6. **Smooth day/night**: no snapping at 6 AM/6 PM. Lighting (map city + home + sky + street lights + windows) eases continuously: dusk darkens gradually (~17:30 → 19:30) and dawn brightens gradually (~05:30 → 07:00), following real Benin time.
 7. **Sound**: light ambient in-game music/city ambience (loops, small files or WebAudio-generated, lazy-loaded, respects the mute toggle and Settings sound/music switches, off until first user tap per browser rules) + **click SFX** on buttons/taps + small cues (money in, action done, notification). Keep total audio small (< ~300 KB, or synthesized).
 
-## S2. Welcome-back screen — [todo]
+**S1 notes (agent, 2026-10-06, verified by lead: build, 12 suites, screenshots; on main):** all 7 items built. Migration `20261006001000_ship_polish.sql` (transfer wait 30 → 1440 only if still 30; Chowdeck in config labels + `food_order` / `bl_ledger_label` messages, re-created from their live definitions). Ride app = `phone/RideApp.tsx` (no okada: the travel system has none). Terms/Privacy at `/terms`, `/privacy`. Update notice via `dist/version.json` (docs/DEPLOY.md). Presence channel `online` (`src/state/presence.ts`). Smooth light `src/lib/daylight.ts` (dev: `window.__blHour`). Sound `src/lib/sound.ts`, synthesized (0 KB); music now defaults ON at low volume. Details: docs/HUD_HOME.md "S1 polish".
+
+## S2. Welcome-back screen — [running]
 When a player opens the game after being away (new session / long absence), show a "welcome back" screen like Lagos Life:
 - their **3D house** with the **Sim inside**, camera **slowly orbiting 360°** around the house;
 - the Sim's **face** (portrait) + name, **current money**;

@@ -1,9 +1,9 @@
-# Shops, the Bag, ChopNow and rent (V1-4)
+# Shops, the Bag, Chowdeck and rent (V1-4)
 
 Files: `supabase/migrations/20261005000800_shops.sql`, `supabase/tests/shops_test.sql`, wrappers in `src/api/shops.ts`,
 types in `src/lib/types.ts` (`// V1-4`), shared item UI `src/panels/shop/ShopUI.tsx`, the Shop tab `src/panels/ShopPanel.tsx`
 (action id `shop`), the Bag `src/panels/InventoryPanel.tsx` (global panel `inventory`), phone apps
-`src/screens/game/phone/FoodApp.tsx` (ChopNow) and `HousesApp.tsx` (Houses), the dock's Buy sheet (`Extras.tsx`), the
+`src/screens/game/phone/FoodApp.tsx` (Chowdeck) and `HousesApp.tsx` (Houses), the dock's Buy sheet (`Extras.tsx`), the
 "Eat something" wish chip (`Hud.tsx`), the Sim sheet Profile tab (home + Bag cards) and the laptop link in the career
 requirements (`CareerUI.tsx`).
 
@@ -17,7 +17,7 @@ Test (migrations applied): `bash scripts/sql-test.sh -- supabase/tests/shops_tes
    Food and drinks: **Eat** / **Drink** (instant, one at a time). Toothpaste, paracetamol, airtime and data: **Use**.
    Soap is used up automatically on your next bath at home. The laptop, the car and souvenirs are kept.
    At a market every sellable item shows **Sell ₦X** (its resale price).
-3. **ChopNow** (phone). Every food and drink at shop price + 40 % (at least ₦200), rounded up to ₦10. Paid by transfer
+3. **Chowdeck** (phone). Every food and drink at shop price + 40 % (at least ₦200), rounded up to ₦10. Paid by transfer
    from the bank first, the rest in cash. Arrives at once (the rider is fast) and lands in the Bag. Works while busy or
    on the road; not in a police cell or a hospital bed.
 4. **Houses** (phone). Your home, weekly rent, the next rent day (weekday, game day and time, plus the real time left),

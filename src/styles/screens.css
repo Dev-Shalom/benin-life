@@ -1976,3 +1976,91 @@
     visibility: hidden;
   }
 }
+
+/* S1: footer legal links, sign-up checkbox links, Terms / Privacy pages */
+.lp-footer__links {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.lp-footer__links a,
+.legal__nav a {
+  color: var(--text-2);
+  text-underline-offset: 3px;
+}
+.auth-check__link {
+  color: var(--primary-strong);
+  font-weight: 700;
+  text-underline-offset: 2px;
+}
+.legal__inner {
+  display: grid;
+  gap: 18px;
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding-top: 14px;
+}
+.legal__brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.legal__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.legal__title {
+  font-size: clamp(1.6rem, 6vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.legal__updated {
+  font-size: 13px;
+  color: var(--muted);
+}
+.legal__card {
+  padding: 20px 20px 24px;
+  line-height: 1.6;
+  font-size: 15px;
+  color: var(--text-2);
+}
+.legal__card h2 {
+  margin: 22px 0 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.legal__card p + p {
+  margin-top: 8px;
+}
+.legal__card ul {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+.legal__card b {
+  color: var(--text);
+}
+.legal__card a {
+  color: var(--primary-strong);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.legal__lead {
+  font-size: 15.5px;
+  color: var(--text);
+}
+.legal__nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}

@@ -154,7 +154,7 @@ function ProfileTab({ state, onEditLook }: { state: GameState; onEditLook: () =>
           <span className="sim-home__emoji" aria-hidden>🎒</span>
           <div className="grow">
             <div className="sim-home__name">{bagCount > 0 ? `${bagCount} ${bagCount === 1 ? 'thing' : 'things'}` : 'Empty'}</div>
-            <div className="muted sim-home__sub">{bagCount > 0 ? (state.inventory ?? []).slice(0, 6).map((i) => i.icon || '📦').join(' ') : 'Buy food at markets and bukas, or order on ChopNow.'}</div>
+            <div className="muted sim-home__sub">{bagCount > 0 ? (state.inventory ?? []).slice(0, 6).map((i) => i.icon || '📦').join(' ') : 'Buy food at markets and bukas, or order on Chowdeck.'}</div>
           </div>
           <Button size="sm" variant="ghost" icon="bag" onClick={() => openPanel('inventory')}>Open</Button>
         </div>
@@ -416,6 +416,12 @@ function SettingsTab({ state }: { state: GameState }) {
         <Button variant="ghost" icon="logout" block onClick={() => { setOverlay(null); void signOut(); }}>{P.logout}</Button>
       </div>
       <p className="hint settings-foot"><span className="age-badge">18+</span> {P.ageNote}</p>
+      <p className="hint settings-legal">
+        <span className="beta-badge">Beta</span>
+        <a href="/terms" target="_blank" rel="noopener">Terms of Service</a>
+        <span aria-hidden>·</span>
+        <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>
+      </p>
     </div>
   );
 }

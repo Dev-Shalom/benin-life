@@ -1,4 +1,4 @@
-// V1-4 shared shop UI: item effect chips and the item card used by the Shop tab, the Bag and ChopNow.
+// V1-4 shared shop UI: item effect chips and the item card used by the Shop tab, the Bag and Chowdeck.
 import { useState } from 'react';
 import { naira } from '../../lib/format';
 import { NEED_KEYS, NEED_META, type NeedKey } from '../../lib/pidgin';

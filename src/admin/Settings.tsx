@@ -16,7 +16,7 @@ const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: strin
   creator: { title: 'Sim creator', emoji: '🧑‍🎨', blurb: 'Creator steps and the arrival spot.' },
   needs: { title: 'Needs', emoji: '🍲', blurb: 'How quickly hunger, energy and the rest go down.' },
   career: { title: 'Jobs & careers', emoji: '💼', blurb: 'Pay, XP, shifts and performance.' },
-  shop: { title: 'Shops', emoji: '🛍️', blurb: 'Buying, selling and ChopNow delivery.' },
+  shop: { title: 'Shops', emoji: '🛍️', blurb: 'Buying, selling and Chowdeck delivery.' },
   rent: { title: 'Rent', emoji: '🏠', blurb: 'Weekly rent and what happens when you owe.' },
   bank: { title: 'Bank & transfers', emoji: '🏦', blurb: 'Opening hours, limits and fees.' },
   pos: { title: 'PoS', emoji: '🏧', blurb: 'PoS cash-out charges.' },

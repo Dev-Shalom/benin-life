@@ -667,3 +667,88 @@
     transform: scale(0.96);
   }
 }
+
+/* S1 update notice: small phone-style alert, bottom-centre, above everything */
+.update-note {
+  position: fixed;
+  inset: auto 0 calc(var(--sab, 0px) + 18px) 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 0 16px;
+  pointer-events: none;
+}
+.update-note__card {
+  pointer-events: auto;
+  width: min(300px, 100%);
+  padding: 18px 16px 12px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  color: var(--ink, #14202e);
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(17, 32, 56, 0.08), 0 18px 48px -10px rgba(17, 32, 56, 0.35);
+  transform-origin: 50% 100%;
+  animation: update-note-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.update-note.is-closing .update-note__card {
+  animation: update-note-out 160ms ease-in both;
+}
+.update-note__icon {
+  display: block;
+  font-family: var(--font-emoji);
+  font-size: 26px;
+  line-height: 1;
+}
+.update-note__title {
+  margin-top: 8px;
+  font: 700 16px/1.25 var(--font-display);
+}
+.update-note__body {
+  margin-top: 4px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--ink-2, #44505e);
+}
+.update-note__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+.update-note__btn {
+  height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(20, 32, 46, 0.07);
+  color: var(--ink, #14202e);
+  font: 600 15px/1 var(--font-display);
+  cursor: pointer;
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.update-note__btn:active {
+  transform: scale(0.97);
+}
+.update-note__btn--main {
+  background: var(--green-600, #129a5a);
+  color: #fff;
+}
+@keyframes update-note-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+@keyframes update-note-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .update-note__card,
+  .update-note.is-closing .update-note__card {
+    animation-duration: 1ms;
+  }
+}

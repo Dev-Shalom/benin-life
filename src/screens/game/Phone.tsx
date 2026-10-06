@@ -1,17 +1,17 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
-// Built: Ride (destination list -> the existing travel picker), Jobs (V1-3), ChopNow + Houses (V1-4, lazy),
+// Built: Ride (S1: book keke/bus/drop/car with price, time and risk, lazy), Jobs (V1-3), Chowdeck + Houses (V1-4, lazy),
 // Bank (V1-5, lazy: transfers, history, where to cash in/out), Messages (V1-6: shortcut to the location chat;
 // private messages later), Wallet, Alerts, Settings (Sim sheet). Everything else opens a "Coming soon" screen.
 // Esc closes the phone.
-import { lazy, Suspense, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { clockTime, districtName } from '../../lib/format';
+import { clockTime } from '../../lib/format';
 import { WEEKDAYS } from '../../lib/pidgin';
-import type { GameClock, GameState, Location } from '../../lib/types';
+import type { GameClock, GameState } from '../../lib/types';
 import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
-import { Button, Icon, usePresence } from '../../ui';
+import { Button, Icon, toast, usePresence } from '../../ui';
 import { useEscape } from '../../ui/presence';
 import { dateLabel, weekdayOf } from '../../lib/clock';
 import { AlertsList } from './Overlays';
@@ -22,6 +22,7 @@ import { useCareerActions, useJobsCatalog } from '../../panels/careers/careerHoo
 const FoodApp = lazy(() => import('./phone/FoodApp'));
 const HousesApp = lazy(() => import('./phone/HousesApp'));
 const BankApp = lazy(() => import('./phone/BankApp'));
+const RideApp = lazy(() => import('./phone/RideApp'));
 
 interface App {
   id: string;
@@ -37,13 +38,13 @@ const APPS: App[] = [
   { id: 'messages', name: 'Messages', emoji: '💬', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Chat with friends, neighbours and the people you meet around town.' },
   { id: 'bank', name: 'Bank', emoji: '🏦', bg: 'linear-gradient(160deg,#9b8cff,#5b4fd6)', pitch: '' },
   { id: 'contacts', name: 'Contacts', emoji: '📇', bg: 'linear-gradient(160deg,#4fd28a,#1f9a57)', pitch: 'Everyone you know, with how close you are.' },
-  { id: 'ride', name: 'KekeGo', emoji: '🛺', bg: 'linear-gradient(160deg,#ffd45c,#f0a316)', pitch: '' },
-  { id: 'food', name: 'ChopNow', emoji: '🍲', bg: 'linear-gradient(160deg,#ff8a6b,#e2452c)', pitch: 'Order rice, swallow and small chops to your door, from bukas all over Benin.' },
+  { id: 'ride', name: 'Ride', emoji: '🛺', bg: 'linear-gradient(160deg,#ffd45c,#f0a316)', pitch: '' },
+  { id: 'food', name: 'Chowdeck', emoji: '🍲', bg: 'linear-gradient(160deg,#4fc98a,#0f7a4c)', pitch: 'Order rice, swallow and small chops to your door, from bukas all over Benin.' },
   { id: 'houses', name: 'Houses', emoji: '🔑', bg: 'linear-gradient(160deg,#f2a65a,#c96a1f)', pitch: 'Rent a bigger place, from a self-contain in Uselu to a duplex in GRA.' },
   { id: 'cars', name: 'Cars', emoji: '🚗', bg: 'linear-gradient(160deg,#4aa3ff,#1f62c9)', pitch: 'Buy a tokunbo or a brand-new ride. Fuel money not included.' },
   { id: 'health', name: 'Health', emoji: '💊', bg: 'linear-gradient(160deg,#ff7aa2,#e0457b)', pitch: 'Book a clinic visit, buy drugs and keep an eye on your health.' },
   { id: 'invest', name: 'Invest', emoji: '📈', bg: 'linear-gradient(160deg,#3fd0b5,#0f8f7a)', pitch: 'Grow your money slowly with savings and investments.' },
-  { id: 'bet', name: 'EdoBet', emoji: '⚽', bg: 'linear-gradient(160deg,#2b2f3a,#11141b)', pitch: 'Football predictions with fake game money. 18+ only, and the house usually wins.' },
+  { id: 'bet', name: 'BetNaija', emoji: '⚽', bg: 'linear-gradient(160deg,#2b2f3a,#11141b)', pitch: 'Football predictions with fake game money. 18+ only, and the house usually wins.' },
   { id: 'family', name: 'Family', emoji: '👪', bg: 'linear-gradient(160deg,#ffb36b,#f07b2a)', pitch: 'Partners, children and family meetings. Your village people will call.' },
   { id: 'hustle', name: 'Hustle', emoji: '🧰', bg: 'linear-gradient(160deg,#a3b86a,#5f7a2a)', pitch: 'Side gigs and quick jobs for when the month is long.' },
   { id: 'gov', name: 'Edo Gov', emoji: '🏛️', bg: 'linear-gradient(160deg,#2fa36b,#13603c)', pitch: 'Pay levies, register a business and follow city news.' },
@@ -52,16 +53,6 @@ const APPS: App[] = [
   { id: 'alerts', name: 'Alerts', emoji: '🔔', bg: 'linear-gradient(160deg,#ff9d5c,#e2552c)', pitch: '' },
   { id: 'settings', name: 'Settings', emoji: '⚙️', bg: 'linear-gradient(160deg,#a9b2bf,#6b7686)', pitch: '' },
 ];
-
-function useKm(state: GameState, locations: Location[]) {
-  return useMemo(() => {
-    const here = locations.find((l) => l.id === state.location.id) ?? state.location;
-    return locations
-      .filter((l) => l.id !== here.id)
-      .map((l) => ({ l, km: (Math.hypot(l.x - here.x, l.y - here.y) / 1000) * 18 + (l.remote_km || 0) }))
-      .sort((a, b) => a.km - b.km);
-  }, [state.location, locations]);
-}
 
 function StatusBar({ clock }: { clock: GameClock }) {
   return (
@@ -72,31 +63,6 @@ function StatusBar({ clock }: { clock: GameClock }) {
         <span aria-hidden>▂▄▆</span> 4G
         <span className="phone__battery" aria-hidden><span /></span>
       </span>
-    </div>
-  );
-}
-
-function RideApp({ state, onPick }: { state: GameState; onPick: (id: string) => void }) {
-  const locations = useGame((s) => s.locations);
-  const rows = useKm(state, locations);
-  const homeId = state.profile.home_location_id;
-  return (
-    <div className="phone-app__body">
-      <p className="phone-app__lead">Where to? Pick a place, then choose keke, bus, drop or your feet.</p>
-      <ul className="ride-list">
-        {rows.map(({ l, km }) => (
-          <li key={l.id}>
-            <button type="button" className="ride-row" onClick={() => onPick(l.id)}>
-              <span className="ride-row__pin" aria-hidden>{l.id === homeId ? '🏠' : '📍'}</span>
-              <span className="grow">
-                <span className="ride-row__name">{l.id === homeId ? 'Home' : l.name}</span>
-                <span className="ride-row__sub">{districtName(l.district)}</span>
-              </span>
-              <span className="ride-row__km">{km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
@@ -208,10 +174,14 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
       openSim('settings');
     } else setScreen(id);
   };
-  const pickRide = (id: string) => {
+  const pickOnMap = () => {
     close();
     setMapOpen(true);
-    select(id);
+    toast('Tap a place on the map, then choose how to go.');
+  };
+  const booked = () => {
+    close();
+    setMapOpen(true);
   };
   const goWork = (id: string) => {
     close();
@@ -277,13 +247,13 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                 </button>
                 <span className="phone-app__title"><span aria-hidden>{app.emoji}</span> {app.name}</span>
               </div>
-              {app.id === 'ride' ? <RideApp state={state} onPick={pickRide} />
-                : app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
+              {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'messages' ? <MessagesApp state={state} onChat={openChat} />
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'food' || app.id === 'houses' || app.id === 'bank' ? (
+                  : app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
-                        {app.id === 'food' ? <FoodApp state={state} /> : app.id === 'bank' ? <BankApp state={state} /> : <HousesApp state={state} />}
+                        {app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
+                          : app.id === 'food' ? <FoodApp state={state} /> : app.id === 'bank' ? <BankApp state={state} /> : <HousesApp state={state} />}
                       </Suspense>
                     )
                       : <ComingSoon app={app} />}

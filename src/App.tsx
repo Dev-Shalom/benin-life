@@ -4,6 +4,7 @@ import { supabaseConfigured } from './lib/supabase';
 import { useGame } from './state/game';
 import { needsHome } from './api/creator';
 import { LoadingScreen, Toaster } from './ui';
+import { UpdateNotice } from './ui/UpdateNotice';
 import { P } from './lib/pidgin';
 import Landing from './screens/Landing';
 import Auth from './screens/Auth';
@@ -14,6 +15,8 @@ import ErrorScreen from './screens/ErrorScreen';
 const CreateSim = lazy(() => import('./screens/CreateSim'));
 const Game = lazy(() => import('./screens/Game'));
 const AdminRoute = lazy(() => import('./screens/AdminRoute'));
+const Terms = lazy(() => import('./screens/Legal').then((m) => ({ default: m.Terms })));
+const Privacy = lazy(() => import('./screens/Legal').then((m) => ({ default: m.Privacy })));
 // Dev-only gallery of the 3D avatars (not linked anywhere; dev server only).
 const AvatarLab = import.meta.env.DEV ? lazy(() => import('./art/avatar3d/dev/AvatarLab')) : null;
 const HomeLab = import.meta.env.DEV ? lazy(() => import('./art/home3d/dev/HomeLab')) : null;
@@ -61,6 +64,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route
             path="/create"
             element={
@@ -97,6 +102,7 @@ export default function App() {
         </Routes>
       </Suspense>
       <Toaster />
+      <UpdateNotice />
     </BrowserRouter>
   );
 }

@@ -1,6 +1,7 @@
 // Toasts: call `toast('Saved!', 'good')` from anywhere; render <Toaster /> once at the app root.
 import { useSyncExternalStore } from 'react';
 import { Icon } from './Icon';
+import { playCue } from '../lib/sound';
 
 export type ToastKind = 'info' | 'good' | 'bad';
 
@@ -36,6 +37,7 @@ export function toast(msg: string, kind: ToastKind = 'info'): number {
   // de-dupe identical messages already on screen
   if (items.some((t) => t.msg === msg && !t.leaving)) return id;
   items = [...items, { id, msg, kind }].slice(-MAX);
+  playCue(kind === 'good' ? 'done' : kind === 'bad' ? 'error' : 'alert');
   emit();
   const ms = Math.min(7000, 2600 + msg.length * 45);
   window.setTimeout(() => dismiss(id), ms);

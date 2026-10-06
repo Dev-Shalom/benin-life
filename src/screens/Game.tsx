@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HomeView, LAYOUTS, activityGroup, furnishLayout, homeLayoutFor, itemGroup, type FurnitureItem } from '../art/home3d';
 import { CityView } from '../art/city3d';
 import { serverNow, useGameClock } from '../lib/clock';
+import { devHourOverride, looksNight } from '../lib/daylight';
+import { setSoundScene } from '../lib/sound';
 import { useConfig } from '../lib/config';
 import { randomGreeting } from '../lib/pidgin';
 import { usePrefs } from '../lib/prefs';
@@ -79,7 +81,14 @@ export default function Game() {
   const greeted = useRef(false);
   const insets = useInsets();
 
-  useNightTheme(clock.is_night);
+  // S1: lighting follows real Benin time continuously; the UI theme flips mid-dusk / mid-dawn.
+  const hourF = devHourOverride() ?? clock.hour + clock.minute / 60;
+  const skyNight = looksNight(hourF);
+  useNightTheme(skyNight);
+  useEffect(() => {
+    setSoundScene(true, skyNight);
+  }, [skyNight]);
+  useEffect(() => () => setSoundScene(false, false), []);
 
   useEffect(() => {
     void loadActivities();
@@ -195,10 +204,8 @@ export default function Game() {
   const layout = layoutId;
   const walkShare = Math.max(0, Number(cfg('home.walk_max_share_pct', 15)) || 0) / 100;
   const dockActive: DockId | null = overlay === 'phone' ? 'phone' : overlay === 'buy' ? 'buy' : showHome ? 'home' : 'map';
-  const hourF = clock.hour + clock.minute / 60;
-
   return (
-    <div className={`game${clock.is_night ? ' is-night' : ''}${clean ? ' is-clean' : ''}${showHome ? ' is-home' : ' is-map'}`}>
+    <div className={`game${skyNight ? ' is-night' : ''}${clean ? ' is-clean' : ''}${showHome ? ' is-home' : ' is-map'}`}>
       <div className="game__map">
         {showHome && furnitureOf !== p.id ? (
           <div className="home3d home3d--loading"><span className="home3d__loader" aria-label="Loading your home" /></div>
@@ -230,7 +237,7 @@ export default function Game() {
             currentId={state.travel ? undefined : state.location.id}
             selectedId={selectedId ?? undefined}
             onSelect={(id) => select(id)}
-            night={clock.is_night}
+            night={skyNight}
             hour={hourF}
             travel={travel}
             suspended={suspendHome}
@@ -279,7 +286,7 @@ export default function Game() {
         )}
       </div>
 
-      <LocationSheet state={state} status={status} night={clock.is_night} />
+      <LocationSheet state={state} status={status} night={skyNight} />
       <HomeSheet state={state} status={status} />
       <GlobalPanelSheet />
       <AlertsSheet />

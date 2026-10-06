@@ -15,7 +15,8 @@ This file is kept current after every step. The detailed live status is the STAT
   - Nepo: moderate furniture.
   - Actions match the furniture; the walk is skipped on short actions.
   - Migration 20261006000400_starter_furniture (applied locally). If the session died, check `git status` for its uncommitted files, verify, commit, then push the branch to main.
-- **Done today:** starter homes by origin + money full-under-₦100k are on main.
+- **Done today (on main):** starter homes by origin, money full under ₦100k, **S1 quick polish** (BetNaija, Ride, Chowdeck, 24 h transfer wait, Beta, Terms/Privacy, update dialog, live counts, smooth day/night, sound).
+- **Running now:** S2 welcome-back screen (docs/SHIP_TODAY.md). If the session died, check `git status` for its files, verify, commit.
 - **SHIP-TODAY LIST (user, 2026-10-06): `docs/SHIP_TODAY.md` — follow it in order:** starter homes → S1 quick polish (BetNaija, Ride app, Chowdeck, 24 h transfer wait, Beta badge, Terms/Privacy, update-available dialog, live online/place counts, smooth day/night, sound + click SFX) → S2 welcome-back screen (orbiting house, Continue/New life/Log out) → M1 movement → S3 map upgrade → L2+ (real landmarks incl. car dealers + top clubs).
 - **Next, in order (older list, now inside SHIP_TODAY):**
   0. **M1 Sim movement & life:** tap-to-walk on the floor, smooth walk cycle, breathing/idle life (docs/REAL_LIFE_PLAN.md).

@@ -13,17 +13,24 @@ import { rpc, errorMessage } from '../../lib/api';
 import { lowNeeds, moodOf, needValue } from '../../lib/mood';
 import { HUD_NEEDS, NEED_META, ORIGIN_UI, WEEKDAYS_SHORT, originCopy, type NeedKey } from '../../lib/pidgin';
 import { usePrefs } from '../../lib/prefs';
+import { devHourOverride, looksNight } from '../../lib/daylight';
 import type { ClaimAllowanceResult, GameClock, GameState, PlayersOnline } from '../../lib/types';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
+import { usePresenceStore } from '../../state/presence';
 import { Icon, toast } from '../../ui';
 import type { PlayerStatus } from './status';
 import { nearestWorkplace } from '../../api/careers';
 import { bestFood } from '../../api/shops';
 
+/** Players online: the live Realtime Presence count (S1, no polling); while presence is not synced
+ *  (Realtime down or still joining) falls back to `players_online()` (last_seen) every 60 s. */
 function usePlayersOnline(): number | null {
+  const live = usePresenceStore((s) => s.online);
   const [n, setN] = useState<number | null>(null);
+  const fallback = live === null;
   useEffect(() => {
+    if (!fallback) return;
     let alive = true;
     const load = async () => {
       if (document.visibilityState !== 'visible') return;
@@ -40,8 +47,8 @@ function usePlayersOnline(): number | null {
       alive = false;
       window.clearInterval(id);
     };
-  }, []);
-  return n;
+  }, [fallback]);
+  return live ?? n;
 }
 
 export function TopPill({ state, clock }: { state: GameState; clock: GameClock }) {
@@ -74,7 +81,7 @@ export function TopPill({ state, clock }: { state: GameState; clock: GameClock }
   return (
     <div className="pill-bar" ref={ref}>
       <div className="pill-bar__time" title={clock.mode === 'real' ? `Benin time · Day ${clock.day} of Benin Life` : `Day ${clock.day}`}>
-        <span className="pill-bar__sun" aria-hidden>{clock.is_night ? '🌙' : '☀️'}</span>
+        <span className="pill-bar__sun" aria-hidden>{looksNight(devHourOverride() ?? clock.hour + clock.minute / 60) ? '🌙' : '☀️'}</span>
         <span className="pill-bar__day">{WEEKDAYS_SHORT[weekdayOf(clock)]} {clock.date ? dateLabel(clock) : clock.day}</span>
         <span className="pill-bar__dot" aria-hidden>·</span>
         <span className="pill-bar__clock">{clockTime(clock.hour, clock.minute)}</span>
@@ -189,8 +196,8 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   const [open, setOpen] = useState(false);
   const tips = lowNeeds(p, 2);
   const food = bestFood(state);
-  // "Eat something": food in the Bag first, then the home kitchen, else ChopNow (V1-4).
-  const eatSub = food ? `${food.icon ?? ''} ${food.name} in your Bag`.trim() : atHome ? null : 'Order on ChopNow';
+  // "Eat something": food in the Bag first, then the home kitchen, else Chowdeck (V1-4).
+  const eatSub = food ? `${food.icon ?? ''} ${food.name} in your Bag`.trim() : atHome ? null : 'Order on Chowdeck';
   const dadReady = Boolean(origin?.allowance_claimable);
   const protectedNow = status.protLeft > 0;
   const job = state.career?.job ?? null;
@@ -301,10 +308,13 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
           )}
         </>
       )}
-      <button type="button" className="clean-toggle" onClick={() => setPrefs({ clean: !clean })} aria-pressed={clean}>
-        <Icon name={clean ? 'chevronDown' : 'chevronUp'} size={14} stroke={2.6} />
-        {clean ? 'Show HUD' : 'Clean screen'}
-      </button>
+      <div className="rail-foot">
+        <button type="button" className="clean-toggle" onClick={() => setPrefs({ clean: !clean })} aria-pressed={clean}>
+          <Icon name={clean ? 'chevronDown' : 'chevronUp'} size={14} stroke={2.6} />
+          {clean ? 'Show HUD' : 'Clean screen'}
+        </button>
+        {!clean && <span className="beta-badge beta-badge--hud" title="Benin Life is in beta: new features land often">Beta</span>}
+      </div>
     </div>
   );
 }

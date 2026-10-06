@@ -5,6 +5,7 @@ import { naira, nairaShort } from '../lib/format';
 import { adminApi } from './api';
 import { Btn, LoadError, PageHead, Skeleton } from './parts';
 import { useLoad } from './util';
+import { usePresenceStore } from '../state/presence';
 
 function Stat({ label, value, sub, tone, title }: { label: string; value: string; sub?: string; tone?: 'green' | 'red' | 'amber'; title?: string }) {
   return (
@@ -41,6 +42,8 @@ export default function Overview() {
   const moneyMax = s ? Math.max(1, ...s.money_today.map((m) => Math.max(m.created, m.destroyed))) : 1;
   const originTotal = s ? Math.max(1, s.origins.reduce((a, o) => a + o.count, 0)) : 1;
 
+  const live = usePresenceStore((st) => st.online); // S1: Realtime Presence count (null -> last_seen)
+
   return (
     <div className="adm-page">
       <PageHead title="Overview" sub="Today is counted from midnight in Benin (WAT)."
@@ -50,7 +53,8 @@ export default function Overview() {
       {s && (
         <>
           <div className="adm-stats">
-            <Stat label="Online now" value={String(s.online)} sub={`seen in the last ${s.online_minutes} min`} tone="green" />
+            <Stat label="Online now" value={String(live ?? s.online)}
+              sub={live !== null ? `live · ${s.online} seen in the last ${s.online_minutes} min` : `seen in the last ${s.online_minutes} min`} tone="green" />
             <Stat label="Players" value={s.players.toLocaleString()} sub={`${s.new_today} new today`} />
             <Stat label="Money in the game" value={nairaShort(s.cash_total + s.bank_total)} title={naira(s.cash_total + s.bank_total)} sub={`${nairaShort(s.cash_total)} cash · ${nairaShort(s.bank_total)} bank`} />
             <Stat label="Made today" value={nairaShort(s.created_today)} title={naira(s.created_today)} sub={`${nairaShort(s.destroyed_today)} spent or lost`} />
