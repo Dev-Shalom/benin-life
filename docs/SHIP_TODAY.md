@@ -39,5 +39,17 @@ As in docs/REAL_LIFE_PLAN.md. Landmarks (docs/LANDMARKS.md): keep the REAL names
 - **Car dealers** (buy cars): real Benin options along Sapele Rd — e.g. Ighodalo Car Deals (Km 5 Sapele Rd), SDD Motors (174 Sapele Rd), Otos Autos (near Santana Market), Dominion Automobile; official Toyota (Mandilas, 45 Benin–Agbor Rd). Pick 1–2 real + a made-up "Tokunbo lot".
 - **Top clubs with hype men & big spenders**: 360 Signature (GRA, 1st Ugbor Rd), Club De Medici (23 Benoni off Airport Rd, GRA), Rome Night Club ("biggest in Benin"), Club Vibes (DJ + hype man), Cube Nightlife, Versus Lounge, Havana. Club actions: table/bottle service (VIP prices), "spray money", hype man shout-out (costly, + street cred), dance.
 
+## LATER (user, 2026-10-06): welcome-back redo. Do NOT touch today; S2 stays as shipped.
+The user wants the welcome screen to look like Lagos Life (`docs/references/lagos-life/welcome-back-1.jpg`, `welcome-back-2-newlife.jpg`):
+- Game logo and title at the top, with a tagline (e.g. "Live your Benin story.").
+- A big 3D house filling the middle, slowly orbiting 360°.
+- A compact bottom card:
+  - a row with portrait, name, then "Tuesday 6 Oct · ₦989m"
+  - a green **Continue** button
+  - a **New life** button
+  - footer: "Signed in as @name" on the left, a blue **Log out** link on the right
+- **New life confirm is inline** inside the card. It is not a modal and there is no typing the name. Text: "Start a brand-new life? <name>'s life (₦…, house, things and progress) will be replaced for good." Buttons: **Keep my life** / **Start over**.
+- **No archive:** on Start over, discard everything and start fresh as a new player. Drop `profile_archive` snapshots (stop writing them; the table can stay or be emptied in a later migration).
+
 ## Sources (car dealers, clubs)
 https://ranked.ng/car-dealerships/benin-city · https://www.facebook.com/p/Ighodalo-Car-Deals-100063548294416/ · https://nigerianinformer.com/official-accredited-toyota-dealers-in-nigeria-addresses/ · https://ranked.ng/nightclubs/benin-city · https://blog.naijabased.fun/night-club-in-benin-city · https://www.tripadvisor.com/Attractions-g298361-Activities-c20-t99-Benin_City_Edo_State.html
