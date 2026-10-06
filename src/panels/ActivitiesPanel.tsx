@@ -8,6 +8,7 @@ import { naira } from '../lib/format';
 import { NEED_KEYS, NEED_META, type NeedKey } from '../lib/pidgin';
 import type { PanelProps } from '../lib/types';
 import { Button, EmptyState, Icon, toast } from '../ui';
+import { hasFurnitureFor, useCatalog } from '../state/catalog';
 
 interface Activity {
   id: string;
@@ -23,6 +24,7 @@ interface Activity {
   night_only: boolean;
   sort: number;
   description?: string | null;
+  needs_furniture?: boolean | null;
 }
 
 function EffectChips({ effects }: { effects: Record<string, number> | null }) {
@@ -54,6 +56,7 @@ export default function ActivitiesPanel({ state, location, refresh, close }: Pan
   const { clock } = useGameClock(5000);
   const cfg = useActionConfig();
   const atHome = state.profile.home_location_id === location.id;
+  const furniture = useCatalog((s) => s.furniture);
 
   useEffect(() => {
     let alive = true;
@@ -90,7 +93,9 @@ export default function ActivitiesPanel({ state, location, refresh, close }: Pan
     }
   };
 
-  if (!list) {
+  // home actions that need a piece of furniture (TV, sofa, fridge, stool) show only with that piece
+  const shown = list?.filter((a) => !a.home_only || hasFurnitureFor(a, furniture)) ?? null;
+  if (!shown) {
     return (
       <div className="panel-skel">
         <span />
@@ -99,7 +104,7 @@ export default function ActivitiesPanel({ state, location, refresh, close }: Pan
       </div>
     );
   }
-  if (list.length === 0) {
+  if (shown.length === 0) {
     return (
       <EmptyState icon="sparkle" title="Nothing to do here right now"
         body={err ?? (location.scene.startsWith('home') && !atHome ? "This is someone else's home. You can only relax at your own place." : 'Try another spot. Benin City is big.')} />
@@ -108,7 +113,7 @@ export default function ActivitiesPanel({ state, location, refresh, close }: Pan
 
   return (
     <div className="acts">
-      {list.map((a) => {
+      {shown.map((a) => {
         const nightLocked = a.night_only && !clock.is_night;
         const broke = a.cost > state.profile.cash;
         const disabled = nightLocked || broke;

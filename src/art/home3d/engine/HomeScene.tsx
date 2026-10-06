@@ -24,7 +24,7 @@ import { avatarKey } from '../../avatar3d/catalog';
 import { buildCharacter } from '../../avatar3d/engine/character';
 import { poseIdle, poseWalk } from '../../avatar3d/engine/anim';
 import { makeShadow } from '../../avatar3d/engine/scene';
-import { actorFor, GROUP_META, itemGroup, KINDS, LAYOUTS, type FurnitureItem, type HomeGroup, type HomeLayoutId, type HomePose } from '../model';
+import { GROUP_META, itemGroup, KINDS, LAYOUTS, pieceFor, type FurnitureItem, type HomeGroup, type HomeLayout, type HomeLayoutId, type HomePose } from '../model';
 import { buildGrid, findPath, footprint, randomFree, toLayout, type P2 } from '../nav';
 import { homeLight } from './light';
 import { poseCook, poseLie, poseScrub, poseSit, sitRootY } from './poses';
@@ -42,9 +42,14 @@ export interface HomeApi {
 
 export interface HomeSceneProps {
   layoutId: HomeLayoutId;
+  /** The layout with the player's own furniture (furnishLayout); keep it memoised. Default: LAYOUTS[layoutId]. */
+  layout?: HomeLayout;
   avatar: AvatarConfig;
-  /** The home activity running now (key changes with each new run), or null. */
-  busy: { group: HomeGroup; key: string } | null;
+  /** The home activity running now (key changes with each new run), or null. `seconds` = real seconds
+   * left; the Sim only walks to the piece when the walk fits in `walkShare` of that, else it is there at once. */
+  busy: { group: HomeGroup; key: string; activity?: string; seconds?: number } | null;
+  /** Largest share of an action the walk to the furniture may take (0-1, default 0.15). */
+  walkShare?: number;
   /** Game hour as a float (14.5 = 2:30 pm). */
   hour: number;
   paused?: boolean;
@@ -113,6 +118,13 @@ function Driver({ view, actor, paused }: { view: React.MutableRefObject<View>; a
   return null;
 }
 
+/** Height of a piece's invisible tap box (tall pieces must stay tappable over what stands in front). */
+function pickHeight(f: FurnitureItem): number {
+  if (f.kind.includes('stall') || f.kind === 'bucket_bath' || f.kind === 'pit_toilet' || f.kind === 'shower') return 1.8;
+  if (f.kind === 'fridge' || f.kind === 'wardrobe' || f.kind === 'bunk' || f.kind === 'locker') return 1.7;
+  return 1.1;
+}
+
 function spotOf(item: FurnitureItem): { p: P2; yaw: number } {
   const k = KINDS[item.kind];
   const [lx, lz, ly] = k.spot ?? [0, k.d / 2 + 0.35, Math.PI];
@@ -122,7 +134,7 @@ function spotOf(item: FurnitureItem): { p: P2; yaw: number } {
 
 function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; actorRef: React.MutableRefObject<Actor> }) {
   const { layoutId, avatar, busy, hour, selectedId, onPick, onReady, insetTop = 0, insetBottom = 0, view, actorRef } = props;
-  const L = LAYOUTS[layoutId];
+  const L = props.layout ?? LAYOUTS[layoutId];
   const { gl, scene, camera, size, invalidate } = useThree();
   const cx = (L.lot[0] + L.lot[2]) / 2;
   const cz = (L.lot[1] + L.lot[3]) / 2;
@@ -178,7 +190,7 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
       if (!grp) continue;
       const [x0, z0, x1, z1] = footprint(f);
       const m = new Mesh(pickGeo, mats.pick);
-      const h = f.kind.includes('stall') || f.kind === 'bucket_bath' || f.kind === 'pit_toilet' || f.kind === 'shower' ? 1.8 : 1.1;
+      const h = pickHeight(f);
       m.scale.set(Math.max(0.5, x1 - x0 + 0.1), h, Math.max(0.5, z1 - z0 + 0.1));
       m.position.set((x0 + x1) / 2, (f.y ?? 0) + h / 2, (z0 + z1) / 2);
       m.userData.item = f;
@@ -324,7 +336,7 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
     const first = firstBusy.current;
     firstBusy.current = false;
     if (busy) {
-      const item = actorFor(L, busy.group);
+      const item = pieceFor(L, busy.activity, busy.group);
       a.pose = GROUP_META[busy.group].pose;
       if (!item) {
         a.mode = 'pose';
@@ -340,8 +352,13 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
         a.mode = 'walk';
         a.then = 'pose';
         a.faceTo = s.yaw;
-        if (first) {
-          // the activity was already running when the home opened: be there already
+        // short actions start at once: skip the walk when it would eat too much of the action
+        let len = 0;
+        for (let i = 1; i < a.path.length; i++) len += Math.hypot(a.path[i][0] - a.path[i - 1][0], a.path[i][1] - a.path[i - 1][1]);
+        const share = Math.max(0, props.walkShare ?? 0.15);
+        const tooLong = busy.seconds !== undefined && len / WALK_SPEED > busy.seconds * share;
+        if (first || tooLong) {
+          // already running when the home opened, or a short action: be there already
           a.pos = s.p;
           a.yaw = s.yaw;
           a.mode = 'pose';
@@ -506,7 +523,7 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
         const f = L.furniture.find((x) => x.id === id);
         if (!f) return null;
         const [x0, z0, x1, z1] = footprint(f);
-        _v.set((x0 + x1) / 2 - cx, (f.y ?? 0) + 0.45, (z0 + z1) / 2 - cz).project(camera);
+        _v.set((x0 + x1) / 2 - cx, (f.y ?? 0) + (pickHeight(f) > 1.5 ? 1.3 : 0.45), (z0 + z1) / 2 - cz).project(camera);
         return { x: ((_v.x + 1) / 2) * size.width, y: ((1 - _v.y) / 2) * size.height };
       },
       bench(n = 60) {

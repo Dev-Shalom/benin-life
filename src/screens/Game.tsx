@@ -2,9 +2,10 @@
 // (the 2D map only as the lite fallback, see src/art/city3d/CityView.tsx).
 // HUD: top pill, left rail, needs card, dock (Home · Buy · Map · Phone), status banners, toasts.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { HomeView, activityGroup, homeLayoutFor, itemGroup, type FurnitureItem } from '../art/home3d';
+import { HomeView, LAYOUTS, activityGroup, furnishLayout, homeLayoutFor, itemGroup, type FurnitureItem } from '../art/home3d';
 import { CityView } from '../art/city3d';
-import { useGameClock } from '../lib/clock';
+import { serverNow, useGameClock } from '../lib/clock';
+import { useConfig } from '../lib/config';
 import { randomGreeting } from '../lib/pidgin';
 import { usePrefs } from '../lib/prefs';
 import { useCatalog } from '../state/catalog';
@@ -70,6 +71,10 @@ export default function Game() {
   const clean = usePrefs((s) => s.clean);
   const activities = useCatalog((s) => s.activities);
   const loadActivities = useCatalog((s) => s.loadActivities);
+  const furniture = useCatalog((s) => s.furniture);
+  const furnitureOf = useCatalog((s) => s.furnitureOf);
+  const loadFurniture = useCatalog((s) => s.loadFurniture);
+  const { cfg } = useConfig();
   const { clock, now } = useGameClock(1000);
   const greeted = useRef(false);
   const insets = useInsets();
@@ -88,6 +93,16 @@ export default function Game() {
   }, [state]);
 
   const p = state?.profile;
+  // the player's own furniture (starter set by origin + home); reloads when the home changes
+  const furnKey = p ? `${p.id}:${p.home_location_id}:${p.housing_id ?? ''}` : null;
+  const lastFurnKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!furnKey || !p) return;
+    const force = lastFurnKey.current !== null && lastFurnKey.current !== furnKey;
+    lastFurnKey.current = furnKey;
+    void loadFurniture(p.id, force);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [furnKey, loadFurniture]);
   const atHome = Boolean(p && !state?.travel && p.location_id === p.home_location_id);
   const showHome = atHome && !mapOpen;
   // V1-6: stay subscribed to the chat of the place you are at (unread dot while the sheet is closed).
@@ -115,7 +130,8 @@ export default function Game() {
   const busyGroup = useMemo(() => {
     if (!busyUntil || !busyLabel || !busyActive) return null;
     const a = activities?.find((x) => x.name === busyLabel && x.home_only);
-    return a ? { group: activityGroup(a.id), key: busyUntil } : null;
+    const seconds = Math.max(0, (Date.parse(busyUntil) - serverNow()) / 1000);
+    return a ? { group: activityGroup(a.id), key: busyUntil, activity: a.id, seconds } : null;
   }, [busyUntil, busyLabel, busyActive, activities]);
 
   const goHome = useCallback(() => {
@@ -155,10 +171,13 @@ export default function Game() {
   const onPick = useCallback(
     (f: FurnitureItem) => {
       const g = itemGroup(f);
-      if (g) pickHome({ id: f.id, group: g });
+      if (g) pickHome({ id: f.id, group: g, activities: f.activities });
     },
     [pickHome],
   );
+
+  const layoutId = p ? homeLayoutFor(p.housing_id, (state && byId[state.location.id]?.scene) ?? state?.location.scene) : 'face_me';
+  const furnished = useMemo(() => furnishLayout(LAYOUTS[layoutId], furniture), [layoutId, furniture]);
 
   if (!state || !p) return <LoadingScreen />;
 
@@ -173,16 +192,21 @@ export default function Game() {
   // The city stays live under the location sheet (it sits over the lower half) but pauses under
   // full-screen panels and overlays.
   const coveredMap = Boolean(panel || (overlay && !suspendHome));
-  const layout = homeLayoutFor(p.housing_id, here.scene);
+  const layout = layoutId;
+  const walkShare = Math.max(0, Number(cfg('home.walk_max_share_pct', 15)) || 0) / 100;
   const dockActive: DockId | null = overlay === 'phone' ? 'phone' : overlay === 'buy' ? 'buy' : showHome ? 'home' : 'map';
   const hourF = clock.hour + clock.minute / 60;
 
   return (
     <div className={`game${clock.is_night ? ' is-night' : ''}${clean ? ' is-clean' : ''}${showHome ? ' is-home' : ' is-map'}`}>
       <div className="game__map">
-        {showHome ? (
+        {showHome && furnitureOf !== p.id ? (
+          <div className="home3d home3d--loading"><span className="home3d__loader" aria-label="Loading your home" /></div>
+        ) : showHome ? (
           <HomeView
             layoutId={layout}
+            layout={furnished}
+            walkShare={walkShare}
             avatar={p.avatar}
             busy={busyGroup}
             hour={hourF}

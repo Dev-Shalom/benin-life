@@ -365,6 +365,35 @@ export function buildPiece(b: B, f: FurnitureItem, wallH: number) {
       b.cyl(0.08, 0.08, 0.03, 0.12, 0.85, 0, '#1f55a8', { seg: 8 });
       return;
     }
+    case 'drum_bucket': {
+      // blue water drum at the back-left, a bucket with a bowl in front-right, a wet patch on the floor
+      b.box(0.95, 0.01, 0.58, 0, 0, 0, '#8d8a84');
+      b.cyl(0.24, 0.24, 0.8, -0.24, 0, -0.04, c ?? '#2c6fd6', { seg: 12 });
+      b.cyl(0.25, 0.25, 0.03, -0.24, 0.28, -0.04, '#1f55a8', { seg: 12 });
+      b.cyl(0.25, 0.25, 0.03, -0.24, 0.56, -0.04, '#1f55a8', { seg: 12 });
+      b.cyl(0.22, 0.22, 0.02, -0.24, 0.8, -0.04, '#1f55a8', { seg: 12 }); // lid
+      b.cyl(0.16, 0.12, 0.3, 0.24, 0, 0.06, '#e2552c', { seg: 10 }); // bucket
+      b.cyl(0.14, 0.14, 0.015, 0.24, 0.27, 0.06, '#5fa8ff', { seg: 10 }); // water
+      b.box(0.24, 0.015, 0.02, 0.24, 0.31, 0.06, BLACK); // handle
+      b.cyl(0.08, 0.05, 0.06, 0.38, 0, -0.18, '#f1c40f', { seg: 8 }); // small bowl
+      b.box(0.09, 0.035, 0.05, 0.06, 0, 0.18, '#f6f3ec'); // soap
+      return;
+    }
+    case 'gas_cooker': {
+      // standing cooker (0.6 wide) with an oven, plus the cylinder on the right
+      const col = c ?? '#e9ecef';
+      b.box(0.6, 0.85, 0.58, -0.17, 0, 0, col);
+      b.box(0.5, 0.36, 0.01, -0.17, 0.2, 0.291, '#2b2f36'); // oven door
+      b.box(0.36, 0.03, 0.03, -0.17, 0.62, 0.3, CHROME); // handle
+      b.box(0.6, 0.02, 0.58, -0.17, 0.85, 0, '#1e2126'); // hob
+      for (const sx of [-0.13, 0.13]) for (const sz of [-0.12, 0.12]) b.cyl(0.065, 0.065, 0.02, -0.17 + sx, 0.87, sz, '#55595f', { seg: 10 });
+      for (let i = 0; i < 4; i++) b.box(0.04, 0.04, 0.02, -0.38 + i * 0.14, 0.76, 0.3, BLACK); // knobs
+      b.cyl(0.13, 0.12, 0.16, -0.3, 0.89, 0.12, '#c0392b', { seg: 12 }); // pot of stew
+      b.cyl(0.13, 0.13, 0.48, 0.32, 0, 0, '#1f7a3f', { seg: 10 }); // gas cylinder
+      b.cyl(0.07, 0.13, 0.08, 0.32, 0.48, 0, '#1f7a3f', { seg: 10 });
+      b.cyl(0.03, 0.03, 0.07, 0.32, 0.56, 0, CHROME, { seg: 6 });
+      return;
+    }
     case 'clothesline': {
       b.box(0.04, 1.6, 0.04, -1.2, 0, 0, WOOD_DARK);
       b.box(0.04, 1.6, 0.04, 1.2, 0, 0, WOOD_DARK);
