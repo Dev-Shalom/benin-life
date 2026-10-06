@@ -30,6 +30,8 @@ export interface ZoneAction {
   mine?: boolean;
   title?: string | null;
   pay?: number | null;
+  /** L4: an event-only card (activities.requires_event): the event on today here and the player's access. */
+  event?: { id: string; title: string; state: 'ok' | 'ticket' | 'later'; price: number } | null;
   /** Why it can't be done now ("Opens 9 PM", "Night only", "Only in your own home"), or null. */
   locked: string | null;
 }
@@ -64,6 +66,8 @@ export interface PlaceInterior {
   night: boolean;
   part: 'morning' | 'afternoon' | 'evening' | 'night';
   moods: { icon: string; line: string }[];
+  /** L4: today's / LIVE events here (same shape as events_on_today). */
+  events?: import('./events').PlaceEvent[];
   zones: PlaceZone[];
 }
 

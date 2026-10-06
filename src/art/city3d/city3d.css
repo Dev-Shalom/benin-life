@@ -416,3 +416,49 @@
 .c3-road {
   transform-origin: 0 0;
 }
+
+/* L4: event badges on pins (LIVE = red pill with a soft pulse; later today = a ticket) */
+.c3-pill__ev {
+  display: inline-grid;
+  place-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.c3-pill__ev.is-live {
+  background: #e23b2e;
+  color: #fff;
+  box-shadow: 0 0 0 0 rgba(226, 59, 46, 0.5);
+  animation: c3-ev-pulse 1.8s ease-out infinite;
+}
+.c3-pill__ev.is-today {
+  padding: 0 3px;
+  background: #fff4d6;
+  font-family: var(--font-emoji);
+  font-size: 11px;
+}
+.c3-place.is-ev-live .c3-pill {
+  box-shadow: 0 0 0 2px rgba(226, 59, 46, 0.55), 0 2px 8px rgba(17, 32, 56, 0.2);
+}
+.c3-dot__ev {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #f0a52b;
+}
+.c3-dot__ev.is-live { background: #e23b2e; }
+@keyframes c3-ev-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(226, 59, 46, 0.5); }
+  70%, 100% { box-shadow: 0 0 0 6px rgba(226, 59, 46, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .c3-pill__ev.is-live { animation: none; }
+}

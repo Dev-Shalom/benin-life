@@ -157,6 +157,11 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
       return;
     }
     if (lock) {
+      // L4: an event card without a ticket opens the place sheet (On today → Buy ticket)
+      if (a.event?.state === 'ticket') {
+        select(locId);
+        return;
+      }
       toast(lock, 'info');
       return;
     }
@@ -178,7 +183,7 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
 
   const verb = a.kind === 'panel' || (a.kind === 'job' && !a.mine) ? 'Choose' : armed ? `Tap again · ${nairaShort(cost)}` : idle ? null : 'Add to queue';
   return (
-    <button type="button" className={`pc-act${lock && a.kind !== 'panel' && !(a.kind === 'job' && !a.mine) ? ' is-locked' : ''}${armed ? ' is-armed' : ''}`} onClick={go}
+    <button type="button" className={`pc-act${a.event ? ' is-event' : ''}${lock && a.kind !== 'panel' && !(a.kind === 'job' && !a.mine) ? ' is-locked' : ''}${armed ? ' is-armed' : ''}`} onClick={go}
       aria-label={`${a.name}${secs ? `, ${secs} seconds` : ''}${cost ? `, ${naira(cost)}` : ''}${lock ? `, ${lock}` : ''}`}>
       <span className="pc-act__top">
         <span className="pc-act__icon" aria-hidden>{a.icon}</span>
@@ -188,12 +193,14 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
           {price}
         </span>
       </span>
+      {a.event && <span className={`pc-act__event${a.event.state === 'ok' ? ' is-on' : ''}`}>{a.event.state === 'later' ? 'Event' : 'LIVE'} · {a.event.title}</span>}
       <span className="pc-act__name">{a.name}</span>
       {a.kind === 'job' && a.title && <span className="pc-act__sub">{a.mine ? a.title : `Start as ${a.title}`}</span>}
       {car && <span className="pc-act__sub">{owned ? 'In your Bag' : 'Unlocks "Your car" rides'}</span>}
       {a.kind === 'shop' && !car && (a.owned ?? 0) > 0 && <span className="pc-act__sub">{a.owned} in your Bag</span>}
       <EffectChips effects={a.kind === 'activity' || (a.kind === 'shop' && !car) ? a.effects : null} />
-      {lock && a.kind !== 'panel' && !(a.kind === 'job' && !a.mine) ? <span className="pc-act__lock">{lock}</span>
+      {lock && a.event?.state === 'ticket' ? <span className="pc-act__verb">Buy a ticket ({naira(a.event.price)}) <Icon name="chevronRight" size={12} /></span>
+        : lock && a.kind !== 'panel' && !(a.kind === 'job' && !a.mine) ? <span className="pc-act__lock">{lock}</span>
         : verb ? <span className="pc-act__verb">{verb} <Icon name="chevronRight" size={12} /></span> : null}
     </button>
   );
@@ -286,6 +293,10 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
 
   const zones = data?.zones ?? [];
   const current = zones.find((z) => z.key === zone) ?? null;
+  // L4: an event on here today → a strip that jumps to its zone (event-only cards)
+  const evZone = zones.find((z) => z.actions.some((a) => a.event));
+  const evAct = evZone?.actions.find((a) => a.event);
+  const evLive = data?.events?.find((e) => e.live) ?? data?.events?.[0];
   const chipsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // keep the picked chip in view (tapping a zone in 3D)
@@ -350,6 +361,14 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
         </form>
       )}
 
+      {evLive && (
+        <button type="button" className={`pc-event${evLive.live ? ' is-live' : ''}`}
+          onClick={() => { if (evZone) { onZone(evZone.key); setOpen(true); } else select(loc.id); }}>
+          {evLive.live ? <span className="ev-live"><span className="ev-live__dot" aria-hidden />LIVE</span> : <span aria-hidden>{evLive.icon}</span>}
+          <span className="pc-event__text"><b>{evLive.title}</b> {evLive.live ? '' : `· ${evLive.starts_label}`}</span>
+          <span className="pc-event__go">{evAct ? `${evAct.icon} ${evZone?.label}` : 'Tickets'} <Icon name="chevronRight" size={12} /></span>
+        </button>
+      )}
       <div className="place-card__chips" ref={chipsRef} role="tablist" aria-label="Zones">
         <button type="button" className="pc-fold" onClick={() => setOpen((o) => !o)} aria-label={open ? 'Fold the card' : 'Show the actions'} aria-expanded={open}>
           <Icon name={open ? 'chevronDown' : 'chevronUp'} size={16} />

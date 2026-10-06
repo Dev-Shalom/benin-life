@@ -169,6 +169,8 @@ export interface TravelOption {
   game_minutes: number;
   real_seconds: number;
   risk_pct: number;
+  /** P1: own-vehicle option (mode car): the item id (bicycle, bajaj_boxer, g_wagon...). */
+  vehicle?: string | null;
 }
 
 export interface TravelQuote {

@@ -37,6 +37,12 @@ const hourLabel = (v: unknown): string => {
 };
 const hoursText = (r: Row) => (r.open_hour === null || r.open_hour === undefined ? 'always open' : `${hourLabel(r.open_hour)} – ${hourLabel(r.close_hour)}`);
 
+/** A timestamptz shown in Benin time ("6 Oct 2026, 20:46"). */
+const watTime = (v: unknown): string => {
+  const ms = Date.parse(String(v ?? ''));
+  return Number.isNaN(ms) ? '?' : new Date(ms).toLocaleString('en-GB', { timeZone: 'Africa/Lagos', dateStyle: 'medium', timeStyle: 'short' });
+};
+
 const DEFS: TableDef[] = [
   {
     id: 'homes', table: 'start_homes', title: 'Homes', emoji: '🏠', blurb: 'Starting homes in the creator: rent and start cash per origin.',
@@ -138,6 +144,7 @@ const DEFS: TableDef[] = [
       { key: 'icon', label: 'Icon (emoji, action cards)', type: 'textnull' },
       { key: 'location_ids', label: 'Only at these places (ids)', type: 'list', help: 'Empty = every place of its scenes, e.g. mama_ebo' },
       { key: 'risky', label: 'Risky (street robbery roll here)', type: 'bool' },
+      { key: 'requires_event', label: 'Needs event (kind or event id)', type: 'textnull', help: 'L4: the card only shows on a day that event is on here, and opens while it is LIVE with a ticket (or free). e.g. match, club_night, market_day' },
       { key: 'rush', label: 'Rush hour sell-out', type: 'json', help: '{} = never. {"from": 12, "to": 15, "pct": 40, "line": "Pepper rice don finish!"}' },
     ],
   },
@@ -252,6 +259,48 @@ const DEFS: TableDef[] = [
       { key: 'sort', label: 'Sort order', type: 'int' }, { key: 'active', label: 'Active', type: 'bool' },
     ],
     newRow: { kind: 'vip', line: 'Make una hail @{name}! {place}, shout!', ticker: '🔥 @{name} is balling at {place}', sort: 10, active: true },
+  },
+  {
+    id: 'events', table: 'place_events', title: 'Events', emoji: '🎟️', blurb: 'Events at places (L4, docs/EVENTS.md): match days, club nights, market days, owambe, premieres, pool parties. Weekly = every weekday 0 (Mon) … 6 (Sun) from start to end time, Benin time (an end before the start = past midnight). One-off = starts at … ends at, e.g. 2026-10-20 18:00+01. Events at hidden places never show. Ticket price 0 = free. Event-only action cards: Activities → "Needs event" (an event kind or id).',
+    pk: ['id'], insert: true, inline: ['ticket_price'],
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => `${r.icon} ${r.title}`,
+    subOf: (r) => `${r.location_id} · ${r.kind} · ${r.recurrence === 'weekly' ? `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][Number(r.weekday)] ?? '?'} ${hourLabel(r.start_time)} – ${hourLabel(r.end_time)}` : `${watTime(r.starts_at)} → ${watTime(r.ends_at)} WAT`} · ${Number(r.ticket_price) ? naira(Number(r.ticket_price)) : 'free'}${r.capacity != null ? ` · cap ${r.capacity}` : ''}${r.active ? '' : ' · off'}`,
+    validate: (get) => {
+      if (get('recurrence') === 'weekly') {
+        const out: Record<string, string> = {};
+        if (get('weekday') === null) out.weekday = 'Pick a weekday 0 (Mon) … 6 (Sun)';
+        if (get('start_time') === null) out.start_time = 'Set a start time';
+        if (get('end_time') === null) out.end_time = 'Set an end time';
+        if (get('start_time') !== null && get('start_time') === get('end_time')) out.end_time = 'End must differ from start';
+        return out;
+      }
+      if (get('recurrence') === 'none') {
+        if (!get('starts_at')) return { starts_at: 'Set when it starts' };
+        if (!get('ends_at')) return { ends_at: 'Set when it ends' };
+      }
+      return {};
+    },
+    fields: [
+      { key: 'active', label: 'Active', type: 'bool' },
+      { key: 'title', label: 'Title', type: 'text', help: '{variant} = a different line each week from Variants, e.g. Bendel Insurance vs {variant}' },
+      { key: 'location_id', label: 'Place id', type: 'text', help: 'e.g. ogbemudia_stadium, club_360, oba_market' },
+      { key: 'kind', label: 'Kind', type: 'text', help: 'match | concert | club_night | market_day | church | owambe | premiere | party | promo' },
+      { key: 'icon', label: 'Icon (emoji)', type: 'text' },
+      { key: 'recurrence', label: 'Repeats', type: 'text', help: 'weekly | none (one-off)' },
+      { key: 'weekday', label: 'Weekday (weekly)', type: 'intnull', help: '0 Mon, 1 Tue, 2 Wed, 3 Thu, 4 Fri, 5 Sat, 6 Sun' },
+      { key: 'start_time', label: 'Starts (weekly)', type: 'time' },
+      { key: 'end_time', label: 'Ends (weekly)', type: 'time', help: 'Before the start = past midnight (22:00 → 04:00)' },
+      { key: 'starts_at', label: 'Starts at (one-off; weekly: season start)', type: 'textnull', help: 'e.g. 2026-10-20 18:00+01' },
+      { key: 'ends_at', label: 'Ends at (one-off; weekly: season end)', type: 'textnull' },
+      { key: 'ticket_price', label: 'Ticket price', type: 'money', help: '0 = free entry, no ticket needed' },
+      { key: 'capacity', label: 'Capacity (tickets)', type: 'intnull', help: 'Empty = no limit' },
+      { key: 'perks', label: 'Perks for event-only actions', type: 'json', help: '{"effects": {"fun": 15, "social": 10}, "street_cred": 1}' },
+      { key: 'description', label: 'Description', type: 'long' },
+      { key: 'variants', label: 'Variants', type: 'long', help: 'One per row (opponents, film titles...), used for {variant}' },
+      { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { location_id: 'oba_market', title: 'New event', kind: 'promo', icon: '🎉', recurrence: 'weekly', weekday: 5, start_time: 18, end_time: 22, starts_at: null, ends_at: null, ticket_price: 0, capacity: null, perks: {}, description: '', variants: '', sort: 100, active: true },
   },
   {
     id: 'origins', table: 'origin_tiers', title: 'Origins', emoji: '👶', blurb: 'LAPO / Nepo copy and perks. Chances and start money live in Settings → Origin.',

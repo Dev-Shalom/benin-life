@@ -58,6 +58,8 @@ export interface CitySceneProps {
   hour: number;
   travel?: { from: string; to: string; progress: number; mode?: string } | null;
   crowd?: Record<string, number>;
+  /** L4: places with an event today ('live' = on now) get a small badge on their pin. */
+  events?: Record<string, 'live' | 'today'>;
   paused?: boolean;
   onReady?: (api: CityApi) => void;
   onLost?: () => void;
@@ -813,6 +815,7 @@ const Labels = memo(function Labels(props: {
   travelTo?: string;
   travelMode?: string;
   crowd?: Record<string, number>;
+  events?: Record<string, 'live' | 'today'>;
   filters: CityFilter[];
   night: boolean;
   labels: MutableRefObject<LabelState>;
@@ -820,7 +823,7 @@ const Labels = memo(function Labels(props: {
   onItems: (items: LabelItem[]) => void;
   dragMoved: MutableRefObject<boolean>;
 }) {
-  const { locations, currentId, selectedId, travelTo, travelMode, crowd, filters, night, labels, onPick, onItems, dragMoved } = props;
+  const { locations, currentId, selectedId, travelTo, travelMode, crowd, events, filters, night, labels, onPick, onItems, dragMoved } = props;
   // priority order for the greedy placement
   const items = useMemo(() => {
     const out: LabelItem[] = [];
@@ -832,14 +835,17 @@ const Labels = memo(function Labels(props: {
       const prio = l.id === selectedId ? 1 : l.id === currentId ? 2 : l.id === travelTo ? 3 : isF ? 4 : LANDMARKS.has(l.id) ? 5 : tier === 1 ? 6 : 8;
       // filter matches and tonight's danger zones label like landmarks
       const lift = isF || (night && isNightRisky(l));
-      out.push({ key: l.id, kind: 'place', x: l.x, y: l.y, prio: prio + (crowd?.[l.id] ? -0.5 : 0) - (lift && prio > 4 ? 2 : 0), tier: lift ? 1 : tier, must });
+      // L4: a LIVE event labels like a landmark; an event later today gets a small lift
+      const ev = events?.[l.id];
+      const evLift = ev === 'live' ? (prio > 4 ? 2.5 : 0) : ev ? (prio > 5 ? 1 : 0) : 0;
+      out.push({ key: l.id, kind: 'place', x: l.x, y: l.y, prio: prio + (crowd?.[l.id] ? -0.5 : 0) - (lift && prio > 4 ? 2 : 0) - evLift, tier: lift || ev === 'live' ? 1 : tier, must });
     }
     for (const c of COMING_SOON) out.push({ key: 'soon:' + c.id, kind: 'soon', x: c.x, y: c.y, prio: 7, tier: 1, must: false });
     for (const e of EXIT_SIGNS) out.push({ key: 'exit:' + e.text, kind: 'exit', x: e.x, y: e.y, prio: 9, tier: 1, must: false });
     for (const d of DISTRICT_NAMES) out.push({ key: 'd:' + d.t, kind: 'district', x: d.x, y: d.y, prio: 10, tier: 2, must: false });
     out.push(...roadLabels());
     return out.sort((a, b) => a.prio - b.prio);
-  }, [locations, currentId, selectedId, travelTo, crowd, filters, night]);
+  }, [locations, currentId, selectedId, travelTo, crowd, events, filters, night]);
   useEffect(() => onItems(items), [items, onItems]);
 
   const reg = (key: string) => (el: HTMLElement | null) => {
@@ -866,12 +872,14 @@ const Labels = memo(function Labels(props: {
         const isSel = l.id === selectedId;
         const dangerNow = night && isNightRisky(l);
         const n = crowd?.[l.id] ?? 0;
+        const ev = events?.[l.id];
         const cls = [
           'c3-label c3-place',
           isCur && 'is-current',
           isSel && 'is-selected',
           l.id === travelTo && 'is-dest',
           dangerNow && 'is-danger',
+          ev && `has-ev is-ev-${ev}`,
           anyFilter && (f ? 'is-match' : 'is-dim'),
         ]
           .filter(Boolean)
@@ -885,9 +893,11 @@ const Labels = memo(function Labels(props: {
               <span className="c3-pill__name">{shortName(l.id, l.name)}</span>
               {dangerNow && <span className="c3-pill__warn" aria-label="Danger at night">⚠️</span>}
               {n > 0 && <span className="c3-pill__count" aria-label={`${n} players here`}>{n}</span>}
+              {ev && <span className={`c3-pill__ev is-${ev}`} aria-label={ev === 'live' ? 'Event live now' : 'Event today'}>{ev === 'live' ? 'LIVE' : '🎟️'}</span>}
             </button>
             <button type="button" className="c3-dot" onClick={tap(() => onPick(l.id))} aria-label={l.name} tabIndex={-1}>
               <span aria-hidden>{placeEmoji(l)}</span>
+              {ev && <span className={`c3-dot__ev is-${ev}`} aria-hidden />}
             </button>
           </div>
         );
@@ -1253,6 +1263,7 @@ export default function CityScene(props: CitySceneProps) {
         travelTo={travel?.to}
         travelMode={travel?.mode}
         crowd={crowd}
+        events={props.events}
         filters={filters}
         night={night}
         labels={labels}

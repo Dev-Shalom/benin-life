@@ -35,6 +35,8 @@ import { useTasks } from '../state/tasks';
 import { PlaceCard, usePlaceInterior, usePlacePeople, usePlayersAt } from './game/PlaceCard';
 import { HypeBanner, HypeTicker } from './game/Hype';
 import { useHypeLive } from '../state/hype';
+import { useEventsLive } from '../state/events';
+import { EventBanner, useEventBadges } from './game/Events';
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
@@ -256,6 +258,26 @@ export default function Game() {
   // P2: club hype (server announcements over Realtime): the club channel while inside a club, the ticker always
   const inClub = showPlace && placeScene === 'club';
   useHypeLive(inClub && state ? state.location.id : null, p?.id ?? null);
+  // L4: today's / LIVE events (map badges, place sheet "On today", top banner)
+  useEventsLive(p?.id ?? null);
+  const eventBadges = useEventBadges();
+  // L4: a shared place link (/play?place=<id>) opens that place's sheet on the map, once
+  const deepLinked = useRef(false);
+  useEffect(() => {
+    if (deepLinked.current || !p || !locations.length) return;
+    deepLinked.current = true;
+    const want = new URLSearchParams(window.location.search).get('place');
+    if (!want) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('place');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    if (!locations.some((l) => l.id === want)) {
+      toast('That place is closed for now. Check back soon.', 'info');
+      return;
+    }
+    setMapOpen(true);
+    select(want);
+  }, [p, locations, select, setMapOpen]);
   const playersHere = usePlayersAt(showPlace && state ? state.location.id : null, p?.id ?? '');
   const placeRoom = useMemo(() => (interior.data ? roomFor(interior.data.location.scene, interior.data.zones) : null), [interior.data]);
   const placeGrid = useMemo(() => (interior.data && placeRoom ? buildPlaceGrid(placeRoom, interior.data.zones) : null), [interior.data, placeRoom]);
@@ -412,6 +434,7 @@ export default function Game() {
             hour={hourF}
             travel={travel}
             crowd={crowd}
+            events={eventBadges}
             suspended={suspendHome}
             paused={coveredMap}
             insetTop={clean ? 70 : insets.top}
@@ -423,6 +446,10 @@ export default function Game() {
       {!clean && <TopPill state={state} clock={clock} />}
       {inClub && <HypeBanner mcName={people?.npcs.find((n) => n.motion === 'hype')?.name ?? 'The hype man'} top={(clean ? 70 : insets.top) + 6} />}
       <HypeTicker top={insets.narrow ? 14 : 72} />
+      {!clean && (
+        <EventBanner top={showHome || showPlace ? (insets.narrow ? 160 : 72) : (insets.narrow ? 156 : 122)} hereId={state.travel ? null : state.location.id}
+          onOpen={(id) => { if (id !== state.location.id || state.travel) setMapOpen(true); select(id); }} />
+      )}
       <LeftRail state={state} status={status} atHome={atHome} compact={!showHome && (!showPlace || insets.narrow)} />
 
       <div className="game__bottom" ref={bottomRef}>
