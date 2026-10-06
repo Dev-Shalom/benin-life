@@ -9,12 +9,33 @@ import { adminApi, type AdminTable, type Row } from './api';
 import { Badge, Btn, DetailPane, JsonControl, LoadError, PageHead, Skeleton, Toggle } from './parts';
 import { useLoad } from './util';
 
-type FieldType = 'text' | 'long' | 'int' | 'money' | 'num' | 'bool' | 'json' | 'list' | 'intnull' | 'textnull';
+type FieldType = 'text' | 'long' | 'int' | 'money' | 'num' | 'bool' | 'json' | 'list' | 'intnull' | 'textnull' | 'time';
 interface Field { key: string; label: string; type: FieldType; help?: string }
 interface TableDef {
   id: string; table: AdminTable; title: string; emoji: string; blurb: string; pk: string[]; insert: boolean;
   fields: Field[]; inline?: string[]; titleOf: (r: Row) => string; subOf?: (r: Row) => string; newRow?: Row;
+  /** A bool column shown as an on/off switch on every row (saves at once). */
+  toggle?: { key: string; label: string };
+  /** Cross-field checks on the parsed values; returns { fieldKey: message }. */
+  validate?: (get: (key: string) => unknown) => Record<string, string>;
 }
+
+/** Hours (numeric, 21.5) <-> "21:30" for <input type="time">. */
+const hourToTime = (v: unknown): string => {
+  if (v === null || v === undefined || v === '') return '';
+  const n = Number(v);
+  const h = Math.floor(n) % 24;
+  const m = Math.round((n - Math.floor(n)) * 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+const hourLabel = (v: unknown): string => {
+  const n = Number(v);
+  const h = Math.floor(n) % 24;
+  const m = Math.round((n - Math.floor(n)) * 60);
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}${m ? `:${String(m).padStart(2, '0')}` : ''} ${h < 12 ? 'AM' : 'PM'}`;
+};
+const hoursText = (r: Row) => (r.open_hour === null || r.open_hour === undefined ? 'always open' : `${hourLabel(r.open_hour)} – ${hourLabel(r.close_hour)}`);
 
 const DEFS: TableDef[] = [
   {
@@ -123,8 +144,19 @@ const DEFS: TableDef[] = [
   {
     id: 'places', table: 'locations', title: 'Places', emoji: '📍', blurb: 'Map places: robbery risk, CCTV, keke, traffic and actions.',
     pk: ['id'], insert: false, inline: ['risk'],
-    titleOf: (r) => String(r.name), subOf: (r) => `${r.district} · night ×${r.night_risk_mult}${r.cctv ? ' · CCTV' : ''}${r.keke_ok ? ' · keke' : ''}`,
+    titleOf: (r) => String(r.name),
+    subOf: (r) => `${r.scene} · ${r.district} · ${hoursText(r)}${r.active === false ? ' · hidden from players' : ''}`,
+    toggle: { key: 'active', label: 'Open to players' },
+    validate: (get) => {
+      const o = get('open_hour'), c = get('close_hour');
+      if ((o === null) !== (c === null)) return { [o === null ? 'open_hour' : 'close_hour']: 'Set both times, or clear both for always open' };
+      if (o !== null && o === c) return { close_hour: 'Closing time must differ from opening time (clear both for always open)' };
+      return {};
+    },
     fields: [
+      { key: 'active', label: 'Active (open to players)', type: 'bool', help: 'Off = hidden: no map pin, not in Ride, nobody can travel there or act there. Players already inside can still leave.' },
+      { key: 'open_hour', label: 'Opens at', type: 'time', help: 'Benin time. Clear both times = always open. Clubs: 21:00' },
+      { key: 'close_hour', label: 'Closes at', type: 'time', help: 'Can be after midnight: 05:00 = 5 AM next morning' },
       { key: 'name', label: 'Name', type: 'text' },
       { key: 'risk', label: 'Robbery risk (0–1)', type: 'num', help: 'Multiplies the street robbery chance here' },
       { key: 'night_risk_mult', label: 'Night risk ×', type: 'num' }, { key: 'cctv', label: 'CCTV', type: 'bool' },
@@ -132,8 +164,6 @@ const DEFS: TableDef[] = [
       { key: 'remote_km', label: 'Extra km (outskirts)', type: 'num' },
       { key: 'actions', label: 'Actions', type: 'list', help: 'e.g. shop, bank, pos, chat' },
       { key: 'blurb', label: 'Blurb', type: 'long' }, { key: 'sort', label: 'Sort order', type: 'int' },
-      { key: 'open_hour', label: 'Opens at (hour 0–23, empty = always open)', type: 'intnull', help: 'Benin time. Clubs: 21' },
-      { key: 'close_hour', label: 'Closes at (hour 0–24, empty = always open)', type: 'intnull', help: 'Can be after midnight: 5 = 5 AM' },
     ],
   },
   {
@@ -201,7 +231,7 @@ const SHORT: Record<string, string> = {
   pay_per_shift: 'Pay', shift_game_minutes: 'Minutes', xp_per_shift: 'XP', xp_to_next: 'XP to next', x: 'x', z: 'z',
 };
 const rowKey = (def: TableDef, r: Row) => def.pk.map((k) => String(r[k])).join('|');
-const fmtField = (f: Field, v: unknown): string => (v === null || v === undefined ? '' : f.type === 'list' ? (v as string[]).join(', ') : f.type === 'json' ? JSON.stringify(v, null, 2) : String(v));
+const fmtField = (f: Field, v: unknown): string => (f.type === 'time' ? hourToTime(v) : v === null || v === undefined ? '' : f.type === 'list' ? (v as string[]).join(', ') : f.type === 'json' ? JSON.stringify(v, null, 2) : String(v));
 
 /** Convert a form string into the value we send; returns [value, error]. */
 function parseField(f: Field, raw: unknown): [unknown, string | null] {
@@ -209,6 +239,13 @@ function parseField(f: Field, raw: unknown): [unknown, string | null] {
     case 'bool': return [raw === true, null];
     case 'text': case 'long': return [String(raw ?? ''), null];
     case 'textnull': return [String(raw ?? '').trim() === '' ? null : String(raw), null];
+    case 'time': {
+      const t = String(raw ?? '').trim();
+      if (t === '') return [null, null];
+      const m = /^(\d{1,2}):(\d{2})$/.exec(t);
+      if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return [null, 'Use a time like 21:00'];
+      return [Math.round((Number(m[1]) + Number(m[2]) / 60) * 100) / 100, null];
+    }
     case 'list': return [String(raw ?? '').split(',').map((s) => s.trim()).filter(Boolean), null];
     case 'json':
       try {
@@ -231,6 +268,16 @@ function parseField(f: Field, raw: unknown): [unknown, string | null] {
 function FieldInput({ f, value, onChange }: { f: Field; value: unknown; onChange: (v: unknown) => void }) {
   if (f.type === 'bool') return <Toggle checked={value === true} onChange={onChange} label={f.label} />;
   if (f.type === 'json') return <JsonControl rows={5} value={String(value ?? '')} onChange={(t) => onChange(t)} />;
+  if (f.type === 'time') {
+    return (
+      <span className="adm-timebox">
+        <label className="adm-numbox adm-numbox--wide">
+          <input type="time" step={900} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)} />
+        </label>
+        {String(value ?? '') !== '' && <Btn small tone="quiet" onClick={() => onChange('')}>Clear</Btn>}
+      </span>
+    );
+  }
   if (f.type === 'long') return <textarea className="adm-input" rows={3} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)} />;
   const numeric = ['int', 'money', 'num', 'intnull'].includes(f.type);
   return (
@@ -266,6 +313,13 @@ function RowForm({ def, row, isNew, onSaved, onClose }: {
     const [v, err] = parseField(f, form[f.key]);
     if (err) errors[f.key] = err; else payload[f.key] = v;
   });
+  if (def.validate) {
+    const parsed = (key: string) => {
+      const f = def.fields.find((x) => x.key === key);
+      return f ? parseField(f, form[key])[0] : undefined;
+    };
+    Object.assign(errors, def.validate(parsed));
+  }
   const changed = Object.keys(payload).length > def.pk.length;
   const save = async () => {
     setBusy(true);
@@ -316,6 +370,20 @@ function TableEditor({ def, rows, setRows, filter, extraNew }: {
     const exists = rows.some((r) => rowKey(def, r) === k);
     setRows(exists ? rows.map((r) => (rowKey(def, r) === k ? saved : r)) : [...rows, saved]);
   };
+  const [toggling, setToggling] = useState<string | null>(null);
+  const saveToggle = async (r: Row, on: boolean) => {
+    if (!def.toggle) return;
+    const k = rowKey(def, r);
+    const payload: Row = {};
+    def.pk.forEach((p) => { payload[p] = r[p]; });
+    payload[def.toggle.key] = on;
+    setToggling(k);
+    try {
+      const res = await adminApi.rowUpsert(def.table, payload);
+      toast(`${def.titleOf(res.row)} is now ${on ? 'open to players' : 'hidden'}`, 'good');
+      merge(res.row);
+    } catch (e) { toast(errorMessage(e), 'bad'); } finally { setToggling(null); }
+  };
   const saveInline = async (r: Row) => {
     const k = rowKey(def, r);
     const payload: Row = {};
@@ -355,6 +423,13 @@ function TableEditor({ def, rows, setRows, filter, extraNew }: {
                   <span className="adm-row__title">{def.titleOf(r)} {r.active === false && <Badge>Off</Badge>}</span>
                   {def.subOf && <span className="adm-row__sub">{def.subOf(r)}</span>}
                 </button>
+                {def.toggle && (
+                  <label className={`adm-rowtoggle${r[def.toggle.key] === false ? '' : ' is-on'}`}>
+                    <span className="adm-rowtoggle__cap">{r[def.toggle.key] === false ? 'Hidden' : 'Active'}</span>
+                    <Toggle checked={r[def.toggle.key] !== false} label={`${def.toggle.label}: ${def.titleOf(r)}`}
+                      onChange={(on) => { if (toggling !== k) void saveToggle(r, on); }} />
+                  </label>
+                )}
                 {def.inline && (
                   <div className="adm-row__inline">
                     {def.inline.map((field) => {

@@ -27,7 +27,7 @@ const container = process.env.BL_DB_CONTAINER ?? 'supabase_db_benin-life';
 let rows;
 try {
   const sql = `select json_build_object(
-    'locations', (select json_agg(json_build_object('id', id, 'scene', scene) order by sort) from locations),
+    'locations', (select json_agg(json_build_object('id', id, 'scene', scene, 'active', active) order by sort) from locations),
     'zones', (select json_agg(json_build_object('id', id, 'scene', scene, 'location_id', location_id, 'key', zone_key, 'label', label,
               'prop', prop, 'x', x, 'z', z, 'w', w, 'd', d, 'rot', rot, 'active', active, 'icon', icon, 'note', note, 'actions', '[]'::json)) from place_zones))`;
   rows = JSON.parse(execFileSync('docker', ['exec', '-i', container, 'psql', '-U', 'postgres', '-d', 'postgres', '-At', '-c', sql], { encoding: 'utf8' }));
@@ -79,6 +79,9 @@ for (const loc of rows.locations) {
   }
   if (verbose) console.log(`${loc.id}: ${room.W}×${room.D} m, ${zones.length} zones`);
 }
-console.log(`${places} places, ${spots} zone spots checked`);
+// F1 soft launch: hidden places are still checked (the admin can switch them back on); 360 Signature is open.
+const hidden = rows.locations.filter((l) => l.active === false);
+ok(rows.locations.some((l) => l.id === 'club_360' && l.active !== false), 'club_360 (360 Signature) is active');
+console.log(`${places} places, ${spots} zone spots checked · ${hidden.length} hidden: ${hidden.map((l) => l.id).join(', ') || 'none'}`);
 console.log(fails ? `${fails} FAILED` : 'all place checks passed');
 process.exit(fails ? 1 : 0);

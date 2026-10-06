@@ -6,6 +6,9 @@ import type { BufferGeometry } from 'three';
 import type { PlaceZone } from '../../../api/places';
 import { HomeBuilder, type Layer } from '../../home3d/engine/build';
 import type { Room } from '../model';
+import type { Mat } from '../../feel/atlas';
+import { buildClutter, buildOutside, buildPools, seeded, type ClutterKind, type Rect } from '../../feel/kit';
+import { rigFor, type Rig } from '../../feel/rigs';
 
 type B = HomeBuilder;
 
@@ -27,7 +30,31 @@ const FRUIT = ['#e0473a', '#f2a516', '#7dbb45', '#f3cf5e', '#b0202d'];
 export interface BuiltPlace {
   layers: Record<Layer, BufferGeometry | null>;
   tris: number;
+  /** F1: light rig for this place type, ceiling fan spot, steam spots (layout space). */
+  rig: Rig;
+  fan: [number, number, number] | null;
+  steam: [number, number, number][];
 }
+
+/** F1: atlas surfaces per place type: [floor, walls]. */
+const SURF: Record<string, [Mat, Mat]> = {
+  club: ['tiles', 'paint'], lounge: ['tiles', 'paint'], buka: ['concrete', 'plaster'], restaurant: ['tiles', 'plaster'],
+  bank: ['tiles', 'paint'], hospital: ['tiles', 'paint'], police: ['concrete', 'plaster'], campus: ['concrete', 'plaster'],
+  museum: ['wood', 'paint'], office: ['carpet', 'paint'], tech: ['carpet', 'paint'], cyber: ['tiles', 'plaster'], shrine: ['ground', 'plaster'],
+  salon: ['tiles', 'paint'], workshop: ['concrete', 'block'], airport: ['tiles', 'paint'], mall: ['tiles', 'paint'],
+  cinema: ['carpet', 'paint'], hotel: ['tiles', 'paint'], car_dealer: ['tiles', 'paint'],
+  market: ['ground', 'block'], motorpark: ['asphalt', 'block'], street: ['asphalt', 'block'], pos: ['concrete', 'block'],
+  zoo: ['grass', 'block'], stadium: ['concrete', 'paint'], monument: ['tiles', 'block'], farm: ['ground', 'block'], palace: ['ground', 'plaster'],
+};
+
+const CLUTTER: Record<string, ClutterKind> = {
+  club: 'club', lounge: 'club', buka: 'buka', restaurant: 'buka', bank: 'office', office: 'office', tech: 'office', cyber: 'office',
+  police: 'office', airport: 'hall', hospital: 'clinic', campus: 'hall', market: 'market', motorpark: 'market', street: 'market', pos: 'market',
+};
+
+const WARM_PROPS = new Set(['tables', 'counter', 'bar', 'food_stall', 'grill', 'kiosk', 'checkout', 'desk', 'salon_chairs', 'stall']);
+const PARTY_PROPS = new Set(['dance_floor', 'bar', 'dj_booth', 'vip', 'stage']);
+const STEAM_PROPS = new Set(['food_stall', 'grill', 'counter', 'kiosk']);
 
 function stool(b: B, x: number, z: number, c = WOOD) {
   b.cyl(0.16, 0.16, 0.06, x, 0.42, z, c, { seg: 8 });
@@ -578,23 +605,21 @@ function buildProp(b: B, z: PlaceZone, room: Room, seed: number) {
 
 /** The shell: floor (checker), back + left walls full height (cut away at the front/right like the home),
  * entrance mat, a few plants / lamps. Outdoor kits: a ground island with a low fence and trees. */
-function buildShell(b: B, room: Room) {
+function buildShell(b: B, room: Room, scene: string, seed: number, density: number) {
   const { W, D, kit } = room;
   b.resetFrame();
   const outdoor = kit.kind === 'outdoor';
-  // ground island under everything
-  const r = Math.hypot(W, D) / 2 + 1.6;
-  b.cyl(r, r + 0.25, 0.35, W / 2, -0.37, D / 2, outdoor ? '#a8c08a' : '#b8c7a0', { seg: 36 });
-  b.cyl(r + 0.25, r + 0.4, 0.22, W / 2, -0.6, D / 2, '#b5552b', { seg: 36 });
-  // floor with a soft checker
-  b.box(W, 0.04, D, W / 2, -0.04, D / 2, kit.floor);
-  if (kit.floorAlt && kit.tile) {
-    const s = kit.tile;
-    const nx = Math.round(W / s);
-    const nz = Math.round(D / s);
-    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) if ((i + j) % 2) b.box(W / nx, 0.004, D / nz, (i + 0.5) * (W / nx), 0, (j + 0.5) * (D / nz), kit.floorAlt);
-  }
+  const [floorMat, wallMat] = SURF[scene] ?? (outdoor ? ['ground', 'block'] : ['tiles', 'paint']);
+  // F1: the world outside instead of a floating island
+  buildOutside(b, {
+    x0: 0, z0: 0, x1: W, z1: D, seed,
+    style: outdoor ? (scene === 'market' || scene === 'farm' || scene === 'motorpark' ? 'compound' : 'city') : ['hotel', 'bank', 'car_dealer', 'mall', 'airport'].includes(scene) ? 'estate' : 'city',
+    density,
+  });
+  // floor: one slab with the atlas (tiles, worn cement, laterite...), tinted by the kit
+  b.box(W, 0.04, D, W / 2, -0.04, D / 2, kit.floorAlt ? mixCol(kit.floor, kit.floorAlt) : kit.floor, { mat: floorMat, uv: floorMat === 'tiles' && kit.tile ? kit.tile * 2 : undefined });
   const T = 0.14;
+  b.mat = wallMat;
   if (outdoor) {
     // low block fence on the back and left, posts on the right; trees in the corners
     b.box(W, kit.wallH, T, W / 2, 0, -T / 2, kit.wall);
@@ -603,25 +628,40 @@ function buildShell(b: B, room: Room) {
     b.box(0.06, 0.06, D, W + 0.05, 0.45, D / 2, kit.trim);
     for (const [x, z] of [[-0.9, -0.9], [W + 0.9, -0.6], [-0.8, D + 0.6]] as [number, number][]) tree(b, x, z, 1.15);
     // sign on two posts at the back
-    for (const sx of [W / 2 - 1.8, W / 2 + 1.8]) b.box(0.1, 2.6, 0.1, sx, 0, -0.35, kit.trim);
+    for (const sx of [W / 2 - 1.8, W / 2 + 1.8]) b.box(0.1, 2.6, 0.1, sx, 0, -0.35, kit.trim, { mat: 'metal' });
+    b.mat = null;
+    // market / park: coloured tarps over the back half (shade), on poles
+    if (scene === 'market' || scene === 'motorpark') {
+      const r = seeded(seed + 5);
+      const tarps = ['#2f6fb3', '#d2342a', '#1f7a3f', '#e2b33b', '#3e5f9e'];
+      for (let x = 1.6; x < W - 1; x += 3 + r()) {
+        const c = tarps[Math.floor(r() * tarps.length)];
+        b.box(2.6, 0.03, 2.2, x, 2.3, 1.4 + r() * 0.5, c, { mat: 'tarp', rx: 0.12, noOcc: true });
+        for (const dx of [-1.2, 1.2]) b.box(0.05, 2.3, 0.05, x + dx, 0, 0.4, '#6b5338', { mat: 'wood' });
+      }
+    }
     return;
   }
   const H = kit.wallH;
+  b.mat = wallMat;
   b.box(W + T, H, T, W / 2, 0, -T / 2, kit.wall); // back
   b.box(T, H, D + T, -T / 2, 0, D / 2, kit.wall); // left
   if (kit.wallTop) {
     b.box(W + T, 0.25, T + 0.02, W / 2, H - 0.25, -T / 2, kit.wallTop);
     b.box(T + 0.02, 0.25, D + T, -T / 2, H - 0.25, D / 2, kit.wallTop);
   }
+  b.mat = null;
   // skirting in the trim colour
-  b.box(W, 0.12, 0.02, W / 2, 0, 0.01, kit.trim);
-  b.box(0.02, 0.12, D, 0.01, 0, D / 2, kit.trim);
+  b.box(W, 0.12, 0.02, W / 2, 0, 0.01, kit.trim, { mat: 'wood' });
+  b.box(0.02, 0.12, D, 0.01, 0, D / 2, kit.trim, { mat: 'wood' });
+  b.mat = wallMat;
   // cut-away right + front walls (low, so the camera sees in), with the entrance gap in the front
   const LOW = 0.35;
   b.box(T, LOW, D + T, W + T / 2, 0, D / 2, kit.wall);
   const gap = 1.6;
   b.box(W / 2 - gap / 2, LOW, T, (W / 2 - gap / 2) / 2, 0, D + T / 2, kit.wall);
   b.box(W / 2 - gap / 2, LOW, T, W - (W / 2 - gap / 2) / 2, 0, D + T / 2, kit.wall);
+  b.mat = null;
   b.box(gap, 0.02, 0.9, W / 2, 0.001, D - 0.3, '#7a4f2a'); // door mat
   // windows on the back wall (glass), wall lamps (glow)
   for (let x = 2; x < W - 1; x += 3.2) {
@@ -629,14 +669,47 @@ function buildShell(b: B, room: Room) {
     b.box(0.3, 0.12, 0.12, x + 1.4, H - 0.5, 0.08, kit.party ? '#ff4fa3' : '#ffe2a8', { layer: 'glow' });
   }
   for (let z = 2; z < D - 1; z += 3.5) b.box(0.12, 0.12, 0.3, 0.08, H - 0.5, z, kit.party ? '#7ee0c5' : '#ffe2a8', { layer: 'glow' });
+  if (kit.party) {
+    // LED strips along the top of the walls and the skirting (they cycle colours with the club rig)
+    b.box(W, 0.05, 0.05, W / 2, H - 0.1, 0.05, '#ff3fa0', { layer: 'glow' });
+    b.box(0.05, 0.05, D, 0.05, H - 0.1, D / 2, '#36d6ff', { layer: 'glow' });
+    b.box(W, 0.03, 0.03, W / 2, 0.13, 0.04, '#9b5cff', { layer: 'glow' });
+    b.box(0.03, 0.03, D, 0.04, 0.13, D / 2, '#ff3fa0', { layer: 'glow' });
+  }
   plant(b, 0.45, D - 0.6, 1);
 }
 
-export function buildPlace(room: Room, zones: PlaceZone[]): BuiltPlace {
+function mixCol(a: string, c: string): string {
+  const pa = parseInt(a.slice(1), 16), pc = parseInt(c.slice(1), 16);
+  const ch = (s: number) => Math.round((((pa >> s) & 255) + ((pc >> s) & 255)) / 2);
+  return `#${((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1)}`;
+}
+
+export function buildPlace(room: Room, zones: PlaceZone[], opts: { scene?: string; seed?: number; density?: number } = {}): BuiltPlace {
+  const scene = opts.scene ?? '';
+  const seed = opts.seed ?? 1;
+  const density = opts.density ?? 1;
+  const outdoor = room.kit.kind === 'outdoor';
+  const rig = rigFor(scene, outdoor);
   const b = new HomeBuilder();
-  buildShell(b, room);
+  buildShell(b, room, scene, seed, density);
   zones.forEach((z, i) => buildProp(b, z, room, i * 3 + z.key.length));
   b.resetFrame();
+  // F1: clutter along the walls, keeping every zone (and the entrance) clear
+  const avoid: Rect[] = zones.map((z) => [z.x - z.w / 2 - 0.35, z.z - z.d / 2 - 0.35, z.x + z.w / 2 + 0.35, z.z + z.d / 2 + 0.6] as Rect);
+  avoid.push([room.W / 2 - 1.3, room.D - 2, room.W / 2 + 1.3, room.D]);
+  avoid.push([0, room.D - 1.2, 1, room.D]); // the plant by the door
+  const kind = CLUTTER[scene] ?? (outdoor ? 'market' : 'hall');
+  const windowsN: [number, number][] = [];
+  if (!outdoor && !room.kit.party) for (let x = 2; x < room.W - 1; x += 3.2) windowsN.push([x - 0.8, x + 0.8]);
+  buildClutter(b, { W: room.W, D: room.D, H: room.kit.wallH, kind, seed, density, avoid, windowsN, outdoor });
+  // light pools: club colours over the party zones, lamp pools over tables / counters, a grid otherwise
+  const spots: [number, number][] = [];
+  for (const z of zones) if ((room.kit.party ? PARTY_PROPS : WARM_PROPS).has(z.prop)) spots.push([z.x, z.z + (room.kit.party ? 0 : z.d / 2 + 0.3)]);
+  if (!room.kit.party && spots.length < 2) for (let x = room.W / 4; x < room.W; x += room.W / 2) spots.push([x, room.D / 2]);
+  buildPools(b, { W: room.W, D: room.D, H: room.kit.wallH, kind: room.kit.party ? 'club' : scene, seed, spots: spots.slice(0, room.kit.party ? 4 : 6) });
   const layers = b.finish();
-  return { layers, tris: b.tris };
+  const fan: [number, number, number] | null = rig.fan && !outdoor ? [room.W * 0.45, room.kit.wallH - 0.1, room.D * 0.45] : null;
+  const steam: [number, number, number][] = rig.steam ? zones.filter((z) => STEAM_PROPS.has(z.prop)).slice(0, 3).map((z) => [z.x, 1.05, z.z]) : [];
+  return { layers, tris: b.tris, rig, fan, steam };
 }

@@ -186,6 +186,98 @@ function tuneAmbience() {
   ambFilter.frequency.setTargetAtTime(scene.night ? 260 : 480, t, 1.5);
 }
 
+// ---------- F1: per-place ambience (follows the Music setting, like the city bed) ----------
+export type PlaceSound = 'club' | 'buka' | 'bank' | 'market' | 'generator' | null;
+let placeSound: PlaceSound = null;
+let placeTimer: number | null = null;
+let placeNext = 0;
+let placeBeat = 0;
+let placeDrone: { osc: OscillatorNode[]; g: GainNode } | null = null;
+
+function placeVoices() {
+  // a murmur of talk: a few short low saw 'syllables' through a lowpass
+  const t = ctx!.currentTime + 0.02 + Math.random() * 0.2;
+  const base = 150 + Math.random() * 170;
+  const n = 2 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < n; i++) tone(base * (0.9 + Math.random() * 0.3), t + i * 0.13, 0.1, { type: 'sawtooth', gain: 0.018, release: 0.1, cutoff: 700, dest: ambBus });
+}
+
+function schedulePlace() {
+  if (!ctx || ctx.state !== 'running' || !placeSound) return;
+  const now = ctx.currentTime;
+  if (placeSound === 'club') {
+    // four-on-the-floor kick + an off-beat bass note, ~118 bpm, muffled as if through the wall of the dance floor
+    const beat = 60 / 118;
+    if (placeNext < now) placeNext = now + 0.05;
+    while (placeNext < now + 0.4) {
+      tone(58, placeNext, 0.22, { gain: 0.42, release: 0.24, glide: 40, dest: ambBus });
+      const bass = [33, 33, 36, 31][Math.floor(placeBeat / 4) % 4];
+      tone(hz(bass), placeNext + beat / 2, beat * 0.4, { type: 'square', gain: 0.07, release: beat * 0.45, cutoff: 260, dest: ambBus });
+      if (placeBeat % 2 === 1) tone(6000, placeNext, 0.03, { type: 'square', gain: 0.01, release: 0.03, cutoff: 9000, dest: ambBus });
+      placeNext += beat;
+      placeBeat++;
+    }
+    return;
+  }
+  if (placeSound === 'buka' || placeSound === 'market') {
+    if (Math.random() < (placeSound === 'market' ? 0.75 : 0.5)) placeVoices();
+    // pots / spoons (buka), a seller's call (market)
+    if (placeSound === 'buka' && Math.random() < 0.18) tone(1900 + Math.random() * 900, now + 0.05, 0.05, { type: 'triangle', gain: 0.03, release: 0.18, dest: ambBus });
+    if (placeSound === 'market' && Math.random() < 0.08) tone(420 + Math.random() * 120, now + 0.05, 0.5, { type: 'sawtooth', gain: 0.02, release: 0.4, cutoff: 900, glide: 360, dest: ambBus });
+  }
+}
+
+function startDrone(freqs: number[], type: OscillatorType, cutoff: number, gain: number) {
+  const g = ctx!.createGain();
+  g.gain.value = 0;
+  const f = ctx!.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = cutoff;
+  g.connect(f).connect(ambBus);
+  const osc = freqs.map((fr) => {
+    const o = ctx!.createOscillator();
+    o.type = type;
+    o.frequency.value = fr;
+    o.connect(g);
+    o.start();
+    return o;
+  });
+  g.gain.setTargetAtTime(gain, ctx!.currentTime, 0.8);
+  placeDrone = { osc, g };
+}
+
+function stopPlace() {
+  if (placeTimer !== null) window.clearInterval(placeTimer);
+  placeTimer = null;
+  if (placeDrone && ctx) {
+    const d = placeDrone;
+    d.g.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
+    window.setTimeout(() => { for (const o of d.osc) try { o.stop(); } catch { /* stopped */ } }, 1200);
+  }
+  placeDrone = null;
+}
+
+function applyPlace() {
+  stopPlace();
+  if (!musicOn() || !ctx || !placeSound) {
+    if (ctx && musicTimer !== null) fade(musicBus, musicOn() ? VOL.music : 0);
+    return;
+  }
+  // the club's own beat replaces most of the background music
+  if (musicTimer !== null) fade(musicBus, placeSound === 'club' ? VOL.music * 0.25 : VOL.music * 0.7);
+  if (placeSound === 'bank') startDrone([100, 50.3], 'sine', 400, 0.05); // AC + fluorescent hum
+  if (placeSound === 'generator') startDrone([47, 94.5], 'sawtooth', 170, 0.06); // "I better pass my neighbour"
+  placeNext = 0;
+  placeTimer = window.setInterval(schedulePlace, placeSound === 'club' ? 150 : 600);
+}
+
+/** Game.tsx: the ambience of the place you're in (null = just the city / home bed). */
+export function setSoundPlace(k: PlaceSound) {
+  if (k === placeSound) return;
+  placeSound = k;
+  if (unlocked && ensureCtx()) applyPlace();
+}
+
 // ---------- start / stop ----------
 function fade(g: GainNode, v: number, secs = 1.2) {
   if (!ctx) return;
@@ -218,6 +310,8 @@ function apply() {
     }
     fade(musicBus, VOL.music);
     fade(ambBus, VOL.amb);
+    if (placeSound && placeTimer === null) applyPlace();
+    else if (placeSound) fade(musicBus, placeSound === 'club' ? VOL.music * 0.25 : VOL.music * 0.7);
   } else if (musicTimer !== null || ambSrc) {
     fade(musicBus, 0, 0.6);
     fade(ambBus, 0, 0.6);
@@ -230,6 +324,7 @@ function apply() {
     ambFilter = null;
     window.setTimeout(() => { try { src?.stop(); } catch { /* already stopped */ } }, 700);
   }
+  if (!musicOn()) stopPlace();
 }
 
 /** Game.tsx: music/ambience only inside the game; day/night picks the mood. */

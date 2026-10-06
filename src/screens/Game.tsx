@@ -7,7 +7,7 @@ import { CityView } from '../art/city3d';
 import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
 import { serverNow, useGameClock } from '../lib/clock';
 import { devHourOverride, looksNight } from '../lib/daylight';
-import { setSoundScene } from '../lib/sound';
+import { setSoundPlace, setSoundScene, type PlaceSound } from '../lib/sound';
 import { useConfig } from '../lib/config';
 import { simPosture } from '../lib/mood';
 import { randomGreeting } from '../lib/pidgin';
@@ -107,7 +107,7 @@ export default function Game() {
   useEffect(() => {
     setSoundScene(true, skyNight);
   }, [skyNight]);
-  useEffect(() => () => setSoundScene(false, false), []);
+  useEffect(() => () => { setSoundScene(false, false); setSoundPlace(null); }, []);
 
   useEffect(() => {
     void loadActivities();
@@ -227,6 +227,17 @@ export default function Game() {
   const [placeZone, setPlaceZone] = useState<string | null>(null);
   const [placeBump, setPlaceBump] = useState(0);
   const interior = usePlaceInterior(showPlace && state ? state.location.id : null, hourF, placeBump);
+  // F1: per-place ambience (club bass, buka chatter + pots, bank hum, market, a neighbour's generator at night)
+  const placeScene: string = state?.location.scene ?? '';
+  const placeOpen = interior.data ? interior.data.open : true;
+  const placeSound: PlaceSound = showPlace
+    ? !placeOpen ? null
+      : placeScene === 'club' ? 'club'
+      : placeScene === 'buka' || placeScene === 'restaurant' ? 'buka'
+      : placeScene === 'bank' || placeScene === 'hospital' ? 'bank'
+      : placeScene === 'market' || placeScene === 'motorpark' || placeScene === 'street' ? 'market' : null
+    : showHome && skyNight && (placeScene === 'home_face_me' || placeScene === 'hostel') ? 'generator' : null;
+  useEffect(() => { setSoundPlace(placeSound); }, [placeSound]);
   const playersHere = usePlayersAt(showPlace && state ? state.location.id : null, p?.id ?? '');
   const placeRoom = useMemo(() => (interior.data ? roomFor(interior.data.location.scene, interior.data.zones) : null), [interior.data]);
   const placeGrid = useMemo(() => (interior.data && placeRoom ? buildPlaceGrid(placeRoom, interior.data.zones) : null), [interior.data, placeRoom]);

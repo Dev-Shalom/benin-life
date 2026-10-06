@@ -55,6 +55,8 @@ export interface PlaceInterior {
   here: boolean;
   home: boolean;
   open: boolean;
+  /** F1 soft launch: false = the place is hidden ("Closed for now"). */
+  active?: boolean;
   /** "Opens 9 PM" while closed. */
   opens: string | null;
   /** "9 PM – 5 AM" or null (always open). */

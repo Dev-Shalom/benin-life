@@ -29,6 +29,27 @@ with **Map** or **Home** (dock or the card's buttons). The map is still there: o
 - **Tabs**: a card of kind `panel` (bank counter, PoS, "All ShopRite items", jobs you don't have) opens the
   place sheet on that tab. People N opens the sheet (people list, all tabs, chat).
 
+## Soft launch: the `active` flag (F1, migration `20261006001400_soft_launch.sql`, tests `supabase/tests/soft_launch_test.sql`)
+- `locations.active boolean not null default true`. A hidden place (active = false):
+  - has **no map pin** (2D or 3D) and is **not in the Ride list or the map search/filters**: `useGame.loadLocations` keeps
+    only active places in `locations` (your own home always stays); `locationsById` still has every place, for names;
+  - **can't be travelled to**: `bl_travel_quote` (so `travel_quote` and `travel_start`) refuses with hint `inactive`
+    ("Rome Night Club is closed for now. Check back soon."). Your own home is always reachable;
+  - **can't be acted in**: `bl_place_open` is false and `bl_assert_place_open` raises hint `inactive` first, so `do_activity`
+    and `shop_buy` refuse; `work_shift` checks `bl_assert_place_active`. `place_interior` returns `active: false`,
+    `open: false`, `opens: "Closed for now"`, and every card is locked "Closed for now"; the place card says
+    "🔒 Closed for now · check back soon".
+  - A player already inside is **not stuck**: travel only checks the destination, so Map / Home / Ride all work.
+- **Seeded once** (config `places.soft_launch_seeded`): Club De Medici, Rome Night Club, Cube Nightlife, Versus Lounge and
+  the made-up Owambe Republic are hidden; **360 Signature** stays open, 9 PM – 5 AM. The pre-L2 made-up clubs
+  **Bronze Lounge** and **Kingdom Lounge (GRA)** were left as they were (active, 9 PM – 5 AM); hide them in admin if wanted.
+  A re-run of the migration never touches `active` again.
+- **Admin → Content → Places**: an **Active** switch on every row (saves at once, toast "… is now hidden"), the
+  same switch in the row form, and **Opens at / Closes at** as time inputs (half hours work: 21:30 is stored as 21.5;
+  blank both = always open; one without the other, or the same time twice, is refused in the form; the DB check
+  `locations_hours_chk` backs it up). Audited by `admin_row_upsert` as before.
+- `node scripts/place-check.mjs` still checks hidden places (they can be switched back on) and asserts 360 Signature is active.
+
 ## Server (migration `supabase/migrations/20261006001300_places.sql`, tests `supabase/tests/places_test.sql`)
 ### Tables (all RLS on; clients may only `select`; writes through admin RPCs)
 | Table | Columns | Notes |

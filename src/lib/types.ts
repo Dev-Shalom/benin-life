@@ -93,6 +93,8 @@ export interface Location {
   /** L2: opening hours (Benin clock), null = always open. close_hour may be below open_hour (past midnight). */
   open_hour?: number | null;
   close_hour?: number | null;
+  /** F1 soft launch: false = hidden (no pin, not in Ride/search, can't travel or act there). */
+  active?: boolean;
 }
 
 export interface Profile {

@@ -45,6 +45,15 @@ import { planPath, randomFree, type P2 } from '../../sim/nav';
 import { angleTo, DEFAULT_GAIT, makeWalker, place, stepWalker, stopWalk, walkPath, type Gait, type Walker } from '../../sim/locomotion';
 import { buildPlaceGrid, propMeta, roomFor, zoneSpot, type NpcPlan, type Room, type ZonePose } from '../model';
 import { buildPlace } from './props';
+import { LAYERS } from '../../home3d/engine/build';
+import { feelQuality, useTier } from '../../feel/quality';
+import { hashStr } from '../../feel/kit';
+import { blobMaterial } from '../../feel/materials';
+import { applyFeelRender, makeFan, makeFeelMats, makeSteam, sampleFrames, tickFeel } from '../../feel/scene';
+import { looksNight } from '../../../lib/daylight';
+
+/** F1: camera height / distance (was 0.82): lower and more cinematic. */
+const CAM_ELEV = 0.68;
 
 export interface PlaceApi {
   snapshot(): string | null;
@@ -132,6 +141,7 @@ const _q = new Quaternion();
 const _s = new Vector3();
 const _p = new Vector3();
 const _yAxis = new Vector3(0, 1, 0);
+const _tint = new Color();
 
 function Driver({ view, actor, paused, lively }: { view: React.MutableRefObject<View>; actor: React.MutableRefObject<Actor>; paused: boolean; lively: boolean }) {
   const invalidate = useThree((s) => s.invalidate);
@@ -293,33 +303,54 @@ function Interior(props: PlaceSceneProps & {
   const zoneByKey = useMemo(() => new Map(zones.map((z) => [z.key, z])), [zones]);
 
   // ---- static room + props: 4 merged meshes
-  const built = useMemo(() => buildPlace(room, zones), [room, zones]);
+  const q = feelQuality(useTier());
+  const seed = hashStr(props.placeName);
+  const built = useMemo(() => buildPlace(room, zones, { scene: sceneType, seed, density: q.clutter }), [room, zones, sceneType, seed, q.clutter]);
+  const rig = built.rig;
+  const rigClosed = useMemo(() => ({ ...rig, cycle: false }), [rig]);
+  const feel = useMemo(() => makeFeelMats(q), [q.atlas]); // eslint-disable-line react-hooks/exhaustive-deps
   const mats = useMemo(
     () => ({
-      solid: new MeshLambertMaterial({ vertexColors: true, flatShading: true }),
-      glow: new MeshBasicMaterial({ vertexColors: true }),
-      glass: new MeshBasicMaterial({ color: '#bfe3f7', transparent: true, opacity: 0.78 }),
+      solid: feel.solid,
+      glow: feel.glow,
+      light: feel.light,
+      blob: blobMaterial(),
+      glass: new MeshBasicMaterial({ color: '#bfe3f7', transparent: true, opacity: 0.78, vertexColors: true }),
       screen: new MeshBasicMaterial({ color: '#7ec8ff' }),
       pick: new MeshBasicMaterial({ visible: false }),
       ring: new MeshBasicMaterial({ color: '#17a05c', transparent: true, opacity: 0.32, depthWrite: false }),
       tap: new MeshBasicMaterial({ color: '#17a05c', transparent: true, opacity: 0, depthWrite: false }),
       crowd: new MeshLambertMaterial({ vertexColors: true, flatShading: true }),
     }),
-    [],
+    [feel],
   );
   const group = useMemo(() => {
     const g = new Group();
-    for (const k of ['solid', 'glow', 'glass', 'screen'] as const) {
+    for (const k of LAYERS) {
       const geo = built.layers[k];
       if (!geo) continue;
       const m = new Mesh(geo, mats[k]);
       m.matrixAutoUpdate = false;
       m.updateMatrix();
+      if (k === 'light') {
+        m.renderOrder = 1;
+        m.visible = q.pools;
+      }
       g.add(m);
     }
     return g;
-  }, [built, mats]);
-  useEffect(() => () => { for (const k of ['solid', 'glow', 'glass', 'screen'] as const) built.layers[k]?.dispose(); }, [built]);
+  }, [built, mats, q.pools]);
+  useEffect(() => () => { for (const k of LAYERS) built.layers[k]?.dispose(); }, [built]);
+  // F1 small motion: ceiling fan, steam over the pots
+  const fan = useMemo(() => {
+    if (!built.fan) return null;
+    const m = makeFan(mats.solid);
+    m.position.set(built.fan[0], built.fan[1], built.fan[2]);
+    return m;
+  }, [built, mats.solid]);
+  useEffect(() => () => fan?.geometry.dispose(), [fan]);
+  const steam = useMemo(() => (built.steam.length && q.motion ? makeSteam(built.steam) : null), [built, q.motion]);
+  useEffect(() => () => steam?.dispose(), [steam]);
   useEffect(() => () => { for (const m of Object.values(mats)) m.dispose(); }, [mats]);
 
   // ---- sign
@@ -383,6 +414,7 @@ function Interior(props: PlaceSceneProps & {
   }, [room, cx, cz]);
   const hourKey = Math.round(hour * 60);
   const closed = Boolean(props.closed);
+  const lightGain = useRef(1);
   useEffect(() => {
     const lt = homeLight(hourKey / 60);
     const kit = room.kit;
@@ -401,12 +433,23 @@ function Interior(props: PlaceSceneProps & {
     lights.sun.target.updateMatrixWorld();
     lights.lamp.intensity = kit.party ? (closed ? 0.6 : 2.4) : indoor ? 1.2 + lt.dark * 1.6 : lt.lamp * 0.6;
     lights.lamp.color.set(kit.party && !closed ? '#ff8ad0' : '#ffcf8a');
+    // F1 rig: contrast (less ambient), the room's light colour, the lamp, light pools by time of day
+    lights.hemi.intensity *= closed && kit.party ? 0.9 : rig.ambient;
+    if (indoor) lights.hemi.color.lerp(_tint.set(rig.tint), rig.tintMix * (kit.party && closed ? 0.3 : 1));
+    if (!kit.party) {
+      lights.lamp.color.set(rig.lamp);
+      lights.lamp.intensity = rig.lampDay + (rig.lampNight - rig.lampDay) * lt.dark;
+    }
+    mats.light.color.set(rig.pool);
+    lightGain.current = (rig.poolDay + (rig.poolNight - rig.poolDay) * lt.dark) * (closed ? 0.25 : 1);
+    tickFeel(feel, rig, 0, lightGain.current, q.motion);
+    applyFeelRender(gl, scene, { fog: q.fog, color: lt.horizon, depth: 40 * Math.hypot(1, CAM_ELEV), radius: Math.hypot(room.W, room.D) / 2, exposure: rig.exposure });
     mats.glass.color.set(indoor ? lt.glass : '#3fb1d9');
     // screens / light-up floors: off-ish while a party place is closed
     mats.screen.color.set(kit.party ? (closed ? '#3a3350' : '#ff4fa3') : '#7ec8ff');
     mats.glow.color.set(mixHex('#e2dccf', '#ffffff', Math.max(lt.dark, kit.party ? 1 : 0)));
     invalidate();
-  }, [hourKey, lights, mats, room, closed, invalidate]);
+  }, [hourKey, lights, mats, room, closed, invalidate, rig, feel, q.fog, q.motion, gl, scene]);
 
   // ---- floor tap target + tap marker
   const floorGeo = useMemo(() => new PlaneGeometry(1, 1), []);
@@ -454,6 +497,26 @@ function Interior(props: PlaceSceneProps & {
     return { g, torso, legs, head };
   }, [crowd, crowdGeo, mats.crowd]);
   useEffect(() => () => { inst.torso.dispose(); inst.legs.dispose(); inst.head.dispose(); }, [inst]);
+  // F1: soft blob shadows under the crowd (one instanced call)
+  const blobGeo = useMemo(() => new PlaneGeometry(0.75, 0.75).rotateX(-Math.PI / 2), []);
+  useEffect(() => () => blobGeo.dispose(), [blobGeo]);
+  const crowdBlob = useMemo(() => {
+    if (!crowd.length) return null;
+    const m = new InstancedMesh(blobGeo, mats.blob, crowd.length);
+    m.frustumCulled = false;
+    m.renderOrder = 1;
+    return m;
+  }, [crowd, blobGeo, mats.blob]);
+  useEffect(() => () => crowdBlob?.dispose(), [crowdBlob]);
+  const placeBlobs = () => {
+    if (!crowdBlob) return;
+    _q.identity();
+    crowd.forEach((p, i) => {
+      _m.compose(_p.set(p.p[0], 0.012, p.p[1]), _q, _s.set(1, 1, 1));
+      crowdBlob.setMatrixAt(i, _m);
+    });
+    crowdBlob.instanceMatrix.needsUpdate = true;
+  };
   const lively = crowd.some((p) => p.lively) && !closed;
   // pill priority: real players, then standing people nearest the camera (front of the room)
   const crowdOrder = useMemo(() => [...crowd].sort((a, b) => Number(b.player) - Number(a.player) || Number(a.seated) - Number(b.seated) || b.p[1] + b.p[0] * 0.5 - (a.p[1] + a.p[0] * 0.5)), [crowd]);
@@ -646,7 +709,7 @@ function Interior(props: PlaceSceneProps & {
     const cam = camera as OrthographicCamera;
     const v = view.current;
     const d = 40;
-    cam.position.set(Math.sin(v.yaw) * d, d * 0.82, Math.cos(v.yaw) * d);
+    cam.position.set(Math.sin(v.yaw) * d, d * CAM_ELEV, Math.cos(v.yaw) * d);
     cam.lookAt(0, 0, 0);
     cam.updateMatrixWorld();
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -823,6 +886,13 @@ function Interior(props: PlaceSceneProps & {
       const h = (partyT.current * 0.12) % 1;
       mats.screen.color.setHSL(h, 0.85, 0.6);
     }
+    // F1: club light cycle / sweep, fluorescent flicker, fan, steam (only at the idle frame rate)
+    if (q.motion && !view.current.reduced) {
+      tickFeel(feel, closed ? rigClosed : rig, t, lightGain.current, true);
+      if (fan) fan.rotation.y = t * 3.4;
+      steam?.update(t);
+    }
+    if (crowdBlob) placeBlobs();
 
     // name pills follow their heads (DOM transforms, no React render)
     // players first, then people nearest the camera; a pill that would overlap one already placed hides
@@ -882,6 +952,7 @@ function Interior(props: PlaceSceneProps & {
       },
     };
     props.onReady?.(api);
+    sampleFrames(gl, scene, camera);
     if (import.meta.env.DEV) Object.assign(window, { __place: api, __placeActor: actorRef.current, __placeRoom: room, __placeGrid: grid });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl, scene, camera, built, actorRef, room, grid, cx, cz, size, zoneByKey]);
@@ -942,6 +1013,9 @@ function Interior(props: PlaceSceneProps & {
       <primitive object={lights.g} />
       <group position={[-cx, 0, -cz]}>
         <primitive object={group} />
+        {fan && <primitive object={fan} />}
+        {steam && <primitive object={steam.pts} />}
+        {crowdBlob && <primitive object={crowdBlob} />}
         <primitive object={sign.mesh} />
         <primitive object={ring} />
         <primitive object={inst.g} />
@@ -957,6 +1031,8 @@ function Interior(props: PlaceSceneProps & {
 }
 
 export default function PlaceScene(props: PlaceSceneProps) {
+  const gfx = feelQuality(useTier());
+  const kitDark = props.scene === 'club' || props.scene === 'cinema';
   const view = useRef<View>({
     yaw: BASE_YAW,
     zoom: 1,
@@ -1066,9 +1142,8 @@ export default function PlaceScene(props: PlaceSceneProps) {
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onPointerLeave={onUp}>
       <Canvas
         orthographic
-        dpr={[1, 1.5]}
+        dpr={[1, gfx.dprMax]}
         frameloop="demand"
-        flat
         gl={{ antialias: true, alpha: true, powerPreference: 'low-power' }}
         camera={{ position: [28, 22, 28], zoom: 40, near: 0.1, far: 200 }}
         style={{ touchAction: 'none' }}
@@ -1083,6 +1158,7 @@ export default function PlaceScene(props: PlaceSceneProps) {
       >
         <Interior {...props} view={view} actorRef={actor} gesture={gesture} onHint={onHint} pillRefs={pillRefs} />
       </Canvas>
+      <div className={`feel-overlay${looksNight(props.hour) || kitDark ? ' is-dark' : ''}${gfx.tier === 'low' ? ' is-low' : ''}`} aria-hidden />
       <div className="place3d__pills" aria-hidden>
         {props.crowd.map((p) => (
           <span key={p.id} ref={(el) => { if (el) pillRefs.current.set(p.id, el); else pillRefs.current.delete(p.id); }}

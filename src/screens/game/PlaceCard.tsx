@@ -258,7 +258,8 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
         <div className="place-card__title">
           <h2><span className="place-card__name">{name}</span> <span className="place-card__district">· {districtName(loc.district)}</span></h2>
           <p className="place-card__mood" key={mi} aria-live="polite">
-            {data && !data.open ? <><span aria-hidden>🔒</span> Closed now · {data.opens}{data.hours ? ` (open ${data.hours})` : ''}</>
+            {data && data.active === false ? <><span aria-hidden>🔒</span> Closed for now · check back soon</>
+              : data && !data.open ? <><span aria-hidden>🔒</span> Closed now · {data.opens}{data.hours ? ` (open ${data.hours})` : ''}</>
               : mood ? <><span aria-hidden>{mood.icon}</span> {mood.line}</> : <span className="muted">{loc.blurb}</span>}
           </p>
         </div>

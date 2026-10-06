@@ -21,6 +21,8 @@ export interface HomeLight {
   night: boolean;
   /** 0 = day, 1 = night (continuous). */
   dark: number;
+  /** F1: the haze colour at the horizon (fog), matches the bottom of `bg`. */
+  horizon: string;
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -61,5 +63,5 @@ export function homeLight(hour: number): HomeLight {
   const sunDir: [number, number, number] = [lerp(sun[0], moon[0], n), lerp(sun[1], moon[1], n), lerp(sun[2], moon[2], n)];
   const stop = (i: number) => mixHex(mixHex(BG_DAY[i], BG_NIGHT[i], n), BG_GOLD[i], g * 0.9);
   const bg = `linear-gradient(180deg, ${stop(0)} 0%, ${stop(1)} 50%, ${stop(2)} 100%)`;
-  return { ...p, sunDir, bg, night: n >= 0.5, dark: n };
+  return { ...p, sunDir, bg, night: n >= 0.5, dark: n, horizon: mixHex(stop(2), stop(1), 0.35) };
 }

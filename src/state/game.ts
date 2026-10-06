@@ -134,8 +134,11 @@ export const useGame = create<GameStore>((set, get) => ({
       console.warn('[locations]', error.message);
       return;
     }
-    const locations = ((data ?? []) as Location[]).map((l) => ({ ...l, actions: l.actions ?? [] }));
-    set({ locations, locationsById: Object.fromEntries(locations.map((l) => [l.id, l])) });
+    const all = ((data ?? []) as Location[]).map((l) => ({ ...l, actions: l.actions ?? [] }));
+    // F1 soft launch: hidden places get no pin and are not in Ride/search; byId keeps them for names.
+    const home = get().state?.profile.home_location_id;
+    const locations = all.filter((l) => l.active !== false || l.id === home);
+    set({ locations, locationsById: Object.fromEntries(all.map((l) => [l.id, l])) });
   },
 
   loadEvents: async () => {

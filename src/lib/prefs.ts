@@ -12,10 +12,12 @@ export interface Prefs {
   liteMap: boolean;
   /** Hide HUD chrome (wish chips, needs, dock) for a clean look at the home. */
   clean: boolean;
+  /** F1: 3D quality. auto = detect (src/art/feel/quality.ts). */
+  graphics: 'auto' | 'low' | 'high';
 }
 
 const KEY = 'bl.prefs.v1';
-const DEFAULTS: Prefs = { muted: false, sfx: true, music: true, liteMap: false, clean: false };
+const DEFAULTS: Prefs = { muted: false, sfx: true, music: true, liteMap: false, clean: false, graphics: 'auto' };
 
 function load(): Prefs {
   try {
@@ -28,6 +30,7 @@ function load(): Prefs {
       music: typeof v.music === 'boolean' ? v.music : DEFAULTS.music,
       liteMap: typeof v.liteMap === 'boolean' ? v.liteMap : DEFAULTS.liteMap,
       clean: typeof v.clean === 'boolean' ? v.clean : DEFAULTS.clean,
+      graphics: v.graphics === 'low' || v.graphics === 'high' ? v.graphics : 'auto',
     };
   } catch {
     return { ...DEFAULTS };
@@ -44,15 +47,15 @@ function save(p: Prefs) {
 
 interface PrefsStore extends Prefs {
   set: (patch: Partial<Prefs>) => void;
-  toggle: (k: keyof Prefs) => void;
+  toggle: (k: Exclude<keyof Prefs, 'graphics'>) => void;
 }
 
 export const usePrefs = create<PrefsStore>((set, get) => ({
   ...load(),
   set: (patch) => {
     set(patch);
-    const { muted, sfx, music, liteMap, clean } = get();
-    save({ muted, sfx, music, liteMap, clean });
+    const { muted, sfx, music, liteMap, clean, graphics } = get();
+    save({ muted, sfx, music, liteMap, clean, graphics });
   },
   toggle: (k) => get().set({ [k]: !get()[k] } as Partial<Prefs>),
 }));

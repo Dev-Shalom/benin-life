@@ -33,9 +33,13 @@ import { GROUP_META, itemGroup, KINDS, LAYOUTS, pieceFor, type FurnitureItem, ty
 import { buildGrid, footprint, planPath, randomFree, toLayout, type P2 } from '../nav';
 import { angleTo, DEFAULT_GAIT, makeWalker, place, stepWalker, stopWalk, walkPath, type Gait, type Walker } from '../../sim/locomotion';
 import { homeLight } from './light';
-import { mixHex } from '../../../lib/daylight';
+import { looksNight, mixHex } from '../../../lib/daylight';
 import { poseCook, poseLie, poseScrub, poseSit, sitRootY } from './poses';
 import { buildRoom } from './room';
+import { LAYERS } from './build';
+import { feelQuality, useTier } from '../../feel/quality';
+import { rigFor } from '../../feel/rigs';
+import { applyFeelRender, makeFan, makeFeelMats, sampleFrames, tickFeel } from '../../feel/scene';
 
 export interface HomeApi {
   /** Render once and return the frame as an image (to show while the canvas is unmounted). */
@@ -113,6 +117,8 @@ const TAP_MS = 550;
 const TAP_PX = 8;
 
 const BASE_YAW = Math.PI / 4;
+/** F1: camera height / distance (was 0.78): a lower, more cinematic look into the room. */
+const CAM_ELEV = 0.66;
 const YAW_RANGE = 0.75;
 const ZOOM_MIN = 0.85;
 const ZOOM_MAX = 1.9;
@@ -204,41 +210,57 @@ function House(props: HomeSceneProps & {
 
   // ---- static room (rebuilt only when the layout changes)
   const doll = Boolean(props.dollhouse);
-  const room = useMemo(() => buildRoom(L, { dollhouse: doll }), [L, doll]);
+  const q = feelQuality(useTier());
+  const room = useMemo(() => buildRoom(L, { dollhouse: doll, density: q.clutter }), [L, doll, q.clutter]);
+  const rig = rigFor(room.rich ? 'home_nepo' : 'home_lapo', false);
   const grid = useMemo(() => buildGrid(L), [L]);
+  const feel = useMemo(() => makeFeelMats(q), [q.atlas]); // eslint-disable-line react-hooks/exhaustive-deps
   const mats = useMemo(
     () => ({
-      solid: new MeshLambertMaterial({ vertexColors: true, flatShading: true }),
-      glow: new MeshBasicMaterial({ vertexColors: true }),
-      glass: new MeshBasicMaterial({ color: '#bfe3f7', transparent: true, opacity: 0.82 }),
+      solid: feel.solid,
+      glow: feel.glow,
+      light: feel.light,
+      glass: new MeshBasicMaterial({ color: '#bfe3f7', transparent: true, opacity: 0.82, vertexColors: true }),
       screen: new MeshBasicMaterial({ color: '#15181d' }),
       pick: new MeshBasicMaterial({ visible: false }),
       ring: new MeshBasicMaterial({ color: '#17a05c', transparent: true, opacity: 0.38, depthWrite: false }),
       tap: new MeshBasicMaterial({ color: '#17a05c', transparent: true, opacity: 0, depthWrite: false }),
       mark: new MeshLambertMaterial({ color: '#2fbf77', emissive: '#0e874e', flatShading: true }),
     }),
-    [],
+    [feel],
   );
   const group = useMemo(() => {
     const g = new Group();
-    for (const k of ['solid', 'glow', 'glass', 'screen'] as const) {
+    for (const k of LAYERS) {
       const geo = room.layers[k];
       if (geo) {
         const m = new Mesh(geo, mats[k]);
         m.name = k;
         m.matrixAutoUpdate = false;
         m.updateMatrix();
+        if (k === 'light') {
+          m.renderOrder = 1;
+          m.visible = q.pools;
+        }
         g.add(m);
       }
     }
     return g;
-  }, [room, mats]);
+  }, [room, mats, q.pools]);
   useEffect(
     () => () => {
-      for (const k of ['solid', 'glow', 'glass', 'screen'] as const) room.layers[k]?.dispose();
+      for (const k of LAYERS) room.layers[k]?.dispose();
     },
     [room],
   );
+  // F1: ceiling fan (spins while the scene draws; still on Low / reduced motion)
+  const fan = useMemo(() => {
+    if (!room.fan || !rig.fan) return null;
+    const m = makeFan(mats.solid);
+    m.position.set(room.fan[0], room.fan[1], room.fan[2]);
+    return m;
+  }, [room, rig.fan, mats.solid]);
+  useEffect(() => () => fan?.geometry.dispose(), [fan]);
   useEffect(
     () => () => {
       for (const m of Object.values(mats)) m.dispose();
@@ -311,6 +333,8 @@ function House(props: HomeSceneProps & {
     return { g, hemi, sun, lamp };
   }, [L]);
   const hourKey = Math.round(hour * 60); // S1: re-light every minute (continuous curve, one redraw)
+  const lightGain = useRef(1);
+  const radius = Math.hypot(L.lot[2] - L.lot[0], L.lot[3] - L.lot[1]) / 2;
   useEffect(() => {
     const lt = homeLight(hourKey / 60);
     lights.hemi.color.set(lt.hemiSky);
@@ -321,11 +345,20 @@ function House(props: HomeSceneProps & {
     lights.sun.position.set(lt.sunDir[0] * 20 + cx, lt.sunDir[1] * 20, lt.sunDir[2] * 20 + cz);
     lights.sun.target.position.set(cx, 0, cz);
     lights.sun.target.updateMatrixWorld();
-    lights.lamp.intensity = lt.lamp;
+    // F1 rig: darker ambient (contrast, corners), the room's own light colour, a warm lamp at night
+    lights.hemi.intensity = lt.hemi * (doll ? 1 : rig.ambient + (1 - rig.ambient) * (1 - lt.dark) * 0.5);
+    if (!doll) lights.hemi.color.set(mixHex(lt.hemiSky, rig.tint, rig.tintMix * (0.4 + 0.6 * lt.dark)));
+    lights.lamp.color.set(rig.lamp);
+    lights.lamp.intensity = doll ? lt.lamp : rig.lampDay + (rig.lampNight - rig.lampDay) * lt.dark;
+    lights.lamp.position.set(room.bulb[0] - cx, room.bulb[1], room.bulb[2] - cz);
     mats.glass.color.set(lt.glass);
     mats.glow.color.set(mixHex('#e9e2d4', '#ffffff', lt.dark));
+    mats.light.color.set(rig.pool);
+    lightGain.current = rig.poolDay + (rig.poolNight - rig.poolDay) * lt.dark;
+    tickFeel(feel, rig, 0, lightGain.current, q.motion);
+    applyFeelRender(gl, scene, { fog: q.fog && !doll, color: lt.horizon, depth: 40 * Math.hypot(1, CAM_ELEV), radius, exposure: doll ? 1.2 : rig.exposure });
     invalidate();
-  }, [hourKey, lights, mats, cx, cz, invalidate]);
+  }, [hourKey, lights, mats, cx, cz, invalidate, rig, room, feel, q.fog, q.motion, doll, gl, scene, radius]);
 
   // ---- TV on while watching
   useEffect(() => {
@@ -615,7 +648,7 @@ function House(props: HomeSceneProps & {
     const cam = camera as OrthographicCamera;
     const v = view.current;
     const d = 40;
-    cam.position.set(Math.sin(v.yaw) * d, d * 0.78, Math.cos(v.yaw) * d);
+    cam.position.set(Math.sin(v.yaw) * d, d * CAM_ELEV, Math.cos(v.yaw) * d);
     cam.lookAt(0, 0, 0);
     cam.updateMatrixWorld();
     // fit the lot (house + yard, walls included) between the HUD insets
@@ -818,6 +851,11 @@ function House(props: HomeSceneProps & {
     const shadow = actorObj.children[0];
     shadow.position.y = -y + 0.002;
     shadow.visible = rootRotX > -0.5;
+    // F1 small motion: the ceiling fan turns (frames only come at the idle rate; none when hidden)
+    if (q.motion && !view.current.reduced) {
+      if (fan) fan.rotation.y = t * 3.2;
+      tickFeel(feel, rig, t, lightGain.current, true);
+    }
     a.hot = a.mode === 'walk' || a.gait > 0 || blending || marking;
   });
 
@@ -858,6 +896,7 @@ function House(props: HomeSceneProps & {
       },
     };
     onReady?.(api);
+    if (!doll) sampleFrames(gl, scene, camera);
     if (import.meta.env.DEV) Object.assign(window, { __home: api, __homeActor: actorRef.current, __homeLayout: L, __homeGrid: grid, __homeChar: ch });
   }, [gl, scene, camera, room, onReady, actorRef, L, grid, cx, cz, size, ch]);
 
@@ -921,6 +960,7 @@ function House(props: HomeSceneProps & {
       <primitive object={lights.g} />
       <group position={[-cx, 0, -cz]}>
         <primitive object={group} />
+        {fan && <primitive object={fan} />}
         <primitive object={ring} />
         <primitive object={marker} />
         <primitive object={actorObj} />
@@ -942,6 +982,7 @@ function House(props: HomeSceneProps & {
 }
 
 export default function HomeScene(props: HomeSceneProps) {
+  const gfx = feelQuality(useTier());
   const view = useRef<View>({
     yaw: BASE_YAW,
     zoom: 1,
@@ -1057,9 +1098,8 @@ export default function HomeScene(props: HomeSceneProps) {
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onPointerLeave={onUp}>
       <Canvas
         orthographic
-        dpr={[1, 1.5]}
+        dpr={[1, gfx.dprMax]}
         frameloop="demand"
-        flat
         gl={{ antialias: true, alpha: true, powerPreference: 'low-power' }}
         camera={{ position: [28, 22, 28], zoom: 40, near: 0.1, far: 200 }}
         style={{ touchAction: props.interactive === false ? 'auto' : 'none' }}
@@ -1077,6 +1117,7 @@ export default function HomeScene(props: HomeSceneProps) {
         <Driver view={view} actor={actor} paused={Boolean(props.paused)} spin={Boolean(props.orbit && props.orbit > 0)} />
         <House {...props} view={view} actorRef={actor} gesture={gesture} onHint={onHint} />
       </Canvas>
+      {!props.dollhouse && <div className={`feel-overlay${looksNight(props.hour) ? ' is-dark' : ''}${gfx.tier === 'low' ? ' is-low' : ''}`} aria-hidden />}
       {tapHint && (
         <span key={tapHint.n} className="home3d__hint" role="status" style={{ left: tapHint.x, top: tapHint.y }}>
           {tapHint.text}

@@ -393,6 +393,20 @@ function SettingsTab({ state }: { state: GameState }) {
         <Switch label="Music" checked={prefs.music && !prefs.muted} onChange={(v) => prefs.set({ music: v, muted: v ? false : prefs.muted })} />
         <Switch label="Lite map for weak network" hint="A lighter 2D map that loads fast on slow or expensive data."
           checked={prefs.liteMap} onChange={(v) => prefs.set({ liteMap: v })} />
+        <div className="settings-row">
+          <div>
+            <div>Graphics</div>
+            <div className="muted settings-row__hint">Low is lighter on older phones: no fog or light pools, less clutter.</div>
+          </div>
+          <div className="seg" role="radiogroup" aria-label="Graphics">
+            {(['auto', 'low', 'high'] as const).map((g) => (
+              <button key={g} type="button" role="radio" aria-checked={prefs.graphics === g}
+                className={`seg__btn${prefs.graphics === g ? ' is-on' : ''}`} onClick={() => prefs.set({ graphics: g })}>
+                {g === 'auto' ? 'Auto' : g === 'low' ? 'Low' : 'High'}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <h4 className="settings-head">Notifications</h4>
       <div className="settings-row is-disabled">
