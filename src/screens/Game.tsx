@@ -33,6 +33,7 @@ import { deriveStatus } from './game/status';
 import { useTaskRunner } from './game/TaskRunner';
 import { useTasks } from '../state/tasks';
 import { PlaceCard, usePlaceInterior, usePlacePeople, usePlayersAt } from './game/PlaceCard';
+import { placeClosedEject } from '../api/places';
 import { HypeBanner, HypeTicker } from './game/Hype';
 import { useHypeLive } from '../state/hype';
 import { useEventsLive } from '../state/events';
@@ -240,6 +241,21 @@ export default function Game() {
   // bank hum, a neighbour's generator at night)
   const placeScene: string = state?.location.scene ?? '';
   const placeOpen = interior.data ? interior.data.open : true;
+  // Closed places: a Sim inside a place that has closed (and isn't busy or travelling) is sent home by the server.
+  const ejectTried = useRef<string | null>(null);
+  const atLoc = state?.location.id ?? null;
+  const atOwnHome = Boolean(state && state.location.id === state.profile.home_location_id);
+  useEffect(() => {
+    if (!showPlace || !interior.data || interior.data.open || atOwnHome || !atLoc || state?.travel || busyActive) return;
+    const key = `${atLoc}:${Math.floor(Date.now() / 60_000)}`;
+    if (ejectTried.current === key) return;
+    ejectTried.current = key;
+    placeClosedEject().then((r) => {
+      if (!r.ejected) return;
+      toast(`${r.place} is closed. The bouncers cleared the place, so you headed home. It opens again at ${r.opens}.`, 'info');
+      void useGame.getState().refresh();
+    }).catch(() => { /* try again next minute */ });
+  }, [showPlace, interior.data, atOwnHome, atLoc, state?.travel, busyActive]);
   const placeSound: PlaceSound = showPlace
     ? !placeOpen ? null
       : placeScene === 'club' ? 'club'

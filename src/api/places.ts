@@ -100,3 +100,8 @@ export interface PlacePeople {
 }
 export const placePeople = (location: string, hour?: number | null) =>
   rpc<PlacePeople>('place_people', hour == null ? { p_location: location } : { p_location: location, p_hour: hour });
+
+/** Closed places: if the Sim is inside a place that is closed now, the server sends it home (with an alert). */
+export async function placeClosedEject(): Promise<{ ejected: boolean; reason?: string; place?: string; home?: string; opens?: string }> {
+  return rpc('place_closed_eject');
+}

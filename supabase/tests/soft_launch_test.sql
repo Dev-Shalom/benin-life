@@ -76,6 +76,7 @@ begin
   m := pg_temp.sl_hint($q$ select travel_quote('rome_club') $q$, 'inactive');
   perform pg_temp.assert(m like 'Rome Night Club is closed for now%', 'inactive message: ' || m);
   perform pg_temp.sl_hint($q$ select travel_start('rome_club', 'walk') $q$, 'inactive');
+  perform pg_temp.sl_at_hour(23);  -- open hours (closed places can't be travelled to since 20261007000200)
   q := travel_quote('club_360');
   perform pg_temp.assert(q->>'dest' = 'club_360', '360 Signature can be travelled to');
   -- a player already inside a place that gets hidden: no actions, no buying, but can leave

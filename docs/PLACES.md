@@ -279,3 +279,9 @@ and cooldown, Shut down the club, bottles count up, non-club spends silent, publ
 - L4 (done, docs/EVENTS.md): map place sheet with "On today" events, travel cards + Go, live banners, event-only cards.
 - Interiors are client-side only (where you stand is never sent to the server), like the home.
 - Homes of other players show a simple interior whose actions say "Only in your own home".
+
+## Closed places (user, 2026-10-07)
+- **Travel is refused** outside a place's opening hours: `bl_travel_quote` (travel_quote and travel_start) raises "X is closed right now. It opens at 9 PM." with hint `closed`. Your own home is always reachable. The map sheet shows that reason instead of the travel cards.
+- **Players inside when it closes** are sent home: the client calls `place_closed_eject()` when its place is closed, and the server checks the place is closed and the Sim is not home, busy or travelling. It then moves them home and sends an alert ("The bouncers cleared the place…").
+- Migration 20261007000200_closed_places; test supabase/tests/closed_places_test.sql.
+

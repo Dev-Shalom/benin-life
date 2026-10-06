@@ -79,6 +79,11 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
   });
   const current = tab && tabs.includes(tab) ? tab : (tabs[0] ?? null);
   const chatUnread = useChat((s) => s.unread);
+  const hours = useOpenNow(loc);
+  const isHome = loc.id === state.profile.home_location_id;
+  const closedReason = !isHome && hours && !hours.open
+    ? (loc.active === false ? `${loc.name} is closed for now. Check back soon.` : `${loc.name} is closed right now. ${hours.label.replace('Closed now · opens', 'It opens at')}.`)
+    : null;
 
   if (!here) {
     // L4 map place sheet: facts (open now, people, share), what you can do, On today, travel cards + Go.
@@ -87,7 +92,7 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
         <PlaceFacts loc={loc} meId={state.profile.id} />
         <WhatToDo loc={loc} fallback={tabs.filter((a) => a !== 'chat').map((a) => PANEL_LABELS[a] ?? a)} />
         <OnToday locId={loc.id} />
-        <TravelCards dest={loc} cash={state.profile.cash} blockedReason={status.blockedReason} onStarted={close} />
+        <TravelCards dest={loc} cash={state.profile.cash} blockedReason={status.blockedReason ?? closedReason} onStarted={close} />
       </div>
     );
   }
