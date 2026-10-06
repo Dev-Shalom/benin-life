@@ -37,7 +37,7 @@ import { buildCity, kekeGeometry, pinGeometry, radialTexture, ringGeometry, rout
 import { getCityLayout } from './layout';
 import { cityLight } from './light';
 import { mixHex, smoothstep } from '../../../lib/daylight';
-import { at, type Pt } from '../../map/mapGeo';
+import { at, ROADS, type Pt } from '../../map/mapGeo';
 import '../city3d.css';
 
 export interface CityApi {
@@ -92,8 +92,9 @@ interface View {
 
 const FOV = 34;
 const ZOOM_MIN = 5;
-const ZOOM_MAX = 110;
-const BOUND = 50;
+const ZOOM_MAX = 80;
+/** S3: how far the target may pan from King's Square; tighter when zoomed out so the city fills the screen. */
+const bnd = (zoom: number) => clamp(47 - zoom * 0.4, 14, 45);
 const reduceMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -101,7 +102,8 @@ const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 /** "cover" on phones: the short side shows about as much of the city as the 2D map's cover zoom. */
 function coverZoom(w: number, h: number): number {
   const aspect = w / Math.max(1, h);
-  return clamp(aspect < 1 ? 100 * aspect * 0.92 : 100 / aspect, 18, 70);
+  // S3: desktop opens a little closer (was 100 / aspect) so streets and road names read at once
+  return clamp(aspect < 1 ? 100 * aspect * 0.92 : (100 / aspect) * 0.78, 18, 70);
 }
 
 /** Filters survive the canvas being unmounted (suspend) within a session. */
@@ -118,7 +120,7 @@ interface Controller {
 /* ------------------------------------------------------------------ */
 /* Label overlay                                                        */
 /* ------------------------------------------------------------------ */
-type LabelKind = 'place' | 'soon' | 'exit' | 'district' | 'me';
+type LabelKind = 'place' | 'soon' | 'exit' | 'district' | 'me' | 'road';
 interface LabelItem {
   key: string;
   kind: LabelKind;
@@ -128,6 +130,10 @@ interface LabelItem {
   prio: number;
   tier: 1 | 2;
   must: boolean;
+  /** road names: a second point further along the road (screen angle) and the text */
+  x2?: number;
+  y2?: number;
+  text?: string;
 }
 
 interface LabelState {
@@ -137,6 +143,9 @@ interface LabelState {
   state: Map<string, string>;
   /** travel marker position (map space) for the "On the way" tag */
   me: { x: number; y: number } | null;
+  /** S3: the current place's label sits on top of the 3D pin (world height of the pin head) */
+  curKey?: string;
+  curTop: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -470,9 +479,9 @@ function City(props: InnerProps) {
       v.vz *= decay;
       if (Math.abs(v.vx) + Math.abs(v.vz) < 2e-4) v.vx = v.vz = 0;
     }
-    v.tx = clamp(v.tx, -BOUND, BOUND);
-    v.tz = clamp(v.tz, -BOUND, BOUND);
     v.zoom = clamp(v.zoom, ZOOM_MIN, ZOOM_MAX);
+    v.tx = clamp(v.tx, -bnd(v.zoom), bnd(v.zoom));
+    v.tz = clamp(v.tz, -bnd(v.zoom), bnd(v.zoom));
     v.dirty = false;
     apply();
 
@@ -482,7 +491,8 @@ function City(props: InnerProps) {
     const pulse = motion ? 0.5 + 0.5 * Math.sin(t * 3) : 0.6;
     if (me.g.visible) {
       const s = Math.max(0.9, v.zoom * 0.028);
-      me.pin.scale.setScalar(0.55 * s);
+      me.pin.scale.setScalar(0.7 * s);
+      labels.current.curTop = 1.5 * 0.7 * s;
       me.pin.position.y = motion ? Math.sin(t * 2.4) * 0.08 * s : 0;
       me.ring.scale.setScalar((0.9 + pulse * 0.5) * s);
       fx.m.meRing.opacity = 0.85 - pulse * 0.45;
@@ -490,7 +500,7 @@ function City(props: InnerProps) {
     if (sel.visible) sel.scale.setScalar(Math.max(1, v.zoom * 0.03) * 1.3);
     const night = lt.dark > 0.45;
     danger.visible = risky.length > 0 && (night || dangerOn);
-    if (danger.visible) fx.m.danger.opacity = night ? 0.7 + pulse * 0.3 : 0.45;
+    if (danger.visible) fx.m.danger.opacity = night ? 0.42 + pulse * 0.2 : 0.35;
     if (jamOn) fx.m.jam.opacity = 0.5 + pulse * 0.3;
     filterRings.visible = filterRings.count > 0;
 
@@ -593,9 +603,9 @@ function City(props: InnerProps) {
 }
 
 function flyTo(v: View, tx: number, tz: number, zoom: number) {
-  tx = clamp(tx, -BOUND, BOUND);
-  tz = clamp(tz, -BOUND, BOUND);
   zoom = clamp(zoom, ZOOM_MIN, ZOOM_MAX);
+  tx = clamp(tx, -bnd(zoom), bnd(zoom));
+  tz = clamp(tz, -bnd(zoom), bnd(zoom));
   v.vx = v.vz = 0;
   if (reduceMotion()) {
     v.tx = tx;
@@ -625,7 +635,10 @@ function placeLabels(L: LabelState, ctl: Controller | null, size: { width: numbe
   ];
   const taken: Box[] = [...blocked];
   const dots: Box[] = [];
+  // road names already placed (text -> screen points), so one name does not repeat close by
+  roadSeen.clear();
   const order = L.items;
+  const W0 = size.width;
   for (const it of order) {
     const el = L.els.get(it.key);
     if (!el) continue;
@@ -639,13 +652,17 @@ function placeLabels(L: LabelState, ctl: Controller | null, size: { width: numbe
       mx = L.me.x;
       my = L.me.y;
     }
-    const p = ctl.project(mx, my, it.kind === 'place' || it.kind === 'me' ? 0.15 : 0);
-    const off = !p.ok || p.x < -60 || p.x > size.width + 60 || p.y < -40 || p.y > size.height + 60;
+    if (it.kind === 'road') {
+      placeRoad(L, ctl, it, el, size, zoom, taken);
+      continue;
+    }
+    const lift = it.key === L.curKey ? L.curTop : it.kind === 'place' || it.kind === 'me' ? 0.15 : 0;
+    const p = ctl.project(mx, my, lift);
+    const off = !p.ok || p.x < -60 || p.x > W0 + 60 || p.y < -40 || p.y > size.height + 60;
     if (off) {
       setState(L, it.key, el, 'hidden');
       continue;
     }
-    el.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0)`;
     let sz = L.sizes.get(it.key);
     const inner = el.firstElementChild as HTMLElement | null;
     if (!sz && inner && el.dataset.s !== 'hidden') {
@@ -653,17 +670,29 @@ function placeLabels(L: LabelState, ctl: Controller | null, size: { width: numbe
       if (sz[0] > 0) L.sizes.set(it.key, sz);
     }
     const [w, h] = sz ?? [it.kind === 'district' ? 90 : 120, 30];
+    // S3: a pill that would be cut off by the screen edge slides back in (the ones that must show)
+    // or turns into a dot (the rest)
+    let px = p.x;
+    const pillish = it.kind === 'place' || it.kind === 'soon' || it.kind === 'me';
+    const edgeL = 6 + w / 2;
+    const edgeR = W0 - 6 - w / 2;
+    const clipped = pillish && (px < edgeL || px > edgeR);
+    if (clipped && it.must) px = clamp(px, edgeL, Math.max(edgeL, edgeR));
+    el.style.transform = `translate3d(${px.toFixed(1)}px, ${p.y.toFixed(1)}px, 0)`;
     let box: Box;
-    if (it.kind === 'district' || it.kind === 'exit') box = [p.x - w / 2, p.y - h / 2, p.x + w / 2, p.y + h / 2];
-    else box = [p.x - w / 2, p.y - h - 8, p.x + w / 2, p.y - 4];
+    if (it.kind === 'district' || it.kind === 'exit') box = [px - w / 2, p.y - h / 2, px + w / 2, p.y + h / 2];
+    else box = [px - w / 2, p.y - h - 8, px + w / 2, p.y - 4];
+    // the "You are here" / "Heading here" tag sits above the pill: keep its space free too
+    if (it.must && it.kind === 'place') box[1] -= 22;
     // visibility by zoom
     let want = 'full';
-    if (it.kind === 'district') want = zoom > 16 && zoom < 80 ? 'full' : 'hidden';
-    else if (it.kind === 'soon') want = zoom < 75 ? 'full' : 'hidden';
+    if (it.kind === 'district') want = zoom > 18 && zoom < 70 ? 'full' : 'hidden';
+    else if (it.kind === 'soon') want = zoom < 70 ? 'full' : 'hidden';
     else if (it.kind === 'place' && !it.must) {
-      if (it.tier === 2 && zoom > 34) want = 'dot';
-      if (zoom > 85) want = 'dot';
-    }
+      if (it.tier === 2 && zoom > 44) want = 'dot';
+      if (zoom > 70) want = 'dot';
+      if (clipped) want = 'dot';
+    } else if (clipped && !it.must) want = 'hidden';
     if (want === 'full' && taken.some((t) => hit(t, box))) want = it.kind === 'place' ? 'dot' : 'hidden';
     if (want === 'full' || (it.must && want !== 'hidden')) {
       taken.push(box);
@@ -682,10 +711,94 @@ function placeLabels(L: LabelState, ctl: Controller | null, size: { width: numbe
   }
 }
 
+const roadSeen = new Map<string, [number, number][]>();
+const _rb: Box = [0, 0, 0, 0];
+/** Road names lie along the road (rotated to its screen angle, kept upright) and only show up close. */
+function placeRoad(L: LabelState, ctl: Controller, it: LabelItem, el: HTMLElement, size: { width: number; height: number }, zoom: number, taken: Box[]) {
+  if (zoom > 50) return setState(L, it.key, el, 'hidden');
+  const p = ctl.project(it.x, it.y, 0.06);
+  const q = ctl.project(it.x2!, it.y2!, 0.06);
+  if (!p.ok || !q.ok || p.x < 20 || p.x > size.width - 20 || p.y < 20 || p.y > size.height - 20) return setState(L, it.key, el, 'hidden');
+  let ang = Math.atan2(q.y - p.y, q.x - p.x);
+  if (ang > Math.PI / 2) ang -= Math.PI;
+  else if (ang < -Math.PI / 2) ang += Math.PI;
+  const sz = L.sizes.get(it.key) ?? measure(L, it.key, el);
+  const [w, h] = sz;
+  // same name nearby already? skip
+  const seen = roadSeen.get(it.text!);
+  if (seen && seen.some(([x, y]) => Math.hypot(x - p.x, y - p.y) < 240)) return setState(L, it.key, el, 'hidden');
+  // collision: a chain of small squares along the rotated label
+  const n = Math.max(2, Math.ceil(w / h));
+  const c = Math.cos(ang);
+  const sn = Math.sin(ang);
+  const boxes: Box[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = (i / (n - 1) - 0.5) * (w - h);
+    const cx = p.x + c * t;
+    const cy = p.y + sn * t;
+    _rb[0] = cx - h / 2;
+    _rb[1] = cy - h / 2;
+    _rb[2] = cx + h / 2;
+    _rb[3] = cy + h / 2;
+    if (taken.some((b) => hit(b, _rb))) return setState(L, it.key, el, 'hidden');
+    boxes.push([_rb[0], _rb[1], _rb[2], _rb[3]]);
+  }
+  for (const b of boxes) taken.push(b);
+  if (seen) seen.push([p.x, p.y]);
+  else roadSeen.set(it.text!, [[p.x, p.y]]);
+  el.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0) rotate(${ang.toFixed(3)}rad)`;
+  setState(L, it.key, el, 'full');
+}
+
+function measure(L: LabelState, key: string, el: HTMLElement): [number, number] {
+  const inner = el.firstElementChild as HTMLElement | null;
+  if (inner && el.dataset.s !== 'hidden' && inner.offsetWidth > 0) {
+    const sz: [number, number] = [inner.offsetWidth, inner.offsetHeight];
+    L.sizes.set(key, sz);
+    return sz;
+  }
+  return [(L.items.find((i) => i.key === key)?.text?.length ?? 10) * 6.6 + 8, 16];
+}
+
 function setState(L: LabelState, key: string, el: HTMLElement, s: string) {
   if (L.state.get(key) === s) return;
   L.state.set(key, s);
   el.dataset.s = s;
+}
+
+/** S3: road-name candidates along the named roads (MAP_GEO names), every ~150 map units; the
+ *  placement keeps the ones that fit and never repeats a name close by. */
+let roadCands: LabelItem[] | null = null;
+function roadLabels(): LabelItem[] {
+  if (roadCands) return roadCands;
+  const out: LabelItem[] = [];
+  const lay = getCityLayout();
+  for (const rd of ROADS) {
+    if (!rd.labels?.length) continue;
+    const line = lay.roads.find((r) => r.id === rd.id);
+    if (!line) continue;
+    const L = line.sp.length;
+    const marks = new Set<number>(rd.labels.map(([, f]) => f * L));
+    for (let s = 60; s < L - 40; s += 150) marks.add(s);
+    for (const s of [...marks].sort((a, b) => a - b)) {
+      const p = at(line.sp, s);
+      if (p.x < 10 || p.x > 990 || p.y < 10 || p.y > 990) continue;
+      const q = at(line.sp, Math.min(L, s + 8));
+      // the name for this stretch: the label whose position is closest
+      const name = rd.labels.reduce((b, l) => (Math.abs(l[1] * L - s) < Math.abs(b[1] * L - s) ? l : b))[0];
+      out.push({ key: `road:${rd.id}:${Math.round(s)}`, kind: 'road', x: p.x, y: p.y, x2: q.x, y2: q.y, text: name, prio: 8.5, tier: 2, must: false });
+    }
+  }
+  // King's Square ring
+  const ring = lay.roads.find((r) => r.id === 'ring');
+  if (ring) {
+    for (const f of [0.12, 0.62]) {
+      const p = at(ring.sp, f * ring.sp.length);
+      const q = at(ring.sp, f * ring.sp.length + 6);
+      out.push({ key: `road:ring:${f}`, kind: 'road', x: p.x, y: p.y, x2: q.x, y2: q.y, text: 'Ring Rd', prio: 8.4, tier: 2, must: false });
+    }
+  }
+  return (roadCands = out);
 }
 
 /** The big landmarks win label space over other places. */
@@ -724,6 +837,7 @@ const Labels = memo(function Labels(props: {
     for (const c of COMING_SOON) out.push({ key: 'soon:' + c.id, kind: 'soon', x: c.x, y: c.y, prio: 7, tier: 1, must: false });
     for (const e of EXIT_SIGNS) out.push({ key: 'exit:' + e.text, kind: 'exit', x: e.x, y: e.y, prio: 9, tier: 1, must: false });
     for (const d of DISTRICT_NAMES) out.push({ key: 'd:' + d.t, kind: 'district', x: d.x, y: d.y, prio: 10, tier: 2, must: false });
+    out.push(...roadLabels());
     return out.sort((a, b) => a.prio - b.prio);
   }, [locations, currentId, selectedId, travelTo, crowd, filters, night]);
   useEffect(() => onItems(items), [items, onItems]);
@@ -790,6 +904,11 @@ const Labels = memo(function Labels(props: {
           <span className="c3-sign"><b>{e.arrow} {e.text}</b><small>{e.sub}</small></span>
         </div>
       ))}
+      {roadLabels().map((r) => (
+        <div key={r.key} ref={reg(r.key)} className="c3-label c3-road" data-s="hidden" aria-hidden>
+          <span>{r.text}</span>
+        </div>
+      ))}
       {DISTRICT_NAMES.map((d) => (
         <div key={d.t} ref={reg('d:' + d.t)} className="c3-label c3-district" data-s="hidden" aria-hidden>
           <span>{d.t}</span>
@@ -806,7 +925,7 @@ export default function CityScene(props: CitySceneProps) {
   const { locations, currentId, selectedId, onSelect, travel, crowd, hour } = props;
   const wrap = useRef<HTMLDivElement>(null);
   const ctl = useRef<Controller | null>(null);
-  const labels = useRef<LabelState>({ els: new Map(), sizes: new Map(), items: [], state: new Map(), me: null });
+  const labels = useRef<LabelState>({ els: new Map(), sizes: new Map(), items: [], state: new Map(), me: null, curTop: 1 });
   const dragMoved = useRef(false);
   const onSelectRef = useRef(onSelect);
   useEffect(() => {
@@ -816,6 +935,9 @@ export default function CityScene(props: CitySceneProps) {
     labels.current.items = items;
     labels.current.sizes.clear();
   }, []);
+  useEffect(() => {
+    labels.current.curKey = currentId;
+  }, [currentId]);
   const [filters, setFilters] = useState<CityFilter[]>(props.initialFilters ?? savedFilters);
   const motion = useMemo(() => !reduceMotion(), []);
   const night = cityLight(hour).dark > 0.45;
@@ -828,7 +950,7 @@ export default function CityScene(props: CitySceneProps) {
     const cur = (currentId && byId.get(currentId)) || (travel && byId.get(travel.from)) || null;
     const init = props.initial
       ? { tx: W(props.initial.x), tz: W(props.initial.y), zoom: props.initial.zoom }
-      : savedView ?? { tx: cur ? W(cur.x) : 0, tz: cur ? W(cur.y) : 0, zoom: coverZoom(w, h) };
+      : savedView ?? { tx: cur ? W(cur.x) * 0.62 : 0, tz: cur ? W(cur.y) * 0.62 : 0, zoom: coverZoom(w, h) };
     return { ...init, anim: null, vx: 0, vz: 0, dragging: false, visible: true, dirty: true };
   });
   const view = useRef<View>(initialView);
@@ -935,8 +1057,8 @@ export default function CityScene(props: CitySceneProps) {
       v.zoom = clamp(v.zoom * Math.exp(e.deltaY * 0.0016), ZOOM_MIN, ZOOM_MAX);
       c.apply();
       if (okA && c.groundAt(e.clientX, e.clientY, b)) {
-        v.tx = clamp(v.tx + a.x - b.x, -BOUND, BOUND);
-        v.tz = clamp(v.tz + a.z - b.z, -BOUND, BOUND);
+        v.tx = clamp(v.tx + a.x - b.x, -bnd(v.zoom), bnd(v.zoom));
+        v.tz = clamp(v.tz + a.z - b.z, -bnd(v.zoom), bnd(v.zoom));
       }
       v.dirty = true;
     };
@@ -995,12 +1117,12 @@ export default function CityScene(props: CitySceneProps) {
         v.zoom = clamp(v.zoom * (d0 / Math.max(1, d1)), ZOOM_MIN, ZOOM_MAX);
         c.apply();
         if (okA && c.groundAt(m1x, m1y, h)) {
-          v.tx = clamp(v.tx + g.x - h.x, -BOUND, BOUND);
-          v.tz = clamp(v.tz + g.z - h.z, -BOUND, BOUND);
+          v.tx = clamp(v.tx + g.x - h.x, -bnd(v.zoom), bnd(v.zoom));
+          v.tz = clamp(v.tz + g.z - h.z, -bnd(v.zoom), bnd(v.zoom));
         }
       } else if (c.groundAt(prev.x, prev.y, g) && c.groundAt(cur.x, cur.y, h)) {
-        v.tx = clamp(v.tx + g.x - h.x, -BOUND, BOUND);
-        v.tz = clamp(v.tz + g.z - h.z, -BOUND, BOUND);
+        v.tx = clamp(v.tx + g.x - h.x, -bnd(v.zoom), bnd(v.zoom));
+        v.tz = clamp(v.tz + g.z - h.z, -bnd(v.zoom), bnd(v.zoom));
         if (gs) {
           gs.last.push({ t: performance.now(), x: v.tx, z: v.tz });
           if (gs.last.length > 6) gs.last.shift();

@@ -110,7 +110,7 @@ export const EXIT_SIGNS: { text: string; sub: string; x: number; y: number; arro
   { text: 'FARMS', sub: 'Iguobazuwa', x: 60, y: 238, arrow: '←' },
 ];
 
-/** District names drawn faintly on the ground (map space). */
+/** District names on the ground (map space). Road names come from ROADS (mapGeo) since S3. */
 export const DISTRICT_NAMES: { t: string; x: number; y: number }[] = [
   { t: 'OREDO', x: 560, y: 540 },
   { t: 'G.R.A.', x: 400, y: 715 },
@@ -121,8 +121,6 @@ export const DISTRICT_NAMES: { t: string; x: number; y: number }[] = [
   { t: 'ADUWAWA', x: 880, y: 280 },
   { t: 'SAKPONBA', x: 625, y: 690 },
   { t: 'UPPER SAKPONBA', x: 790, y: 770 },
-  { t: 'SAPELE RD', x: 470, y: 860 },
-  { t: 'AIRPORT RD', x: 250, y: 770 },
   { t: 'SILUKO', x: 290, y: 395 },
   { t: 'EKENWAN', x: 170, y: 560 },
   { t: 'OLUKU', x: 300, y: 80 },

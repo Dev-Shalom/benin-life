@@ -30,7 +30,7 @@ import {
   RAMAT, RING, RUNWAY, STADIUM, TECH_HUB, TERMINAL, UBTH, at, inPoly, type Pt,
 } from '../../map/mapGeo';
 import { WS } from '../model';
-import type { CityLayout, Vehicle } from './layout';
+import type { CityLayout, Style, Vehicle } from './layout';
 
 const W = (mx: number) => (mx - 500) * WS;
 
@@ -132,26 +132,68 @@ const smooth = (e0: number, e1: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
   return t * t * (3 - 2 * t);
 };
-const BUSH = new Color('#79a94f');
-const SUBURB = new Color('#b5a463');
-const LATERITE = new Color('#d6a273');
-const LAWN = new Color('#8fbe5e');
-const BANK = new Color('#6aa24a');
+// S3: softer, less saturated palette. The city sits on sandy paved ground (not an orange laterite
+// stain), suburbs on dry grass, the bush a calm green. Low-frequency noise breaks up flat areas.
+const BUSH = new Color('#8bb35f');
+const SUBURB = new Color('#c4bb88');
+const URBAN = new Color('#e0d1b2');
+const CORE = new Color('#ddd3c1');
+const LAWN = new Color('#97c264');
+const BANK = new Color('#78ad55');
+const BUSH_DARK = new Color('#78a352');
 
-function groundColor(L: CityLayout, x: number, y: number, out: Color) {
+/** Smooth value noise in map space (deterministic, no allocations). */
+function hash2(i: number, j: number): number {
+  const h = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
+  return h - Math.floor(h);
+}
+export function vnoise(x: number, y: number): number {
+  const i = Math.floor(x);
+  const j = Math.floor(y);
+  const fx = x - i;
+  const fy = y - j;
+  const ux = fx * fx * (3 - 2 * fx);
+  const uy = fy * fy * (3 - 2 * fy);
+  const a = hash2(i, j);
+  const b = hash2(i + 1, j);
+  const c = hash2(i, j + 1);
+  const d = hash2(i + 1, j + 1);
+  return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+}
+
+function groundColor(L: CityLayout, x: number, y: number, out: Color, edge = 1) {
   const u = L.urban(x, y);
-  out.copy(BUSH).lerp(SUBURB, smooth(0.12, 0.45, u)).lerp(LATERITE, smooth(0.45, 0.8, u));
+  const n = vnoise(x / 90, y / 90) * 0.65 + vnoise(x / 31 + 17, y / 31 - 5) * 0.35;
+  out.copy(BUSH).lerp(BUSH_DARK, smooth(0.35, 0.75, n) * 0.8 * edge);
+  out.lerp(SUBURB, smooth(0.14, 0.5, u) * (0.75 + 0.25 * n));
+  out.lerp(URBAN, smooth(0.5, 0.82, u));
+  out.lerp(CORE, smooth(0.82, 0.97, u) * 0.7);
   // district tints, very light
   for (const [cx, cy, rx, ry, col] of DISTRICT_TINTS) {
     const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
-    if (d < 1) out.lerp(_b.set(col), (1 - d) * 0.14);
+    if (d < 1) out.lerp(_b.set(col), (1 - d) * 0.08);
   }
   const g = Math.hypot(x - GRA_ZONE.x, y - GRA_ZONE.y);
-  if (g < GRA_ZONE.r * 1.15) out.lerp(LAWN, 0.62 * (1 - smooth(GRA_ZONE.r * 0.7, GRA_ZONE.r * 1.15, g)));
-  if (inPoly(x, y, CAMPUS) || inPoly(x, y, UBTH)) out.lerp(LAWN, 0.55);
+  if (g < GRA_ZONE.r * 1.15) out.lerp(LAWN, 0.7 * (1 - smooth(GRA_ZONE.r * 0.7, GRA_ZONE.r * 1.15, g)));
+  if (inPoly(x, y, CAMPUS) || inPoly(x, y, UBTH)) out.lerp(LAWN, 0.6);
   const rd = L.riverDist(x, y, 40);
   if (rd < 40) out.lerp(BANK, 0.85 * (1 - smooth(10, 40, rd)));
+  // brightness speckle (very light), faded out at the edge of the generated ground
+  const k = 1 + (n - 0.5) * 0.07 * edge;
+  out.r *= k;
+  out.g *= k;
+  out.b *= k;
 }
+
+/** Plot (yard) colour under each building, by district style. */
+const PLOT: Record<Style, string> = {
+  core: '#d3c8b4',
+  res: '#d9c49d',
+  cramped: '#cba57c',
+  gra: '#a9cf78',
+  campus: '#b8d68a',
+  market: '#c99a6a',
+};
 
 export interface CityMeshes {
   group: Group;
@@ -280,7 +322,10 @@ export function buildCity(L: CityLayout): CityMeshes {
       for (let i = 0; i <= N; i++) {
         const x = -100 + (i / N) * span;
         const y = -100 + (j / N) * span;
-        groundColor(L, x, y, c);
+        // fade the noise out near the edge of the grid so it meets the plain skirt without a seam
+        const e = Math.min(i, j, N - i, N - j) / 6;
+        groundColor(L, x, y, c, Math.min(1, e));
+        if (e < 1) c.lerp(BUSH, 1 - e);
         f.pos.push(W(x), 0, W(y));
         f.col.push(c.r, c.g, c.b);
       }
@@ -290,7 +335,7 @@ export function buildCity(L: CityLayout): CityMeshes {
         f.idx.push(a, a + N + 1, a + 1, a + 1, a + N + 1, a + N + 2);
       }
     // a wide skirt of bush beyond the generated ground, so a zoomed-out view never shows an edge
-    const sk = BUSH.clone().lerp(_b.set('#6f9d48'), 0.5);
+    const sk = BUSH.clone();
     const o = [-2400, 3400];
     const inn = [-100, 1100];
     const ring: [number, number][][] = [
@@ -320,6 +365,12 @@ export function buildCity(L: CityLayout): CityMeshes {
     for (const [px, py, pr] of [[452, 282, 13], [398, 52, 12], [705, 400, 10], [828, 352, 12]] as const) f.disc(px, py, pr, 0.012, '#b97b4f', 18, 1.25);
     // market grounds
     for (const [mx, my, mr] of MARKETS) f.disc(mx, my, mr + 2, 0.012, '#c99a6a', 22);
+    // S3: a yard under every building (lawn in the GRA, paving in the core, packed earth elsewhere)
+    for (const b of L.buildings) {
+      if (b.st === 'market' || b.st === 'campus') continue;
+      const pad = b.st === 'gra' ? 5 : b.st === 'cramped' ? 1.6 : 2.6;
+      f.rect(b.x, b.y, b.w + pad, b.d + pad, b.a, 0.02, PLOT[b.st]);
+    }
     addMesh(f.geometry(), mats.ground, 'ground');
   }
 
@@ -327,6 +378,16 @@ export function buildCity(L: CityLayout): CityMeshes {
   {
     const f = new Flat();
     const pts = L.river.samples.filter((_, i) => i % 2 === 0);
+    // S3: run the river on past both map edges (straight), so it never stops in the bush
+    const runOn = (p: { x: number; y: number }, q: { x: number; y: number }) => {
+      const a = Math.atan2(p.y - q.y, p.x - q.x);
+      return { x: p.x + Math.cos(a) * 600, y: p.y + Math.sin(a) * 600, a: a };
+    };
+    const n0 = pts.length;
+    const head = runOn(pts[0], pts[1]);
+    const tail = runOn(pts[n0 - 1], pts[n0 - 2]);
+    pts.unshift({ ...head, a: head.a + Math.PI, s: 0 });
+    pts.push({ ...tail, s: 0 });
     f.strip(pts, 9, 0.018, '#5f9f45');
     addMesh(f.geometry(), mats.ground, 'banks');
     const w = new Flat();
@@ -335,25 +396,102 @@ export function buildCity(L: CityLayout): CityMeshes {
   }
 
   /* ---------- roads ---------- */
+  // S3: asphalt that reads as road: dark grey with pale kerbs, white edge lines and centre dashes on the
+  // big roads (left out where two roads meet, so junctions stay clean), paved grey side streets, and
+  // the open ends of the radial roads run on past the edge of the map instead of stopping in the bush.
   {
     const f = new Flat();
-    const ROAD_COL: Record<string, string> = { express: '#4a4e57', main: '#555a62', ring: '#4a4e57', minor: '#7b756c', spur: '#9c7b5c', dirt: '#a8683f' };
+    const ROAD_COL: Record<string, string> = { express: '#41454d', main: '#484c54', ring: '#41454d', minor: '#64656a', spur: '#8e8a84', dirt: '#b47e52' };
+    const KERB: Record<string, [number, string] | undefined> = {
+      express: [1.4, '#e9e1d2'], main: [1.3, '#e9e1d2'], ring: [1.5, '#ece4d6'], minor: [0.9, '#ddd3c2'], spur: [0.7, '#d9cfbd'],
+    };
     const Y: Record<string, number> = { spur: 0.034, dirt: 0.034, minor: 0.04, main: 0.046, express: 0.048, ring: 0.05 };
-    const ordered = [...L.roads].sort((a, b) => Y[a.kind] - Y[b.kind]);
-    for (const r of ordered) {
+    const big = (k: string) => k === 'express' || k === 'main' || k === 'ring';
+    // samples of every non-spur road, to find junctions
+    const cell = 16;
+    const jgrid = new Map<number, number[]>();
+    const jx: number[] = [];
+    const jy: number[] = [];
+    const jr: number[] = [];
+    const jh: number[] = [];
+    L.roads.forEach((r, ri) => {
+      if (r.kind === 'spur') return;
+      for (let s = 0; s <= r.sp.length; s += 3) {
+        const p = at(r.sp, s);
+        const k = (Math.floor(p.x / cell) + 200) * 1000 + Math.floor(p.y / cell) + 200;
+        const arr = jgrid.get(k);
+        const n = jx.push(p.x) - 1;
+        jy.push(p.y);
+        jr.push(ri);
+        jh.push(r.hw);
+        if (arr) arr.push(n);
+        else jgrid.set(k, [n]);
+      }
+    });
+    const nearOther = (x: number, y: number, ri: number, pad: number) => {
+      const cx = Math.floor(x / cell) + 200;
+      const cy = Math.floor(y / cell) + 200;
+      for (let j = cy - 1; j <= cy + 1; j++)
+        for (let i = cx - 1; i <= cx + 1; i++) {
+          const arr = jgrid.get(i * 1000 + j);
+          if (!arr) continue;
+          for (const n of arr) if (jr[n] !== ri && Math.hypot(jx[n] - x, jy[n] - y) < jh[n] + pad) return true;
+        }
+      return false;
+    };
+    /** A thin line along the road at lateral offset `off`, broken at junctions. */
+    const line = (r: (typeof L.roads)[number], ri: number, off: number, w: number, color: string, yy: number) => {
+      let run: { x: number; y: number; a: number }[] = [];
+      const flush = () => {
+        if (run.length > 1) f.strip(run, w / 2, yy, color);
+        run = [];
+      };
+      for (let s = 0; s <= r.sp.length; s += 2.5) {
+        const p = at(r.sp, s);
+        const nx = -Math.sin(p.a) * off;
+        const ny = Math.cos(p.a) * off;
+        const x = p.x + nx;
+        const y = p.y + ny;
+        if (nearOther(x, y, ri, 2.2)) flush();
+        else run.push({ x, y, a: p.a });
+      }
+      flush();
+    };
+    const ordered = L.roads.map((r, i) => [r, i] as const).sort((a, b) => Y[a[0].kind] - Y[b[0].kind]);
+    for (const [r, ri] of ordered) {
       const pts = r.sp.samples.filter((_, i) => i % 2 === 0 || i === r.sp.samples.length - 1);
-      if (r.kind === 'express' || r.kind === 'main' || r.kind === 'ring') f.strip(pts, r.hw + 1.3, 0.03, '#d8ccb6', r.closed);
+      // straight run-on past the map edge for roads that leave the map
+      if (!r.closed && r.kind !== 'spur') {
+        for (const end of [0, 1]) {
+          const p = end ? pts[pts.length - 1] : pts[0];
+          const q = end ? pts[pts.length - 2] : pts[1];
+          if (!q || (p.x > 0 && p.x < 1000 && p.y > 0 && p.y < 1000)) continue;
+          const a = Math.atan2(p.y - q.y, p.x - q.x);
+          const ext = [p, { x: p.x + Math.cos(a) * 600, y: p.y + Math.sin(a) * 600, a }].map((e) => ({ ...e, a }));
+          const kb = KERB[r.kind];
+          if (kb) f.strip(ext, r.hw + kb[0], Y[r.kind] - 0.012, kb[1]);
+          f.strip(ext, r.hw, Y[r.kind], ROAD_COL[r.kind]);
+        }
+      }
+      const kb = KERB[r.kind];
+      if (kb) f.strip(pts, r.hw + kb[0], r.kind === 'spur' ? 0.026 : 0.03, kb[1], r.closed);
       f.strip(pts, r.hw, Y[r.kind], ROAD_COL[r.kind], r.closed);
-      // centre dashes on the big roads
-      if (r.kind === 'express' || r.kind === 'ring' || r.kind === 'main') {
-        for (let s = 3; s < r.sp.length - 3; s += 11) {
+      if (big(r.kind)) {
+        // edge lines
+        line(r, ri, r.hw - 1.1, 0.75, '#e9e5dc', 0.056);
+        line(r, ri, -(r.hw - 1.1), 0.75, '#e9e5dc', 0.056);
+        // centre dashes (yellow on the expressways and the ring, white on main roads)
+        const col = r.kind === 'main' ? '#efebe1' : '#f2cf5b';
+        for (let s = 3; s < r.sp.length - 3; s += 10) {
           const p = at(r.sp, s);
-          f.rect(p.x, p.y, 4.5, 0.7, p.a, 0.056, r.kind === 'main' ? '#e8e2d2' : '#f1d36b');
+          if (nearOther(p.x, p.y, ri, 3)) continue;
+          f.rect(p.x, p.y, 4.8, 0.9, p.a, 0.057, col);
         }
       }
     }
     // Ramat Park roundabout island
-    f.disc(RAMAT.x, RAMAT.y, 6, 0.058, '#6fae4f', 16);
+    f.disc(RAMAT.x, RAMAT.y, 6.6, 0.058, '#ece4d6', 16);
+    f.disc(RAMAT.x, RAMAT.y, 6, 0.06, '#6fae4f', 16);
     addMesh(f.geometry(), mats.ground, 'roads', 1);
   }
 
@@ -659,20 +797,24 @@ function buildLandmarks(b: HomeBuilder) {
     // carved band on the hall
     b.box(2.02, 0.07, 1.12, 0, 0.22, -0.15, '#e6c48a');
     // pyramid roofs (turrets)
-    const turret = (x: number, z: number, r: number, h: number) => b.cyl(0, r, h, x, 0.55, z, '#5e3a2a', { seg: 4, ry: Math.PI / 4 });
+    // S3: rust-red zinc roofs (lighter than before, so the shapes read from far away)
+    const turret = (x: number, z: number, r: number, h: number) => b.cyl(0, r, h, x, 0.55, z, '#7e4630', { seg: 4, ry: Math.PI / 4 });
     turret(0, -0.15, 0.95, 1.35);
     turret(-0.95, 0.75, 0.62, 0.8);
     turret(0.85, 0.8, 0.62, 0.8);
     turret(-0.75, -0.25, 0.5, 0.75);
     turret(0.75, -0.25, 0.5, 0.75);
-    // bronze bird (the Bird of Prophecy) on the tallest roof
+    // bronze bird (the Bird of Prophecy) on the tallest roof, on a short mast; S3: 1.8x bigger
+    const k = 1.8;
     const by = 0.55 + 1.35 - 0.06;
-    b.box(0.07, 0.2, 0.07, 0, by, -0.15, '#8a5a2b');
-    b.box(0.36, 0.15, 0.14, 0, by + 0.2, -0.15, '#b0793a');
-    b.box(0.13, 0.13, 0.12, 0.2, by + 0.3, -0.15, '#c08a45');
-    b.box(0.13, 0.04, 0.05, 0.31, by + 0.33, -0.15, '#d9a441');
-    b.box(0.2, 0.04, 0.52, -0.03, by + 0.28, -0.15, '#a46c32', { rx: 0.3 });
-    b.box(0.16, 0.09, 0.1, -0.22, by + 0.26, -0.15, '#a46c32');
+    b.box(0.06, 0.3, 0.06, 0, by, -0.15, '#6b4420');
+    const bird = (w: number, h: number, d: number, x: number, y: number, col: string, o?: { rx: number }) =>
+      b.box(w * k, h * k, d * k, x * k, by + 0.22 + y * k, -0.15, col, o);
+    bird(0.36, 0.15, 0.14, 0, 0, '#b97f3c'); // body
+    bird(0.13, 0.13, 0.12, 0.2, 0.1, '#c8924a'); // head
+    bird(0.13, 0.04, 0.05, 0.31, 0.13, '#e0aa45'); // beak
+    bird(0.2, 0.04, 0.52, -0.03, 0.08, '#a8702f', { rx: 0.3 }); // wings
+    bird(0.16, 0.09, 0.1, -0.22, 0.06, '#a8702f'); // tail
     // ceremonial gate facing King's Square (east)
     b.box(0.14, 0.62, 0.14, 1.6, 0, -0.45, '#9e4329');
     b.box(0.14, 0.62, 0.14, 1.6, 0, 0.25, '#9e4329');

@@ -14,6 +14,7 @@ import { usePrefs } from '../lib/prefs';
 import { useCatalog } from '../state/catalog';
 import { useChat, useChatLive } from '../state/chat';
 import { useGame } from '../state/game';
+import { usePresenceStore } from '../state/presence';
 import { useUi } from '../state/ui';
 import { Icon, LoadingScreen, toast } from '../ui';
 import { BuySheet, ShortcutsSheet } from './game/Extras';
@@ -58,6 +59,19 @@ export default function Game() {
   const locations = useGame((s) => s.locations);
   const byId = useGame((s) => s.locationsById);
   const unread = useGame((s) => s.unread);
+  // S3: live player counts per place on the map (Realtime Presence, other players only)
+  const presentAt = usePresenceStore((s) => s.at);
+  const presenceLive = usePresenceStore((s) => s.online !== null);
+  const meId = state?.profile.id;
+  const crowd = useMemo(() => {
+    if (!presenceLive) return undefined;
+    const o: Record<string, number> = {};
+    for (const [loc, ids] of Object.entries(presentAt)) {
+      const n = ids.filter((id) => id !== meId).length;
+      if (n > 0) o[loc] = n;
+    }
+    return o;
+  }, [presentAt, presenceLive, meId]);
   const selectedId = useUi((s) => s.selectedId);
   const select = useUi((s) => s.select);
   const overlay = useUi((s) => s.overlay);
@@ -243,6 +257,7 @@ export default function Game() {
             night={skyNight}
             hour={hourF}
             travel={travel}
+            crowd={crowd}
             suspended={suspendHome}
             paused={coveredMap}
             insetTop={clean ? 70 : insets.top}

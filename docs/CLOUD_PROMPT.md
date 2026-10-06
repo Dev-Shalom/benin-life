@@ -18,7 +18,8 @@ This file is kept current after every step. The detailed live status is the STAT
 - **Done today (on main):** starter homes by origin, money full under ₦100k, **S1 quick polish** (BetNaija, Ride, Chowdeck, 24 h transfer wait, Beta, Terms/Privacy, update dialog, live counts, smooth day/night, sound), **S2 welcome-back screen** (orbiting house, Continue/New life/Log out; migration 20261006001100).
 - **Frozen today (user):** the welcome-back screen. A redo to match Lagos Life (inline confirm, no archive) is under "LATER" in SHIP_TODAY.md. Do not touch it until the user says so.
 - **Also done (on main):** M1 Sim movement & life (tap-to-walk, walk cycle, idle life).
-- **Running now:** S3 map upgrade (docs/SHIP_TODAY.md, docs/CITY3D.md). If the session died, check `git status` for its files, verify, commit.
+- **Also done (on main):** S3 map upgrade.
+- **Running now:** L2 place interiors (docs/REAL_LIFE_PLAN.md Phase L, docs/SHIP_TODAY.md L2+, docs/LANDMARKS.md). If the session died, check `git status` for its files, verify, commit.
 - **SHIP-TODAY LIST (user, 2026-10-06): `docs/SHIP_TODAY.md` — follow it in order:** starter homes → S1 quick polish (BetNaija, Ride app, Chowdeck, 24 h transfer wait, Beta badge, Terms/Privacy, update-available dialog, live online/place counts, smooth day/night, sound + click SFX) → S2 welcome-back screen (orbiting house, Continue/New life/Log out) → M1 movement → S3 map upgrade → L2+ (real landmarks incl. car dealers + top clubs).
 - **Next, in order (older list, now inside SHIP_TODAY):**
   0. **M1 Sim movement & life:** tap-to-walk on the floor, smooth walk cycle, breathing/idle life (docs/REAL_LIFE_PLAN.md).
