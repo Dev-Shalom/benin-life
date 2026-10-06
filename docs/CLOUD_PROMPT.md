@@ -16,6 +16,7 @@ This file is kept current after every step. The detailed live status is the STAT
   - Actions match the furniture; the walk is skipped on short actions.
   - Migration 20261006000400_starter_furniture (applied locally). If the session died, check `git status` for its uncommitted files, verify, commit, then push the branch to main.
 - **Next, in order:**
+  0. **M1 Sim movement & life:** tap-to-walk on the floor, smooth walk cycle, breathing/idle life (docs/REAL_LIFE_PLAN.md).
   1. **L2:** enter places. A 3D interior with zones and action cards, using the REAL Benin places by their real names (docs/LANDMARKS.md, user decided) plus the real housing ladder (face-me-I-face-you → self-contain → mini-flat → Ikpokpan Rd apartment → Aideyan Rd duplex → Estate Gate mansion).
   2. **L3:** crowds. NPCs plus real players with name pills, capped.
   3. **L4:** map place sheet plus "On today" events.
