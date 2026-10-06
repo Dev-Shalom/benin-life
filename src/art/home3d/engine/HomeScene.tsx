@@ -63,6 +63,15 @@ export interface HomeSceneProps {
   insetBottom?: number;
   className?: string;
   style?: CSSProperties;
+  /** S2 welcome back: seconds per full camera turn around the house. 0 = hold still on the same
+   * framing (reduced motion). Undefined = the normal game view (fixed angle, drag ±43°). */
+  orbit?: number;
+  /** Orbit only: pixels covered on the left (a side card on desktop); the island centres in the rest. */
+  insetLeft?: number;
+  /** Low walls all round, so the inside reads from every side of the orbit. */
+  dollhouse?: boolean;
+  /** false = no drag, zoom or furniture taps (welcome screen). Default true. */
+  interactive?: boolean;
 }
 
 interface View {
@@ -97,7 +106,7 @@ interface Actor {
   faceTo: number | null;
 }
 
-function Driver({ view, actor, paused }: { view: React.MutableRefObject<View>; actor: React.MutableRefObject<Actor>; paused: boolean }) {
+function Driver({ view, actor, paused, spin }: { view: React.MutableRefObject<View>; actor: React.MutableRefObject<Actor>; paused: boolean; spin: boolean }) {
   const invalidate = useThree((s) => s.invalidate);
   useEffect(() => {
     if (paused) return;
@@ -107,7 +116,7 @@ function Driver({ view, actor, paused }: { view: React.MutableRefObject<View>; a
       raf = requestAnimationFrame(loop);
       if (document.hidden || !view.current.visible) return;
       const a = actor.current;
-      const busy = view.current.dragging || a.mode === 'walk';
+      const busy = spin || view.current.dragging || a.mode === 'walk';
       const fps = a.mode === 'pose' && a.pose === 'lie' ? 12 : 24;
       if (!busy && now - last < 1000 / fps) return;
       last = now;
@@ -115,7 +124,7 @@ function Driver({ view, actor, paused }: { view: React.MutableRefObject<View>; a
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [invalidate, view, actor, paused]);
+  }, [invalidate, view, actor, paused, spin]);
   return null;
 }
 
@@ -141,7 +150,8 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
   const cz = (L.lot[1] + L.lot[3]) / 2;
 
   // ---- static room (rebuilt only when the layout changes)
-  const room = useMemo(() => buildRoom(L), [L]);
+  const doll = Boolean(props.dollhouse);
+  const room = useMemo(() => buildRoom(L, { dollhouse: doll }), [L, doll]);
   const grid = useMemo(() => buildGrid(L), [L]);
   const mats = useMemo(
     () => ({
@@ -380,8 +390,56 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busyKey, L, grid]);
 
+  // ---- S2 orbit camera: circles the whole island; one zoom that fits every angle (no pumping)
+  const orbitOn = props.orbit !== undefined;
+  const orbitFit = useRef<{ key: string; zoom: number } | null>(null);
+  const placeOrbit = (yaw: number) => {
+    const cam = camera as OrthographicCamera;
+    const d = 40;
+    const elev = 0.95; // ~43° down: sees over the low walls into every room
+    const ty = 0.5;
+    const availH = Math.max(120, size.height - insetTop - insetBottom);
+    const left = Math.max(0, Math.min(size.width * 0.6, props.insetLeft ?? 0));
+    const availW = Math.max(160, size.width - left);
+    const fitKey = `${L.id}:${availW}x${availH}`;
+    if (orbitFit.current?.key !== fitKey) {
+      const pts: [number, number, number][] = [];
+      const [x0, z0, x1, z1] = L.lot;
+      // the lot (house + yard) up to the tallest furniture; the grass island may run off the edges
+      for (const x of [x0 - 0.2, x1 + 0.2]) for (const z of [z0 - 0.2, z1 + 0.2]) pts.push([x - cx, 2.1, z - cz], [x - cx, -0.1, z - cz]);
+      let best = Infinity;
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2;
+        cam.position.set(Math.sin(a) * d, d * elev + ty, Math.cos(a) * d);
+        cam.lookAt(0, ty, 0);
+        cam.updateMatrixWorld();
+        let mx = 0, my = 0;
+        for (const [x, y, z] of pts) {
+          _v.set(x, y, z).applyMatrix4(cam.matrixWorldInverse);
+          mx = Math.max(mx, Math.abs(_v.x));
+          my = Math.max(my, Math.abs(_v.y));
+        }
+        best = Math.min(best, availW / (2 * mx * 1.04), availH / (2 * my * 1.06));
+      }
+      orbitFit.current = { key: fitKey, zoom: best };
+    }
+    cam.position.set(Math.sin(yaw) * d, d * elev + ty, Math.cos(yaw) * d);
+    cam.lookAt(0, ty, 0);
+    cam.zoom = orbitFit.current.zoom;
+    cam.updateMatrixWorld();
+    const shift = (insetTop - insetBottom) / 2;
+    if (Math.abs(shift) > 1 || left > 1) cam.setViewOffset(size.width, size.height, -left / 2, -shift, size.width, size.height);
+    else cam.clearViewOffset();
+    cam.updateProjectionMatrix();
+  };
+
   // ---- camera: orthographic, isometric from the south-east, framed between the HUD insets
   useEffect(() => {
+    if (orbitOn) {
+      placeOrbit(view.current.yaw);
+      invalidate();
+      return;
+    }
     const cam = camera as OrthographicCamera;
     const v = view.current;
     const d = 40;
@@ -416,6 +474,11 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
     const a = actorRef.current;
     const t = state.clock.elapsedTime;
     const step = Math.min(dt, 0.1);
+    if (orbitOn && props.orbit && props.orbit > 0) {
+      // dt is clamped, so a hidden tab (no frames) resumes where it left off
+      view.current.yaw = (view.current.yaw + (Math.PI * 2 * step) / props.orbit) % (Math.PI * 2);
+      placeOrbit(view.current.yaw);
+    }
     const root = ch.root;
     root.rotation.set(0, 0, 0);
     root.position.set(0, 0, 0);
@@ -556,7 +619,7 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
         <primitive object={ring} />
         <primitive object={marker} />
         <primitive object={actorObj} />
-        <primitive
+        {props.interactive !== false && <primitive
           object={picks}
           onClick={onClick}
           onPointerOver={() => {
@@ -565,7 +628,7 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
           onPointerOut={() => {
             document.body.style.cursor = '';
           }}
-        />
+        />}
       </group>
     </>
   );
@@ -603,6 +666,7 @@ export default function HomeScene(props: HomeSceneProps) {
   useEffect(() => {
     const el = wrap.current;
     if (!el) return;
+    if (props.interactive === false) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const v = view.current;
@@ -611,9 +675,10 @@ export default function HomeScene(props: HomeSceneProps) {
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [props.interactive]);
 
   const onDown = (e: React.PointerEvent) => {
+    if (props.interactive === false) return;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
@@ -659,7 +724,7 @@ export default function HomeScene(props: HomeSceneProps) {
         flat
         gl={{ antialias: true, alpha: true, powerPreference: 'low-power' }}
         camera={{ position: [28, 22, 28], zoom: 40, near: 0.1, far: 200 }}
-        style={{ touchAction: 'none' }}
+        style={{ touchAction: props.interactive === false ? 'auto' : 'none' }}
         onCreated={({ gl }) => {
           gl.domElement.addEventListener('webglcontextlost', (ev) => {
             ev.preventDefault();
@@ -671,7 +736,7 @@ export default function HomeScene(props: HomeSceneProps) {
           });
         }}
       >
-        <Driver view={view} actor={actor} paused={Boolean(props.paused)} />
+        <Driver view={view} actor={actor} paused={Boolean(props.paused)} spin={Boolean(props.orbit && props.orbit > 0)} />
         <House {...props} view={view} actorRef={actor} />
       </Canvas>
     </div>

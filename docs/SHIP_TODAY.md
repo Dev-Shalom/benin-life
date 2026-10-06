@@ -19,14 +19,16 @@ Then push branch → main (it also carries the "full amount under ₦100,000" mi
 
 **S1 notes (agent, 2026-10-06, verified by lead: build, 12 suites, screenshots; on main):** all 7 items built. Migration `20261006001000_ship_polish.sql` (transfer wait 30 → 1440 only if still 30; Chowdeck in config labels + `food_order` / `bl_ledger_label` messages, re-created from their live definitions). Ride app = `phone/RideApp.tsx` (no okada: the travel system has none). Terms/Privacy at `/terms`, `/privacy`. Update notice via `dist/version.json` (docs/DEPLOY.md). Presence channel `online` (`src/state/presence.ts`). Smooth light `src/lib/daylight.ts` (dev: `window.__blHour`). Sound `src/lib/sound.ts`, synthesized (0 KB); music now defaults ON at low volume. Details: docs/HUD_HOME.md "S1 polish".
 
-## S2. Welcome-back screen — [running]
+## S2. Welcome-back screen — [done]
 When a player opens the game after being away (new session / long absence), show a "welcome back" screen like Lagos Life:
 - their **3D house** with the **Sim inside**, camera **slowly orbiting 360°** around the house;
 - the Sim's **face** (portrait) + name, **current money**;
 - buttons: **Continue** (enter game), **New life** (start over: new Sim — confirm twice; server RPC that archives/resets the profile safely, keeps the account; admin-tunable whether allowed), **Log out** below.
 - Lightweight: reuse the home scene, one canvas, frameloop only while orbiting.
 
-## M1. Sim movement & life — [todo]  (spec in docs/REAL_LIFE_PLAN.md)
+**S2 notes (agent, 2026-10-06, for the lead to verify):** built. Screen `src/screens/WelcomeBack.tsx` (lazy) behind `PlayGate` in `App.tsx`; when-to-show logic `src/lib/welcome.ts` (sessionStorage once per tab + localStorage last seen per user, `life.welcome_after_minutes` default 30). Home orbit = new `HomeScene` props `orbit` / `dollhouse` / `interactive` / `insetLeft` (low walls all round, 52 s per turn, still under reduced motion, draws only while orbiting and visible). New life = two dialogs (what is lost, then type the Sim's name) -> RPC `life_restart()` in `20261006001100_life_restart.sql`: archives to `profile_archive` (jsonb snapshot), deletes the profile (ledger/events/inventory/furniture cascade), keeps the account; chat/report/block/audit FKs moved to `auth.users` so they survive; admin rights + running chat mute carry over; config `life.restart_enabled` (true), `life.restart_cooldown_hours` (0), `life.welcome_enabled`, `life.welcome_after_minutes`; audited `life_restart`. Same migration: transfer wait message in hours from 120 min ("New accounts can send money 24 hours after joining. About 23 h 50 min to go."). Tests `supabase/tests/life_test.sql` (13 suites pass). Details: docs/HUD_HOME.md "S2 welcome back", docs/ADMIN.md.
+
+## M1. Sim movement & life — [running]  (spec in docs/REAL_LIFE_PLAN.md)
 Tap the floor to walk there (home + places) with pathing, smooth walk cycle, alive idle (breathing, weight shift, look-around), natural idle after tasks.
 
 ## S3. Map upgrade — [todo]

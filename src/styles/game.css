@@ -3854,3 +3854,224 @@ kbd {
   color: var(--ink-2);
   text-underline-offset: 3px;
 }
+
+/* ---------- S2: welcome back ---------- */
+.welcome {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--grad-sky);
+  transition: background 1.2s ease;
+}
+.welcome__stage {
+  position: absolute;
+  inset: 0;
+}
+.welcome__stage .home3d--fallback .home3d__svg {
+  opacity: 0.9;
+}
+.welcome__card {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(12px + var(--sab));
+  z-index: 2;
+  width: min(440px, calc(100% - 24px));
+  margin-inline: auto;
+  padding: 20px 20px 10px;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--e3);
+  animation: welcome-in 420ms var(--ease-out) both;
+}
+@media (min-width: 900px) {
+  .welcome__card {
+    left: calc(48px + var(--sal));
+    right: auto;
+    top: 0;
+    bottom: 0;
+    width: 380px;
+    height: fit-content;
+    margin: auto 0;
+    padding: 26px 26px 12px;
+  }
+}
+@keyframes welcome-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+.welcome.is-reduced .welcome__card {
+  animation-name: welcome-fade;
+}
+@keyframes welcome-fade {
+  from {
+    opacity: 0;
+  }
+}
+.welcome__who {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.welcome__face {
+  position: relative;
+  flex: none;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #dcecf8, #f4f7fb);
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5.5px var(--green-500), var(--e2);
+}
+.welcome__face > :first-child {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.welcome__face img {
+  width: 100%;
+  height: 100%;
+}
+.welcome__id {
+  display: grid;
+  min-width: 0;
+}
+.welcome__eyebrow {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--muted);
+}
+.welcome__away {
+  margin-top: 1px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.welcome__name {
+  margin: 2px 0 3px;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.welcome__where {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.welcome__money {
+  display: grid;
+  gap: 2px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+}
+.welcome__money-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+}
+.welcome__total {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.welcome__split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.welcome__split > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.welcome__actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+.welcome__logout {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) ease,
+    transform var(--t-press) var(--ease-out);
+}
+.welcome__logout:active:not(:disabled) {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .welcome__logout:hover {
+    color: var(--text);
+  }
+}
+.welcome__logout:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.welcome__lose {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0;
+  padding: 12px 14px;
+  list-style: none;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+  font-size: var(--fs-sm);
+}
+.welcome__word {
+  color: var(--text);
+  font-weight: 800;
+}
+.welcome__modal-art {
+  font-size: 34px;
+  line-height: 1;
+}
+@media (max-height: 640px) and (max-width: 899px) {
+  .welcome__card {
+    padding-top: 16px;
+  }
+  .welcome__face {
+    width: 56px;
+    height: 56px;
+  }
+  .welcome__money {
+    margin-top: 12px;
+    padding: 10px 14px;
+  }
+  .welcome__total {
+    font-size: 1.625rem;
+  }
+}

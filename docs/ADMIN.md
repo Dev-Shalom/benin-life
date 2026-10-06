@@ -42,6 +42,10 @@ Phones get a bottom tab bar and full-screen detail panes; desktops get a sidebar
 | `pos.fee_pct`, `bank.transfer_fee`, `bank.transfer_daily_limit` | PoS charge and phone transfer fee / daily limit. |
 | `chat.enabled` | Location chat on/off for everyone. |
 | `admin.bootstrap_emails` | Emails allowed to press "claim admin". Hidden from players. |
+| `life.welcome_enabled` | Welcome-back screen (house, Sim, money, Continue / New life / Log out) on/off. Category "Welcome back & new life". |
+| `life.welcome_after_minutes` | In the same tab, the welcome-back screen shows again after this many real minutes away (default 30). A new tab always shows it once. |
+| `life.restart_enabled` | Players may start a **New life** (default on): the old Sim is archived in `profile_archive`, the account stays, the creator runs again (origin roll, `origin.force_next` applies). Audited as `life_restart`. |
+| `life.restart_cooldown_hours` | Hours a player must wait between new lives (default 0 = no wait). |
 
 Changes go live at once: `game_config` is in the realtime publication and `src/lib/config.ts` updates every client on each change (and reloads after a reconnect). Content tables are read fresh by the game's RPCs (e.g. a new item price shows in the shop on the next open).
 

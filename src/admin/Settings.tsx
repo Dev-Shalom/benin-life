@@ -24,6 +24,7 @@ const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: strin
   traffic: { title: 'Traffic', emoji: '🚦', blurb: 'Rush hours and the Ramat Park go-slow.' },
   crime: { title: 'Crime & robbery', emoji: '🦹', blurb: 'Street robbery chances, losses and injuries.' },
   chat: { title: 'Chat', emoji: '💬', blurb: 'Chat switch, rate limits and moderation.' },
+  life: { title: 'Welcome back & new life', emoji: '🔁', blurb: 'The welcome-back screen and whether players may give up their Sim and start over.' },
   admin: { title: 'Admin', emoji: '🛡️', blurb: 'Admin access. Hidden from players.' },
 };
 
@@ -42,6 +43,7 @@ const QUICK: { key: string; hint: string }[] = [
   { key: 'origin.nepo.start_bank', hint: 'Money already in a Nepo baby’s bank.' },
   { key: 'origin.nepo.allowance_daily', hint: 'Dad’s allowance per day for Nepo babies.' },
   { key: 'rent.enabled', hint: 'Turn weekly rent on or off for everyone.' },
+  { key: 'life.restart_enabled', hint: 'Players can start a new life (new Sim, new origin roll). The old one is archived.' },
   { key: 'crime.npc_base_pct', hint: 'Base chance of being robbed on a street trip.' },
   { key: 'crime.npc_max_pct', hint: 'Robbery chance never goes above this.' },
   { key: 'career.pay_mult', hint: 'Multiplies every job’s pay. 1 = normal, 1.5 = +50%.' },

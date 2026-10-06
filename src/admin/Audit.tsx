@@ -24,6 +24,7 @@ function summary(a: AuditEntry): string {
     case 'chat_hide': case 'chat_unhide': return `“${String(d.body ?? '').slice(0, 80)}”`;
     case 'ban': case 'unban': return d.reason ? String(d.reason) : '';
     case 'admin_claim': return `Claimed with ${d.email}`;
+    case 'life_restart': return `Started a new life: gave up @${d.username} (${d.origin}, ${naira(Number(d.cash ?? 0) + Number(d.bank ?? 0))}), life ${d.life_no}`;
     default: return '';
   }
 }

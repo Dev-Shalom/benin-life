@@ -16,6 +16,7 @@ export interface BuiltRoom {
 const T = 0.12; // wall thickness
 const LOW = 0.32; // cut-away front wall height
 const HALF = 1.15; // interior partition height
+const DOLL = 0.7; // S2 dollhouse view (welcome-back orbit): every wall this low, so the camera sees in from any side
 
 function tiles(b: HomeBuilder, x0: number, z0: number, x1: number, z1: number, a: string, bc: string | undefined, size: number, y: number) {
   if (!bc || bc === a) {
@@ -35,7 +36,8 @@ function tiles(b: HomeBuilder, x0: number, z0: number, x1: number, z1: number, a
     }
 }
 
-export function buildRoom(L: HomeLayout): BuiltRoom {
+export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean } = {}): BuiltRoom {
+  const doll = Boolean(opts.dollhouse);
   const b = new HomeBuilder();
   const [lx0, lz0, lx1, lz1] = L.lot;
   const cx = (lx0 + lx1) / 2;
@@ -65,7 +67,7 @@ export function buildRoom(L: HomeLayout): BuiltRoom {
   for (const [x0, z0, x1, z1, a, bc, size] of L.patches ?? []) tiles(b, x0, z0, x1, z1, a, bc, size ?? 0.4, 0.008);
 
   // walls
-  const H = L.wallH;
+  const H = doll ? DOLL : L.wallH;
   const inner = L.wallInner;
   const outer = L.wall;
   const skirt = shadeHex(inner, 0.82);
@@ -76,8 +78,8 @@ export function buildRoom(L: HomeLayout): BuiltRoom {
   b.box(T + 0.02, 0.04, L.d, -T / 2, H, L.d / 2, outer);
   b.box(L.w, 0.1, 0.02, L.w / 2, 0, 0.01, skirt);
   b.box(0.02, 0.1, L.d, 0.01, 0, L.d / 2, skirt);
-  // windows on the back walls: frame, glass, sill, curtains
-  for (const [side, a0, a1] of L.windows) {
+  // windows on the back walls: frame, glass, sill, curtains (not in the low dollhouse walls)
+  for (const [side, a0, a1] of doll ? [] : L.windows) {
     const w = a1 - a0;
     const m = (a0 + a1) / 2;
     const y0 = 0.95;
@@ -99,10 +101,12 @@ export function buildRoom(L: HomeLayout): BuiltRoom {
     }
   }
   // a wall clock and a calendar on the north wall
-  b.cyl(0.16, 0.16, 0.03, L.w - 0.6, 1.85, 0.02, '#f7f7f5', { rx: Math.PI / 2, seg: 14 });
-  b.box(0.02, 0.1, 0.01, L.w - 0.6, 1.85, 0.04, '#222');
-  b.box(0.3, 0.4, 0.01, 0.6, 1.55, 0.02, '#1f7a3f');
-  b.box(0.26, 0.24, 0.012, 0.6, 1.58, 0.022, '#f4f1ea');
+  if (!doll) {
+    b.cyl(0.16, 0.16, 0.03, L.w - 0.6, 1.85, 0.02, '#f7f7f5', { rx: Math.PI / 2, seg: 14 });
+    b.box(0.02, 0.1, 0.01, L.w - 0.6, 1.85, 0.04, '#222');
+    b.box(0.3, 0.4, 0.01, 0.6, 1.55, 0.02, '#1f7a3f');
+    b.box(0.26, 0.24, 0.012, 0.6, 1.58, 0.022, '#f4f1ea');
+  }
 
   // low cut-away walls (south, east) with door gaps, and interior partitions
   for (const [x1, z1, x2, z2] of wallSegments(L)) {
@@ -110,7 +114,7 @@ export function buildRoom(L: HomeLayout): BuiltRoom {
     const isWest = x1 === 0 && x2 === 0;
     if (isNorth || isWest) continue;
     const outerWall = (z1 === L.d && z2 === L.d) || (x1 === L.w && x2 === L.w);
-    const h = outerWall ? LOW : HALF;
+    const h = doll ? (outerWall ? DOLL : Math.min(HALF, DOLL)) : outerWall ? LOW : HALF;
     const col = outerWall ? shadeHex(L.wall, 1.4) : inner;
     if (z1 === z2) {
       const len = Math.abs(x2 - x1);
@@ -133,6 +137,7 @@ export function buildRoom(L: HomeLayout): BuiltRoom {
 
   // furniture
   for (const f of L.furniture) {
+    if (doll && f.kind === 'ac') continue; // wall unit: nothing to hang it on in the low dollhouse walls
     b.setFrame(f.x, f.y ?? 0, f.z, ((f.rot ?? 0) * Math.PI) / 2);
     buildPiece(b, f, L.wallH);
     void KINDS;
