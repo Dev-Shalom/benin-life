@@ -37,6 +37,9 @@ This file is kept current after every step. The detailed live status is the STAT
   - One agent at a time.
 - **User to do:** claim admin at https://benin-life.vercel.app/admin (see docs/ADMIN.md), then tune the numbers.
 
+## WARNING for the local PC (2026-10-06)
+At 13:32 the PC pushed an old starter-homes version ("Latest Changes from map stylings", 212604e) and merged it into main with conflict markers in 10 files, which broke the build. The cloud restored the verified version (b5a9b1d). **Before working locally, always run `git fetch && git reset --hard origin/claude/kind-bell-e9reb8` (after saving anything you need), or `git pull`, and never commit files that contain `<<<<<<<`.** Never edit an applied migration such as 20261006000400.
+
 ## How it is deployed
 - **Preview / live site:** https://benin-life.vercel.app — Vercel deploys **`main`**. `.env.production` points at Supabase project `twwttirvesbwjvzjmenp`.
 - **Database:** the GitHub Action "Supabase preview DB" runs `supabase db push` on every push that touches `supabase/migrations/**` (repo secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` are set). Migrations must be idempotent and safe on a non-empty DB. Never edit an applied migration — add a new one.
