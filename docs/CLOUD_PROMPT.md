@@ -25,7 +25,8 @@ This file is kept current after every step. The detailed live status is the STAT
 - **Also done (on main):** L3 crowds (named NPCs with roles, busy by real hour, People list, speech bubbles).
 - **Also done (on main):** P1 polish (walking NPCs, softer light, people everywhere, luxury cars + bike/motorcycle, queue circles).
 - **Also done (on main):** P2 club hype (MC Lightning announcements, Doremi, amapiano, per-place soundtracks).
-- **Running now:** L4 events. Later: gangs (docs/GANGS_PLAN.md). Previously running: L2 place interiors (docs/REAL_LIFE_PLAN.md Phase L, SHIP_TODAY L2+, docs/LANDMARKS.md). If the session died, check `git status` for its files, verify, commit.
+- **Also done (on main):** L4 events (On today, tickets, travel + Go, banners).
+- **Running now:** P3 hype with aura (docs/SHIP_TODAY.md P3). Later: gangs (docs/GANGS_PLAN.md). Previously running: L2 place interiors (docs/REAL_LIFE_PLAN.md Phase L, SHIP_TODAY L2+, docs/LANDMARKS.md). If the session died, check `git status` for its files, verify, commit.
 - **SHIP-TODAY LIST (user, 2026-10-06): `docs/SHIP_TODAY.md` — follow it in order:** starter homes → S1 quick polish (BetNaija, Ride app, Chowdeck, 24 h transfer wait, Beta badge, Terms/Privacy, update-available dialog, live online/place counts, smooth day/night, sound + click SFX) → S2 welcome-back screen (orbiting house, Continue/New life/Log out) → M1 movement → S3 map upgrade → L2+ (real landmarks incl. car dealers + top clubs).
 - **Next, in order (older list, now inside SHIP_TODAY):**
   0. **M1 Sim movement & life:** tap-to-walk on the floor, smooth walk cycle, breathing/idle life (docs/REAL_LIFE_PLAN.md).

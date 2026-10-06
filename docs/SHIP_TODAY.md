@@ -47,7 +47,7 @@ The user finds the map "looking weird". Improve the 3D city's look: clearer road
 
 **M2 notes (agent, 2026-10-06, not committed):** details in docs/HUD_HOME.md "M2 movement & task feel". (1) Walk 1.15 → **1.9 m/s** (robes 0.72 → 1.33), stride + cadence scale with speed, admin keys `sim.walk_speed` / `sim.robe_speed_mult` / `sim.tired_slowdown`. (2) Every task walks first (M1 pathing) and `do_activity` is called **on arrival**; the 15 % / 1.4× / placed-there rules are gone; × or a floor tap drops the walking task; errors toast and the queue goes on; no-furniture tasks start at once. (3) Progress pill moved to the **left column** (icon, name, thin live bar, seconds, ×; shift pay counter kept); bottom busy banner removed. (4) **Queue** (zustand, max `action.queue_max` = 5, full toast, × and ↑ per chip, cleared on logout / leaving / travel / jail / hospital / server busy). New `activity_stop()` RPC for the × on a running task (keeps the share earned so far, no refund). (5) Bent legs: `restPose()` never straightened the knees, so a sit's 1.45 rad knee bend leaked into standing; fixed + `scripts/pose-check.mjs` + dev `__legCheck`. Migration `20261006001200_sim_feel.sql`, tests `sim_feel_test.sql`.
 
-## L2+. Places, crowds, events, landmarks — [L2 + L3 done; L4 events running] (first L2 agent hit a usage limit before changing anything)
+## L2+. Places, crowds, events, landmarks — [L2, L3 and L4 done] (first L2 agent hit a usage limit before changing anything)
 As in docs/REAL_LIFE_PLAN.md. Landmarks (docs/LANDMARKS.md): keep the REAL names the user chose (ShopRite/Benin City Mall, Kada Plaza, Mama Ebo, Protea, Golden Tulip, Ogba Zoo, Ogbe/Samuel Ogbemudia Stadium, Emotan Statue, real clubs) and **mix in local made-up names** so it isn't built only on real brands. Add:
 - **Car dealers** (buy cars): real Benin options along Sapele Rd — e.g. Ighodalo Car Deals (Km 5 Sapele Rd), SDD Motors (174 Sapele Rd), Otos Autos (near Santana Market), Dominion Automobile; official Toyota (Mandilas, 45 Benin–Agbor Rd). Pick 1–2 real + a made-up "Tokunbo lot".
 - **Top clubs with hype men & big spenders**: 360 Signature (GRA, 1st Ugbor Rd), Club De Medici (23 Benoni off Airport Rd, GRA), Rome Night Club ("biggest in Benin"), Club Vibes (DJ + hype man), Cube Nightlife, Versus Lounge, Havana. Club actions: table/bottle service (VIP prices), "spray money", hype man shout-out (costly, + street cred), dance.
@@ -60,6 +60,19 @@ dancers, traders, bouncers); the rest stay instanced; animation LOD. White NPC p
 NPC + chat speech bubbles, "+N more here". Admin → Content → People (NPCs) / Crowd profiles; config `crowd.npc_list_max`,
 `crowd.rigs_high`, `crowd.rigs_low`, `crowd.chatter_seconds`. Migration `20261006001500_crowds.sql`, tests
 `crowds_test.sql`. Details + cost: docs/PLACES.md "L3 crowds".
+
+**L4 map sheet + events (agent notes, 2026-10-06; status marker left for the lead):** `place_events` (weekly in WAT or
+one-off, ticket price, capacity, perks, `{variant}` titles; admin Content → Events, audited) + `event_tickets` (one per player
+per occurrence). `events_on_today()` and `event_buy_ticket()` (bank first, then cash; capacity locked). Event-only cards via
+`activities.requires_event` (Watch the match live, VIP at Amapiano Night, Market day bargains, owambe, premiere, pool party):
+shown only on the event's day, locked "Starts 4 PM" / "Needs a ticket", open while LIVE with a ticket or free, with perks.
+Seeded: Bendel Insurance home match (Sun 4 PM, weekly opponent), Amapiano Night Fri + Sat at 360 Signature, Oba Market big
+market day (Sat), Sunday owambe at Golden Tulip, Kada Friday premiere, Protea Saturday pool party; hidden clubs' nights stay
+hidden. Map place sheet: type icon, open now, people count, Share (`/play?place=<id>` deep link), activity chips, On today
+with Buy ticket, travel mode cards + big Go. Top banner (rotates, ×, tap opens the place; the hype ticker wins), LIVE / 🎟️
+badges on 3D pins. Config `events.banner_enabled`, `events.banner_lead_hours`. Migration `20261006001800_events.sql`, tests
+`events_test.sql` (20/20 suites pass), nav/pose/place checks pass, fresh-DB apply OK. Details: docs/EVENTS.md. Not done:
+badge on the 2D lite map; per-ticket tiers (Regular / VIP / Box) are one price per event for now.
 
 ## F1. Club soft launch + real feel (user, 2026-10-06 evening): [done]
 - **Soft launch:** only **360 Signature** is open at first. The other clubs (and any place) can be hidden or shown with an admin switch (`locations.active`); hidden places have no map pin and can't be travelled to. Each place's opening and closing hours are editable in admin → Places.
@@ -118,7 +131,7 @@ Different from Lagos Life:
 - Migration `20261006001700_hype.sql`, tests `supabase/tests/hype_test.sql`; details in docs/PLACES.md "P2 hype",
   docs/ADMIN.md (hype.* and music.club_track_url), docs/FEEL_PLAN.md "P2".
 
-## P3. Hype with aura (user, 2026-10-06 night): [todo, right after L4]
+## P3. Hype with aura (user, 2026-10-06 night): [running]
 The current banner is too small and plain. The hype must **carry aura and take over the whole screen** for everyone in the club:
 - A full-screen moment of about 3–5 s, which a tap skips:
   - the backdrop dims

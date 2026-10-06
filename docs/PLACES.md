@@ -276,6 +276,6 @@ and cooldown, Shut down the club, bottles count up, non-club spends silent, publ
 - L3 leftovers: rigs don't rebuild when the graphics tier changes mid-visit (they do on the next visit); no streaming
   "Loading…" pill. (P1 did the wandering and put the DJ behind the booth.)
 - P1 optional, not done: the player's own car parked outside their home / on the street.
-- L4: map place sheet with "On today" events (match days, concerts), travel cards + Go, live banners.
+- L4 (done, docs/EVENTS.md): map place sheet with "On today" events, travel cards + Go, live banners, event-only cards.
 - Interiors are client-side only (where you stand is never sent to the server), like the home.
 - Homes of other players show a simple interior whose actions say "Only in your own home".
