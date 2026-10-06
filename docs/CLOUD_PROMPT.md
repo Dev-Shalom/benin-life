@@ -15,7 +15,7 @@ This file is kept current after every step. The detailed live status is the STAT
   - Nepo: moderate furniture.
   - Actions match the furniture; the walk is skipped on short actions.
   - Migration 20261006000400_starter_furniture (applied locally). If the session died, check `git status` for its uncommitted files, verify, commit, then push the branch to main.
-- **SHIP-TODAY LIST (user, 2026-10-06): `docs/SHIP_TODAY.md` — follow it in order:** starter homes → S1 quick polish (BetNinja, Ride app, Chowdeck, 24 h transfer wait, Beta badge, Terms/Privacy, update-available dialog, live online/place counts, smooth day/night, sound + click SFX) → S2 welcome-back screen (orbiting house, Continue/New life/Log out) → M1 movement → S3 map upgrade → L2+ (real landmarks incl. car dealers + top clubs).
+- **SHIP-TODAY LIST (user, 2026-10-06): `docs/SHIP_TODAY.md` — follow it in order:** starter homes → S1 quick polish (BetNaija, Ride app, Chowdeck, 24 h transfer wait, Beta badge, Terms/Privacy, update-available dialog, live online/place counts, smooth day/night, sound + click SFX) → S2 welcome-back screen (orbiting house, Continue/New life/Log out) → M1 movement → S3 map upgrade → L2+ (real landmarks incl. car dealers + top clubs).
 - **Next, in order (older list, now inside SHIP_TODAY):**
   0. **M1 Sim movement & life:** tap-to-walk on the floor, smooth walk cycle, breathing/idle life (docs/REAL_LIFE_PLAN.md).
   1. **L2:** enter places. A 3D interior with zones and action cards, using the REAL Benin places by their real names (docs/LANDMARKS.md, user decided) plus the real housing ladder (face-me-I-face-you → self-contain → mini-flat → Ikpokpan Rd apartment → Aideyan Rd duplex → Estate Gate mansion).

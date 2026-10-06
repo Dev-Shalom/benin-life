@@ -7,7 +7,7 @@ Then push branch → main (it also carries the "full amount under ₦100,000" mi
 
 ## S1. Quick polish batch — [todo]
 1. **Names** (some things are shared by Lagos and Benin — use what Benin people actually use):
-   - Phone betting app **EdoBet → "BetNinja"**.
+   - Phone betting app **EdoBet → "BetNaija"**.
    - **KekeGo → a "Ride" app**: book what you ride — keke, ECTS bus/danfo-style bus, okada (if allowed), drop/cab, own car — with prices/times (reuses the travel quote), like a ride-hailing app.
    - **ChopNow → "Chowdeck"** (real app used in Benin too).
 2. **Anti-farming**: set `bank.transfer_min_account_real_minutes` default to **1440** (24 h) via migration (only if still at the old default).
