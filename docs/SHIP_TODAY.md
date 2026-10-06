@@ -76,6 +76,7 @@ NPC + chat speech bubbles, "+N more here". Admin → Content → People (NPCs) /
 3. **People everywhere:** every place type has characters, not only the main ones.
 4. **Car stands:** car models with real shapes, a **Mercedes GLE AMG, G-Wagon (G-Class), Lamborghini Urus and Tesla Cybertruck**, on display at every car dealer and buyable there.
 5. **Queue UI:** the running task pill, plus small **circles to its right** with the icon of each queued task. Show the running task plus at most 2 circles; when the running task ends, the next one shifts in. `action.queue_max` default is now **7**.
+5b. **More vehicles (user):** bicycle (~₦180k), motorcycle (~₦1.6M), Toyota Camry (~₦75M), Mercedes C300 (~₦95M) and Cadillac Escalade (~₦250M), at realistic Naija prices, admin-editable. Added to the P1 agent.
 6. **No hard budget:** the user says look matters more than staying under the triangle guide; keep it smooth on phones (Auto/Low tier).
 
 ## P2. Club hype and party vibe (user, 2026-10-06 night): [todo, after P1, before L4]
@@ -87,6 +88,9 @@ Different from Lagos Life:
 - **Background music in clubs: peak amapiano.** Log drums, shakers, piano stabs, a deep bass groove, kept subtle under the game but with the beat felt; the lights pulse with the beat. **Copyright:** we can't ship real songs like "Funk 18" without a licence, so the game generates original amapiano-style grooves. Later, admin can upload licensed tracks (the user brings the rights).
 - **The party is alive:** dancers move to the beat, the DJ and hype man react to announcements, the crowd cheers, and the lights sync to the beat (subtle).
 - **Same treatment for other places:** each place type gets a fitting live soundtrack and moments, e.g. the buka radio playing highlife and Afrobeats instrumentals, market hawker calls, the stadium crowd chanting on match day, the cinema.
+
+## LATER: private jets and planes (user)
+A place to buy private jets and planes, tied to the airport feature (fly to Lagos, Abuja or PH). Not started.
 
 ## LATER (user, 2026-10-06): welcome-back redo. Do NOT touch today; S2 stays as shipped.
 The user wants the welcome screen to look like Lagos Life (`docs/references/lagos-life/welcome-back-1.jpg`, `welcome-back-2-newlife.jpg`):
