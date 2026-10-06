@@ -1426,6 +1426,34 @@ html[data-theme] .bl-toaster {
   transform: translateX(-50%);
   width: min(320px, 80vw);
 }
+/* M1: gentle "busy" hint where a floor tap landed while the Sim is busy */
+.home3d__hint {
+  position: absolute;
+  z-index: 2;
+  max-width: min(240px, 70vw);
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  font: 600 12.5px/1.25 var(--font-display);
+  color: var(--glass-text);
+  background: var(--glass-strong);
+  box-shadow: var(--e3), inset 0 0 0 1px var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+  animation: home3d-hint 1.6s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes home3d-hint {
+  0% { opacity: 0; transform: translate(-50%, calc(-100% - 4px)) scale(0.96); }
+  12% { opacity: 1; transform: translate(-50%, calc(-100% - 10px)) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home3d__hint { animation-name: home3d-hint-fade; }
+  @keyframes home3d-hint-fade { 0%, 100% { opacity: 0; } 10%, 80% { opacity: 1; } }
+}
 
 /* ---------- R4: furniture sheet, shortcuts, buy ---------- */
 .home-sheet__head {

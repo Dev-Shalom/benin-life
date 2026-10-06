@@ -8,6 +8,7 @@ import { serverNow, useGameClock } from '../lib/clock';
 import { devHourOverride, looksNight } from '../lib/daylight';
 import { setSoundScene } from '../lib/sound';
 import { useConfig } from '../lib/config';
+import { simPosture } from '../lib/mood';
 import { randomGreeting } from '../lib/pidgin';
 import { usePrefs } from '../lib/prefs';
 import { useCatalog } from '../state/catalog';
@@ -216,6 +217,8 @@ export default function Game() {
             walkShare={walkShare}
             avatar={p.avatar}
             busy={busyGroup}
+            walkLock={busyActive ? `${busyLabel ?? 'Busy'} first, then you can walk` : null}
+            mood={simPosture(p)}
             hour={hourF}
             suspended={suspendHome}
             paused={coveredHome}

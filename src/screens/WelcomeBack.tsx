@@ -15,6 +15,7 @@ import { serverNow, useGameClock } from '../lib/clock';
 import { useConfig } from '../lib/config';
 import { devHourOverride, looksNight } from '../lib/daylight';
 import { naira, nairaShort, timeAgo } from '../lib/format';
+import { simPosture } from '../lib/mood';
 import { originCopy } from '../lib/pidgin';
 import { homeLight } from '../art/home3d/engine/light';
 import { useCatalog } from '../state/catalog';
@@ -205,6 +206,7 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
             layout={furnished}
             avatar={p.avatar}
             busy={busyGroup}
+            mood={simPosture(p)}
             hour={hour}
             orbit={reduced ? 0 : ORBIT_SECONDS}
             dollhouse
