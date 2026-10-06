@@ -118,6 +118,25 @@ Different from Lagos Life:
 - Migration `20261006001700_hype.sql`, tests `supabase/tests/hype_test.sql`; details in docs/PLACES.md "P2 hype",
   docs/ADMIN.md (hype.* and music.club_track_url), docs/FEEL_PLAN.md "P2".
 
+## P3. Hype with aura (user, 2026-10-06 night): [todo, right after L4]
+The current banner is too small and plain. The hype must **carry aura and take over the whole screen** for everyone in the club:
+- A full-screen moment of about 3–5 s, which a tap skips:
+  - the backdrop dims
+  - a gold/colour radial aura glows and pulses on the beat
+  - naira notes, confetti or sparks rain down
+  - the player's name appears huge with a glow, plus a crown and the spend type ("SHUT DOWN 360 SIGNATURE", "VIP TABLE", "SPRAYED ₦50K")
+  - an amount counter rolls up
+  - MC Lightning's line appears as big captions
+  - the Doremi stinger plays and the crowd cheers
+- Tiers by size:
+  - bottle/VIP: gold aura
+  - spray: falling naira
+  - shutdown: the biggest, with fireworks, a light sweep and a longer hold
+- The app-wide version for big spends is a richer full-width strip with aura, not a plain ticker.
+- **Random, real-sounding lines.** A large pool of 15–25 lines per kind, mixing English and Pidgin like a real Benin MC, with variables and no repeats until the pool cycles. Admin-editable (hype_templates).
+- Light on phones: CSS and canvas particles, capped, and reduced motion gets a calm version.
+- Reference: the user says "check the GitHub repo for a reference". **No hype reference is in the repo yet**; asked the user to upload it. Build from this spec meanwhile, and adjust once the reference arrives.
+
 ## LATER: private jets and planes (user)
 A place to buy private jets and planes, tied to the airport feature (fly to Lagos, Abuja or PH). Not started.
 
