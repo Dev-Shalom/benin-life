@@ -24,7 +24,7 @@ export type Row = Record<string, unknown>;
 export type AdminTable =
   | 'origin_tiers' | 'traits' | 'dreams' | 'start_homes' | 'career_tracks' | 'career_levels'
   | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture' | 'starter_furniture'
-  | 'place_zones' | 'zone_actions' | 'place_moods' | 'npc_roster' | 'crowd_profiles' | 'hype_templates' | 'place_events';
+  | 'place_zones' | 'zone_actions' | 'place_moods' | 'npc_roster' | 'crowd_profiles' | 'hype_templates' | 'place_events' | 'topup_packs';
 
 export interface PlayerRow {
   id: string;
@@ -75,6 +75,18 @@ export interface ChatReport {
   reporters: (string | null)[]; author_muted_until: string | null;
 }
 
+export interface PaymentRow {
+  id: number; reference: string; user_id: string | null; username: string | null; pack_id: string | null; pack_label: string | null;
+  amount_kobo: number; game_naira: number; status: 'pending' | 'success' | 'failed'; provider: string;
+  created_at: string; paid_at: string | null; note: string | null;
+}
+export interface PaymentsData {
+  rows: PaymentRow[];
+  totals: { today_kobo: number; today_count: number; d7_kobo: number; d7_count: number; all_kobo: number; all_count: number;
+            payers: number; pending: number; failed: number; naira_sold: number };
+  enabled: boolean;
+}
+
 type Msg = { message: string };
 
 export const adminApi = {
@@ -96,6 +108,7 @@ export const adminApi = {
     rpc<Msg>('admin_set_origin', { p_user: id, p_origin: origin, p_apply_perks: applyPerks }),
   stats: () => rpc<Stats>('admin_stats'),
   audit: (limit = 150) => rpc<AuditEntry[]>('admin_audit_list', { p_limit: limit }),
+  payments: (status: string | null, search: string | null) => rpc<PaymentsData>('admin_payments', { p_status: status, p_search: search, p_limit: 200 }),
   chatReports: () => rpc<ChatReport[]>('admin_chat_reports', { p_include_hidden: true }),
   chatHide: (id: number, hidden: boolean) => rpc<Msg>('admin_chat_hide', { p_message_id: id, p_hidden: hidden }),
   claim: () => rpc<Msg & { is_admin: boolean }>('admin_claim'),

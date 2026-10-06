@@ -26,11 +26,15 @@ const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: strin
   crime: { title: 'Crime & robbery', emoji: '🦹', blurb: 'Street robbery chances, losses and injuries.' },
   chat: { title: 'Chat', emoji: '💬', blurb: 'Chat switch, rate limits and moderation.' },
   life: { title: 'Welcome back & new life', emoji: '🔁', blurb: 'The welcome-back screen and whether players may give up their Sim and start over.' },
+  payments: { title: 'Payments (Paystack)', emoji: '💳', blurb: 'Real-money top-ups. Packs: Content → Top-up packs. Purchases: Payments. Setup: docs/PAYMENTS.md.' },
+  leaderboard: { title: 'Leaderboards', emoji: '🏆', blurb: 'The phone Ranks app: Rich list and VIP list tiers.' },
+  vip: { title: 'VIP perks', emoji: '👑', blurb: 'Arrival announcements for the top VIPs.' },
   admin: { title: 'Admin', emoji: '🛡️', blurb: 'Admin access. Hidden from players.' },
 };
 
 /** The knobs the owner touches most, with plain-English help. */
 const QUICK: { key: string; hint: string }[] = [
+  { key: 'payments.enabled', hint: 'Real-money top-ups with Paystack. Turn on only after the keys are set (docs/PAYMENTS.md).' },
   { key: 'clock.mode', hint: 'real = the game shows the real time in Benin City. accelerated = the old fast clock.' },
   { key: 'needs.decay_speed', hint: 'How fast needs drop with the real clock. 2.5 = hunger empties in about 10 real hours.' },
   { key: 'action.mode', hint: 'short = every action takes a few real seconds. game_minutes = the old long timers.' },

@@ -15,7 +15,7 @@ export interface Announcement {
   location_id: string;
   user_id: string;
   username: string;
-  kind: 'vip' | 'bottles' | 'spray' | 'shoutout' | 'shutdown' | string;
+  kind: 'vip' | 'bottles' | 'spray' | 'shoutout' | 'shutdown' | 'vip_arrival' | string;
   amount: number;
   qty: number;
   text: string;
@@ -29,6 +29,8 @@ const TICKER_MS = 6000;
 
 interface HypeStore {
   locationId: string | null;
+  /** The place is a club (all hype kinds); elsewhere only VIP arrivals (PAY) show. */
+  inClub: boolean;
   /** The club's recent lines (chat shows them as hype messages). */
   recent: Announcement[];
   /** The banner on screen now, and the ones waiting (max 3). */
@@ -38,7 +40,7 @@ interface HypeStore {
   ticker: Announcement | null;
 }
 
-export const useHype = create<HypeStore>(() => ({ locationId: null, recent: [], banner: null, queue: [], ticker: null }));
+export const useHype = create<HypeStore>(() => ({ locationId: null, inClub: false, recent: [], banner: null, queue: [], ticker: null }));
 
 let bannerTimer = 0;
 let tickerTimer = 0;
@@ -49,7 +51,7 @@ function showNext() {
   const next = queue[0] ?? null;
   useHype.setState({ banner: next, queue: queue.slice(1) });
   if (!next) return;
-  playHype('club');
+  playHype(next.kind === 'vip_arrival' && !useHype.getState().inClub ? 'global' : 'club');
   // the hype man says it too (PlaceScene shows a bubble over him and he points + jumps)
   window.dispatchEvent(new CustomEvent('bl:hype', { detail: { text: next.text, kind: next.kind } }));
   bannerTimer = window.setTimeout(showNext, BANNER_MS);
@@ -58,6 +60,7 @@ function showNext() {
 function onClubRow(a: Announcement) {
   const s = useHype.getState();
   if (a.location_id !== s.locationId || s.recent.some((x) => x.id === a.id)) return;
+  if (!s.inClub && a.kind !== 'vip_arrival') return;
   useHype.setState({ recent: [...s.recent, a].slice(-20) });
   if (s.banner) useHype.setState({ queue: [...s.queue, a].slice(-3) });
   else {
@@ -83,8 +86,9 @@ export function dismissHypeBanner() {
 let clubCh: RealtimeChannel | null = null;
 let globalCh: RealtimeChannel | null = null;
 
-/** Mounted once by the game screen: `clubId` = the club you're inside (null elsewhere), `uid` = signed in. */
-export function useHypeLive(clubId: string | null, uid: string | null) {
+/** Mounted once by the game screen: `clubId` = the place you're at (null on the road), `uid` = signed in,
+ *  `inClub` = that place is a club (all hype kinds); elsewhere only VIP arrivals (PAY) are shown. */
+export function useHypeLive(clubId: string | null, uid: string | null, inClub = true) {
   useEffect(() => {
     if (!uid) return;
     const ch = supabase
@@ -103,7 +107,7 @@ export function useHypeLive(clubId: string | null, uid: string | null) {
 
   useEffect(() => {
     window.clearTimeout(bannerTimer);
-    useHype.setState({ locationId: clubId, recent: [], banner: null, queue: [] });
+    useHype.setState({ locationId: clubId, inClub, recent: [], banner: null, queue: [] });
     if (!clubId || !uid) return;
     let alive = true;
     const load = async () => {
@@ -112,7 +116,8 @@ export function useHypeLive(clubId: string | null, uid: string | null) {
         .eq('location_id', clubId).gte('created_at', since).order('id', { ascending: false }).limit(10);
       if (!alive || useHype.getState().locationId !== clubId) return;
       const have = useHype.getState().recent;
-      const merged = [...((data ?? []) as Announcement[]).reverse(), ...have.filter((x) => !(data ?? []).some((d: Announcement) => d.id === x.id))];
+      const rows = ((data ?? []) as Announcement[]).filter((x) => inClub || x.kind === 'vip_arrival');
+      const merged = [...rows.reverse(), ...have.filter((x) => !(data ?? []).some((d: Announcement) => d.id === x.id))];
       useHype.setState({ recent: merged.sort((a, b) => a.id - b.id).slice(-20) });
     };
     const ch = supabase
@@ -128,5 +133,5 @@ export function useHypeLive(clubId: string | null, uid: string | null) {
       void supabase.removeChannel(ch);
       if (clubCh === ch) clubCh = null;
     };
-  }, [clubId, uid]);
+  }, [clubId, uid, inClub]);
 }

@@ -1,6 +1,6 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
 // Built: Ride (S1: book keke/bus/drop/car with price, time and risk, lazy), Jobs (V1-3), Chowdeck + Houses (V1-4, lazy),
-// Bank (V1-5, lazy: transfers, history, where to cash in/out), Messages (V1-6: shortcut to the location chat;
+// Bank (V1-5, lazy: transfers, history, where to cash in/out), Ranks (PAY, lazy: Rich list + VIP leaderboards), Messages (V1-6: shortcut to the location chat;
 // private messages later), Wallet, Alerts, Settings (Sim sheet). Everything else opens a "Coming soon" screen.
 // Esc closes the phone.
 import { lazy, Suspense, useRef, useState } from 'react';
@@ -23,6 +23,7 @@ const FoodApp = lazy(() => import('./phone/FoodApp'));
 const HousesApp = lazy(() => import('./phone/HousesApp'));
 const BankApp = lazy(() => import('./phone/BankApp'));
 const RideApp = lazy(() => import('./phone/RideApp'));
+const RanksApp = lazy(() => import('./phone/RanksApp'));
 
 interface App {
   id: string;
@@ -38,6 +39,7 @@ const APPS: App[] = [
   { id: 'messages', name: 'Messages', emoji: '💬', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Chat with friends, neighbours and the people you meet around town.' },
   { id: 'bank', name: 'Bank', emoji: '🏦', bg: 'linear-gradient(160deg,#9b8cff,#5b4fd6)', pitch: '' },
   { id: 'contacts', name: 'Contacts', emoji: '📇', bg: 'linear-gradient(160deg,#4fd28a,#1f9a57)', pitch: 'Everyone you know, with how close you are.' },
+  { id: 'ranks', name: 'Ranks', emoji: '🏆', bg: 'linear-gradient(160deg,#ffd76a,#c9851a)', pitch: '' },
   { id: 'ride', name: 'Ride', emoji: '🛺', bg: 'linear-gradient(160deg,#ffd45c,#f0a316)', pitch: '' },
   { id: 'food', name: 'Chowdeck', emoji: '🍲', bg: 'linear-gradient(160deg,#4fc98a,#0f7a4c)', pitch: 'Order rice, swallow and small chops to your door, from bukas all over Benin.' },
   { id: 'houses', name: 'Houses', emoji: '🔑', bg: 'linear-gradient(160deg,#f2a65a,#c96a1f)', pitch: 'Rent a bigger place, from a self-contain in Uselu to a duplex in GRA.' },
@@ -250,9 +252,9 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'messages' ? <MessagesApp state={state} onChat={openChat} />
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' ? (
+                  : app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
-                        {app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
+                        {app.id === 'ranks' ? <RanksApp /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
                           : app.id === 'food' ? <FoodApp state={state} /> : app.id === 'bank' ? <BankApp state={state} /> : <HousesApp state={state} />}
                       </Suspense>
                     )

@@ -413,3 +413,11 @@ enabled = true
 # formatted with uppercase keywords, indent 2, max width 180, trailing commas,
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
+
+# PAY (docs/PAYMENTS.md): Paystack calls the webhook without a Supabase JWT; it checks the
+# x-paystack-signature HMAC instead. paystack-verify keeps the default JWT check.
+[functions.paystack-webhook]
+verify_jwt = false
+
+[functions.paystack-verify]
+verify_jwt = true

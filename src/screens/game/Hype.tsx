@@ -2,8 +2,9 @@
 // Both read src/state/hype.ts. Enter: a short rise + fade (ease-out); exit: faster. Reduced motion: fade only.
 import { useEffect, useRef, useState } from 'react';
 import { dismissHypeBanner, useHype, type Announcement } from '../../state/hype';
+import '../../styles/pay.css';
 
-const KIND_ICON: Record<string, string> = { vip: '👑', bottles: '🍾', spray: '💸', shoutout: '🎤', shutdown: '🔥' };
+const KIND_ICON: Record<string, string> = { vip: '👑', bottles: '🍾', spray: '💸', shoutout: '🎤', shutdown: '🔥', vip_arrival: '👑' };
 
 /** Keeps the last item on screen for the exit animation. */
 function useLeaving<T extends { id: number }>(cur: T | null, exitMs: number) {

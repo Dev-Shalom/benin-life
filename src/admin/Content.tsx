@@ -261,6 +261,22 @@ const DEFS: TableDef[] = [
     newRow: { kind: 'vip', line: 'Make una hail @{name}! {place}, shout!', ticker: '🔥 @{name} is balling at {place}', sort: 10, active: true },
   },
   {
+    id: 'topup', table: 'topup_packs', title: 'Top-up packs', emoji: '💳', blurb: 'Real-money naira packs in the Wallet (PAY, docs/PAYMENTS.md). Price is in kobo (₦1 = 100 kobo, so ₦1,000 = 100000); Paystack charges exactly this and the server credits the game naira to the bank only after verifying it. Switch a pack off instead of deleting it. Top-ups only work when Settings → payments.enabled is on.',
+    pk: ['id'], insert: true, inline: ['game_naira', 'price_kobo'],
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => `${r.label} · ${naira(Number(r.game_naira))}`,
+    subOf: (r) => `₦${Math.round(Number(r.price_kobo) / 100).toLocaleString('en-NG')} real money${r.bonus_tag ? ` · ${r.bonus_tag}` : ''}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'active', label: 'Active', type: 'bool' },
+      { key: 'label', label: 'Name', type: 'text', help: 'e.g. Big boy pack' },
+      { key: 'game_naira', label: 'Game naira given', type: 'money' },
+      { key: 'price_kobo', label: 'Price in kobo (real money)', type: 'int', help: '100000 = ₦1,000. Minimum 10000 (₦100).' },
+      { key: 'bonus_tag', label: 'Bonus tag', type: 'textnull', help: 'e.g. +30% bonus (empty = none)' },
+      { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { label: 'New pack', game_naira: 100000, price_kobo: 100000, bonus_tag: null, sort: 60, active: false },
+  },
+  {
     id: 'events', table: 'place_events', title: 'Events', emoji: '🎟️', blurb: 'Events at places (L4, docs/EVENTS.md): match days, club nights, market days, owambe, premieres, pool parties. Weekly = every weekday 0 (Mon) … 6 (Sun) from start to end time, Benin time (an end before the start = past midnight). One-off = starts at … ends at, e.g. 2026-10-20 18:00+01. Events at hidden places never show. Ticket price 0 = free. Event-only action cards: Activities → "Needs event" (an event kind or id).',
     pk: ['id'], insert: true, inline: ['ticket_price'],
     toggle: { key: 'active', label: 'On' },

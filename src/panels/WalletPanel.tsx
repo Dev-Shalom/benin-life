@@ -1,27 +1,46 @@
-// Wallet — balances + top-up packs. Phase 1 placeholder (top-up says "coming soon");
-// P2-PAY owns this file and wires the real provider through src/lib/payments.ts.
-import { useState } from 'react';
-import { formatKobo, getPaymentProvider, TOP_UP_PACKS, type TopUpPack } from '../lib/payments';
+// Wallet (PAY, docs/PAYMENTS.md): balances + Paystack top-ups. Packs come from the topup_packs table
+// (admin: Content -> Top-up packs). The server makes the payment, Paystack takes the money, and an Edge
+// Function verifies it before any naira lands; this panel only starts checkout and refreshes afterwards.
+import { useEffect, useState } from 'react';
+import { formatKobo, getPaymentProvider, loadTopUpPacks, TOP_UP_PACKS, type TopUpPack } from '../lib/payments';
+import { useConfig } from '../lib/config';
 import { naira } from '../lib/format';
 import type { PanelProps } from '../lib/types';
 import { useGame } from '../state/game';
 import { useUi } from '../state/ui';
-import { Button, Icon, Money, toast } from '../ui';
+import { Icon, Money, toast } from '../ui';
+import '../styles/pay.css';
 
-export default function WalletPanel({ state }: PanelProps) {
+export default function WalletPanel({ state, refresh }: PanelProps) {
   const provider = getPaymentProvider();
+  useConfig(); // re-render when payments.enabled flips
+  const live = provider.ready;
   const session = useGame((s) => s.session);
+  const [packs, setPacks] = useState<TopUpPack[]>(TOP_UP_PACKS);
   const [busy, setBusy] = useState<string | null>(null);
   const openPhone = useUi((s) => s.openPhone);
   const closePanel = useUi((s) => s.closePanel);
 
+  useEffect(() => {
+    let alive = true;
+    void loadTopUpPacks().then((p) => alive && setPacks(p));
+    return () => { alive = false; };
+  }, []);
+
+  const best = packs.length > 2 ? packs[packs.length - 2]?.id : null;
+
   const topUp = async (pack: TopUpPack) => {
+    if (busy) return;
     setBusy(pack.id);
     try {
       const res = await provider.startTopUp(pack, { email: session?.user.email ?? '', userId: state.profile.id });
       if (res.status === 'unavailable') toast(res.message, 'info');
-      else if (res.status === 'cancelled') toast('Payment cancelled.', 'info');
-      else toast('Payment received! Confirming it now…', 'good');
+      else if (res.status === 'cancelled') toast('Payment cancelled. No money was taken.', 'info');
+      else if (res.status === 'error') toast(res.message, 'bad');
+      else {
+        toast(res.message, res.status === 'success' ? 'good' : 'info');
+        await refresh();
+      }
     } finally {
       setBusy(null);
     }
@@ -50,32 +69,30 @@ export default function WalletPanel({ state }: PanelProps) {
 
       <div className="wallet__head">
         <h4 className="act__name">Top up naira</h4>
-        <span className="chip warn"><Icon name="clock" size={12} /> Coming soon</span>
+        {live
+          ? <span className="chip good"><Icon name="check" size={12} /> Secure checkout</span>
+          : <span className="chip warn"><Icon name="clock" size={12} /> Coming soon</span>}
       </div>
       <p className="act__desc">
-        Buy game naira to move faster. It is game money only: it has no real cash value and can't be withdrawn.
+        Naira lands in your bank. It is game money only: it has no real cash value and can't be withdrawn.
       </p>
 
-      <div className="acts">
-        {TOP_UP_PACKS.map((p) => (
-          <article key={p.id} className="act wallet__pack">
-            <div className="act__top">
-              <div className="grow">
-                <h4 className="act__name">{naira(p.game_naira)}</h4>
-                <div className="act__meta">
-                  <span className="chip">{p.label}</span>
-                  {p.tag && <span className="chip good">{p.tag}</span>}
-                </div>
-              </div>
-              <Button size="sm" variant="gold" loading={busy === p.id} onClick={() => void topUp(p)}>
-                {formatKobo(p.price_kobo)}
-              </Button>
-            </div>
-          </article>
+      <div className="topup-grid">
+        {packs.map((p) => (
+          <button key={p.id} type="button" className={`topup${p.id === best ? ' is-best' : ''}${busy === p.id ? ' is-busy' : ''}`}
+            disabled={Boolean(busy)} onClick={() => void topUp(p)}
+            aria-label={`${naira(p.game_naira)} game naira for ${formatKobo(p.price_kobo)}`}>
+            {p.id === best && <span className="topup__ribbon">Best value</span>}
+            <span className="topup__label">{p.label}</span>
+            <span className="topup__naira">{naira(p.game_naira)}</span>
+            {p.tag ? <span className="topup__tag">{p.tag}</span> : <span className="topup__tag topup__tag--none">Game naira</span>}
+            <span className="topup__price">{busy === p.id ? <span className="topup__spin" aria-hidden /> : null}{formatKobo(p.price_kobo)}</span>
+          </button>
         ))}
       </div>
       <p className="wallet__fine">
-        Payments go through {provider.name === 'None' ? 'our payment partner' : provider.name}. We confirm every payment on our server before the naira lands.
+        <Icon name="lock" size={12} /> Payments go through {provider.id === 'paystack' ? 'Paystack' : 'our payment partner'} (card, bank transfer, USSD).
+        We confirm every payment on our server before the naira lands.
       </p>
     </div>
   );

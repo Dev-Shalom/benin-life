@@ -10,6 +10,7 @@ import Content from './Content';
 import Players from './Players';
 import Chat from './Chat';
 import Audit from './Audit';
+import Payments from './Payments';
 import './admin.css';
 
 const NAV = [
@@ -17,6 +18,7 @@ const NAV = [
   { to: '/admin/settings', label: 'Settings', icon: 'gear' },
   { to: '/admin/content', label: 'Content', icon: 'file' },
   { to: '/admin/players', label: 'Players', icon: 'people' },
+  { to: '/admin/payments', label: 'Payments', icon: 'cash' },
   { to: '/admin/chat', label: 'Chat', icon: 'chat' },
   { to: '/admin/audit', label: 'Audit', icon: 'clock' },
 ];
@@ -64,6 +66,7 @@ export default function AdminApp() {
           <Route path="players" element={<Players />} />
           <Route path="chat" element={<Chat />} />
           <Route path="audit" element={<Audit />} />
+          <Route path="payments" element={<Payments />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>

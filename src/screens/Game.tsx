@@ -257,7 +257,8 @@ export default function Game() {
   useEffect(() => { setPlaceTrack(clubTrackUrl); }, [clubTrackUrl]);
   // P2: club hype (server announcements over Realtime): the club channel while inside a club, the ticker always
   const inClub = showPlace && placeScene === 'club';
-  useHypeLive(inClub && state ? state.location.id : null, p?.id ?? null);
+  // PAY: the place channel runs at every place (not on the road) so VIP arrivals reach everyone there
+  useHypeLive(state && !state.travel ? state.location.id : null, p?.id ?? null, inClub);
   // L4: today's / LIVE events (map badges, place sheet "On today", top banner)
   useEventsLive(p?.id ?? null);
   const eventBadges = useEventBadges();
@@ -444,7 +445,7 @@ export default function Game() {
       </div>
 
       {!clean && <TopPill state={state} clock={clock} />}
-      {inClub && <HypeBanner mcName={people?.npcs.find((n) => n.motion === 'hype')?.name ?? 'The hype man'} top={(clean ? 70 : insets.top) + 6} />}
+      <HypeBanner mcName={inClub ? people?.npcs.find((n) => n.motion === 'hype')?.name ?? 'The hype man' : 'VIP alert'} top={inClub ? (clean ? 70 : insets.top) + 6 : clean ? 70 : insets.narrow ? 200 : insets.top + 6} />
       <HypeTicker top={insets.narrow ? 14 : 72} />
       {!clean && (
         <EventBanner top={showHome || showPlace ? (insets.narrow ? 160 : 72) : (insets.narrow ? 156 : 122)} hereId={state.travel ? null : state.location.id}
