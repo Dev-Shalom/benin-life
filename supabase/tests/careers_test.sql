@@ -1,3 +1,8 @@
+-- L1 (20261006000100_real_time.sql): this file pins the pre-L1 behaviour (accelerated clock +
+-- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
+update game_config set value = '"accelerated"' where key = 'clock.mode';
+update game_config set value = '"game_minutes"' where key = 'action.mode';
+
 -- Careers tests (V1-3): seeds + config, apply from anywhere, head start (Nepo) capped by requirements,
 -- work_shift location/needs refusals, pay + XP scaling with performance and traits, busy label,
 -- work_finish settlement, auto-promotion gated by laptop / degree, daily shift cap, quit, config multipliers.
@@ -292,3 +297,7 @@ begin
   raise notice 'ok 5: privileges';
   raise notice 'ALL CAREERS TESTS PASSED';
 end $$;
+
+-- L1: back to the shipped defaults (real clock, short actions) for the next test file.
+update game_config set value = '"real"' where key = 'clock.mode';
+update game_config set value = '"short"' where key = 'action.mode';

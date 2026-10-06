@@ -13,7 +13,7 @@ import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { Button, Icon, usePresence } from '../../ui';
 import { useEscape } from '../../ui/presence';
-import { weekdayOf } from '../../lib/clock';
+import { dateLabel, weekdayOf } from '../../lib/clock';
 import { AlertsList } from './Overlays';
 import { nearestWorkplace } from '../../api/careers';
 import { JobCard, PerfBar, Promotion, QuitButton, ShiftStats, TrackList } from '../../panels/careers/CareerUI';
@@ -224,7 +224,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   };
   const app = APPS.find((a) => a.id === screen);
   const latest = events[0];
-  const date = `${WEEKDAYS[weekdayOf(clock)]} · Day ${clock.day} · Benin City`;
+  const date = `${WEEKDAYS[weekdayOf(clock)]} · ${dateLabel(clock, true)} · Benin City`;
 
   return createPortal(
     <div className={`phone-root${closing ? ' is-closing' : ''}`} role="dialog" aria-modal="true" aria-label="Phone">

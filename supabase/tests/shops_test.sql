@@ -1,3 +1,8 @@
+-- L1 (20261006000100_real_time.sql): this file pins the pre-L1 behaviour (accelerated clock +
+-- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
+update game_config set value = '"accelerated"' where key = 'clock.mode';
+update game_config set value = '"game_minutes"' where key = 'action.mode';
+
 -- Shops tests (V1-4): item seeds + shop locations, shop_list / shop_buy (location rule, cash, qty),
 -- inventory counts, item_use effects, boost items (soap + bath), item_sell at markets, ChopNow
 -- delivery markup (config-driven), laptop -> Tech requirement, rent switched on (no back-charge,
@@ -379,3 +384,7 @@ begin
 end $$;
 
 do $$ begin raise notice 'ALL SHOPS TESTS PASSED'; end $$;
+
+-- L1: back to the shipped defaults (real clock, short actions) for the next test file.
+update game_config set value = '"real"' where key = 'clock.mode';
+update game_config set value = '"short"' where key = 'action.mode';

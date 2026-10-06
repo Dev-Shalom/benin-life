@@ -188,7 +188,7 @@ export const ORIGIN_UI = {
   bank: (amount: string) => `${amount} in the bank from day one`,
   noBank: 'Nothing in the bank yet. Every naira you get, you earn.',
   item: (name: string) => `Your own ${name}, from day one`,
-  allowance: (amount: string) => `Dad sends ${amount} allowance every game day`,
+  allowance: (amount: string) => `Dad sends ${amount} allowance every day`,
   headStart: (n: number) => `Career head start: +${n} level${n === 1 ? '' : 's'} at your first job`,
   easyLoan: 'LAPO micro-loans are easy to get when you need a push (coming soon)',
   cashByHome: 'Your starting cash depends on where you choose to live',

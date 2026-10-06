@@ -3690,3 +3690,12 @@ kbd {
   flex-direction: column;
   gap: 12px;
 }
+
+/* L1: live progress bars update ~10x a second, so no long width transition */
+.banner__bar--live span {
+  transition: width 120ms linear;
+}
+.banner__earn b {
+  color: var(--green-600, #1a7f37);
+  font-variant-numeric: tabular-nums;
+}

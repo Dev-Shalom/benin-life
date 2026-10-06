@@ -8,8 +8,9 @@ import { Btn, JsonControl, LoadError, NumberControl, PageHead, Skeleton, Toggle 
 import { fmtValue, timeShort, useLoad } from './util';
 
 const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: string }> = {
-  time: { title: 'Time & speed', emoji: '⏱️', blurb: 'How fast activities, sleep, jail and hospital timers run.' },
-  clock: { title: 'Game clock', emoji: '🕰️', blurb: 'Day length, night hours and the launch day.' },
+  action: { title: 'Action timing', emoji: '⚡', blurb: 'Every action takes a few real seconds: shifts, trips, jail and hospital. Per-activity seconds live in Content → Activities.' },
+  time: { title: 'Time & speed', emoji: '⏱️', blurb: 'Old game-minute timing (used when Action timing is game_minutes) and presence.' },
+  clock: { title: 'Game clock', emoji: '🕰️', blurb: 'Real Benin time or the old fast clock, night hours and the launch day.' },
   origin: { title: 'Origin (LAPO / Nepo)', emoji: '👶', blurb: 'Who is born rich, and what each origin starts with.' },
   start: { title: 'New players', emoji: '🌱', blurb: 'Starting needs and new-player protection.' },
   creator: { title: 'Sim creator', emoji: '🧑‍🎨', blurb: 'Creator steps and the arrival spot.' },
@@ -28,20 +29,25 @@ const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: strin
 
 /** The knobs the owner touches most, with plain-English help. */
 const QUICK: { key: string; hint: string }[] = [
-  { key: 'time.real_seconds_per_game_minute', hint: 'Activity & sleep speed. 0.75 = an 8-hour sleep takes 6 real minutes. Lower is faster.' },
+  { key: 'clock.mode', hint: 'real = the game shows the real time in Benin City. accelerated = the old fast clock.' },
+  { key: 'needs.decay_speed', hint: 'How fast needs drop with the real clock. 2.5 = hunger empties in about 10 real hours.' },
+  { key: 'action.mode', hint: 'short = every action takes a few real seconds. game_minutes = the old long timers.' },
+  { key: 'action.shift_seconds', hint: 'Real seconds one work shift takes.' },
+  { key: 'action.travel_max_seconds', hint: 'No trip takes longer than this (real seconds).' },
+  { key: 'action.scale_by_need', hint: 'Actions are shorter when the need is nearly full (sleep is 15 s only when exhausted).' },
   { key: 'origin.nepo_pct', hint: 'Chance a new player is born a Nepo baby.' },
   { key: 'origin.force_next', hint: 'The very next new account gets this origin, then it switches itself off.' },
   { key: 'origin.lapo.start_cash', hint: 'Cash a LAPO baby starts with (the home choice can change it).' },
   { key: 'origin.nepo.start_cash', hint: 'Cash a Nepo baby starts with.' },
   { key: 'origin.nepo.start_bank', hint: 'Money already in a Nepo baby’s bank.' },
-  { key: 'origin.nepo.allowance_daily', hint: 'Dad’s allowance per game day for Nepo babies.' },
+  { key: 'origin.nepo.allowance_daily', hint: 'Dad’s allowance per day for Nepo babies.' },
   { key: 'rent.enabled', hint: 'Turn weekly rent on or off for everyone.' },
   { key: 'crime.npc_base_pct', hint: 'Base chance of being robbed on a street trip.' },
   { key: 'crime.npc_max_pct', hint: 'Robbery chance never goes above this.' },
   { key: 'career.pay_mult', hint: 'Multiplies every job’s pay. 1 = normal, 1.5 = +50%.' },
-  { key: 'career.max_shifts_per_game_day', hint: 'How many shifts a player can work per game day.' },
+  { key: 'career.max_shifts_per_game_day', hint: 'How many shifts a player can work per day (resets at midnight, Benin time).' },
   { key: 'pos.fee_pct', hint: 'PoS cash-out charge.' },
-  { key: 'bank.transfer_daily_limit', hint: 'Most a player can send per game day.' },
+  { key: 'bank.transfer_daily_limit', hint: 'Most a player can send per day.' },
   { key: 'bank.transfer_fee', hint: 'Fee for each phone transfer.' },
   { key: 'chat.enabled', hint: 'Turn location chat on or off for everyone.' },
 ];
@@ -63,6 +69,20 @@ function ValueControl({ row, value, onChange, tiers }: {
   row: ConfigRow; value: unknown; onChange: (v: unknown) => void; tiers: Row[];
 }) {
   const [jsonText, setJsonText] = useState(() => JSON.stringify(row.value, null, 2));
+  const CHOICES: Record<string, { id: string; name: string }[]> = {
+    'clock.mode': [{ id: 'real', name: 'Real Benin time' }, { id: 'accelerated', name: 'Fast clock (old)' }],
+    'action.mode': [{ id: 'short', name: 'Short (seconds)' }, { id: 'game_minutes', name: 'Game minutes (old)' }],
+  };
+  if (CHOICES[row.key]) {
+    return (
+      <div className="adm-chips" role="radiogroup" aria-label={row.label}>
+        {CHOICES[row.key].map((o) => (
+          <button key={o.id} type="button" role="radio" aria-checked={value === o.id}
+            className={`adm-chip${value === o.id ? ' is-on' : ''}`} onClick={() => onChange(o.id)}>{o.name}</button>
+        ))}
+      </div>
+    );
+  }
   if (row.key === 'origin.force_next') {
     const opts = [{ id: '', name: 'Off (random roll)' }, ...tiers.map((t) => ({ id: String(t.id), name: String(t.name) }))];
     return (

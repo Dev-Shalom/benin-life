@@ -54,7 +54,7 @@ export default function BankPanel({ state, refresh }: PanelProps) {
         <span className="bankx__dot" aria-hidden />
         {h.open
           ? <span>Open now · {h.open_hour === h.close_hour ? 'open 24 hours' : `${hourText(h.open_hour)} to ${hourText(h.close_hour)}`} · no charges</span>
-          : <span>Closed · opens at {hourText(h.open_hour)}, in about {realWait(h.opens_in_real_seconds)} (real time)</span>}
+          : <span>Closed · opens at {hourText(h.open_hour)}, in about {realWait(h.opens_in_real_seconds)}</span>}
       </div>
       {!h.open && pos.length > 0 && (
         <div className="bankx__after">

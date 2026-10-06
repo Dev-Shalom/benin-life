@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { rpc, errorMessage } from '../lib/api';
 import { useGameClock } from '../lib/clock';
-import { gameDuration, naira } from '../lib/format';
+import { activitySeconds, secondsLabel, useActionConfig } from '../lib/live';
+import { naira } from '../lib/format';
 import { NEED_KEYS, NEED_META, type NeedKey } from '../lib/pidgin';
 import type { PanelProps } from '../lib/types';
 import { Button, EmptyState, Icon, toast } from '../ui';
@@ -15,6 +16,9 @@ interface Activity {
   home_only: boolean;
   cost: number;
   game_minutes: number;
+  max_seconds?: number | null;
+  min_seconds?: number | null;
+  scale_by_need?: boolean | null;
   effects: Record<string, number> | null;
   night_only: boolean;
   sort: number;
@@ -48,6 +52,7 @@ export default function ActivitiesPanel({ state, location, refresh, close }: Pan
   const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const { clock } = useGameClock(5000);
+  const cfg = useActionConfig();
   const atHome = state.profile.home_location_id === location.id;
 
   useEffect(() => {
@@ -114,7 +119,7 @@ export default function ActivitiesPanel({ state, location, refresh, close }: Pan
                 <h4 className="act__name">{a.name}</h4>
                 {a.description && <p className="act__desc">{a.description}</p>}
                 <div className="act__meta">
-                  <span className="chip"><Icon name="clock" size={12} /> {gameDuration(a.game_minutes)}</span>
+                  <span className="chip"><Icon name="clock" size={12} /> {secondsLabel(activitySeconds(a, state.profile, cfg))}</span>
                   <span className="chip">{a.cost > 0 ? naira(a.cost) : 'Free'}</span>
                   {a.night_only && <span className="chip warn"><Icon name="moon" size={12} /> Night only</span>}
                 </div>

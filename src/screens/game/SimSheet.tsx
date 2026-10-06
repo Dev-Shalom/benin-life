@@ -2,6 +2,7 @@
 // Career is live since V1-3 (shared UI in src/panels/careers/CareerUI.tsx). Skills, people, wishes,
 // perks and feelings arrive later; their tabs preview the layout.
 // The Profile turntable is the only live 3D view while this sheet is open: Game suspends the 3D home.
+import { useLiveProfile } from '../../lib/live';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AvatarPortrait, AvatarStage, migrateAvatar } from '../../art/avatar3d';
@@ -181,7 +182,7 @@ function ProfileTab({ state, onEditLook }: { state: GameState; onEditLook: () =>
 }
 
 function NeedsTab({ state }: { state: GameState }) {
-  const p = state.profile;
+  const p = useLiveProfile(state.profile);
   return (
     <div className="sim-tab stack">
       <div className="need-rows">

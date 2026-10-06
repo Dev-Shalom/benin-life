@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { activityGroup, GROUP_META, type HomeGroup } from '../../art/home3d';
 import { rpc, errorMessage } from '../../lib/api';
 import { useGameClock } from '../../lib/clock';
-import { gameDuration, naira } from '../../lib/format';
+import { activitySeconds, secondsLabel, useActionConfig } from '../../lib/live';
+import { naira } from '../../lib/format';
 import { NEED_KEYS, NEED_META, type NeedKey } from '../../lib/pidgin';
 import type { GameState } from '../../lib/types';
 import { useCatalog, type ActivityRow } from '../../state/catalog';
@@ -54,6 +55,7 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
   const activities = useCatalog((s) => s.activities);
   const loadActivities = useCatalog((s) => s.loadActivities);
   const { clock } = useGameClock(5000);
+  const cfg = useActionConfig();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [last, setLast] = useState(pick);
   if (pick && pick !== last) setLast(pick);
@@ -118,7 +120,7 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
                   <div className="grow">
                     <h4 className="act__name">{a.name}</h4>
                     <div className="act__meta">
-                      <span className="chip"><Icon name="clock" size={12} /> {gameDuration(a.game_minutes)}</span>
+                      <span className="chip"><Icon name="clock" size={12} /> {secondsLabel(activitySeconds(a, state.profile, cfg))}</span>
                       <span className="chip">{a.cost > 0 ? naira(a.cost) : 'Free'}</span>
                     </div>
                   </div>

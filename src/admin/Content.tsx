@@ -71,12 +71,15 @@ const DEFS: TableDef[] = [
     newRow: { category: 'food', price: 500, sold_at: [], effects: {}, sellable: false, resale_pct: 0, sort: 100 },
   },
   {
-    id: 'activities', table: 'activities', title: 'Activities', emoji: '🎯', blurb: 'Things to do at places: cost, duration and effects.',
-    pk: ['id'], insert: false, inline: ['cost', 'game_minutes'],
+    id: 'activities', table: 'activities', title: 'Activities', emoji: '🎯', blurb: 'Things to do at places: cost, real seconds and effects.',
+    pk: ['id'], insert: false, inline: ['cost', 'max_seconds'],
     titleOf: (r) => String(r.name), subOf: (r) => `${(r.scenes as string[]).join(', ')}${r.home_only ? ' · home only' : ''}${r.night_only ? ' · night only' : ''}`,
     fields: [
       { key: 'name', label: 'Name', type: 'text' }, { key: 'cost', label: 'Cost', type: 'money' },
-      { key: 'game_minutes', label: 'Duration (game minutes)', type: 'int' },
+      { key: 'max_seconds', label: 'Longest (real seconds)', type: 'num', help: 'When the need it fills is empty (sleep at 0 energy)' },
+      { key: 'min_seconds', label: 'Shortest (real seconds)', type: 'num', help: 'When the need is nearly full' },
+      { key: 'scale_by_need', label: 'Shorter when the need is fuller', type: 'bool' },
+      { key: 'game_minutes', label: 'Duration (game minutes, old timing only)', type: 'int' },
       { key: 'effects', label: 'Effects', type: 'json', help: 'e.g. {"energy": 90, "stress": -10}' },
       { key: 'scenes', label: 'Scenes', type: 'list' }, { key: 'home_only', label: 'Home only', type: 'bool' },
       { key: 'night_only', label: 'Night only', type: 'bool' }, { key: 'sort', label: 'Sort order', type: 'int' },
@@ -114,7 +117,7 @@ const DEFS: TableDef[] = [
 ];
 
 const SHORT: Record<string, string> = {
-  price: 'Price', weekly_rent: 'Rent / week', cost: 'Cost', game_minutes: 'Minutes', risk: 'Risk 0–1',
+  price: 'Price', weekly_rent: 'Rent / week', cost: 'Cost', game_minutes: 'Minutes', max_seconds: 'Max sec', risk: 'Risk 0–1',
   pay_per_shift: 'Pay', shift_game_minutes: 'Minutes', xp_per_shift: 'XP', xp_to_next: 'XP to next',
 };
 const rowKey = (def: TableDef, r: Row) => def.pk.map((k) => String(r[k])).join('|');
@@ -334,7 +337,7 @@ const LEVEL_DEF: TableDef = {
   subOf: (r) => `${naira(r.pay_per_shift as number)} / shift · ${r.shift_game_minutes} min · ${r.xp_per_shift} XP${r.xp_to_next ? ` · ${r.xp_to_next} XP to next` : ' · top level'}`,
   fields: [
     { key: 'title', label: 'Title', type: 'text' }, { key: 'pay_per_shift', label: 'Pay per shift', type: 'money' },
-    { key: 'shift_game_minutes', label: 'Shift length (game minutes)', type: 'int' },
+    { key: 'shift_game_minutes', label: 'Shift length (game minutes, old timing only)', type: 'int', help: 'Short timing uses Settings → Action timing → Work shift seconds' },
     { key: 'xp_per_shift', label: 'XP per shift', type: 'int' },
     { key: 'xp_to_next', label: 'XP to next level (empty = top)', type: 'intnull' },
     { key: 'energy_cost', label: 'Energy cost', type: 'int' },

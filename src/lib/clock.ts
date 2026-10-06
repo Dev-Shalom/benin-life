@@ -1,7 +1,9 @@
-// Client game clock — P1-SHELL. Mirrors the server formula (ARCHITECTURE §4):
-//   game_minutes = floor(real minutes since clock.epoch × clock.game_minutes_per_real_minute
-//                        + clock.start_hour_offset × 60)
-//   day = floor(game_minutes / 1440) + 1   (clock.epoch defaults to 2026-10-05T00:00:00Z = Day 1)
+// Client game clock — P1-SHELL, L1. Mirrors the server's bl_game_clock (20261006000100_real_time.sql):
+//   clock.mode = 'real' (default): the real wall clock in clock.timezone (Africa/Lagos = WAT).
+//     day = whole local days since the local date of clock.epoch + 1 (Mon 5 Oct 2026 = Day 1),
+//     weekday = the real weekday (0 = Monday), game_minutes = (day-1)×1440 + hour×60 + minute.
+//   clock.mode = 'accelerated': game_minutes = floor(real minutes since clock.epoch ×
+//     clock.game_minutes_per_real_minute + clock.start_hour_offset × 60), day = floor(gm/1440)+1.
 //   night = hour >= clock.night_start_hour || hour < clock.night_end_hour
 // Real "now" is corrected for device clock skew using GameState.server_time.
 import { useEffect, useState } from 'react';
@@ -16,6 +18,50 @@ export const GAME_EPOCH_MS = Date.parse(DEFAULT_CLOCK_EPOCH);
 export function parseEpoch(iso: string): number {
   const ms = Date.parse(iso);
   return Number.isNaN(ms) ? GAME_EPOCH_MS : ms;
+}
+
+/** Default `clock.timezone`: Benin City (WAT, UTC+1, no daylight saving). */
+export const DEFAULT_TIMEZONE = 'Africa/Lagos';
+
+const fmtCache = new Map<string, Intl.DateTimeFormat>();
+function partsFormatter(tz: string): Intl.DateTimeFormat {
+  let f = fmtCache.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    });
+    fmtCache.set(tz, f);
+  }
+  return f;
+}
+
+function validTimeZone(tz: string): boolean {
+  try {
+    partsFormatter(tz);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Local calendar parts of an instant in a time zone. dayIndex = days since 1970-01-01 (local date). */
+export function zonedParts(ms: number, tz: string): { y: number; m: number; d: number; hour: number; minute: number; dayIndex: number } {
+  let y = 1970, m = 1, d = 1, hour = 0, minute = 0;
+  try {
+    for (const p of partsFormatter(tz).formatToParts(new Date(ms))) {
+      if (p.type === 'year') y = Number(p.value);
+      else if (p.type === 'month') m = Number(p.value);
+      else if (p.type === 'day') d = Number(p.value);
+      else if (p.type === 'hour') hour = Number(p.value) % 24;
+      else if (p.type === 'minute') minute = Number(p.value);
+    }
+  } catch {
+    // Intl without time zone data: assume WAT (UTC+1).
+    const t = new Date(ms + 3600_000);
+    y = t.getUTCFullYear(); m = t.getUTCMonth() + 1; d = t.getUTCDate(); hour = t.getUTCHours(); minute = t.getUTCMinutes();
+  }
+  return { y, m, d, hour, minute, dayIndex: Math.floor(Date.UTC(y, m - 1, d) / 86_400_000) };
 }
 
 let skewMs = 0;
@@ -36,7 +82,11 @@ export function serverNow(): number {
   return Date.now() + skewMs;
 }
 
+export type ClockMode = 'real' | 'accelerated';
+
 export interface ClockSettings {
+  mode: ClockMode;
+  timeZone: string; // clock.timezone (real mode)
   epochMs: number; // clock.epoch as epoch ms
   speed: number; // game minutes per real minute
   offsetHours: number;
@@ -45,7 +95,10 @@ export interface ClockSettings {
 }
 
 export function clockSettings(read: <T>(k: string, f: T) => T = getCfg): ClockSettings {
+  const tz = String(read('clock.timezone', DEFAULT_TIMEZONE) || DEFAULT_TIMEZONE);
   return {
+    mode: read<string>('clock.mode', 'real') === 'accelerated' ? 'accelerated' : 'real',
+    timeZone: validTimeZone(tz) ? tz : DEFAULT_TIMEZONE,
     epochMs: parseEpoch(read('clock.epoch', DEFAULT_CLOCK_EPOCH)),
     speed: read('clock.game_minutes_per_real_minute', 12),
     offsetHours: read('clock.start_hour_offset', 6),
@@ -63,18 +116,49 @@ export function isNightHour(hour: number, s: Pick<ClockSettings, 'nightStart' | 
 
 /** Game clock at a given real epoch ms. */
 export function gameClockAt(ms: number, s: ClockSettings = clockSettings()): GameClock {
+  if (s.mode === 'real') {
+    const p = zonedParts(ms, s.timeZone);
+    const day = p.dayIndex - zonedParts(s.epochMs, s.timeZone).dayIndex + 1;
+    // 1970-01-01 was a Thursday (weekday 3 with Monday = 0)
+    const weekday = (((p.dayIndex + 3) % 7) + 7) % 7;
+    return {
+      game_minutes: (day - 1) * 1440 + p.hour * 60 + p.minute,
+      day, hour: p.hour, minute: p.minute, weekday,
+      is_night: isNightHour(p.hour, s),
+      mode: 'real',
+      date: `${p.y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`,
+    };
+  }
   // Same order as the server (multiply before dividing) so whole seconds give exact minutes.
   const game_minutes = Math.floor(((ms - s.epochMs) / 1000) * s.speed / 60 + s.offsetHours * 60);
   const dayIdx = Math.floor(game_minutes / 1440);
   const inDay = ((game_minutes % 1440) + 1440) % 1440;
   const hour = Math.floor(inDay / 60);
   const minute = inDay % 60;
-  return { game_minutes, day: dayIdx + 1, hour, minute, is_night: isNightHour(hour, s) };
+  return { game_minutes, day: dayIdx + 1, hour, minute, is_night: isNightHour(hour, s), mode: 'accelerated' };
 }
 
-/** Real seconds that `gameMinutes` takes at current speed. */
+/** Game minutes per real minute: 1 with the real clock, clock.game_minutes_per_real_minute when accelerated. */
+export function clockSpeed(s: ClockSettings = clockSettings()): number {
+  return s.mode === 'real' ? 1 : Math.max(0.0001, s.speed);
+}
+
+/** Real seconds that `gameMinutes` of clock time takes (e.g. "bank opens in"). */
 export function realSecondsFor(gameMinutes: number, s: ClockSettings = clockSettings()): number {
-  return (gameMinutes / Math.max(0.0001, s.speed)) * 60;
+  return (gameMinutes / clockSpeed(s)) * 60;
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/**
+ * Calendar label for a clock: the real date with the real clock ("6 Oct", long: "6 October"),
+ * "Day N" with the accelerated clock.
+ */
+export function dateLabel(clock: GameClock, long = false): string {
+  const m = clock.date ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(clock.date) : null;
+  if (!m) return `Day ${clock.day}`;
+  const month = MONTHS[Number(m[2]) - 1] ?? '';
+  return `${Number(m[3])} ${long ? month : month.slice(0, 3)}`;
 }
 
 /** Ticking server-corrected now (ms). One timer per component; default 1s. */

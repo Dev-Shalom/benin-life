@@ -1,3 +1,8 @@
+-- L1 (20261006000100_real_time.sql): this file pins the pre-L1 behaviour (accelerated clock +
+-- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
+update game_config set value = '"accelerated"' where key = 'clock.mode';
+update game_config set value = '"game_minutes"' where key = 'action.mode';
+
 -- Bladder tests (R4): column + config, decay with trait multipliers, the empty-bladder hygiene
 -- penalty, toilet activities (home only / paid public ones), clamping, get_my_state stays read-only,
 -- players_online(). Run (migrations applied):
@@ -185,3 +190,7 @@ begin
 end $$;
 
 do $$ begin raise notice 'bladder_test: all passed'; end $$;
+
+-- L1: back to the shipped defaults (real clock, short actions) for the next test file.
+update game_config set value = '"real"' where key = 'clock.mode';
+update game_config set value = '"short"' where key = 'action.mode';

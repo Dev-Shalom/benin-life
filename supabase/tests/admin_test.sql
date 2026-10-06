@@ -1,3 +1,8 @@
+-- L1 (20261006000100_real_time.sql): this file pins the pre-L1 behaviour (accelerated clock +
+-- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
+update game_config set value = '"accelerated"' where key = 'clock.mode';
+update game_config set value = '"game_minutes"' where key = 'action.mode';
+
 -- Admin tests (V1-7): every admin RPC refuses non-admins; config set validates kind/min/max,
 -- writes config_audit, keeps the game_config triggers (epoch, force_next); set_many is atomic;
 -- revert; table upserts whitelist columns/types and audit; grant/take money via the ledger;
@@ -386,3 +391,7 @@ begin
   perform pg_temp.assert(jsonb_array_length(admin_audit_list(3)) = 3, 'limit');
   raise notice 'admin 8 OK: stats, audit list, chat reports';
 end $$;
+
+-- L1: back to the shipped defaults (real clock, short actions) for the next test file.
+update game_config set value = '"real"' where key = 'clock.mode';
+update game_config set value = '"short"' where key = 'action.mode';

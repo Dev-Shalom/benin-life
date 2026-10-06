@@ -5,7 +5,8 @@
 //   bottom  dock: Home · Buy · Map · Phone (badge = unread alerts)
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AvatarPortrait } from '../../art/avatar3d';
-import { useGameClock, weekdayOf } from '../../lib/clock';
+import { dateLabel, useGameClock, weekdayOf } from '../../lib/clock';
+import { useLiveProfile } from '../../lib/live';
 import { getCfg } from '../../lib/config';
 import { clockTime, countdown, nairaShort } from '../../lib/format';
 import { rpc, errorMessage } from '../../lib/api';
@@ -72,9 +73,9 @@ export function TopPill({ state, clock }: { state: GameState; clock: GameClock }
 
   return (
     <div className="pill-bar" ref={ref}>
-      <div className="pill-bar__time" title={`Day ${clock.day}`}>
+      <div className="pill-bar__time" title={clock.mode === 'real' ? `Benin time · Day ${clock.day} of Benin Life` : `Day ${clock.day}`}>
         <span className="pill-bar__sun" aria-hidden>{clock.is_night ? '🌙' : '☀️'}</span>
-        <span className="pill-bar__day">{WEEKDAYS_SHORT[weekdayOf(clock)]} {clock.day}</span>
+        <span className="pill-bar__day">{WEEKDAYS_SHORT[weekdayOf(clock)]} {clock.date ? dateLabel(clock) : clock.day}</span>
         <span className="pill-bar__dot" aria-hidden>·</span>
         <span className="pill-bar__clock">{clockTime(clock.hour, clock.minute)}</span>
       </div>
@@ -287,7 +288,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
 }
 
 export function NeedsCard({ state }: { state: GameState }) {
-  const p = state.profile;
+  const p = useLiveProfile(state.profile);
   const openSim = useUi((s) => s.openSim);
   const origin = state.origin ?? null;
   const tier = origin?.id ?? p.origin;

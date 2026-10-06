@@ -1,3 +1,8 @@
+-- L1 (20261006000100_real_time.sql): this file pins the pre-L1 behaviour (accelerated clock +
+-- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
+update game_config set value = '"accelerated"' where key = 'clock.mode';
+update game_config set value = '"game_minutes"' where key = 'action.mode';
+
 -- Bank tests (V1-5): config + privileges, bank_deposit / bank_withdraw only at the bank and only in
 -- banking hours, PoS cash-out / deposit fee math (config-driven), phone transfers (fee, limits,
 -- cooldown, new-account wait, self, unknown user, events, both balances), bank_history labels,
@@ -393,3 +398,7 @@ begin
 end $$;
 
 do $$ begin raise notice 'bank_test: all groups passed'; end $$;
+
+-- L1: back to the shipped defaults (real clock, short actions) for the next test file.
+update game_config set value = '"real"' where key = 'clock.mode';
+update game_config set value = '"short"' where key = 'action.mode';

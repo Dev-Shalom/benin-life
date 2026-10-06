@@ -1,7 +1,8 @@
 // V1-3 shared career UI: job card, performance + promotion, track list, and the actions behind them.
 // Used by the Work panel (location sheet), the phone's Jobs app and the Sim sheet's Career tab.
 import { useState } from 'react';
-import { gameDuration, naira } from '../../lib/format';
+import { naira } from '../../lib/format';
+import { shiftLength } from './careerHooks';
 import type { CareerJob, CareerRequirement, JobTrack } from '../../lib/types';
 import { Button, Icon } from '../../ui';
 import { shortName } from '../../art/map/mapGeo';
@@ -16,7 +17,7 @@ export function JobCard({ job }: { job: CareerJob }) {
       <div className="grow">
         <div className="muted job-card__eyebrow">{job.track_name} · Level {job.level} of {job.top_level}</div>
         <div className="career-card__title">{job.title}</div>
-        <div className="muted job-card__sub">{naira(job.pay_per_shift)} per shift · {gameDuration(job.shift_game_minutes)}</div>
+        <div className="muted job-card__sub">{naira(job.pay_per_shift)} per shift · {shiftLength(job.shift_game_minutes)}</div>
       </div>
     </section>
   );

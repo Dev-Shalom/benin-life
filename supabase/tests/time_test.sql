@@ -257,6 +257,9 @@ end $$;
 -- ---------- L1-3. shift cap resets at local midnight; allowance once per local day ----------
 do $$
 declare v uuid := pg_temp.new_user('worker@time.bl'); r jsonb; cap int;
+  o_cap jsonb := (select value from game_config where key = 'career.max_shifts_per_game_day');
+  o_en  jsonb := (select value from game_config where key = 'career.min_energy');
+  o_hu  jsonb := (select value from game_config where key = 'career.min_hunger');
 begin
   insert into t_tu values ('worker', v);
   perform pg_temp.login(v);
@@ -286,6 +289,11 @@ begin
   perform pg_temp.assert((select job_shifts_today from profiles where id = v) = 1
                          and (select job_shift_day from profiles where id = v) = (bl_game_clock()->>'day')::int,
                          'new local day: shifts reset');
+  -- restore the career config for the files that run after this one
+  update game_config set value = o_cap where key = 'career.max_shifts_per_game_day';
+  update game_config set value = o_en  where key = 'career.min_energy';
+  update game_config set value = o_hu  where key = 'career.min_hunger';
+  perform set_config('bl.test_offset_seconds', '', true);
   raise notice 'ok L1-3a: shift cap resets at WAT midnight';
 end $$;
 
@@ -414,7 +422,45 @@ begin
   update profiles set busy_until = null, cash = 100000 where id = v;
   perform pg_temp.assert(not exists (select 1 from jsonb_array_elements(travel_quote('benin_airport')->'options') o
                                       where (o->>'real_seconds')::numeric > bl_cfg('action.travel_max_seconds')), 'travel <= travel_max_seconds');
+  -- shift: action.shift_seconds real seconds (worker from L1-3)
+  perform pg_temp.assert(bl_cfg('action.shift_seconds') between 15 and 20, 'shift default 15-20 s');
+  -- jail / hospital capped to seconds in short mode, uncapped in game_minutes mode
+  update profiles set jailed_until = null, hospitalized_until = null where id = v;
+  perform bl_jail(v, 600, 'test');
+  select * into me from profiles where id = v;
+  perform pg_temp.assert(abs(extract(epoch from me.jailed_until - bl_now()) - bl_cfg('action.jail_max_seconds')) < 0.05,
+                         'jail capped to action.jail_max_seconds');
+  perform bl_hospitalize(v, 600, 'test');
+  select * into me from profiles where id = v;
+  perform pg_temp.assert(abs(extract(epoch from me.hospitalized_until - bl_now()) - bl_cfg('action.hospital_max_seconds')) < 0.05,
+                         'hospital capped to action.hospital_max_seconds');
+  perform pg_temp.assert(bl_status_seconds(10, 'action.jail_max_seconds') = 10 * bl_cfg('time.real_seconds_per_game_minute'),
+                         'short stays are not stretched to the cap');
+  update game_config set value = '"game_minutes"' where key = 'action.mode';
+  perform pg_temp.assert(bl_status_seconds(600, 'action.jail_max_seconds') = 600 * bl_cfg('time.real_seconds_per_game_minute'),
+                         'game_minutes mode: uncapped');
+  update game_config set value = '"short"' where key = 'action.mode';
+  update profiles set jailed_until = null, hospitalized_until = null where id = v;
+  -- admin can edit the timing columns
+  perform pg_temp.assert(bl_admin_table_spec('activities')->'cols' ?& array['max_seconds','min_seconds','scale_by_need'],
+                         'admin whitelist has the activity seconds');
   raise notice 'ok L1-6: action timing';
+end $$;
+
+-- ---------- L1-7. transfer limits count the real (WAT) day ----------
+do $$
+declare v uuid := (select id from t_tu where name = 'worker'); st jsonb;
+begin
+  perform pg_temp.at(timestamptz '2026-10-07 22:30:00+00');   -- Wed 23:30 WAT
+  insert into ledger (user_id, account, delta, balance_after, reason, meta)
+  values (v, 'bank', -1000, 0, 'transfer_out', jsonb_build_object('day', (bl_game_clock()->>'day')::int));
+  st := bl_transfer_stats(v);
+  perform pg_temp.assert((st->>'sent')::bigint = 1000 and (st->>'count')::int = 1, 'counted today: ' || st::text);
+  perform pg_temp.at(timestamptz '2026-10-07 23:00:01+00');   -- Thu 00:00 WAT
+  st := bl_transfer_stats(v);
+  perform pg_temp.assert((st->>'sent')::bigint = 0 and (st->>'count')::int = 0, 'new WAT day resets: ' || st::text);
+  perform set_config('bl.test_offset_seconds', '', true);
+  raise notice 'ok L1-7: transfer limits on the real day';
 end $$;
 
 do $$ begin raise notice 'ALL TIME TESTS PASSED'; end $$;

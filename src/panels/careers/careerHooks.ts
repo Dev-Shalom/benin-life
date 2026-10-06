@@ -2,21 +2,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { applyForJob, getJobsCatalog, quitJob, workShift } from '../../api/careers';
 import { errorMessage } from '../../lib/api';
-import { getCfg } from '../../lib/config';
-import { gameDuration, realDuration } from '../../lib/format';
+import { secondsLabel, shiftSeconds } from '../../lib/live';
 import type { JobsCatalog } from '../../lib/types';
 import { useGame } from '../../state/game';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../ui';
 
-/** "5 hrs · about 3m 45s" (game length + real length at the current speed). */
+/** Real length of one shift ("≈18 s"); `minutes` = shift_game_minutes (used only in game_minutes mode). */
 export function shiftLength(minutes: number): string {
-  return `${gameDuration(minutes)} · about ${realLength(minutes)}`;
-}
-
-/** Real time a shift of `minutes` game minutes takes at the current speed ("3m 45s"). */
-export function realLength(minutes: number): string {
-  return realDuration(minutes * Number(getCfg('time.real_seconds_per_game_minute', 0.75)));
+  return secondsLabel(shiftSeconds(minutes));
 }
 
 export function perfHint(perf: number): string {

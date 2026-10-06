@@ -12,6 +12,9 @@ export interface ActivityRow {
   home_only: boolean;
   cost: number;
   game_minutes: number;
+  max_seconds?: number | null; // L1 short actions
+  min_seconds?: number | null;
+  scale_by_need?: boolean | null;
   effects: Record<string, number> | null;
   night_only: boolean;
   sort: number;

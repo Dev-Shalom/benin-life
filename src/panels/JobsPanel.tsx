@@ -1,12 +1,12 @@
 // "Work" tab in the location sheet (action id `jobs`, V1-3). If the player's job works here: the job
 // card + "Work a shift". Below: the jobs hiring at this place (apply / switch).
-import { gameDuration, naira } from '../lib/format';
+import { naira } from '../lib/format';
 import { useGameClock } from '../lib/clock';
 import { getCfg } from '../lib/config';
 import type { PanelProps } from '../lib/types';
 import { Button, EmptyState } from '../ui';
 import { JobCard, PerfBar, Promotion, TrackList } from './careers/CareerUI';
-import { realLength, useCareerActions, useJobsCatalog } from './careers/careerHooks';
+import { shiftLength, useCareerActions, useJobsCatalog } from './careers/careerHooks';
 
 export default function JobsPanel({ state, location, close }: PanelProps) {
   const { cat, err } = useJobsCatalog();
@@ -31,9 +31,9 @@ export default function JobsPanel({ state, location, close }: PanelProps) {
             onClick={() => void work()}>
             {capped ? 'Done for today. Come back tomorrow' : busyNow ? 'You are busy right now'
               : tired ? 'Too tired to work. Rest first' : hungry ? 'Too hungry to work. Eat first'
-              : `Work a shift · ${naira(job.pay_now ?? job.pay_per_shift)} · ${gameDuration(job.shift_game_minutes)}`}
+              : `Work a shift · ${naira(job.pay_now ?? job.pay_per_shift)} · ${shiftLength(job.shift_game_minutes)}`}
           </Button>
-          <p className="work-box__meta">About {realLength(job.shift_game_minutes)} in real time · shift {Math.min(job.shifts_today + 1, job.max_shifts_per_day)} of {job.max_shifts_per_day} today</p>
+          <p className="work-box__meta">Pay arrives when the shift ends · shift {Math.min(job.shifts_today + 1, job.max_shifts_per_day)} of {job.max_shifts_per_day} today</p>
           <Promotion job={job} />
         </section>
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { rpc, errorMessage } from '../../lib/api';
-import { gameDuration, naira, realDuration } from '../../lib/format';
+import { naira } from '../../lib/format';
+import { secondsLabel } from '../../lib/live';
 import { MODE_META } from '../../lib/pidgin';
 import type { Location, TravelOption, TravelQuote } from '../../lib/types';
 import { useGame } from '../../state/game';
@@ -126,7 +127,7 @@ function ModeCard({ o, cash, active, onPick }: { o: TravelOption; cash: number; 
           <span className="mode-card__reason">{reason}</span>
         ) : (
           <span className="mode-card__meta">
-            {gameDuration(o.game_minutes)} <span className="muted">· ~{realDuration(o.real_seconds)} real</span>
+            {secondsLabel(o.real_seconds)} <span className="muted">trip</span>
           </span>
         )}
       </span>

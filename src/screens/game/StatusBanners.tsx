@@ -8,6 +8,7 @@ import { useUi } from '../../state/ui';
 import { Button, Icon, Modal, ProgressRing, toast } from '../../ui';
 import type { PlayerStatus } from './status';
 import { workFinish } from '../../api/careers';
+import { busyFraction, useLiveNow } from '../../lib/live';
 
 interface ArriveResult {
   message?: string;
@@ -107,6 +108,27 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
   if (p.busy_until && seen?.key !== p.busy_until) setSeen({ key: p.busy_until, at: status.now });
   const busyStart = status.busyStartMs ?? (seen && seen.key === p.busy_until ? seen.at : null);
 
+  // Live progress: ~10 updates a second while travel or an action runs (server stays authoritative).
+  const live = Boolean(travel) || status.busyLeft > 0;
+  const liveNow = Math.max(useLiveNow(live), status.now);
+  let travelProgress = status.travelProgress;
+  let travelLeft = status.travelLeft;
+  if (travel) {
+    const start = Date.parse(travel.started_at);
+    const end = Date.parse(travel.arrives_at);
+    if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+      travelProgress = Math.min(1, Math.max(0, (liveNow - start) / (end - start)));
+      travelLeft = Math.max(0, Math.ceil((end - liveNow) / 1000));
+    }
+  }
+  const busyLeftLive = status.busyEndMs !== null ? Math.max(0, Math.ceil((status.busyEndMs - liveNow) / 1000)) : 0;
+  const busyFrac = busyFraction(p, liveNow) ?? (busyStart && status.busyEndMs && status.busyEndMs > busyStart
+    ? Math.min(1, Math.max(0, (liveNow - busyStart) / (status.busyEndMs - busyStart))) : 0);
+  // A running shift counts its pay and XP up over the busy window.
+  const shiftRunning = Boolean(p.job_shift_ends_at && p.busy_until && p.job_shift_ends_at === p.busy_until);
+  const shiftPay = shiftRunning ? Math.floor((Number(p.job_shift_pay ?? 0) * busyFrac) / 10) * 10 : 0;
+  const shiftXp = shiftRunning ? Math.floor(Number(p.job_shift_xp ?? 0) * busyFrac) : 0;
+
   const policeHq = Object.values(byId).find((l) => l.scene === 'police')?.id;
   const hospital = Object.values(byId).find((l) => l.id === 'ubth')?.id ?? Object.values(byId).find((l) => l.scene === 'hospital')?.id;
 
@@ -120,19 +142,28 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
               <div className="banner__title">
                 {MODE_META[travel.mode]?.label ?? 'On the road'} → {byId[travel.to]?.name ?? 'somewhere'}
               </div>
-              <div className="banner__bar"><span style={{ width: `${status.travelProgress * 100}%` }} /></div>
+              <div className="banner__bar banner__bar--live"><span style={{ width: `${travelProgress * 100}%` }} /></div>
             </div>
-            <span className="banner__time">{status.travelLeft > 0 ? countdown(status.travelLeft) : 'Reaching…'}</span>
+            <span className="banner__time">{travelLeft > 0 ? countdown(travelLeft) : 'Reaching…'}</span>
           </div>
         )}
         {status.busyLeft > 0 && status.busyEndMs !== null && (
           <div className="banner banner--busy">
             <ProgressRing className="banner__ring" startMs={busyStart ?? status.now} endMs={status.busyEndMs}
-              nowMs={status.now} size={44} stroke={4} label={p.busy_label ?? 'Busy'}>
+              nowMs={liveNow} size={44} stroke={4} label={p.busy_label ?? 'Busy'}>
               <Icon name="clock" size={18} />
             </ProgressRing>
-            <div className="grow banner__title">{p.busy_label ? `${p.busy_label}…` : 'Busy…'}</div>
-            <span className="banner__time">{countdown(status.busyLeft)}</span>
+            <div className="grow">
+              <div className="banner__title">{p.busy_label ? `${p.busy_label}…` : 'Busy…'}</div>
+              {shiftRunning && (
+                <div className="banner__sub banner__earn">
+                  Earning <b>{naira(shiftPay)}</b>
+                  {Number(p.job_shift_xp ?? 0) > 0 && <> · +{shiftXp} XP</>}
+                </div>
+              )}
+              <div className="banner__bar banner__bar--live"><span style={{ width: `${busyFrac * 100}%` }} /></div>
+            </div>
+            <span className="banner__time">{countdown(busyLeftLive)}</span>
           </div>
         )}
         {status.jailLeft > 0 && (

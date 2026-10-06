@@ -1,3 +1,8 @@
+-- L1 (20261006000100_real_time.sql): this file pins the pre-L1 behaviour (accelerated clock +
+-- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
+update game_config set value = '"accelerated"' where key = 'clock.mode';
+update game_config set value = '"game_minutes"' where key = 'action.mode';
+
 -- Chat tests (V1-6): config + privileges (no direct writes), chat_send at a place (refused while
 -- travelling / banned / muted / brand new / too fast / burst / too long / empty / duplicate),
 -- profanity masking + control-character cleanup, chat_recent only for the current place, RLS
@@ -340,3 +345,7 @@ begin
   perform pg_temp.assert((select count(*) from chat_messages) = 1, 'only the fresh message left');
   raise notice 'ok 7: retention';
 end $$;
+
+-- L1: back to the shipped defaults (real clock, short actions) for the next test file.
+update game_config set value = '"real"' where key = 'clock.mode';
+update game_config set value = '"short"' where key = 'action.mode';

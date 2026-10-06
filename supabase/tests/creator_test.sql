@@ -1,3 +1,8 @@
+-- L1 (20261006000100_real_time.sql): this file pins the pre-L1 behaviour (accelerated clock +
+-- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
+update game_config set value = '"accelerated"' where key = 'clock.mode';
+update game_config set value = '"game_minutes"' where key = 'action.mode';
+
 -- Creator tests (R3a): traits, dreams, start homes, create_profile_v2 -> choose_start_home,
 -- no_home guard, rent, origin.force_next, admin_set_origin, Dad copy. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/creator_test.sql
@@ -466,3 +471,7 @@ begin
 end $$;
 
 do $$ begin raise notice 'ALL CREATOR TESTS PASSED'; end $$;
+
+-- L1: back to the shipped defaults (real clock, short actions) for the next test file.
+update game_config set value = '"real"' where key = 'clock.mode';
+update game_config set value = '"short"' where key = 'action.mode';

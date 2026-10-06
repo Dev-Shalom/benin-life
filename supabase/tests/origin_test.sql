@@ -1,3 +1,8 @@
+-- L1 (20261006000100_real_time.sql): this file pins the pre-L1 behaviour (accelerated clock +
+-- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
+update game_config set value = '"accelerated"' where key = 'clock.mode';
+update game_config set value = '"game_minutes"' where key = 'action.mode';
+
 -- Origin tests (P1-ORIGIN): LAPO baby vs Nepo baby. Run:
 --   bash scripts/sql-test.sh supabase/migrations/20261004000100_core.sql supabase/migrations/20261004000200_core_seed.sql \
 --     supabase/migrations/20261005000100_map_geo.sql supabase/migrations/20261005000200_origin.sql -- supabase/tests/origin_test.sql
@@ -292,3 +297,7 @@ begin
 end $$;
 
 do $$ begin raise notice 'ALL ORIGIN TESTS PASSED'; end $$;
+
+-- L1: back to the shipped defaults (real clock, short actions) for the next test file.
+update game_config set value = '"real"' where key = 'clock.mode';
+update game_config set value = '"short"' where key = 'action.mode';

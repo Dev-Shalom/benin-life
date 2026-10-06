@@ -132,6 +132,8 @@ export interface GameClock {
   hour: number; // 0-23
   minute: number; // 0-59
   is_night: boolean;
+  mode?: 'real' | 'accelerated'; // L1: clock.mode
+  date?: string; // L1: local date YYYY-MM-DD (Benin time in real mode)
 }
 
 export interface TravelState {
@@ -669,4 +671,13 @@ export interface BlockedPlayer {
   username: string;
   avatar: AvatarConfig | null;
   created_at: string;
+}
+
+// ---- L1: real Benin time + short actions (docs/REAL_LIFE_PLAN.md, 20261006000100_real_time.sql) ----
+export interface Profile {
+  /** Need values just before the running action's effects (live-filling bars); null when none. */
+  busy_needs_from?: Partial<Record<'hunger' | 'energy' | 'hygiene' | 'fun' | 'social' | 'stress' | 'health' | 'bladder', number>> | null;
+  /** The running shift's pay / XP (paid when it ends; the busy banner counts them up). */
+  job_shift_pay?: number | null;
+  job_shift_xp?: number | null;
 }

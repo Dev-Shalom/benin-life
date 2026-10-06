@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { payRent } from '../../../api/shops';
 import { errorMessage } from '../../../lib/api';
-import { gameClockAt, useNow, weekdayOf } from '../../../lib/clock';
+import { dateLabel, gameClockAt, useNow, weekdayOf } from '../../../lib/clock';
 import { clockTime, naira, realDuration } from '../../../lib/format';
 import { WEEKDAYS } from '../../../lib/pidgin';
 import type { GameState } from '../../../lib/types';
@@ -82,7 +82,7 @@ export default function HousesApp({ state }: { state: GameState }) {
           <div className="bank-row">
             <span>Next rent day</span>
             <b className="rent-rows__due">
-              {WEEKDAYS[weekdayOf(due)]}, Day {due.day} · {clockTime(due.hour, due.minute)}
+              {WEEKDAYS[weekdayOf(due)]}, {dateLabel(due)} · {clockTime(due.hour, due.minute)}
               <span>in about {realDuration(Math.max(0, (dueMs - now) / 1000))} real time</span>
             </b>
           </div>

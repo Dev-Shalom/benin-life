@@ -143,7 +143,7 @@ export default function BankApp({ state }: { state: GameState }) {
             {blocked ?? 'Continue'}
           </Button>
           <p className="bankx__fine">
-            Fee {naira(fee)} per transfer. You can send {naira(t.left_today)} more today (game day), up to {t.daily_count} transfers.
+            Fee {naira(fee)} per transfer. You can send {naira(t.left_today)} more today, up to {t.daily_count} transfers.
             {t.new_account_wait_real_seconds > 0 && ` New accounts can send in about ${realWait(t.new_account_wait_real_seconds)}.`}
           </p>
         </div>
