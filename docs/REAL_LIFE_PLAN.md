@@ -36,6 +36,13 @@ The user wants the game to follow real daily life in Benin City. Waiting on new 
 - All of it admin-tunable (`action.*` config: per-activity max seconds, min seconds, scale-by-need on/off; shift seconds; travel max seconds).
 - This replaces `time.real_seconds_per_game_minute`-based durations (that key stays only for accelerated mode/back-compat).
 
+
+### User clarification (2026-10-06, local session). Binding.
+- The sleep rule is an **example for EVERY action**: activities, work shifts, travel, food delivery, hospital, jail and any other busy timer. All of them last seconds, scaled by need or size, and every limit is admin-tunable.
+- The live-filling need bar is an **example for ALL progress**: needs, the pay counter during a shift, XP/performance, the travel bar and the delivery bar all move live while the action runs.
+- **Places must be entered, not just announced.** Tapping a place puts you INSIDE its 3D interior with the characters there (NPCs plus real players, capped), the zones and the action cards. This is L2 + L3; the references are in NOTES.md under "Live places walkthrough" (IMG_2398–2421). The user is waiting for this right after L1 and the money format.
+- Order after L1: money format (HANDOFF) → L2 interiors → L3 crowds → L4 map sheet + events → L5 landmarks.
+
 ## What the references show (see NOTES.md "Live places walkthrough")
 - Real-time clock confirmed; activities stay short (5–20 real seconds) → answer to the open question: **keep durations short**.
 - Every place = a **3D interior** you're inside, with **zones** and **action cards** per zone (duration, price/Free/Earns ₦, effect chips, Risky tag),
