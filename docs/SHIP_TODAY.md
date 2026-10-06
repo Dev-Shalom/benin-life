@@ -150,6 +150,33 @@ The current banner is too small and plain. The hype must **carry aura and take o
 - Light on phones: CSS and canvas particles, capped, and reduced motion gets a calm version.
 - Reference: the user says "check the GitHub repo for a reference". **No hype reference is in the repo yet**; asked the user to upload it. Build from this spec meanwhile, and adjust once the reference arrives.
 
+## PAY. Paystack + leaderboards (user, 2026-10-07): [running], top priority
+- **Real top-ups with Paystack.** The user is verified on Paystack. Flow:
+  1. Paystack Inline checkout opens on the client with the public key.
+  2. The server verifies the payment in a Supabase Edge Function using the secret key (stored as a Supabase secret, never in the repo).
+  3. Naira is credited only once per reference.
+  4. The webhook (`charge.success`) is the backup path.
+- **Admin:** top-up packs (price in kobo, game naira, bonus tag, active, sort) are editable in admin, plus a list of purchases and revenue.
+- **Two leaderboards in the phone:**
+  - **Rich list:** in-game cash plus bank, with a top-3 podium and tiers.
+  - **VIP list:** real money spent on top-ups, with ranks and tiers.
+- **VIP perk:** when a top-3 VIP player enters a place, everyone there gets an arrival announcement.
+- **P3 hype aura** is parked on the branch `wip/p3-hype-aura` (unfinished; the agent hit the usage limit).
+
+## E1. Economy + storyline (user, 2026-10-07): [todo, after PAY]
+- **Harder economy for LAPO and Nepo alike:**
+  - Slower money, real costs and a hierarchy.
+  - Grindable career ladders in every industry. Example: a medical doctor goes through school, housemanship and residency to consultant. Others: software dev, game dev, engineer, lawyer, scholar, tax collector, BEDC lineman, and so on.
+- **Weekly storylines:** a new story every week, needing the right response, built from real Benin and Edo life:
+  - real public holidays (Edo/national)
+  - weather (rainy season floods, harmattan) that blocks work some days
+  - BEDC outages in LAPO areas ("NEPA don take light")
+  - kidnapping scares
+  - task-force raids
+- **Laws:** research real Edo/Nigerian laws that fit the game. Examples: the Edo anti-touting/agbero law, the sanitation day, the okada ban zones, and the tax/levy enforcers.
+- **Lifestyles (all player choice):** playboy, "hookup" scene (18+, tasteful, no explicit content), agbero, scholar, engineer, and more.
+- This is big; plan it in docs/STORY_PLAN.md first, then build it in steps.
+
 ## LATER: private jets and planes (user)
 A place to buy private jets and planes, tied to the airport feature (fly to Lagos, Abuja or PH). Not started.
 
