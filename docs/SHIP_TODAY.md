@@ -52,6 +52,11 @@ As in docs/REAL_LIFE_PLAN.md. Landmarks (docs/LANDMARKS.md): keep the REAL names
 - **Car dealers** (buy cars): real Benin options along Sapele Rd — e.g. Ighodalo Car Deals (Km 5 Sapele Rd), SDD Motors (174 Sapele Rd), Otos Autos (near Santana Market), Dominion Automobile; official Toyota (Mandilas, 45 Benin–Agbor Rd). Pick 1–2 real + a made-up "Tokunbo lot".
 - **Top clubs with hype men & big spenders**: 360 Signature (GRA, 1st Ugbor Rd), Club De Medici (23 Benoni off Airport Rd, GRA), Rome Night Club ("biggest in Benin"), Club Vibes (DJ + hype man), Cube Nightlife, Versus Lounge, Havana. Club actions: table/bottle service (VIP prices), "spray money", hype man shout-out (costly, + street cred), dance.
 
+## F1. Club soft launch + real feel (user, 2026-10-06 evening): [running], ship tonight
+- **Soft launch:** only **360 Signature** is open at first. The other clubs (and any place) can be hidden or shown with an admin switch (`locations.active`); hidden places have no map pin and can't be travelled to. Each place's opening and closing hours are editable in admin → Places.
+- **Real feel** for every interior and the home: see docs/FEEL_PLAN.md.
+- L3 crowds is paused (it was stopped before it changed anything). Gangs/robbery is planned in docs/GANGS_PLAN.md for later.
+
 ## LATER (user, 2026-10-06): welcome-back redo. Do NOT touch today; S2 stays as shipped.
 The user wants the welcome screen to look like Lagos Life (`docs/references/lagos-life/welcome-back-1.jpg`, `welcome-back-2-newlife.jpg`):
 - Game logo and title at the top, with a tagline (e.g. "Live your Benin story.").
