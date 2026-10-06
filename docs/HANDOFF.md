@@ -169,6 +169,7 @@ Draft the Terms of Service and Privacy Policy pages (approved by the user; the s
   - **Nepo babies** start with moderate, decent furniture: a proper bed, a sofa, a TV, a fridge and a gas cooker. Nice, but not mansion-level.
   - Starting furniture is data-driven per origin and per start home, and editable in admin.
   - Make the 3D home rendering (R4) and the actions that depend on furniture match. For example, LAPO bathing uses the bucket, and cooking uses the stove.
+- [todo] **SHIP_TODAY list (user, 2026-10-06): docs/SHIP_TODAY.md** — S1 quick polish → S2 welcome-back → M1 → S3 map → L2+. Brand decision: KEEP the real names the user chose, mix in local made-up names; add car dealers + top clubs.
 - [todo] **M1 Sim movement & life (user, 2026-10-06):** tap the floor to walk there (home + every place interior), smooth real walk cycle with pathing around furniture, alive idle (breathing, weight shift, look-around), natural idle after tasks; Sims-3 feel but lightweight. Spec in docs/REAL_LIFE_PLAN.md. Next after starter homes.
 - [todo] **Real housing (user):** a housing ladder using real Benin areas and types:
   - face-me-I-face-you, self-contain and mini-flat in real neighbourhoods
