@@ -2,14 +2,19 @@
 // (the 2D map only as the lite fallback, see src/art/city3d/CityView.tsx).
 // HUD: top pill, left rail, needs card, dock (Home · Buy · Map · Phone), status banners, toasts.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { HomeView, activityGroup, homeLayoutFor, itemGroup, type FurnitureItem } from '../art/home3d';
+import { HomeView, LAYOUTS, activityGroup, furnishLayout, homeLayoutFor, itemGroup, type FurnitureItem } from '../art/home3d';
 import { CityView } from '../art/city3d';
-import { useGameClock } from '../lib/clock';
+import { serverNow, useGameClock } from '../lib/clock';
+import { devHourOverride, looksNight } from '../lib/daylight';
+import { setSoundScene } from '../lib/sound';
+import { useConfig } from '../lib/config';
+import { simPosture } from '../lib/mood';
 import { randomGreeting } from '../lib/pidgin';
 import { usePrefs } from '../lib/prefs';
 import { useCatalog } from '../state/catalog';
 import { useChat, useChatLive } from '../state/chat';
 import { useGame } from '../state/game';
+import { usePresenceStore } from '../state/presence';
 import { useUi } from '../state/ui';
 import { Icon, LoadingScreen, toast } from '../ui';
 import { BuySheet, ShortcutsSheet } from './game/Extras';
@@ -54,6 +59,19 @@ export default function Game() {
   const locations = useGame((s) => s.locations);
   const byId = useGame((s) => s.locationsById);
   const unread = useGame((s) => s.unread);
+  // S3: live player counts per place on the map (Realtime Presence, other players only)
+  const presentAt = usePresenceStore((s) => s.at);
+  const presenceLive = usePresenceStore((s) => s.online !== null);
+  const meId = state?.profile.id;
+  const crowd = useMemo(() => {
+    if (!presenceLive) return undefined;
+    const o: Record<string, number> = {};
+    for (const [loc, ids] of Object.entries(presentAt)) {
+      const n = ids.filter((id) => id !== meId).length;
+      if (n > 0) o[loc] = n;
+    }
+    return o;
+  }, [presentAt, presenceLive, meId]);
   const selectedId = useUi((s) => s.selectedId);
   const select = useUi((s) => s.select);
   const overlay = useUi((s) => s.overlay);
@@ -70,11 +88,22 @@ export default function Game() {
   const clean = usePrefs((s) => s.clean);
   const activities = useCatalog((s) => s.activities);
   const loadActivities = useCatalog((s) => s.loadActivities);
+  const furniture = useCatalog((s) => s.furniture);
+  const furnitureOf = useCatalog((s) => s.furnitureOf);
+  const loadFurniture = useCatalog((s) => s.loadFurniture);
+  const { cfg } = useConfig();
   const { clock, now } = useGameClock(1000);
   const greeted = useRef(false);
   const insets = useInsets();
 
-  useNightTheme(clock.is_night);
+  // S1: lighting follows real Benin time continuously; the UI theme flips mid-dusk / mid-dawn.
+  const hourF = devHourOverride() ?? clock.hour + clock.minute / 60;
+  const skyNight = looksNight(hourF);
+  useNightTheme(skyNight);
+  useEffect(() => {
+    setSoundScene(true, skyNight);
+  }, [skyNight]);
+  useEffect(() => () => setSoundScene(false, false), []);
 
   useEffect(() => {
     void loadActivities();
@@ -88,6 +117,16 @@ export default function Game() {
   }, [state]);
 
   const p = state?.profile;
+  // the player's own furniture (starter set by origin + home); reloads when the home changes
+  const furnKey = p ? `${p.id}:${p.home_location_id}:${p.housing_id ?? ''}` : null;
+  const lastFurnKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!furnKey || !p) return;
+    const force = lastFurnKey.current !== null && lastFurnKey.current !== furnKey;
+    lastFurnKey.current = furnKey;
+    void loadFurniture(p.id, force);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [furnKey, loadFurniture]);
   const atHome = Boolean(p && !state?.travel && p.location_id === p.home_location_id);
   const showHome = atHome && !mapOpen;
   // V1-6: stay subscribed to the chat of the place you are at (unread dot while the sheet is closed).
@@ -114,6 +153,7 @@ export default function Game() {
   const busyActive = Boolean(busyUntil && Date.parse(busyUntil) > now);
   const busyGroup = useMemo(() => {
     if (!busyUntil || !busyLabel || !busyActive) return null;
+<<<<<<< HEAD
     // the busy label is the furniture label ("Bucket bath") when the server gave one, else the activity name
     const homeActs = state?.home?.activities ?? {};
     const byLabel = Object.keys(homeActs).find((id) => homeActs[id].label === busyLabel);
@@ -123,6 +163,12 @@ export default function Game() {
     return { group: activityGroup(a.id), key: busyUntil, seconds: (Date.parse(busyUntil) - started) / 1000 };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busyUntil, busyLabel, busyActive, activities, state?.home]);
+=======
+    const a = activities?.find((x) => x.name === busyLabel && x.home_only);
+    const seconds = Math.max(0, (Date.parse(busyUntil) - serverNow()) / 1000);
+    return a ? { group: activityGroup(a.id), key: busyUntil, activity: a.id, seconds } : null;
+  }, [busyUntil, busyLabel, busyActive, activities]);
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
 
   const goHome = useCallback(() => {
     if (!p) return;
@@ -161,10 +207,13 @@ export default function Game() {
   const onPick = useCallback(
     (f: FurnitureItem) => {
       const g = itemGroup(f);
-      if (g) pickHome({ id: f.id, group: g });
+      if (g) pickHome({ id: f.id, group: g, activities: f.activities });
     },
     [pickHome],
   );
+
+  const layoutId = p ? homeLayoutFor(p.housing_id, (state && byId[state.location.id]?.scene) ?? state?.location.scene) : 'face_me';
+  const furnished = useMemo(() => furnishLayout(LAYOUTS[layoutId], furniture), [layoutId, furniture]);
 
   if (!state || !p) return <LoadingScreen />;
 
@@ -179,19 +228,27 @@ export default function Game() {
   // The city stays live under the location sheet (it sits over the lower half) but pauses under
   // full-screen panels and overlays.
   const coveredMap = Boolean(panel || (overlay && !suspendHome));
-  const layout = homeLayoutFor(p.housing_id, here.scene);
+  const layout = layoutId;
+  const walkShare = Math.max(0, Number(cfg('home.walk_max_share_pct', 15)) || 0) / 100;
   const dockActive: DockId | null = overlay === 'phone' ? 'phone' : overlay === 'buy' ? 'buy' : showHome ? 'home' : 'map';
-  const hourF = clock.hour + clock.minute / 60;
-
   return (
-    <div className={`game${clock.is_night ? ' is-night' : ''}${clean ? ' is-clean' : ''}${showHome ? ' is-home' : ' is-map'}`}>
+    <div className={`game${skyNight ? ' is-night' : ''}${clean ? ' is-clean' : ''}${showHome ? ' is-home' : ' is-map'}`}>
       <div className="game__map">
-        {showHome ? (
+        {showHome && furnitureOf !== p.id ? (
+          <div className="home3d home3d--loading"><span className="home3d__loader" aria-label="Loading your home" /></div>
+        ) : showHome ? (
           <HomeView
             layoutId={layout}
+<<<<<<< HEAD
             owned={p.furniture ?? null}
+=======
+            layout={furnished}
+            walkShare={walkShare}
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
             avatar={p.avatar}
             busy={busyGroup}
+            walkLock={busyActive ? `${busyLabel ?? 'Busy'} first, then you can walk` : null}
+            mood={simPosture(p)}
             hour={hourF}
             suspended={suspendHome}
             paused={coveredHome}
@@ -213,9 +270,10 @@ export default function Game() {
             currentId={state.travel ? undefined : state.location.id}
             selectedId={selectedId ?? undefined}
             onSelect={(id) => select(id)}
-            night={clock.is_night}
+            night={skyNight}
             hour={hourF}
             travel={travel}
+            crowd={crowd}
             suspended={suspendHome}
             paused={coveredMap}
             insetTop={clean ? 70 : insets.top}
@@ -262,7 +320,7 @@ export default function Game() {
         )}
       </div>
 
-      <LocationSheet state={state} status={status} night={clock.is_night} />
+      <LocationSheet state={state} status={status} night={skyNight} />
       <HomeSheet state={state} status={status} />
       <GlobalPanelSheet />
       <AlertsSheet />

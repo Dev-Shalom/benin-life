@@ -503,7 +503,7 @@ export interface WorkFinishResult {
   blocked?: { title: string; missing: string[] };
 }
 
-// ---- V1-4: shops, Bag, ChopNow, rent on (docs/SHOPS.md) ----
+// ---- V1-4: shops, Bag, Chowdeck, rent on (docs/SHOPS.md) ----
 // Server: supabase/migrations/20261005000800_shops.sql.
 
 /** 'use' = eat/drink/use from the Bag; 'boost' = used up by an activity (soap + bath); 'keep' = owned (laptop). */

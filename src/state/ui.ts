@@ -25,7 +25,7 @@ interface UiStore {
   /** At home: the player picked the map instead of the 3D home. */
   mapOpen: boolean;
   /** Tapped furniture in the 3D home (opens its activity sheet). */
-  homePick: { id: string | null; group: HomeGroup } | null;
+  homePick: { id: string | null; group: HomeGroup; activities?: string[] } | null;
   /** Phone app to open with the phone (e.g. 'alerts'). */
   phoneApp: string | null;
   select: (id: string | null, tab?: PanelId | null) => void;
@@ -35,7 +35,7 @@ interface UiStore {
   openSim: (tab?: SimTab) => void;
   openPhone: (app?: string | null) => void;
   setMapOpen: (v: boolean) => void;
-  pickHome: (p: { id: string | null; group: HomeGroup } | null) => void;
+  pickHome: (p: { id: string | null; group: HomeGroup; activities?: string[] } | null) => void;
   /** Close every sheet/overlay (used before switching views). */
   closeAll: () => void;
 }

@@ -73,8 +73,8 @@ export default function InventoryPanel({ state, location, refresh }: PanelProps)
     return (
       <div className="stack">
         <EmptyState icon="bag" title="Your Bag is empty"
-          body="Buy food and other things at markets, bukas and PoS stands, or order food to your door on ChopNow." />
-        <Button variant="green" block onClick={() => { closePanel(); openPhone('food'); }}>Order on ChopNow</Button>
+          body="Buy food and other things at markets, bukas and PoS stands, or order food to your door on Chowdeck." />
+        <Button variant="green" block onClick={() => { closePanel(); openPhone('food'); }}>Order on Chowdeck</Button>
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function InventoryPanel({ state, location, refresh }: PanelProps)
           </div>
         </section>
       ))}
-      <Button variant="ghost" block onClick={() => { closePanel(); openPhone('food'); }}>Hungry? Order on ChopNow</Button>
+      <Button variant="ghost" block onClick={() => { closePanel(); openPhone('food'); }}>Hungry? Order on Chowdeck</Button>
     </div>
   );
 }

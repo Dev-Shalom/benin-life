@@ -8,6 +8,7 @@ Benin Life ships no third-party art files. Everything visual is made in this rep
 | Fabric patterns (Ankara, Adire, Aso-oke, lace, denim), coral beads, embroidery, T-shirt graphic | `src/art/avatar3d/engine/materials.ts` | **Procedural.** Drawn on a `<canvas>` at runtime. No image files. Project code. |
 | Landing-page Sims | `public/art/sim-lapo.webp`, `public/art/sim-nepo.webp` | Rendered from our own 3D characters (`LANDING_SIMS` in `src/art/avatar3d/dev/AvatarLab.tsx`, "Landing images" section of `/dev/avatars`). Project art. |
 | Location scenes, icons, logo, favicon | `src/art/`, `public/favicon.svg` | Hand-written SVG in this repo. Project art. |
+| Sound: click SFX, cues, music loop, city ambience (S1) | `src/lib/sound.ts` | **Synthesized** with WebAudio at runtime (oscillators + generated noise). No audio files. Project code. |
 | Fonts: Outfit, Figtree | Loaded from Google Fonts (`index.html`) | SIL Open Font License 1.1. |
 
 ## Libraries used for 3D

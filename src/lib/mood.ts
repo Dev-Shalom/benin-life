@@ -39,3 +39,13 @@ export function lowNeeds(p: Profile, max = 2, under = 45): { key: NeedKey; value
     .slice(0, max)
     .map((x) => ({ ...x, text: NEED_TIP[x.key]!.text, emoji: NEED_TIP[x.key]!.emoji }));
 }
+
+/** M1: mood in the 3D Sim's posture, 0..1 each. Tired = low energy or a low mood (slump);
+ * happy = a good mood with energy to spare (small bounce). */
+export function simPosture(p: Profile): { tired: number; happy: number } {
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+  const score = moodOf(p).score;
+  const tired = clamp(Math.max((40 - needValue(p, 'energy')) / 30, (38 - score) / 30));
+  const happy = clamp((score - 66) / 22) * (1 - tired);
+  return { tired: Math.round(tired * 20) / 20, happy: Math.round(happy * 20) / 20 };
+}

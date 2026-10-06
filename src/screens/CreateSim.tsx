@@ -13,6 +13,7 @@ import { errorMessage, GameError } from '../lib/api';
 import { CREATOR, P, WEEKDAYS, originCopy } from '../lib/pidgin';
 import type { AvatarConfig, CreatorCatalog } from '../lib/types';
 import { useGame } from '../state/game';
+import { markWelcomed } from '../lib/welcome';
 import { Button, Icon, LoadingScreen, toast } from '../ui';
 import ErrorScreen from './ErrorScreen';
 import OriginReveal from './OriginReveal';
@@ -134,6 +135,7 @@ export default function CreateSim() {
       const res = await chooseStartHome(home);
       applyState(res);
       void useGame.getState().refresh();
+      markWelcomed(res.profile.id); // S2: a brand-new Sim goes straight into the game
       nav('/play', { replace: true });
     } catch (e) {
       const msg = errorMessage(e);

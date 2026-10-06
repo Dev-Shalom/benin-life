@@ -1,4 +1,4 @@
-// V1-4: typed wrappers for the shop, Bag, ChopNow and rent RPCs (server: 20261005000800_shops.sql).
+// V1-4: typed wrappers for the shop, Bag, Chowdeck and rent RPCs (server: 20261005000800_shops.sql).
 import { rpc } from '../lib/api';
 import type { FoodMenu, GameState, InventoryItem, ShopList } from '../lib/types';
 

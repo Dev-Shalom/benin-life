@@ -11,7 +11,7 @@ The characters are built in code (low-poly, flat-shaded, no model files). Code l
 | `engine/character.ts` | Puts a whole character together from a config. |
 | `engine/body.ts`, `head.ts`, `hair.ts`, `clothing.ts`, `accessories.ts` | The parts. |
 | `engine/materials.ts` | Canvas-drawn fabric textures and the shared material cache. |
-| `engine/anim.ts` | Idle (breathing, weight shift, head turns) and walk poses. |
+| `engine/anim.ts` | Idle (breathing, weight shift, head turns) and walk poses; M1 `poseLife` / `poseGait` / pose buffers for the 3D home (see below). |
 | `dev/AvatarLab.tsx` | Dev gallery at `/dev/avatars` (dev server only). Show one section with `?s=presets|pviews|views|bodies|faces|features|hair|hats|acc|fabrics|portraits|landing|stats`. Extra params: `&g=male|female`, `&size=150`, `&yaw=1.57`. `stats` lists triangles and meshes per look. |
 
 `/dev/create` (dev server only) mounts the creator without a session, for screenshots.
@@ -92,3 +92,11 @@ The Yahoo Boy look is a black designer tee and black jeans, with a gold cap and 
 1. Check `/dev/avatars` (`?s=pviews` for front, side and back).
 2. Bump `MODEL_VERSION`.
 3. Update the landing webps if the landing looks changed.
+
+## M1 rig animation (Sim movement & life, 2026-10-06)
+All procedural, in `engine/anim.ts`, no animation files. `poseIdle` / `poseWalk` above are unchanged (turntable + cached portraits use them, so `MODEL_VERSION` did not change).
+- **`resetRig(c)`**: every bone back to the bind pose (computed from `bonePositions(dims)`, cached per character) then `restPose`. Every M1 pose starts with it, so nothing leaks from the last pose (a bent knee from the walk, a raised arm from a fidget).
+- **`poseLife(c, t, salt, { tired, happy, reduced, idleFor })`** the home idle: breathing every ~4 s (chest lifts and tips back, shoulders out, slower when tired); weight shifts that hold on one leg 4-9 s and ease over 1.1 s (hips slide and roll over the standing leg, the free knee softens, thighs counter-rotate so the feet stay planted); look-arounds (smaller with long hair); a fidget in ~3 of 4 9.5 s slots (scratch head, check left hand, shoulder roll, hands on hips, foot tap; 1.6-2.4 s, eased in/out); mood: `tired` slumps chest/neck/head and pulls the arms in, `happy` lifts the chest with a small bounce. `reduced` (prefers-reduced-motion) = 45 % amplitudes and no fidgets. `idleFor` fades fidgets and look-arounds in over ~1.5 s after a walk. A pure function of time: any number of Sims can share one clock.
+- **`poseGait(c, phase, w, opts)`** walk cycle driven by a phase in cycles (1 cycle = 2 steps) that the scene advances by `distance / (2 · stepLength(c, w))`, so the feet keep pace with the ground at any speed. Legs and arms swing in opposition; the swing knee bends (`cos` phase), soles stay flat through the stance (foot counter-rotates the leg); the hips drop by the standing leg's angle (inverted pendulum: lowest at double support), sway over the standing leg and the swing hip drops a touch; chest counter-twists; head steadied. `w` (0..1 gait weight) shortens and softens the steps while speeding up/slowing down. `stride` (wrappers, robes) scales the swing; `cruiseSpeed(c)` = ~2.25 steps/s but at least 0.72 m/s (short steps get a quicker cadence instead of sliding).
+- **Pose buffers**: `capturePose` / `applyPose` / `mixPose` (16 bones × position + rotation = 96 floats, angles mixed the short way). The home mixes idle↔walk by the gait weight and blends 0.42 s between states.
+- **Blinks**: not done. The eyes are merged into the head mesh per material, so a blink would need a separate lid mesh per character; at the home's zoom the eyes are 1-2 px. Revisit with close-up cameras (L2).

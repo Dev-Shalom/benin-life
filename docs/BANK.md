@@ -4,7 +4,7 @@ Server: `supabase/migrations/20261005000900_bank.sql` (idempotent: config `on co
 Client: `src/api/bank.ts`, `src/panels/BankPanel.tsx` (action `bank`), `src/panels/PosPanel.tsx` (action `pos`), `src/panels/bank/{BankUI.tsx,bankHooks.ts}`, phone `src/screens/game/phone/BankApp.tsx`, Wallet link, HUD tip chip (`useBankTip` in `Hud.tsx`). Types: `src/lib/types.ts` section "V1-5".
 
 ## Why bank
-Street robbery (`bl_roll_street_robbery`, DB_CORE) takes **cash only**, and with no cash the robbery chance is 0. Money in the bank is safe. Salary is paid in cash (CAREERS); ChopNow and rent pay from the bank first (SHOPS).
+Street robbery (`bl_roll_street_robbery`, DB_CORE) takes **cash only**, and with no cash the robbery chance is 0. Money in the bank is safe. Salary is paid in cash (CAREERS); Chowdeck and rent pay from the bank first (SHOPS).
 
 ## Where money moves
 | Where | What | When | Cost |
@@ -15,7 +15,7 @@ Street robbery (`bl_roll_street_robbery`, DB_CORE) takes **cash only**, and with
 
 All counter RPCs use `bl_me()` + `bl_assert_free()` and the location's `actions`. The smallest amount is `bank.min_amount` (₦100).
 
-Transfer limits (anti-farming): `bank.transfer_min_amount` (₦100), `bank.transfer_daily_limit` (₦200,000 sent per game day, fees not counted), `bank.transfer_daily_count` (10 per game day), `bank.transfer_cooldown_real_seconds` (15), `bank.transfer_min_account_real_minutes` (30: brand-new Sims wait). Not to yourself; banned players can't receive. The two profile rows are locked in id order (no deadlock). Notes are one line, max 80 chars.
+Transfer limits (anti-farming): `bank.transfer_min_amount` (₦100), `bank.transfer_daily_limit` (₦200,000 sent per game day, fees not counted), `bank.transfer_daily_count` (10 per game day), `bank.transfer_cooldown_real_seconds` (15), `bank.transfer_min_account_real_minutes` (1440 = 24 h since S1 migration 20261006001000; was 30: brand-new Sims wait). Not to yourself; banned players can't receive. The two profile rows are locked in id order (no deadlock). Notes are one line, max 80 chars.
 
 ## Ledger reasons
 `bank_deposit` / `bank_withdraw` (one row per account, `meta.location`), `pos_cashout` / `pos_deposit` (amount rows) + `pos_fee` (`meta.kind` cashout|deposit), `transfer_out` (`meta.to_username`, `note`, `day` = game day for the limits) + `transfer_fee`, `transfer_in` (receiver, `meta.from_username`). Events: `transfer_in` to the receiver ("Money in from @X"), `transfer_out` to the sender.
@@ -42,4 +42,4 @@ Helpers (revoked from clients): `bl_hour_text`, `bl_bank_open`, `bl_bank_opens_i
 - **HUD tip** "Bank your cash": at night (`clock.night_*`), while free, cash > `bank.tip_cash_threshold` (₦20,000) → nearest PoS (or Bronze Bank when open).
 
 ## Config (admin-tunable, categories `bank`, `pos`)
-`bank.open_hour` 8, `bank.close_hour` 16, `bank.min_amount` 100, `bank.transfer_fee` 50, `bank.transfer_min_amount` 100, `bank.transfer_daily_limit` 200000, `bank.transfer_daily_count` 10, `bank.transfer_cooldown_real_seconds` 15, `bank.transfer_min_account_real_minutes` 30, `bank.tip_cash_threshold` 20000, `pos.fee_pct` 1.5, `pos.fee_min` 100, `pos.max_amount` 100000.
+`bank.open_hour` 8, `bank.close_hour` 16, `bank.min_amount` 100, `bank.transfer_fee` 50, `bank.transfer_min_amount` 100, `bank.transfer_daily_limit` 200000, `bank.transfer_daily_count` 10, `bank.transfer_cooldown_real_seconds` 15, `bank.transfer_min_account_real_minutes` 1440 (S1; was 30), `bank.tip_cash_threshold` 20000, `pos.fee_pct` 1.5, `pos.fee_min` 100, `pos.max_amount` 100000.

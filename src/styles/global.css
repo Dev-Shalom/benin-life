@@ -279,3 +279,20 @@ h4 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* S1: small "Beta" tag (landing header, auth/legal pages, HUD rail, Settings) */
+.beta-badge {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: var(--r-pill);
+  background: var(--amber-50, #fff6e0);
+  color: var(--amber-800, #8a5a00);
+  box-shadow: inset 0 0 0 1px rgba(138, 90, 0, 0.18);
+  font: 700 10.5px/1 var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}

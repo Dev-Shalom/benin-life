@@ -22,6 +22,8 @@ export interface Building {
   roof: string;
   roofType: Roof;
   lit: boolean;
+  /** district style (S3: plot colour, palette) */
+  st: Style;
 }
 
 export interface Tree {
@@ -120,19 +122,22 @@ class Grid {
   }
 }
 
+// S3: one coherent palette per district instead of random confetti. Repeats weight the picks:
+// core = pale concrete walls under grey zinc and rust; res = warm walls, terracotta/brown roofs with the
+// odd blue; cramped = rusty zinc; GRA = white villas with terracotta, green and slate roofs.
 const WALLS: Record<Style, string[]> = {
-  core: ['#efe3c8', '#e9d3b0', '#f3ece0', '#d9e4ea', '#f0cfae', '#e2d8c9', '#cfdcc0'],
-  res: ['#efe3c8', '#e8cfab', '#f1e9dc', '#d4e2e6', '#efc9a3', '#dcc9a6', '#d8e3c4'],
-  cramped: ['#e2c49e', '#d9b48c', '#e9d6b9', '#cdbba0', '#e4c7a7'],
-  gra: ['#f6f3ec', '#f1ece2', '#eef1ee', '#f4ead8'],
+  core: ['#f1ece2', '#e9e2d4', '#f3e7cf', '#e4e6e3', '#efe0c4', '#f2ede6', '#dfe3e0', '#f0d9b8'],
+  res: ['#f1e6cf', '#ead7b6', '#f3ece0', '#efd8b5', '#e7dcc6', '#f2e3c9', '#e6e0cf', '#efd2b0'],
+  cramped: ['#e3cba8', '#dcc09a', '#e9d8bd', '#d6c3a5', '#e6cdab'],
+  gra: ['#fbf8f1', '#f6f2e9', '#f3f3ef', '#f8eedc'],
   campus: ['#efe4cc', '#f2ead9', '#e6dcc4'],
   market: ['#d8c3a0', '#e3d2b3'],
 };
 const ROOFS: Record<Style, string[]> = {
-  core: ['#8a4b2c', '#9aa1a6', '#a8553a', '#7d858b', '#b8432f', '#2f7d7a', '#3d6fa8'],
-  res: ['#8a4b2c', '#9c5a35', '#7f8a90', '#a0a8ad', '#8e3f2a', '#6f4a33'],
-  cramped: ['#7b4328', '#8a4b2c', '#6e3b25', '#8f969b', '#7a5a45'],
-  gra: ['#b8432f', '#2f7d7a', '#8a4b2c', '#3d6fa8', '#7d858b'],
+  core: ['#8f979c', '#9aa2a6', '#7e878c', '#a85a3c', '#9b5434', '#b5674a', '#8f979c', '#6f7b82', '#3f6f9c'],
+  res: ['#b5583a', '#a24f33', '#8a4b2c', '#9c5a35', '#c0643f', '#8f979c', '#7a4a32', '#b5583a', '#3f6f9c', '#2f7466'],
+  cramped: ['#8a4a2c', '#7b4328', '#96553a', '#6e3b25', '#8f969b', '#9a5f42'],
+  gra: ['#b8432f', '#c25b3c', '#2f6f55', '#3d5f80', '#b8432f', '#5d6a72'],
   campus: ['#3f7d4a', '#2f6f45', '#4b8a52'],
   market: ['#2f6fd0', '#d63c32', '#f2b632', '#2e9d58', '#e06a1c', '#7a4ac8'],
 };
@@ -318,7 +323,8 @@ function build(): CityLayout {
     }
     w *= wMul;
     const rad = Math.max(w, d) * 0.5;
-    if (st !== 'campus' && st !== 'market' && special(x, y)) return false;
+    // S3: test the footprint corners too, so no house pokes into the palace, square or markets
+    if (st !== 'campus' && st !== 'market' && (special(x, y) || special(x + rad, y + rad) || special(x - rad, y - rad) || special(x + rad, y - rad) || special(x - rad, y + rad))) return false;
     if (onPad(x, y)) return false;
     if (roadClear(x, y, 30) < rad * 0.8) return false;
     if (riverDist(x, y, 40) < rad + 9) return false;
@@ -335,6 +341,7 @@ function build(): CityLayout {
       roof: pick(ROOFS[st]),
       roofType,
       lit: st === 'market' ? false : rand() < (h > 0.8 ? 0.85 : 0.55),
+      st,
     });
     return true;
   };

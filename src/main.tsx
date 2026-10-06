@@ -6,9 +6,11 @@ import './styles/screens.css';
 import './styles/game.css';
 import App from './App.tsx';
 import { initAuth } from './state/game';
+import { initSound } from './lib/sound';
 import { Button, EmptyState, ErrorBoundary } from './ui';
 
 initAuth();
+initSound();
 
 // After a new deploy, an open tab may ask for old chunk files that no longer exist.
 // Reload once to pick up the new build instead of showing a broken screen.

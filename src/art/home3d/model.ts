@@ -24,6 +24,9 @@ export const ACTIVITY_GROUP: Record<string, HomeGroup> = {
   use_toilet: 'toilet',
   watch_tv: 'media',
   listen_radio: 'media',
+  cold_drink: 'kitchen',
+  relax_sofa: 'seat',
+  sit_rest: 'seat',
 };
 
 export function activityGroup(activityId: string): HomeGroup {
@@ -50,7 +53,8 @@ export type FurnitureKind =
   | 'kerosene_stove' | 'hotplate' | 'cooktop' | 'kitchen' | 'counter' | 'island' | 'fridge' | 'gas'
   | 'bucket' | 'mat'
   | 'bucket_bath' | 'shower' | 'bathtub' | 'toilet' | 'pit_toilet' | 'sink'
-  | 'generator' | 'drum' | 'clothesline' | 'stall';
+  | 'generator' | 'drum' | 'clothesline' | 'stall'
+  | 'drum_bucket' | 'gas_cooker';
 
 export interface KindMeta {
   /** Footprint in local space (before rotation). */
@@ -116,7 +120,15 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   drum: { w: 0.6, d: 0.6, solid: true, label: 'Water drum' },
   clothesline: { w: 2.4, d: 0.2, solid: false, label: 'Clothesline' },
   stall: { w: 1.2, d: 1.2, solid: false, label: 'Stall' },
+  drum_bucket: { w: 1.0, d: 0.6, solid: true, group: 'bath', spot: [0.1, 0.65, Math.PI], label: 'Water drum and bucket' },
+  gas_cooker: { w: 0.95, d: 0.6, solid: true, group: 'kitchen', spot: [-0.12, 0.62, Math.PI], label: 'Gas cooker' },
 };
+
+/** Kinds that come with the house (bathroom, shared compound things, wall units). Everything else is
+ * the player's own furniture and is replaced by their furniture set (furnishLayout). */
+export const FIXED_KINDS: ReadonlySet<FurnitureKind> = new Set<FurnitureKind>([
+  'toilet', 'pit_toilet', 'shower', 'bathtub', 'sink', 'bucket_bath', 'generator', 'drum', 'clothesline', 'ac', 'stall',
+]);
 
 export interface FurnitureItem {
   id: string;
@@ -133,6 +145,7 @@ export interface FurnitureItem {
   group?: HomeGroup;
   /** This piece is where the Sim goes for the group (e.g. the sofa for 'media'). */
   actorFor?: HomeGroup[];
+<<<<<<< HEAD
   /**
    * The player's furniture id this piece shows (server table `furniture`). Pieces without `own` are part
    * of the house (walls, toilets, shower, counters, generator) and always show. Several pieces may share
@@ -141,6 +154,10 @@ export interface FurnitureItem {
   own?: string;
   /** Only shown when the player owns it (not in the old "everything" room used when the set is unknown). */
   extra?: boolean;
+=======
+  /** Home activities this piece hosts (a player's own furniture, from the server's furniture table). */
+  activities?: string[];
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
 }
 
 /** Wall segment [x1, z1, x2, z2] (axis-aligned). */
@@ -170,6 +187,8 @@ export interface HomeLayout {
   /** Spot the Sim idles at when nothing is going on [x, z, yaw]. */
   home: [number, number, number];
   furniture: FurnitureItem[];
+  /** Where each furniture-set slot goes [x, z, rot quarter turns] (see furnishLayout). */
+  slots: Record<string, [number, number, number]>;
 }
 
 const Q = 1; // quarter turn
@@ -191,6 +210,7 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
     windows: [['n', 1.4, 3.0], ['w', 1.2, 2.6]],
     yard: { colour: '#c98a5e' },
     home: [3.6, 3.4, -Math.PI / 4],
+    slots: { bed: [0.75, 1.1, 0], seat: [3.2, 2.9, 0], sofa: [2.0, 3.4, 3], tv: [0.3, 3.4, 1], stove: [4.7, 0.4, 0], fridge: [4.85, 1.45, 3], wardrobe: [3.4, 0.35, 0], bath: [6.8, 3.55, 3] },
     furniture: [
       { id: 'bunk1', kind: 'bunk', x: 0.6, z: 1.1, color: '#2f6fb3' },
       { id: 'bunk2', kind: 'bunk', x: 2.0, z: 1.1, color: '#b33f3f' },
@@ -226,7 +246,12 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
     doors: [['e', 2.4, 3.3]],
     windows: [['n', 2.3, 3.4]],
     yard: { colour: '#bf7a4c', fence: true },
+<<<<<<< HEAD
     home: [2.9, 2.0, -Math.PI / 4],
+=======
+    home: [2.6, 2.6, -Math.PI / 4],
+    slots: { bed: [0.85, 1.1, 0], seat: [1.3, 3.2, 3], sofa: [1.7, 3.3, 2], tv: [2.75, 0.3, 0], rug: [2.2, 2.4, 0], stove: [3.6, 2.0, 3], fridge: [3.75, 0.4, 0], wardrobe: [0.35, 3.0, 1], bath: [5.7, 3.5, 3] },
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
     furniture: [
       { id: 'rug', kind: 'rug', x: 1.05, z: 3.15, rot: 1 * Q, color: '#9c3b33', own: 'rug' },
       { id: 'bed', kind: 'bed_double', x: 0.85, z: 1.1, color: '#6d4aa0', own: 'bed' },
@@ -269,6 +294,7 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
     windows: [['n', 2.6, 4.0], ['w', 2.8, 4.0]],
     yard: { colour: '#c4875a' },
     home: [3.8, 3.2, -Math.PI / 4],
+    slots: { bed: [4.95, 1.5, 3], seat: [2.6, 3.5, 3], sofa: [2.6, 3.5, 3], tv: [0.3, 3.5, 1], ctable: [1.45, 3.5, 1], rug: [1.6, 3.5, 1], stove: [2.7, 0.35, 0], fridge: [3.55, 0.4, 0], wardrobe: [5.3, 0.35, 0], bath: [6.7, 2.0, 0] },
     furniture: [
       { id: 'toilet', kind: 'toilet', x: 0.45, z: 0.5 },
       { id: 'shower', kind: 'shower', x: 1.3, z: 0.65 },
@@ -314,6 +340,7 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
     windows: [['n', 0.8, 2.4], ['n', 3.8, 5.0], ['w', 3.6, 5.4]],
     yard: { colour: '#7aa35a' },
     home: [5.4, 4.4, -Math.PI / 4],
+    slots: { bed: [0.95, 1.15, 0], seat: [3.2, 4.7, 3], sofa: [3.2, 4.7, 3], tv: [0.3, 4.7, 1], ctable: [1.9, 4.7, 1], rug: [2.0, 4.7, 0], stove: [4.2, 0.35, 0], fridge: [5.1, 0.4, 0], wardrobe: [2.4, 0.35, 0], bath: [8.7, 2.6, 0] },
     furniture: [
       { id: 'bed', kind: 'bed_double', x: 0.95, z: 1.15, color: '#5b3fa0', own: 'bed' },
       { id: 'foam', kind: 'mattress', x: 0.85, z: 1.1, color: '#3a6ea5', own: 'foam_mattress', extra: true },
@@ -366,6 +393,7 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
     windows: [['n', 0.8, 2.8], ['n', 4.4, 6.6], ['w', 4.2, 6.8]],
     yard: { colour: '#6fa052' },
     home: [6.2, 5.6, -Math.PI / 4],
+    slots: { bed: [1.3, 1.25, 0], seat: [3.2, 5.6, 3], sofa: [3.2, 5.6, 3], tv: [0.3, 5.6, 1], ctable: [1.9, 5.6, 1], rug: [2.2, 5.6, 0], stove: [5.7, 0.35, 0], fridge: [4.4, 0.35, 0], wardrobe: [3.0, 0.35, 0], bath: [11.0, 3.0, 0] },
     furniture: [
       { id: 'kbed', kind: 'bed_king', x: 1.3, z: 1.25, color: '#efe9df', own: 'king_bed' },
       { id: 'bed', kind: 'bed_double', x: 1.15, z: 1.2, color: '#3d5a80', own: 'bed', extra: true },
@@ -454,4 +482,56 @@ export function actorFor(layout: HomeLayout, group: HomeGroup): FurnitureItem | 
 
 export function itemGroup(f: FurnitureItem): HomeGroup | undefined {
   return f.group ?? KINDS[f.kind].group;
+}
+
+/** A piece of furniture the player owns (server: player_furniture + furniture). */
+export interface OwnedPiece {
+  id: string;
+  kind: string;
+  slot: string;
+  activities: string[];
+  color?: string | null;
+}
+
+const SEATS = new Set<string>(['sofa', 'sofa_l', 'armchair']);
+
+/**
+ * The layout with the player's own furniture: the house's fixtures (FIXED_KINDS) stay, every other
+ * piece is replaced by the owned pieces, each placed at its slot. Pieces with an unknown kind or a
+ * slot this layout doesn't have are skipped; the first piece in a slot wins. `null` = the full
+ * default furnishing (dev page, before the furniture loads).
+ */
+export function furnishLayout(base: HomeLayout, pieces: OwnedPiece[] | null): HomeLayout {
+  if (!pieces) return base;
+  const fixtures = base.furniture.filter((f) => FIXED_KINDS.has(f.kind));
+  const used = new Set<string>();
+  const own: FurnitureItem[] = [];
+  for (const p of pieces) {
+    const at = base.slots[p.slot];
+    if (!at || used.has(p.slot) || !(p.kind in KINDS)) continue;
+    used.add(p.slot);
+    own.push({
+      id: `own_${p.id}`,
+      kind: p.kind as FurnitureKind,
+      x: at[0],
+      z: at[1],
+      rot: at[2],
+      color: p.color ?? undefined,
+      activities: p.activities,
+      actorFor: SEATS.has(p.kind) ? ['media', 'seat'] : undefined,
+    });
+  }
+  return { ...base, furniture: [...fixtures, ...own] };
+}
+
+/** Where an activity happens: the group's explicit actor (sofa for TV), then a piece that hosts the
+ * activity (the drum for a bucket bath), then the group's usual piece. */
+export function pieceFor(layout: HomeLayout, activityId: string | null | undefined, group: HomeGroup): FurnitureItem | null {
+  const explicit = layout.furniture.find((f) => f.actorFor?.includes(group));
+  if (explicit) return explicit;
+  if (activityId) {
+    const host = layout.furniture.find((f) => f.activities?.includes(activityId));
+    if (host) return host;
+  }
+  return actorFor(layout, group);
 }

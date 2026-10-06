@@ -2,6 +2,8 @@
 import { create } from 'zustand';
 import type { RealtimeChannel, Session } from '@supabase/supabase-js';
 import { supabase, supabaseConfigured } from '../lib/supabase';
+import { startPresence, stopPresence } from './presence';
+import { playCue } from '../lib/sound';
 import { rpc, errorMessage, GameError } from '../lib/api';
 import { syncServerTime } from '../lib/clock';
 import { ensureConfig } from '../lib/config';
@@ -115,10 +117,13 @@ export const useGame = create<GameStore>((set, get) => ({
 
   applyState: (raw) => {
     const s = normalizeState(raw);
+    const prev = get().state?.profile;
+    if (prev && prev.id === s.profile.id && s.profile.cash + s.profile.bank > prev.cash + prev.bank) playCue('money');
     if (s.server_time) syncServerTime(s.server_time);
     set({ state: s, status: 'ready', error: null });
     const uid = s.profile.id;
     if (!live || live.uid !== uid) startLive(uid);
+    startPresence(uid, s.travel ? null : s.profile.location_id);
     if (!get().locations.length) void get().loadLocations();
   },
 
@@ -187,6 +192,7 @@ function startLive(uid: string) {
     )
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: `user_id=eq.${uid}` }, (payload) => {
       const ev = payload.new as GameEvent;
+      playCue('alert');
       useGame.setState((s) => ({
         events: [ev, ...s.events.filter((e) => e.id !== ev.id)].slice(0, 80),
         unread: s.unread + 1,
@@ -209,6 +215,7 @@ function startLive(uid: string) {
 }
 
 function stopLive() {
+  stopPresence();
   if (!live) return;
   void supabase.removeChannel(live.channel);
   window.clearInterval(live.heartbeat);

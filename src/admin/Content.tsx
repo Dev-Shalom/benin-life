@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 // Content tables: homes, furniture, traits, dreams, careers, items, activities, places, origins, banned words.
+=======
+// Content tables: homes, furniture, starter furniture, traits, dreams, careers, items, activities, places,
+// origins, banned words.
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
 // Reads with admin_table_rows, writes with admin_row_upsert (server whitelists columns + types).
 import { useMemo, useState } from 'react';
 import { toast } from '../ui';
@@ -55,6 +60,35 @@ const DEFS: TableDef[] = [
     newRow: { emoji: '🪑', kind: 'stool', provides: [], activity_pct: {}, labels: {}, rank: 0, sort: 200, active: true },
   },
   {
+    id: 'furniture', table: 'furniture', title: 'Furniture', emoji: '🛋️', blurb: 'Home furniture pieces: 3D look, where they stand and the home activities they host.',
+    pk: ['id'], insert: true, inline: ['rest_pct'],
+    titleOf: (r) => `${r.emoji} ${r.name}`, subOf: (r) => `${r.kind} · slot ${r.slot}${(r.activities as string[]).length ? ` · ${(r.activities as string[]).join(', ')}` : ''}${r.rest_pct !== 100 ? ` · rest ${r.rest_pct}%` : ''}`,
+    fields: [
+      { key: 'name', label: 'Name', type: 'text' }, { key: 'emoji', label: 'Emoji', type: 'text' },
+      { key: 'activities', label: 'Activities it hosts', type: 'list', help: 'Home activity ids, e.g. sleep, nap, bathe, cook_home, watch_tv, relax_sofa, cold_drink, sit_rest' },
+      { key: 'rest_pct', label: 'Rest % (sleep energy)', type: 'int', help: '100 = a proper bed; the foam mat is 90' },
+      { key: 'kind', label: '3D kind', type: 'text', help: 'e.g. mattress, bed_double, bed_single, sofa, tv, fridge, gas_cooker, kerosene_stove, stool, drum_bucket, wardrobe, rug, centre_table' },
+      { key: 'slot', label: 'Default slot', type: 'text', help: 'bed, seat, sofa, tv, stove, fridge, bath, wardrobe, rug, ctable' },
+      { key: 'color', label: 'Colour (#hex)', type: 'textnull' },
+      { key: 'description', label: 'Description', type: 'long' }, { key: 'sort', label: 'Sort order', type: 'int' },
+      { key: 'active', label: 'Active', type: 'bool' },
+    ],
+    newRow: { emoji: '🪑', kind: 'stool', slot: 'seat', activities: [], rest_pct: 100, description: '', sort: 200, active: true },
+  },
+  {
+    id: 'starter_furniture', table: 'starter_furniture', title: 'Starter furniture', emoji: '📦', blurb: 'What each origin starts with at home. A row for one home replaces the all-homes row in the same slot. Given when a home is chosen.',
+    pk: ['id'], insert: true,
+    titleOf: (r) => `${String(r.origin).toUpperCase()} · ${r.furniture_id}`, subOf: (r) => `${r.start_home ?? 'every home'}${r.slot ? ` · slot ${r.slot}` : ''}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'origin', label: 'Origin', type: 'text', help: 'lapo or nepo' },
+      { key: 'furniture_id', label: 'Furniture id', type: 'text' },
+      { key: 'start_home', label: 'Only for home (start home id)', type: 'textnull', help: 'Empty = every home, e.g. uniben_hostel' },
+      { key: 'slot', label: 'Slot', type: 'textnull', help: "Empty = the piece's default slot" },
+      { key: 'sort', label: 'Sort order', type: 'int' }, { key: 'active', label: 'Active', type: 'bool' },
+    ],
+    newRow: { origin: 'lapo', furniture_id: 'stool', start_home: null, slot: null, sort: 100, active: true },
+  },
+  {
     id: 'traits', table: 'traits', title: 'Traits', emoji: '✨', blurb: 'Personality traits. Effects tweak needs, pay and skills.',
     pk: ['id'], insert: true, titleOf: (r) => `${r.emoji} ${r.name}`, subOf: (r) => String(r.description),
     fields: [
@@ -103,8 +137,12 @@ const DEFS: TableDef[] = [
       { key: 'game_minutes', label: 'Duration (game minutes, old timing only)', type: 'int' },
       { key: 'effects', label: 'Effects', type: 'json', help: 'e.g. {"energy": 90, "stress": -10}' },
       { key: 'scenes', label: 'Scenes', type: 'list' }, { key: 'home_only', label: 'Home only', type: 'bool' },
+<<<<<<< HEAD
       { key: 'requires', label: 'Needs furniture that lets you…', type: 'textnull', help: 'Home only: sleep, bath, cook, tv or radio. Empty = nothing needed.' },
       { key: 'requires_note', label: 'Shown when the furniture is missing', type: 'text' },
+=======
+      { key: 'needs_furniture', label: 'Needs furniture (home)', type: 'bool', help: 'Offered at home only when the player owns a piece that lists it (Furniture → Activities)' },
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
       { key: 'night_only', label: 'Night only', type: 'bool' }, { key: 'sort', label: 'Sort order', type: 'int' },
     ],
   },
@@ -140,7 +178,7 @@ const DEFS: TableDef[] = [
 ];
 
 const SHORT: Record<string, string> = {
-  price: 'Price', weekly_rent: 'Rent / week', cost: 'Cost', game_minutes: 'Minutes', max_seconds: 'Max sec', risk: 'Risk 0–1',
+  price: 'Price', weekly_rent: 'Rent / week', rest_pct: 'Rest %', cost: 'Cost', game_minutes: 'Minutes', max_seconds: 'Max sec', risk: 'Risk 0–1',
   pay_per_shift: 'Pay', shift_game_minutes: 'Minutes', xp_per_shift: 'XP', xp_to_next: 'XP to next',
 };
 const rowKey = (def: TableDef, r: Row) => def.pk.map((k) => String(r[k])).join('|');

@@ -23,10 +23,11 @@ supabase/migrations/
   20261005000500_bladder.sql            R4 (bladder need, toilet/TV/radio activities, players_online — docs/HUD_HOME.md)
   20261005000600_r6_fixes.sql           R6 (English server strings, no brand names)
   20261005000700_careers.sql            V1-3 (career tracks/levels, bronze_tech_hub, jobs RPCs — docs/CAREERS.md)
-  20261005000800_shops.sql              V1-4 (items, shops, Bag, ChopNow, rent ON + pay_rent — docs/SHOPS.md)
+  20261005000800_shops.sql              V1-4 (items, shops, Bag, Chowdeck, rent ON + pay_rent — docs/SHOPS.md)
   20261005000900_bank.sql               V1-5 (bank counter, PoS, phone transfers, money history — docs/BANK.md)
   20261005001000_chat.sql               V1-6 (location chat, reports, blocks — docs/CHAT.md)
   20261005001100_admin.sql              V1-7 (admin RPCs, owner claim, admin.* config hidden — docs/ADMIN.md)
+  20261006001100_life_restart.sql       S2 (welcome back config, profile_archive, life_restart, chat/audit FKs -> auth.users — docs/HUD_HOME.md)
   20261004001000_economy.sql            P2-ECON
   20261004002000_finance_farm_health.sql P2-FIN
   20261004003000_crime_police.sql       P2-CRIME
@@ -96,6 +97,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 - V1-5 (`docs/BANK.md`): no new tables. Config categories `bank` and `pos`; index `ledger_transfer_out_idx`. Street robbery still takes cash only, so the bank is the safe place.
 - V1-6 (`docs/CHAT.md`): `chat_messages` (id, location_id, user_id, username snapshot, body, created_at, hidden), `chat_reports`, `chat_blocks`, `chat_banned_words` (admin-editable profanity list). Clients may select `chat_messages` (RLS: not hidden, at the caller's current `profiles.location_id`, author not blocked by the caller) and their own `chat_blocks`; no client writes. `profiles` adds `chat_muted_until`. Config category `chat`. The Chat tab renders at every location without a `chat` action.
 - `origin_tiers` (P1-ORIGIN: id text pk, name, tagline, welcome, chance_key → game_config key of its roll %, is_default (exactly one), sort, perks jsonb) — select for anon+authenticated. See `docs/ORIGIN.md`.
+- S2 (`docs/HUD_HOME.md` "S2 welcome back"): `profile_archive` (id, user_id → auth.users, life_no, username, origin, cash, bank, profile jsonb, extra jsonb, archived_at; select own). `chat_messages.user_id`, `chat_reports.reporter_id`, `chat_blocks.*`, `admin_audit.admin_id/target_user`, `config_audit.admin_id` reference `auth.users` (not `profiles`) so they survive `life_restart`. Trigger `profiles_carry_life` copies `is_admin` and a running `chat_muted_until` from the last archived life into a new profile.
 - Realtime publication `supabase_realtime`: profiles, events, game_config, chat_messages (V1-6; the client subscribes to INSERT with `location_id=eq.<current place>`, one channel at a time).
 
 ### Core RPCs (P1-DB)
@@ -121,7 +123,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 | `work_shift` / `work_finish` | – | start a shift at the job's place; collect pay/XP/promotion when it ends (V1-3) |
 | `shop_list` / `shop_buy` | p_location / p_item, p_qty | shop items here (read) / buy with cash at a place in `sold_at` (V1-4) |
 | `item_use` / `item_sell` | p_item / p_item, p_qty | eat/drink/use one from the Bag / sell at a market for `resale_pct` (V1-4) |
-| `food_menu` / `food_order` | – / p_item, p_qty | ChopNow menu at delivery prices / order to the Bag, bank first then cash (V1-4) |
+| `food_menu` / `food_order` | – / p_item, p_qty | Chowdeck menu at delivery prices / order to the Bag, bank first then cash (V1-4) |
 | `pay_rent` | – | settle rent owed from anywhere, bank first then cash, partial OK (V1-4) |
 | `bank_info` / `bank_history` / `bank_recipient` | – / p_limit / p_username | balances, hours, PoS charge, transfer limits, places (read) / ledger with friendly labels (read) / check a username (V1-5) |
 | `bank_deposit` / `bank_withdraw` | p_amount | free, at a place with `bank` (Bronze Bank), banking hours `bank.open_hour`–`bank.close_hour` (V1-5) |
@@ -135,6 +137,7 @@ Panels are discovered with `import.meta.glob`, so a missing panel file never bre
 | `admin_grant_money` / `admin_ban` / `admin_mute` / `admin_set_admin` | p_id + p_account, p_delta, p_reason / p_banned, p_reason / p_minutes / p_is_admin | ledger `admin_grant` via `bl_add_money` / can't ban yourself / 0 = unmute / last-admin guard; all audited (V1-7) |
 | `admin_stats` / `admin_audit_list` / `admin_chat_reports` | – / p_limit / p_include_hidden | dashboard numbers (today = WAT midnight) / config + admin audit merged, newest first / reported messages (V1-7) |
 | `admin_claim` | – | caller becomes admin if their auth email is in `admin.bootstrap_emails` (audited) — the only admin RPC open to non-admins (V1-7) |
+| `life_restart` | – | {message, archive_id, life_no} — archive + delete the caller's profile (account kept, creator runs again); `life.restart_enabled`, `life.restart_cooldown_hours` (S2) |
 | `bank_transfer` | p_username, p_amount, p_note | bank→bank to another player from anywhere; fee, daily amount/count limits, cooldown, new-account wait; ledger `transfer_out`/`transfer_fee`/`transfer_in`, events to both (V1-5) |
 
 Street robbery baseline lives in `bl_roll_street_robbery(p_uid uuid, p_location text, p_mode text, p_traffic numeric) returns jsonb` (P1-DB). P2-CRIME may `create or replace` it with a richer version **keeping the signature**.

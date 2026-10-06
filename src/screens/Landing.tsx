@@ -105,6 +105,7 @@ export default function Landing() {
         <Link to="/" className="lp-brand" aria-label="Benin Life home">
           <Logo size={36} />
           <span className="lp-brand__name">Benin Life</span>
+          <span className="beta-badge" title="Benin Life is in beta: new features land often">Beta</span>
         </Link>
         <nav className="lp-nav__actions" aria-label="Account">
           <Link to={LOG_IN} className="lp-nav__login">{CTA_LOGIN}</Link>
@@ -263,6 +264,11 @@ export default function Landing() {
         </span>
         <p>Game money only. It has no real cash value.</p>
         <p>Made with love for Benin City.</p>
+        <nav className="lp-footer__links" aria-label="Legal">
+          <Link to="/terms">Terms of Service</Link>
+          <span aria-hidden>·</span>
+          <Link to="/privacy">Privacy Policy</Link>
+        </nav>
       </footer>
     </div>
   );

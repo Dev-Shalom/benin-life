@@ -43,6 +43,17 @@ The user wants the game to follow real daily life in Benin City. Waiting on new 
 - **Places must be entered, not just announced.** Tapping a place puts you INSIDE its 3D interior with the characters there (NPCs plus real players, capped), the zones and the action cards. This is L2 + L3; the references are in NOTES.md under "Live places walkthrough" (IMG_2398–2421). The user is waiting for this right after L1 and the money format.
 - Order after L1: money format (HANDOFF) → L2 interiors → L3 crowds → L4 map sheet + events → L5 landmarks.
 
+## Sim movement & life (user, 2026-10-06) — feel like The Sims 3, stay lightweight
+- **Tap the floor to walk there** inside the home and inside every place (L2 interiors): raycast the floor, simple grid/navmesh
+  pathing around furniture (A* on a coarse grid is enough), the Sim turns and walks there.
+- **Smooth, real walking**: proper walk cycle (legs/arms swing, slight body bob, turn-in-place easing), speed ramps up/down,
+  no sliding or snapping; tapping furniture walks there then does the action (short walk only — never delays short actions much).
+- **Alive when idle**: breathing (subtle chest/shoulder rise), weight shifts, occasional look-around/head turns, blinking if cheap,
+  small fidgets; after a task ends the Sim returns to a natural idle instead of freezing in the task pose.
+- Mood shows in posture (happy bounce vs tired slump) if cheap.
+- Lightweight: procedural animation on the existing low-poly rig (no heavy mocap files), one canvas, frameloop demand except while
+  animating, animation LOD (NPCs further away animate less).
+
 ## What the references show (see NOTES.md "Live places walkthrough")
 - Real-time clock confirmed; activities stay short (5–20 real seconds) → answer to the open question: **keep durations short**.
 - Every place = a **3D interior** you're inside, with **zones** and **action cards** per zone (duration, price/Free/Earns ₦, effect chips, Risky tag),
@@ -55,10 +66,11 @@ The user wants the game to follow real daily life in Benin City. Waiting on new 
 | # | Step | Scope |
 |---|---|---|
 | L1 | Real Benin time + short actions | clock.mode real (WAT), all day/night/rush/banking/rent/daily caps on the real calendar; needs decay retuned per real hour (admin); **action timing rule above** (sleep ≤15 s scaled by tiredness, all actions seconds, shifts ~15–20 s, travel ≤~20 s, bars fill live). |
+| M1 | Sim movement & life | tap-to-walk on the floor with pathing, smooth walk cycle, idle breathing/fidgets/look-around, natural return to idle after tasks; home first, reused by L2. |
 | L2 | Place interiors + zones | 3D interior per place type (market, buka, club/lounge, bank, hospital, campus, motor park, PoS, police, palace/museum respectful, tech hub, stadium, shrine, street); data-driven `place_zones` + `zone_actions` (activities, jobs, shop items mapped to zones); action cards UI with queue + cancel; mood lines per place × time. Phase-1 SVG scenes stay as the fallback / Lite mode header. |
 | L3 | Crowds | NPC roster (names, presets, lines) spawned by place type × real hour × weekday; real players present; render cap (config `crowd.max_visible`, default ~10), players first; name pills (white NPC / blue @player + green dot); "People N" list; chat bubbles over heads; streaming load pill. |
 | L4 | Map sheet + events | place sheet with description, share link, activity chips, "On today" (Samuel Ogbemudia Stadium matches, Friday/Saturday concerts, market days), travel mode cards + Go; top banners for live/upcoming events. |
 | L5 | Real landmarks | from docs/LANDMARKS.md. |
 
 ## Status
-- V1-8 done (v1 ready). References read. Order: L1 → L2 → L3 → L4 → L5.
+- V1-8 done (v1 ready). References read. Order: L1 ✅ → money format ✅ → starter homes → M1 Sim movement → L2 → L3 → L4 → L5.

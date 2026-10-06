@@ -21,6 +21,8 @@ If a migration and a frontend change depend on each other, the DB job and the Ve
 
 Open tabs from before a deploy reload themselves once if they ask for a JS chunk that no longer exists (`vite:preloadError` handler in `src/main.tsx`).
 
+**Update notice (S1).** Every build gets an id (`<git sha>-<build time>`; on Vercel the SHA comes from `VERCEL_GIT_COMMIT_SHA`). The `bl-version-json` plugin in `vite.config.ts` writes it to `dist/version.json` and bakes it into the app as `import.meta.env.VITE_BUILD_ID`. Production tabs fetch `/version.json?t=…` (`cache: 'no-store'`) every 3 min and on window focus / tab visible (at most once per 20 s); when the id differs they show a small phone-style dialog "There's a new update ✨" with **Refresh** (`location.reload()`; game state is on the server and prefs in localStorage, so nothing is lost) and **Later** (hidden until an even newer build appears). Never runs in dev; a failed or non-JSON fetch is ignored. Vercel serves `version.json` from the filesystem before the SPA rewrite. Code: `src/ui/UpdateNotice.tsx`.
+
 ## Rolling back
 - **Website:** Vercel → project → Deployments → pick the last good deployment → ⋯ → **Promote to Production** (instant, no rebuild). Then fix `main` (e.g. `git revert`) so the next push doesn't bring the bug back.
 - **Database:** migrations can't be undone automatically. Write a new migration that reverses the change (e.g. re-create the old function body) and push it. Config mistakes are easier: Admin → Audit → **↺ Restore old**, or Admin → Settings → "↺ Back to …".
@@ -46,7 +48,7 @@ Open tabs from before a deploy reload themselves once if they ask for a JS chunk
 ## Free-tier limits to watch (check the current numbers on supabase.com/pricing and vercel.com/pricing; they change)
 - **Supabase Free:** database size (around 500 MB), egress / bandwidth (a few GB a month), Realtime concurrent connections (around 200) and messages, monthly active users for Auth, and the project **pauses after about a week with no activity**. Watch them in Supabase → Settings → Usage / Reports.
   - Biggest growth: `ledger` (one row per money move), `events`, `chat_messages` (auto-trimmed after 48 h), `config_audit`/`admin_audit`.
-  - Realtime: every open game tab holds one connection (profile, chat, config). Concurrent players online is the number that hits the limit first.
+  - Realtime: every open game tab holds one connection (profile, chat, config, S1 presence channel `online`). Presence messages are tiny (`{l: place}`) but each join/leave/move is broadcast to every online tab, so the message count grows with players². Concurrent players online is the number that hits the limit first.
 - **Vercel Hobby:** bandwidth and build minutes per month; Hobby is for non-commercial use. The game is a static site, so this goes far; the 3D chunk (`three`, ~190 kB gzip) is the largest download and is cached after the first visit.
 
 ## If many players join, upgrade in this order

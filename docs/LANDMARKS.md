@@ -82,3 +82,7 @@ User example: Kada Cinema. Later we'll collect top landmarks for Lagos, Abuja an
 - Emotan Statue: https://en.wikipedia.org/wiki/Emotan_Statue
 - Premium areas: https://www.insidebenincity.com/hotels-in-benin-city-gra-visitor-guide.html , https://propertypro.ng/property-for-sale/in/edo/is-luxury
 - Chicken Republic: https://ng.africabz.com/edo/chicken-republic-129407
+
+
+## Update (user, 2026-10-06)
+Keep the real names (ShopRite, Kada, Mama Ebo, Protea, clubs, Ogba Zoo, Ogbe Stadium, Emotan Statue) and mix in made-up local names. Add car dealers and top clubs — see docs/SHIP_TODAY.md (L2+ section).

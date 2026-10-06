@@ -9,7 +9,7 @@ import { naira } from '../../lib/format';
 import { homeAct, scaleEffects } from '../../lib/furniture';
 import { NEED_KEYS, NEED_META, type NeedKey } from '../../lib/pidgin';
 import type { GameState } from '../../lib/types';
-import { useCatalog, type ActivityRow } from '../../state/catalog';
+import { hasFurnitureFor, useCatalog, type ActivityRow } from '../../state/catalog';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { Button, Icon, Sheet, toast } from '../../ui';
@@ -55,6 +55,7 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
   const refresh = useGame((s) => s.refresh);
   const activities = useCatalog((s) => s.activities);
   const loadActivities = useCatalog((s) => s.loadActivities);
+  const furniture = useCatalog((s) => s.furniture);
   const { clock } = useGameClock(5000);
   const cfg = useActionConfig();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -68,6 +69,7 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
     void loadActivities();
   }, [loadActivities]);
 
+<<<<<<< HEAD
   // what the Sim's furniture allows (label, reason); things it can do first
   const list = useMemo(
     () =>
@@ -76,6 +78,16 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
         .map((a) => ({ a, v: homeAct(state, a) }))
         .sort((x, y) => Number(y.v.ok) - Number(x.v.ok)),
     [activities, state, group],
+=======
+  // A piece of the player's own furniture lists what it hosts (the stool: sit and rest; a seat also
+  // lists TV/radio); house fixtures and wish chips go by group. Furniture-only actions need the piece.
+  const hosted = shown?.activities;
+  const list = useMemo(
+    () => homeActivities(activities, state.location.scene)
+      .filter((a) => (hosted ? hosted.includes(a.id) || (group === 'seat' && activityGroup(a.id) === 'media') : SHOWS[group].includes(activityGroup(a.id))))
+      .filter((a) => hasFurnitureFor(a, furniture)),
+    [activities, state.location.scene, group, hosted, furniture],
+>>>>>>> 6bef09efb9654b4c8cff8a7a9d2395e7b37f94b1
   );
 
   const close = () => pickHome(null);

@@ -194,7 +194,9 @@ export default function Auth() {
                   aria-describedby={err?.field === 'adult' ? `${uid}-adult-msg` : undefined} />
                 <span className="auth-check__box" aria-hidden><Icon name="check" size={14} stroke={3} /></span>
                 <span>
-                  I'm <b>18 or older</b> and I agree to the <b>Terms</b> and <b>Privacy Policy</b>.
+                  I'm <b>18 or older</b> and I agree to the{' '}
+                  <a href="/terms" target="_blank" rel="noopener" className="auth-check__link">Terms</a> and{' '}
+                  <a href="/privacy" target="_blank" rel="noopener" className="auth-check__link">Privacy Policy</a>.
                 </span>
               </label>
               {err?.field === 'adult' && <p className="field__msg field__msg--error" id={`${uid}-adult-msg`} role="alert">{err.msg}</p>}

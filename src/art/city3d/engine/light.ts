@@ -1,5 +1,6 @@
-// R5: day/night for the city from the game clock (hour as a float). Builds on the home's light
-// curve so the home and the city change at the same moments.
+// R5: day/night for the city from Benin time (hour as a float). Builds on the home's light curve so
+// the home and the city change at the same moments. S1: continuous (no snapping), see src/lib/daylight.ts.
+import { golden, mixHex as mix } from '../../../lib/daylight';
 import { homeLight } from '../../home3d/engine/light';
 
 export interface CityLight {
@@ -20,22 +21,12 @@ export interface CityLight {
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-function mix(a: string, b: string, t: number): string {
-  const pa = parseInt(a.slice(1), 16);
-  const pb = parseInt(b.slice(1), 16);
-  const ch = (s: number) => Math.round(lerp((pa >> s) & 255, (pb >> s) & 255, t));
-  return `#${((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1)}`;
-}
-
 export function cityLight(hour: number): CityLight {
   const h = ((hour % 24) + 24) % 24;
   const base = homeLight(h);
-  // darkness: 0 by day, ramps over dusk (17.5–20) and dawn (5–7)
-  let dark = 0;
-  if (h >= 20 || h < 5) dark = 1;
-  else if (h >= 17.5) dark = (h - 17.5) / 2.5;
-  else if (h < 7) dark = 1 - (h - 5) / 2;
-  const dusk = h >= 16.5 && h < 20 ? 1 - Math.abs(h - 18.5) / 2 : h >= 5 && h < 7.5 ? 1 - Math.abs(h - 6.2) / 1.4 : 0;
+  // darkness: 0 by day, eases over dusk (17:30-19:30) and dawn (05:30-07:00)
+  const dark = base.dark;
+  const dusk = golden(h);
   let sky = mix('#cfe5f1', '#16203f', dark);
   if (dusk > 0) sky = mix(sky, '#f0b48a', Math.max(0, dusk) * 0.5);
   return {

@@ -1434,6 +1434,34 @@ html[data-theme] .bl-toaster {
   transform: translateX(-50%);
   width: min(320px, 80vw);
 }
+/* M1: gentle "busy" hint where a floor tap landed while the Sim is busy */
+.home3d__hint {
+  position: absolute;
+  z-index: 2;
+  width: max-content;
+  max-width: min(230px, 70vw);
+  padding: 6px 12px;
+  border-radius: 14px;
+  font: 600 12.5px/1.3 var(--font-display);
+  text-align: center;
+  text-wrap: balance;
+  color: var(--glass-text);
+  background: var(--glass-strong);
+  box-shadow: var(--e3), inset 0 0 0 1px var(--line);
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+  animation: home3d-hint 1.6s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes home3d-hint {
+  0% { opacity: 0; transform: translate(-50%, calc(-100% - 4px)) scale(0.96); }
+  12% { opacity: 1; transform: translate(-50%, calc(-100% - 10px)) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home3d__hint { animation-name: home3d-hint-fade; }
+  @keyframes home3d-hint-fade { 0%, 100% { opacity: 0; } 10%, 80% { opacity: 1; } }
+}
 
 /* ---------- R4: furniture sheet, shortcuts, buy ---------- */
 .home-sheet__head {
@@ -2393,6 +2421,112 @@ kbd {
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
+/* S1 Ride app: destination search, from/to card, ride options */
+.ride-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 10px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink-3);
+  box-shadow: var(--e1);
+}
+.ride-search__input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+}
+.ride-row--map {
+  margin-bottom: 10px;
+  background: var(--primary-soft, #eaf7f0);
+}
+.ride-dest {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  box-shadow: var(--e1);
+  cursor: pointer;
+}
+.ride-dest__dots {
+  display: grid;
+  gap: 14px;
+  flex: none;
+}
+.ride-dest__dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+.ride-dest__dots span + span {
+  border-radius: 2px;
+  background: var(--green-700, #0e874e);
+}
+.ride-dest__from,
+.ride-dest__to {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ride-dest__from {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+.ride-dest__to {
+  font-weight: 700;
+  font-size: 15px;
+}
+.ride-dest__edit {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--green-700, #0e874e);
+}
+.ride-app__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 2px 8px;
+}
+.ride-app__head h4 {
+  flex: 1;
+  font-size: 15px;
+}
+.ride-app__book {
+  position: sticky;
+  bottom: -44px;
+  margin: 12px -14px -44px;
+  padding: 10px 14px 44px;
+  background: linear-gradient(to bottom, transparent, var(--phone-bg, #f4f5f7) 30%);
+}
+.ride-retry {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--green-700, #0e874e);
+  text-decoration: underline;
+  cursor: pointer;
+}
 .bank-card {
   display: grid;
   gap: 4px;
@@ -2843,7 +2977,7 @@ kbd {
   background: var(--surface-2);
 }
 
-/* ---------- V1-4: shops, Bag, ChopNow, Houses ---------- */
+/* ---------- V1-4: shops, Bag, Chowdeck, Houses ---------- */
 .items {
   display: grid;
   gap: 10px;
@@ -3048,7 +3182,7 @@ kbd {
   padding: 14px;
   border-radius: 20px;
   color: #fff;
-  background: linear-gradient(140deg, #e2452c, #ff8a6b);
+  background: linear-gradient(140deg, #0f7a4c, #4fc98a);
   box-shadow: var(--e2);
 }
 .chop__hero-emoji {
@@ -3733,4 +3867,247 @@ kbd {
 .banner__earn b {
   color: var(--green-600, #1a7f37);
   font-variant-numeric: tabular-nums;
+}
+
+/* S1: rail foot (Clean screen + Beta tag), Settings legal links */
+.rail-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.beta-badge--hud {
+  opacity: 0.85;
+}
+.settings-legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.settings-legal a {
+  color: var(--ink-2);
+  text-underline-offset: 3px;
+}
+
+/* ---------- S2: welcome back ---------- */
+.welcome {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--grad-sky);
+  transition: background 1.2s ease;
+}
+.welcome__stage {
+  position: absolute;
+  inset: 0;
+}
+.welcome__stage .home3d--fallback .home3d__svg {
+  opacity: 0.9;
+}
+.welcome__card {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(12px + var(--sab));
+  z-index: 2;
+  width: min(440px, calc(100% - 24px));
+  margin-inline: auto;
+  padding: 20px 20px 10px;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--e3);
+  animation: welcome-in 420ms var(--ease-out) both;
+}
+@media (min-width: 900px) {
+  .welcome__card {
+    left: calc(48px + var(--sal));
+    right: auto;
+    top: 0;
+    bottom: 0;
+    width: 380px;
+    height: fit-content;
+    margin: auto 0;
+    padding: 26px 26px 12px;
+  }
+}
+@keyframes welcome-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+.welcome.is-reduced .welcome__card {
+  animation-name: welcome-fade;
+}
+@keyframes welcome-fade {
+  from {
+    opacity: 0;
+  }
+}
+.welcome__who {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.welcome__face {
+  position: relative;
+  flex: none;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #dcecf8, #f4f7fb);
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5.5px var(--green-500), var(--e2);
+}
+.welcome__face > :first-child {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.welcome__face img {
+  width: 100%;
+  height: 100%;
+}
+.welcome__id {
+  display: grid;
+  min-width: 0;
+}
+.welcome__eyebrow {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--muted);
+}
+.welcome__away {
+  margin-top: 1px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.welcome__name {
+  margin: 2px 0 3px;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.welcome__where {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.welcome__money {
+  display: grid;
+  gap: 2px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+}
+.welcome__money-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+}
+.welcome__total {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.welcome__split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.welcome__split > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.welcome__actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+.welcome__logout {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) ease,
+    transform var(--t-press) var(--ease-out);
+}
+.welcome__logout:active:not(:disabled) {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .welcome__logout:hover {
+    color: var(--text);
+  }
+}
+.welcome__logout:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.welcome__lose {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0;
+  padding: 12px 14px;
+  list-style: none;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+  font-size: var(--fs-sm);
+}
+.welcome__word {
+  color: var(--text);
+  font-weight: 800;
+}
+.welcome__modal-art {
+  font-size: 34px;
+  line-height: 1;
+}
+@media (max-height: 640px) and (max-width: 899px) {
+  .welcome__card {
+    padding-top: 16px;
+  }
+  .welcome__face {
+    width: 56px;
+    height: 56px;
+  }
+  .welcome__money {
+    margin-top: 12px;
+    padding: 10px 14px;
+  }
+  .welcome__total {
+    font-size: 1.625rem;
+  }
 }

@@ -2,6 +2,9 @@
 -- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
 update game_config set value = '"accelerated"' where key = 'clock.mode';
 update game_config set value = '"game_minutes"' where key = 'action.mode';
+-- Starter furniture (20261006000400) scales sleep energy by the bed's rest_pct (LAPO mat 90 %);
+-- these tests pin the rent penalty maths, so every piece rests 100 % here (furniture_test covers it).
+update furniture set rest_pct = 100;
 
 -- Shops tests (V1-4): item seeds + shop locations, shop_list / shop_buy (location rule, cash, qty),
 -- inventory counts, item_use effects, boost items (soap + bath), item_sell at markets, ChopNow

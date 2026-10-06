@@ -1,10 +1,13 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { supabaseConfigured } from './lib/supabase';
 import { useGame } from './state/game';
 import { needsHome } from './api/creator';
 import { LoadingScreen, Toaster } from './ui';
+import { UpdateNotice } from './ui/UpdateNotice';
 import { P } from './lib/pidgin';
+import { getCfg, useConfig } from './lib/config';
+import { lastSeen, markWelcomed, shouldWelcome, trackPresence } from './lib/welcome';
 import Landing from './screens/Landing';
 import Auth from './screens/Auth';
 import Setup from './screens/Setup';
@@ -13,7 +16,10 @@ import ErrorScreen from './screens/ErrorScreen';
 // Heavier screens load on demand to keep the first load small on mobile data.
 const CreateSim = lazy(() => import('./screens/CreateSim'));
 const Game = lazy(() => import('./screens/Game'));
+const WelcomeBack = lazy(() => import('./screens/WelcomeBack'));
 const AdminRoute = lazy(() => import('./screens/AdminRoute'));
+const Terms = lazy(() => import('./screens/Legal').then((m) => ({ default: m.Terms })));
+const Privacy = lazy(() => import('./screens/Legal').then((m) => ({ default: m.Privacy })));
 // Dev-only gallery of the 3D avatars (not linked anywhere; dev server only).
 const AvatarLab = import.meta.env.DEV ? lazy(() => import('./art/avatar3d/dev/AvatarLab')) : null;
 const HomeLab = import.meta.env.DEV ? lazy(() => import('./art/home3d/dev/HomeLab')) : null;
@@ -40,6 +46,46 @@ function RequirePlayer({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * S2: the welcome-back screen (house, Sim, money, Continue / New life / Log out) before the game,
+ * once per tab and again after `life.welcome_after_minutes` away (src/lib/welcome.ts).
+ */
+function PlayGate() {
+  const uid = useGame((s) => s.state?.profile.id ?? null);
+  const { cfg, ready } = useConfig();
+  const enabled = cfg('life.welcome_enabled', true);
+  const [show, setShow] = useState<{ uid: string; on: boolean; seen: number | null } | null>(null);
+  const decided = show && show.uid === uid ? show : null;
+
+  useEffect(() => {
+    if (!uid || !ready || decided) return;
+    const on = enabled && shouldWelcome(uid, getCfg('life.welcome_after_minutes', 30));
+    setShow({ uid, on, seen: lastSeen(uid) });
+    if (!on) markWelcomed(uid);
+  }, [uid, ready, decided, enabled]);
+
+  // while playing: keep "last seen" fresh; coming back after a long absence shows the screen again
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
+  const playing = Boolean(decided && !decided.on);
+  useEffect(() => {
+    if (!uid || !playing) return;
+    return trackPresence(uid, () => getCfg('life.welcome_after_minutes', 30), () => {
+      if (enabledRef.current) setShow({ uid, on: true, seen: lastSeen(uid) });
+    });
+  }, [uid, playing]);
+
+  const onContinue = useCallback(() => {
+    if (!uid) return;
+    markWelcomed(uid);
+    setShow({ uid, on: false, seen: null });
+  }, [uid]);
+
+  if (!decided) return <LoadingScreen text={P.loadingGame} />;
+  if (decided.on) return <WelcomeBack lastSeenAt={decided.seen} onContinue={onContinue} />;
+  return <Game />;
+}
+
 function HomeRoute() {
   const session = useGame((s) => s.session);
   if (session) return <Navigate to="/play" replace />;
@@ -61,6 +107,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route
             path="/create"
             element={
@@ -74,7 +122,7 @@ export default function App() {
             element={
               <RequireSession>
                 <RequirePlayer>
-                  <Game />
+                  <PlayGate />
                 </RequirePlayer>
               </RequireSession>
             }
@@ -97,6 +145,7 @@ export default function App() {
         </Routes>
       </Suspense>
       <Toaster />
+      <UpdateNotice />
     </BrowserRouter>
   );
 }
