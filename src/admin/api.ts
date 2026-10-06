@@ -23,7 +23,7 @@ export type Row = Record<string, unknown>;
 
 export type AdminTable =
   | 'origin_tiers' | 'traits' | 'dreams' | 'start_homes' | 'career_tracks' | 'career_levels'
-  | 'items' | 'activities' | 'locations' | 'chat_banned_words';
+  | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture';
 
 export interface PlayerRow {
   id: string;
@@ -93,6 +93,9 @@ export const adminApi = {
   setAdmin: (id: string, isAdmin: boolean) => rpc<Msg>('admin_set_admin', { p_id: id, p_is_admin: isAdmin }),
   setOrigin: (id: string, origin: string, applyPerks: boolean) =>
     rpc<Msg>('admin_set_origin', { p_user: id, p_origin: origin, p_apply_perks: applyPerks }),
+  /** Set a player's own furniture ids; null = reset to the starter set for their origin + home. */
+  setFurniture: (id: string, furniture: string[] | null) =>
+    rpc<Msg & { furniture: string[] }>('admin_set_furniture', { p_user: id, p_furniture: furniture }),
   stats: () => rpc<Stats>('admin_stats'),
   audit: (limit = 150) => rpc<AuditEntry[]>('admin_audit_list', { p_limit: limit }),
   chatReports: () => rpc<ChatReport[]>('admin_chat_reports', { p_include_hidden: true }),

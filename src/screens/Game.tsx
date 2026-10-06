@@ -114,9 +114,15 @@ export default function Game() {
   const busyActive = Boolean(busyUntil && Date.parse(busyUntil) > now);
   const busyGroup = useMemo(() => {
     if (!busyUntil || !busyLabel || !busyActive) return null;
-    const a = activities?.find((x) => x.name === busyLabel && x.home_only);
-    return a ? { group: activityGroup(a.id), key: busyUntil } : null;
-  }, [busyUntil, busyLabel, busyActive, activities]);
+    // the busy label is the furniture label ("Bucket bath") when the server gave one, else the activity name
+    const homeActs = state?.home?.activities ?? {};
+    const byLabel = Object.keys(homeActs).find((id) => homeActs[id].label === busyLabel);
+    const a = byLabel ? { id: byLabel } : activities?.find((x) => x.name === busyLabel && x.home_only);
+    if (!a) return null;
+    const started = p?.busy_started_at ? Date.parse(p.busy_started_at) : now;
+    return { group: activityGroup(a.id), key: busyUntil, seconds: (Date.parse(busyUntil) - started) / 1000 };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busyUntil, busyLabel, busyActive, activities, state?.home]);
 
   const goHome = useCallback(() => {
     if (!p) return;
@@ -183,6 +189,7 @@ export default function Game() {
         {showHome ? (
           <HomeView
             layoutId={layout}
+            owned={p.furniture ?? null}
             avatar={p.avatar}
             busy={busyGroup}
             hour={hourF}

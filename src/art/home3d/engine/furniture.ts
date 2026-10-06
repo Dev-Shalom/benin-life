@@ -244,30 +244,71 @@ export function buildPiece(b: B, f: FurnitureItem, wallH: number) {
     case 'hotplate': {
       const tw = f.kind === 'hotplate' ? 0.55 : 0.6;
       const td = f.kind === 'hotplate' ? 0.45 : 0.5;
-      b.box(tw, 0.04, td, 0, 0.42, 0, WOOD_LIGHT);
-      legs4(b, tw, td, 0.42, 0.04, WOOD, 0.02);
-      if (f.kind === 'kerosene_stove') {
-        b.cyl(0.13, 0.15, 0.16, 0, 0.46, 0, '#3f6f8f', { seg: 10 });
-        b.cyl(0.12, 0.12, 0.02, 0, 0.62, 0, BLACK, { seg: 10 });
-      } else {
-        b.box(0.3, 0.06, 0.28, 0, 0.46, 0, '#dfe3e6');
-        b.cyl(0.1, 0.1, 0.01, 0, 0.52, 0, '#2a2a2a', { seg: 12 });
+      // on the floor it stands on a small wooden table; on a counter (y > 0) it sits on the worktop
+      const t = f.y ? 0 : 0.46;
+      if (!f.y) {
+        b.box(tw, 0.04, td, 0, 0.42, 0, WOOD_LIGHT);
+        legs4(b, tw, td, 0.42, 0.04, WOOD, 0.02);
       }
-      b.cyl(0.14, 0.13, 0.15, 0, f.kind === 'hotplate' ? 0.53 : 0.64, 0, '#b9c0c6', { seg: 12 }); // pot
-      b.box(0.1, 0.015, 0.02, 0.18, f.kind === 'hotplate' ? 0.65 : 0.76, 0, BLACK);
-      b.box(0.24, 0.02, 0.2, -tw / 2 + 0.14, 0.46, 0.08, '#d9a441'); // tray of pepper
+      if (f.kind === 'kerosene_stove') {
+        b.cyl(0.13, 0.15, 0.16, 0, t, 0, '#3f6f8f', { seg: 10 });
+        b.cyl(0.12, 0.12, 0.02, 0, t + 0.16, 0, BLACK, { seg: 10 });
+      } else {
+        b.box(0.3, 0.06, 0.28, 0, t, 0, '#dfe3e6');
+        b.cyl(0.1, 0.1, 0.01, 0, t + 0.06, 0, '#2a2a2a', { seg: 12 });
+        if (!f.y) b.cyl(0.11, 0.11, 0.36, -0.42, 0, -0.05, '#1f7a3f', { seg: 8 }); // small cylinder under it
+      }
+      b.cyl(0.14, 0.13, 0.15, 0, t + (f.kind === 'hotplate' ? 0.07 : 0.18), 0, '#b9c0c6', { seg: 12 }); // pot
+      b.box(0.1, 0.015, 0.02, 0.18, t + (f.kind === 'hotplate' ? 0.19 : 0.3), 0, BLACK);
+      if (!f.y) b.box(0.24, 0.02, 0.2, -tw / 2 + 0.14, 0.46, 0.08, '#d9a441'); // tray of pepper
       return;
     }
+    case 'cooktop': {
+      // on a counter: a two-burner gas top; on the floor: a freestanding cooker with an oven
+      const t = f.y ? 0 : 0.85;
+      if (!f.y) {
+        b.box(0.6, 0.85, 0.5, 0, 0, 0, c ?? '#e9edf0');
+        b.box(0.5, 0.42, 0.01, 0, 0.18, 0.251, '#2b2e35'); // oven door
+        b.box(0.36, 0.03, 0.03, 0, 0.66, 0.26, CHROME); // handle
+        for (const sx of [-0.18, -0.06, 0.06, 0.18]) b.cyl(0.02, 0.02, 0.02, sx, 0.74, 0.255, BLACK, { rx: Math.PI / 2, seg: 6 }); // knobs
+        b.box(0.6, 0.12, 0.04, 0, t, -0.23, '#c9ced3'); // back guard
+        b.cyl(0.14, 0.14, 0.5, -0.48, 0, -0.05, '#1f7a3f', { seg: 10 }); // gas cylinder beside it
+        b.cyl(0.08, 0.14, 0.08, -0.48, 0.5, -0.05, '#1f7a3f', { seg: 10 });
+      }
+      b.box(0.56, 0.03, 0.46, 0, t, 0, '#1e2126');
+      const burners: [number, number][] = f.y ? [[-0.13, 0], [0.13, 0]] : [[-0.13, -0.1], [0.13, -0.1], [-0.13, 0.1], [0.13, 0.1]];
+      for (const [sx, sz] of burners) b.cyl(0.07, 0.07, 0.02, sx, t + 0.03, sz, '#55595f', { seg: 10 });
+      b.cyl(0.13, 0.12, 0.16, -0.13, t + 0.05, f.y ? 0 : -0.1, '#c0392b', { seg: 12 }); // pot of stew
+      return;
+    }
+    case 'bucket': {
+      b.cyl(0.17, 0.13, 0.34, -0.03, 0, 0, c ?? '#2c7be5', { seg: 10 });
+      b.cyl(0.15, 0.15, 0.02, -0.03, 0.32, 0, '#5fa8ff', { seg: 10 }); // water
+      b.box(0.3, 0.015, 0.015, -0.03, 0.44, 0, '#1f55a8', { rz: 0.15 }); // handle
+      b.cyl(0.11, 0.07, 0.07, 0.15, 0, 0.12, '#f1c40f', { seg: 10 }); // bowl
+      return;
+    }
+    case 'mat': {
+      // woven raffia mat on the floor with a folded wrapper as a pillow
+      b.box(0.9, 0.03, 1.85, 0, 0, 0, c ?? '#c9a35b');
+      for (let i = -3; i <= 3; i++) b.box(0.9, 0.032, 0.05, 0, 0, i * 0.25, '#a8823f');
+      b.box(0.55, 0.08, 0.3, 0, 0.03, -0.7, '#c0392b');
+      b.box(0.8, 0.03, 0.7, 0, 0.03, 0.35, '#2f6fb3'); // wrapper as a cover
+      return;
+    }
+    case 'counter':
     case 'kitchen': {
       const col = c ?? WHITE;
       b.box(2.2, 0.86, 0.6, 0, 0, 0, col); // cabinets
       for (let i = -1; i <= 1; i++) b.box(0.01, 0.7, 0.01, i * 0.55, 0.08, 0.301, shadeHex(col, 0.75));
       b.box(2.24, 0.05, 0.64, 0, 0.86, 0, '#3a3f47'); // counter top
       b.box(2.2, 0.5, 0.03, 0, 0.91, -0.3, '#d8e6ec'); // backsplash tiles
-      // gas cooker on the left
-      b.box(0.6, 0.02, 0.5, -0.6, 0.91, 0, '#1e2126');
-      for (const sx of [-0.13, 0.13]) for (const sz of [-0.11, 0.11]) b.cyl(0.07, 0.07, 0.02, -0.6 + sx, 0.93, sz, '#55595f', { seg: 10 });
-      b.cyl(0.13, 0.12, 0.16, -0.73, 0.95, 0.1, '#c0392b', { seg: 12 }); // pot of stew
+      // gas cooker on the left ('counter' leaves the space empty for the player's own cooker)
+      if (f.kind === 'kitchen') {
+        b.box(0.6, 0.02, 0.5, -0.6, 0.91, 0, '#1e2126');
+        for (const sx of [-0.13, 0.13]) for (const sz of [-0.11, 0.11]) b.cyl(0.07, 0.07, 0.02, -0.6 + sx, 0.93, sz, '#55595f', { seg: 10 });
+        b.cyl(0.13, 0.12, 0.16, -0.73, 0.95, 0.1, '#c0392b', { seg: 12 }); // pot of stew
+      }
       // sink on the right
       b.box(0.55, 0.03, 0.42, 0.55, 0.9, 0, '#c9d1d6');
       b.box(0.45, 0.02, 0.32, 0.55, 0.905, 0, '#8b979f');

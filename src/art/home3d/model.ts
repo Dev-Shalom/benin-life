@@ -47,7 +47,8 @@ export type FurnitureKind =
   | 'wardrobe' | 'locker' | 'shelf'
   | 'tv' | 'tv_big' | 'radio'
   | 'fan' | 'lamp' | 'plant' | 'rug' | 'ac'
-  | 'kerosene_stove' | 'hotplate' | 'kitchen' | 'island' | 'fridge' | 'gas'
+  | 'kerosene_stove' | 'hotplate' | 'cooktop' | 'kitchen' | 'counter' | 'island' | 'fridge' | 'gas'
+  | 'bucket' | 'mat'
   | 'bucket_bath' | 'shower' | 'bathtub' | 'toilet' | 'pit_toilet' | 'sink'
   | 'generator' | 'drum' | 'clothesline' | 'stall';
 
@@ -76,7 +77,7 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   sofa_l: { w: 2.8, d: 0.9, solid: true, group: 'seat', spot: [0, 0.8, 0], seat: [0, 0.46, 0.06, 0], label: 'Sofa' },
   armchair: { w: 0.85, d: 0.85, solid: true, group: 'seat', spot: [0, 0.75, 0], seat: [0, 0.46, 0.06, 0], label: 'Armchair' },
   plastic_chair: { w: 0.5, d: 0.5, solid: true, group: 'seat', spot: [0, 0.5, 0], seat: [0, 0.45, 0.02, 0], label: 'Plastic chair' },
-  stool: { w: 0.4, d: 0.4, solid: true, label: 'Stool' },
+  stool: { w: 0.4, d: 0.4, solid: true, group: 'seat', spot: [0, 0.45, 0], seat: [0, 0.42, 0, 0], label: 'Stool' },
   bench: { w: 1.4, d: 0.4, solid: true, group: 'seat', spot: [0, 0.5, 0], seat: [0, 0.45, 0, 0], label: 'Bench' },
   table: { w: 0.9, d: 0.6, solid: true, label: 'Table' },
   dining: { w: 1.4, d: 0.9, solid: true, label: 'Dining table' },
@@ -95,10 +96,16 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   ac: { w: 0.9, d: 0.25, solid: false, label: 'Split AC' },
   kerosene_stove: { w: 0.6, d: 0.5, solid: true, group: 'kitchen', spot: [0, 0.6, Math.PI], label: 'Kerosene stove' },
   hotplate: { w: 0.55, d: 0.45, solid: true, group: 'kitchen', spot: [0, 0.55, Math.PI], label: 'Hot plate' },
+  // gas cooker: on a counter (y > 0) a two-burner top, on the floor a freestanding cooker
+  cooktop: { w: 0.6, d: 0.5, solid: true, group: 'kitchen', spot: [0, 0.68, Math.PI], label: 'Gas cooker' },
   kitchen: { w: 2.2, d: 0.62, solid: true, group: 'kitchen', spot: [-0.6, 0.62, Math.PI], label: 'Kitchen' },
-  island: { w: 1.6, d: 0.8, solid: true, group: 'kitchen', spot: [0, -0.75, 0], label: 'Kitchen island' },
+  /** Kitchen worktop + sink without a cooker (the cooker is the player's own piece). */
+  counter: { w: 2.2, d: 0.62, solid: true, label: 'Kitchen counter' },
+  island: { w: 1.6, d: 0.8, solid: true, label: 'Kitchen island' },
   fridge: { w: 0.65, d: 0.62, solid: true, group: 'kitchen', spot: [0, 0.65, Math.PI], label: 'Fridge' },
   gas: { w: 0.32, d: 0.32, solid: true, label: 'Gas cylinder' },
+  bucket: { w: 0.42, d: 0.42, solid: true, group: 'bath', label: 'Bucket and bowl' },
+  mat: { w: 0.9, d: 1.85, solid: true, group: 'bed', spot: [0.75, 0.2, -Math.PI / 2], seat: [0, 0.07, 0.82, 0], label: 'Sleeping mat' },
   bucket_bath: { w: 1.1, d: 1.1, solid: false, group: 'bath', spot: [0, 0, 0], label: 'Bathroom (bucket)' },
   shower: { w: 0.95, d: 0.95, solid: false, group: 'bath', spot: [0, 0, 0], label: 'Shower' },
   bathtub: { w: 0.8, d: 1.7, solid: true, group: 'bath', spot: [-0.65, 0, Math.PI / 2], label: 'Bathtub' },
@@ -126,6 +133,14 @@ export interface FurnitureItem {
   group?: HomeGroup;
   /** This piece is where the Sim goes for the group (e.g. the sofa for 'media'). */
   actorFor?: HomeGroup[];
+  /**
+   * The player's furniture id this piece shows (server table `furniture`). Pieces without `own` are part
+   * of the house (walls, toilets, shower, counters, generator) and always show. Several pieces may share
+   * an id (dining table + chairs), and alternatives share a spot (bed / foam / mat).
+   */
+  own?: string;
+  /** Only shown when the player owns it (not in the old "everything" room used when the set is unknown). */
+  extra?: boolean;
 }
 
 /** Wall segment [x1, z1, x2, z2] (axis-aligned). */
@@ -160,7 +175,7 @@ export interface HomeLayout {
 const Q = 1; // quarter turn
 
 export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
-  // UNIBEN hostel: a shared room with bunks, desks and lockers; bathroom stalls down the corridor.
+  // UNIBEN hostel: a shared room with the hall's bunks, desks and lockers; bathroom stalls down the corridor.
   hostel: {
     id: 'hostel',
     label: 'UNIBEN hostel room',
@@ -182,15 +197,17 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
       { id: 'locker1', kind: 'locker', x: 3.3, z: 0.35 },
       { id: 'locker2', kind: 'locker', x: 3.95, z: 0.35 },
       { id: 'desk1', kind: 'desk', x: 0.6, z: 3.6, rot: 2 * Q },
-      { id: 'chair1', kind: 'plastic_chair', x: 0.6, z: 3.0, color: '#e8e4dc' },
-      { id: 'radio', kind: 'radio', x: 0.95, z: 3.62, y: 0.75, rot: 2 * Q },
+      { id: 'chair1', kind: 'plastic_chair', x: 0.6, z: 3.0, color: '#e8e4dc', own: 'plastic_chair' },
+      { id: 'radio', kind: 'radio', x: 0.95, z: 3.62, y: 0.75, rot: 2 * Q, own: 'radio' },
       { id: 'desk2', kind: 'desk', x: 4.6, z: 1.6, rot: 3 * Q },
-      { id: 'chair2', kind: 'plastic_chair', x: 4.0, z: 1.6, rot: 1 * Q, color: '#3e8f5a', actorFor: ['media', 'seat'] },
-      { id: 'hotplate', kind: 'hotplate', x: 4.7, z: 0.4 },
-      { id: 'fan', kind: 'fan', x: 2.9, z: 2.6 },
-      { id: 'bucket', kind: 'bucket_bath', x: 6.6, z: 1.0, rot: 3 * Q },
+      { id: 'chair2', kind: 'plastic_chair', x: 4.0, z: 1.6, rot: 1 * Q, color: '#3e8f5a', actorFor: ['media', 'seat'], own: 'plastic_chair' },
+      { id: 'stool', kind: 'stool', x: 1.35, z: 3.05, own: 'stool', extra: true },
+      { id: 'hotplate', kind: 'hotplate', x: 4.7, z: 0.4, own: 'single_burner' },
+      { id: 'fan', kind: 'fan', x: 2.9, z: 2.6, own: 'standing_fan' },
+      { id: 'bath', kind: 'bucket_bath', x: 6.6, z: 1.0, rot: 3 * Q },
       { id: 'toilet', kind: 'pit_toilet', x: 6.6, z: 2.4, rot: 3 * Q },
-      { id: 'drum', kind: 'drum', x: 6.6, z: 4.6 },
+      { id: 'drum', kind: 'drum', x: 6.6, z: 4.6, own: 'water_drum' },
+      { id: 'bucket', kind: 'bucket', x: 5.95, z: 4.6, own: 'bucket', extra: true },
     ],
   },
 
@@ -199,8 +216,8 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
     id: 'face_me',
     label: 'Face-me-I-face-you room',
     w: 4.2,
-    d: 3.8,
-    lot: [0, 0, 7.2, 5.4],
+    d: 4.2,
+    lot: [0, 0, 7.2, 5.8],
     floor: { a: '#9e9a92', b: '#97938b', tile: 1.2 },
     wall: '#6b5e4e',
     wallInner: '#cfe3cf',
@@ -209,20 +226,28 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
     doors: [['e', 2.4, 3.3]],
     windows: [['n', 2.3, 3.4]],
     yard: { colour: '#bf7a4c', fence: true },
-    home: [2.6, 2.6, -Math.PI / 4],
+    home: [2.9, 2.0, -Math.PI / 4],
     furniture: [
-      { id: 'rug', kind: 'rug', x: 2.1, z: 2.7, color: '#9c3b33' },
-      { id: 'bed', kind: 'bed_double', x: 0.85, z: 1.1, color: '#6d4aa0' },
-      { id: 'wardrobe', kind: 'wardrobe', x: 2.2, z: 0.35, color: '#8a5a33' },
-      { id: 'fan', kind: 'fan', x: 3.6, z: 0.5 },
-      { id: 'table', kind: 'table', x: 0.6, z: 3.25, rot: 1 * Q },
-      { id: 'radio', kind: 'radio', x: 0.6, z: 3.45, y: 0.75, rot: 1 * Q },
-      { id: 'chair', kind: 'plastic_chair', x: 1.25, z: 3.2, rot: 3 * Q, color: '#e8e4dc', actorFor: ['media', 'seat'] },
-      { id: 'stove', kind: 'kerosene_stove', x: 3.6, z: 1.6, rot: 3 * Q },
-      { id: 'bucket', kind: 'bucket_bath', x: 6.2, z: 0.9, rot: 3 * Q },
+      { id: 'rug', kind: 'rug', x: 1.05, z: 3.15, rot: 1 * Q, color: '#9c3b33', own: 'rug' },
+      { id: 'bed', kind: 'bed_double', x: 0.85, z: 1.1, color: '#6d4aa0', own: 'bed' },
+      { id: 'foam', kind: 'mattress', x: 0.8, z: 1.1, color: '#3a6ea5', own: 'foam_mattress', extra: true },
+      { id: 'mat', kind: 'mat', x: 0.6, z: 1.1, own: 'sleeping_mat', extra: true },
+      { id: 'wardrobe', kind: 'wardrobe', x: 2.2, z: 0.35, color: '#8a5a33', own: 'wardrobe' },
+      { id: 'fridge', kind: 'fridge', x: 3.15, z: 0.4, own: 'fridge', extra: true },
+      { id: 'fan', kind: 'fan', x: 3.85, z: 0.4, own: 'standing_fan' },
+      { id: 'tv', kind: 'tv', x: 0.3, z: 3.15, rot: 1 * Q, own: 'tv', extra: true },
+      { id: 'sofa', kind: 'sofa', x: 2.05, z: 3.15, rot: 3 * Q, color: '#7a1f2b', actorFor: ['media', 'seat'], own: 'sofa', extra: true },
+      { id: 'radio', kind: 'radio', x: 1.0, z: 3.95, rot: 2 * Q, own: 'radio' },
+      { id: 'chair', kind: 'plastic_chair', x: 1.15, z: 3.2, rot: 3 * Q, color: '#e8e4dc', actorFor: ['media', 'seat'], own: 'plastic_chair' },
+      { id: 'stove', kind: 'kerosene_stove', x: 3.6, z: 1.6, rot: 3 * Q, own: 'kerosene_stove' },
+      { id: 'burner', kind: 'hotplate', x: 3.6, z: 1.6, rot: 3 * Q, own: 'single_burner', extra: true },
+      { id: 'cooker', kind: 'cooktop', x: 3.85, z: 1.6, rot: 3 * Q, own: 'gas_cooker', extra: true },
+      { id: 'stool', kind: 'stool', x: 3.05, z: 2.35, own: 'stool', extra: true },
+      { id: 'bath', kind: 'bucket_bath', x: 6.2, z: 0.9, rot: 3 * Q },
       { id: 'toilet', kind: 'pit_toilet', x: 6.2, z: 2.25, rot: 3 * Q },
-      { id: 'gen', kind: 'generator', x: 5.0, z: 4.7 },
-      { id: 'drum', kind: 'drum', x: 6.4, z: 4.6 },
+      { id: 'gen', kind: 'generator', x: 5.0, z: 5.1 },
+      { id: 'drum', kind: 'drum', x: 6.4, z: 5.0, own: 'water_drum' },
+      { id: 'bucket', kind: 'bucket', x: 5.8, z: 5.05, own: 'bucket', extra: true },
       { id: 'line', kind: 'clothesline', x: 4.9, z: 0.5, rot: 1 * Q },
     ],
   },
@@ -248,15 +273,23 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
       { id: 'toilet', kind: 'toilet', x: 0.45, z: 0.5 },
       { id: 'shower', kind: 'shower', x: 1.3, z: 0.65 },
       { id: 'sink', kind: 'sink', x: 0.35, z: 1.5, rot: 1 * Q },
-      { id: 'kitchen', kind: 'kitchen', x: 3.4, z: 0.35, color: '#f4f1ea' },
-      { id: 'gas', kind: 'gas', x: 2.1, z: 0.3 },
-      { id: 'bed', kind: 'bed_double', x: 4.95, z: 1.5, rot: 3 * Q, color: '#2e7d6b' },
-      { id: 'wardrobe', kind: 'wardrobe', x: 5.3, z: 0.35, color: '#7b4f2e' },
-      { id: 'tv', kind: 'tv', x: 0.3, z: 3.5, rot: 1 * Q },
-      { id: 'sofa', kind: 'sofa', x: 2.6, z: 3.5, rot: 3 * Q, color: '#b0473c', actorFor: ['media', 'seat'] },
-      { id: 'ctable', kind: 'centre_table', x: 1.45, z: 3.5, rot: 1 * Q },
-      { id: 'fan', kind: 'fan', x: 3.2, z: 2.0 },
+      { id: 'counter', kind: 'counter', x: 3.4, z: 0.35, color: '#f4f1ea' },
+      { id: 'cooker', kind: 'cooktop', x: 2.8, z: 0.35, y: 0.91, own: 'gas_cooker' },
+      { id: 'stove', kind: 'kerosene_stove', x: 2.8, z: 0.35, y: 0.91, own: 'kerosene_stove', extra: true },
+      { id: 'burner', kind: 'hotplate', x: 2.8, z: 0.35, y: 0.91, own: 'single_burner', extra: true },
+      { id: 'gas', kind: 'gas', x: 2.1, z: 0.3, own: 'gas_cooker' },
+      { id: 'bed', kind: 'bed_double', x: 4.95, z: 1.5, rot: 3 * Q, color: '#2e7d6b', own: 'bed' },
+      { id: 'foam', kind: 'mattress', x: 5.05, z: 1.5, rot: 3 * Q, color: '#3a6ea5', own: 'foam_mattress', extra: true },
+      { id: 'mat', kind: 'mat', x: 5.05, z: 1.5, rot: 3 * Q, own: 'sleeping_mat', extra: true },
+      { id: 'wardrobe', kind: 'wardrobe', x: 5.3, z: 0.35, color: '#7b4f2e', own: 'wardrobe' },
+      { id: 'tv', kind: 'tv', x: 0.3, z: 3.5, rot: 1 * Q, own: 'tv' },
+      { id: 'sofa', kind: 'sofa', x: 2.6, z: 3.5, rot: 3 * Q, color: '#b0473c', actorFor: ['media', 'seat'], own: 'sofa' },
+      { id: 'ctable', kind: 'centre_table', x: 1.45, z: 3.5, rot: 1 * Q, own: 'centre_table' },
+      { id: 'fan', kind: 'fan', x: 3.2, z: 2.0, own: 'standing_fan' },
+      { id: 'stool', kind: 'stool', x: 3.6, z: 1.3, own: 'stool', extra: true },
       { id: 'gen', kind: 'generator', x: 6.8, z: 1.0, rot: 1 * Q },
+      { id: 'drum', kind: 'drum', x: 6.85, z: 4.5, own: 'water_drum', extra: true },
+      { id: 'bucket', kind: 'bucket', x: 6.85, z: 3.85, own: 'bucket', extra: true },
       { id: 'plant', kind: 'plant', x: 6.8, z: 5.4 },
     ],
   },
@@ -282,26 +315,34 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
     yard: { colour: '#7aa35a' },
     home: [5.4, 4.4, -Math.PI / 4],
     furniture: [
-      { id: 'bed', kind: 'bed_double', x: 0.95, z: 1.15, color: '#5b3fa0' },
-      { id: 'wardrobe', kind: 'wardrobe', x: 2.4, z: 0.35, color: '#8a5a33' },
+      { id: 'bed', kind: 'bed_double', x: 0.95, z: 1.15, color: '#5b3fa0', own: 'bed' },
+      { id: 'foam', kind: 'mattress', x: 0.85, z: 1.1, color: '#3a6ea5', own: 'foam_mattress', extra: true },
+      { id: 'mat', kind: 'mat', x: 0.7, z: 1.1, own: 'sleeping_mat', extra: true },
+      { id: 'wardrobe', kind: 'wardrobe', x: 2.4, z: 0.35, color: '#8a5a33', own: 'wardrobe' },
       { id: 'ac', kind: 'ac', x: 1.6, z: 0.15 },
-      { id: 'kitchen', kind: 'kitchen', x: 4.45, z: 0.35, color: '#f4f1ea' },
-      { id: 'fridge', kind: 'fridge', x: 3.65, z: 1.9, rot: 1 * Q },
-      { id: 'gas', kind: 'gas', x: 5.3, z: 0.95 },
+      { id: 'counter', kind: 'counter', x: 4.45, z: 0.35, color: '#f4f1ea' },
+      { id: 'cooker', kind: 'cooktop', x: 3.85, z: 0.35, y: 0.91, own: 'gas_cooker' },
+      { id: 'stove', kind: 'kerosene_stove', x: 3.85, z: 0.35, y: 0.91, own: 'kerosene_stove', extra: true },
+      { id: 'burner', kind: 'hotplate', x: 3.85, z: 0.35, y: 0.91, own: 'single_burner', extra: true },
+      { id: 'fridge', kind: 'fridge', x: 3.65, z: 1.9, rot: 1 * Q, own: 'fridge' },
+      { id: 'gas', kind: 'gas', x: 5.3, z: 0.95, own: 'gas_cooker' },
+      { id: 'stool', kind: 'stool', x: 4.6, z: 1.35, own: 'stool', extra: true },
       { id: 'toilet', kind: 'toilet', x: 6.1, z: 0.5 },
       { id: 'shower', kind: 'shower', x: 7.45, z: 0.6 },
       { id: 'sink', kind: 'sink', x: 6.8, z: 0.3 },
-      { id: 'rug', kind: 'rug', x: 2.0, z: 4.7, color: '#b3332c' },
-      { id: 'tv', kind: 'tv', x: 0.3, z: 4.7, rot: 1 * Q },
-      { id: 'sofa', kind: 'sofa', x: 3.2, z: 4.7, rot: 3 * Q, color: '#7a1f2b', actorFor: ['media', 'seat'] },
-      { id: 'arm', kind: 'armchair', x: 2.0, z: 5.75, rot: 2 * Q, color: '#7a1f2b' },
-      { id: 'ctable', kind: 'centre_table', x: 1.9, z: 4.7, rot: 1 * Q },
-      { id: 'dining', kind: 'dining', x: 6.4, z: 3.35 },
-      { id: 'dchair1', kind: 'plastic_chair', x: 5.9, z: 4.1, rot: 2 * Q, color: '#c79a5a' },
-      { id: 'dchair2', kind: 'plastic_chair', x: 6.9, z: 4.1, rot: 2 * Q, color: '#c79a5a' },
+      { id: 'rug', kind: 'rug', x: 2.0, z: 4.7, color: '#b3332c', own: 'rug' },
+      { id: 'tv', kind: 'tv', x: 0.3, z: 4.7, rot: 1 * Q, own: 'tv' },
+      { id: 'sofa', kind: 'sofa', x: 3.2, z: 4.7, rot: 3 * Q, color: '#7a1f2b', actorFor: ['media', 'seat'], own: 'sofa' },
+      { id: 'arm', kind: 'armchair', x: 2.0, z: 5.75, rot: 2 * Q, color: '#7a1f2b', own: 'armchair' },
+      { id: 'ctable', kind: 'centre_table', x: 1.9, z: 4.7, rot: 1 * Q, own: 'centre_table' },
+      { id: 'dining', kind: 'dining', x: 6.4, z: 3.35, own: 'dining_set' },
+      { id: 'dchair1', kind: 'plastic_chair', x: 5.9, z: 4.1, rot: 2 * Q, color: '#c79a5a', own: 'dining_set' },
+      { id: 'dchair2', kind: 'plastic_chair', x: 6.9, z: 4.1, rot: 2 * Q, color: '#c79a5a', own: 'dining_set' },
       { id: 'lamp', kind: 'lamp', x: 0.35, z: 5.85 },
       { id: 'plant', kind: 'plant', x: 7.6, z: 5.8 },
       { id: 'gen', kind: 'generator', x: 8.8, z: 1.2, rot: 1 * Q },
+      { id: 'drum', kind: 'drum', x: 8.8, z: 3.2, own: 'water_drum', extra: true },
+      { id: 'bucket', kind: 'bucket', x: 8.8, z: 3.85, own: 'bucket', extra: true },
     ],
   },
 
@@ -326,35 +367,57 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
     yard: { colour: '#6fa052' },
     home: [6.2, 5.6, -Math.PI / 4],
     furniture: [
-      { id: 'bed', kind: 'bed_king', x: 1.3, z: 1.25, color: '#efe9df' },
-      { id: 'wardrobe', kind: 'wardrobe', x: 3.0, z: 0.35, color: '#5b3a24' },
+      { id: 'kbed', kind: 'bed_king', x: 1.3, z: 1.25, color: '#efe9df', own: 'king_bed' },
+      { id: 'bed', kind: 'bed_double', x: 1.15, z: 1.2, color: '#3d5a80', own: 'bed', extra: true },
+      { id: 'foam', kind: 'mattress', x: 1.0, z: 1.15, color: '#3a6ea5', own: 'foam_mattress', extra: true },
+      { id: 'mat', kind: 'mat', x: 0.8, z: 1.1, own: 'sleeping_mat', extra: true },
+      { id: 'wardrobe', kind: 'wardrobe', x: 3.0, z: 0.35, color: '#5b3a24', own: 'wardrobe' },
       { id: 'ac1', kind: 'ac', x: 1.4, z: 0.15 },
       { id: 'lamp1', kind: 'lamp', x: 2.6, z: 2.8 },
       { id: 'island', kind: 'island', x: 5.5, z: 2.0, color: '#e9e4dc' },
-      { id: 'kitchen', kind: 'kitchen', x: 5.7, z: 0.35, color: '#2f3640' },
-      { id: 'fridge', kind: 'fridge', x: 4.25, z: 0.35 },
+      { id: 'counter', kind: 'counter', x: 5.7, z: 0.35, color: '#2f3640' },
+      { id: 'cooker', kind: 'cooktop', x: 5.1, z: 0.35, y: 0.91, own: 'gas_cooker' },
+      { id: 'stove', kind: 'kerosene_stove', x: 5.1, z: 0.35, y: 0.91, own: 'kerosene_stove', extra: true },
+      { id: 'burner', kind: 'hotplate', x: 5.1, z: 0.35, y: 0.91, own: 'single_burner', extra: true },
+      { id: 'fridge', kind: 'fridge', x: 4.25, z: 0.35, own: 'fridge' },
+      { id: 'stool', kind: 'stool', x: 6.7, z: 1.25, own: 'stool', extra: true },
       { id: 'toilet', kind: 'toilet', x: 7.7, z: 0.5 },
       { id: 'tub', kind: 'bathtub', x: 9.5, z: 1.2 },
       { id: 'sink', kind: 'sink', x: 8.5, z: 0.3 },
-      { id: 'rug', kind: 'rug', x: 2.2, z: 5.6, color: '#d4b26a' },
-      { id: 'tv', kind: 'tv_big', x: 0.3, z: 5.6, rot: 1 * Q },
-      { id: 'sofa', kind: 'sofa_l', x: 3.6, z: 5.6, rot: 3 * Q, color: '#e6e0d6', actorFor: ['media', 'seat'] },
-      { id: 'arm', kind: 'armchair', x: 2.2, z: 7.0, rot: 2 * Q, color: '#a0703c' },
-      { id: 'ctable', kind: 'centre_table', x: 2.0, z: 5.6, rot: 1 * Q },
-      { id: 'dining', kind: 'dining', x: 8.0, z: 4.6 },
-      { id: 'dchair1', kind: 'plastic_chair', x: 7.5, z: 5.35, rot: 2 * Q, color: '#5b3a24' },
-      { id: 'dchair2', kind: 'plastic_chair', x: 8.5, z: 5.35, rot: 2 * Q, color: '#5b3a24' },
-      { id: 'dchair3', kind: 'plastic_chair', x: 7.5, z: 3.85, color: '#5b3a24' },
-      { id: 'dchair4', kind: 'plastic_chair', x: 8.5, z: 3.85, color: '#5b3a24' },
+      { id: 'rug', kind: 'rug', x: 2.2, z: 5.6, color: '#d4b26a', own: 'rug' },
+      { id: 'btv', kind: 'tv_big', x: 0.3, z: 5.6, rot: 1 * Q, own: 'big_tv' },
+      { id: 'tv', kind: 'tv', x: 0.3, z: 5.6, rot: 1 * Q, own: 'tv', extra: true },
+      { id: 'lsofa', kind: 'sofa_l', x: 3.6, z: 5.6, rot: 3 * Q, color: '#e6e0d6', actorFor: ['media', 'seat'], own: 'l_sofa' },
+      { id: 'sofa', kind: 'sofa', x: 3.4, z: 5.6, rot: 3 * Q, color: '#b0473c', actorFor: ['media', 'seat'], own: 'sofa', extra: true },
+      { id: 'arm', kind: 'armchair', x: 2.2, z: 7.0, rot: 2 * Q, color: '#a0703c', own: 'armchair' },
+      { id: 'ctable', kind: 'centre_table', x: 2.0, z: 5.6, rot: 1 * Q, own: 'centre_table' },
+      { id: 'dining', kind: 'dining', x: 8.0, z: 4.6, own: 'dining_set' },
+      { id: 'dchair1', kind: 'plastic_chair', x: 7.5, z: 5.35, rot: 2 * Q, color: '#5b3a24', own: 'dining_set' },
+      { id: 'dchair2', kind: 'plastic_chair', x: 8.5, z: 5.35, rot: 2 * Q, color: '#5b3a24', own: 'dining_set' },
+      { id: 'dchair3', kind: 'plastic_chair', x: 7.5, z: 3.85, color: '#5b3a24', own: 'dining_set' },
+      { id: 'dchair4', kind: 'plastic_chair', x: 8.5, z: 3.85, color: '#5b3a24', own: 'dining_set' },
       { id: 'ac2', kind: 'ac', x: 0.15, z: 5.0, rot: 1 * Q },
       { id: 'lamp2', kind: 'lamp', x: 0.35, z: 7.2 },
       { id: 'plant1', kind: 'plant', x: 9.6, z: 7.2 },
       { id: 'plant2', kind: 'plant', x: 4.6, z: 7.2 },
       { id: 'gen', kind: 'generator', x: 11.0, z: 1.4, rot: 1 * Q },
+      { id: 'drum', kind: 'drum', x: 11.0, z: 3.2, own: 'water_drum', extra: true },
+      { id: 'bucket', kind: 'bucket', x: 11.0, z: 3.85, own: 'bucket', extra: true },
       { id: 'plant3', kind: 'plant', x: 11.0, z: 8.4 },
     ],
   },
 };
+
+/**
+ * The layout with only the pieces this player owns (plus the house's own fixtures).
+ * `owned` null/undefined = unknown (old server or not loaded): the classic fully furnished room.
+ * Owned pieces with no spot in this layout are not drawn.
+ */
+export function furnishLayout(L: HomeLayout, owned: readonly string[] | null | undefined): HomeLayout {
+  const have = owned ? new Set(owned) : null;
+  const furniture = L.furniture.filter((f) => (!f.own ? true : have ? have.has(f.own) : !f.extra));
+  return furniture.length === L.furniture.length ? L : { ...L, furniture };
+}
 
 /** housing_id (server) -> layout. Unknown ids fall back on the location's scene. */
 const HOUSING_LAYOUT: Record<string, HomeLayoutId> = {

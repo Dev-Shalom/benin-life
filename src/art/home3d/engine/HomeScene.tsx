@@ -24,7 +24,7 @@ import { avatarKey } from '../../avatar3d/catalog';
 import { buildCharacter } from '../../avatar3d/engine/character';
 import { poseIdle, poseWalk } from '../../avatar3d/engine/anim';
 import { makeShadow } from '../../avatar3d/engine/scene';
-import { actorFor, GROUP_META, itemGroup, KINDS, LAYOUTS, type FurnitureItem, type HomeGroup, type HomeLayoutId, type HomePose } from '../model';
+import { actorFor, furnishLayout, GROUP_META, itemGroup, KINDS, LAYOUTS, type FurnitureItem, type HomeGroup, type HomeLayoutId, type HomePose } from '../model';
 import { buildGrid, findPath, footprint, randomFree, toLayout, type P2 } from '../nav';
 import { homeLight } from './light';
 import { poseCook, poseLie, poseScrub, poseSit, sitRootY } from './poses';
@@ -42,9 +42,14 @@ export interface HomeApi {
 
 export interface HomeSceneProps {
   layoutId: HomeLayoutId;
+  /** The player's furniture ids (server `profiles.furniture`); null/undefined = the classic full room. */
+  owned?: readonly string[] | null;
   avatar: AvatarConfig;
-  /** The home activity running now (key changes with each new run), or null. */
-  busy: { group: HomeGroup; key: string } | null;
+  /**
+   * The home activity running now (key changes with each new run), or null. `seconds` = real seconds
+   * left when it started: a short action gets a quick walk (or none) so the Sim isn't walking for most of it.
+   */
+  busy: { group: HomeGroup; key: string; seconds?: number } | null;
   /** Game hour as a float (14.5 = 2:30 pm). */
   hour: number;
   paused?: boolean;
@@ -71,6 +76,11 @@ const YAW_RANGE = 0.75;
 const ZOOM_MIN = 0.85;
 const ZOOM_MAX = 1.9;
 const WALK_SPEED = 1.15; // m/s
+/** Short actions: the walk to the furniture may use at most this share of the action's time... */
+const WALK_SHARE = 0.2;
+/** ...and never more than this many seconds; faster than MAX_HURRY x walking speed -> just appear there. */
+const WALK_MAX_S = 2.5;
+const MAX_HURRY = 3;
 /** Where the Sim was when the canvas last unmounted (so a short suspend doesn't replay the arrival). */
 let memory: { layout: string; pos: P2; yaw: number; at: number } | null = null;
 const _v = new Vector3();
@@ -89,6 +99,14 @@ interface Actor {
   then: 'idle' | 'pose';
   nextWander: number;
   faceTo: number | null;
+  /** Walking speed for the current path (m/s). */
+  speed: number;
+}
+
+function pathLength(path: P2[]): number {
+  let len = 0;
+  for (let i = 1; i < path.length; i++) len += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+  return len;
 }
 
 function Driver({ view, actor, paused }: { view: React.MutableRefObject<View>; actor: React.MutableRefObject<Actor>; paused: boolean }) {
@@ -113,6 +131,11 @@ function Driver({ view, actor, paused }: { view: React.MutableRefObject<View>; a
   return null;
 }
 
+/** Memory key: the layout plus its pieces (a different furniture set starts fresh at the door). */
+function memKey(L: { id: string; furniture: FurnitureItem[] }): string {
+  return `${L.id}:${L.furniture.length}:${L.furniture.map((f) => f.id).join(',')}`;
+}
+
 function spotOf(item: FurnitureItem): { p: P2; yaw: number } {
   const k = KINDS[item.kind];
   const [lx, lz, ly] = k.spot ?? [0, k.d / 2 + 0.35, Math.PI];
@@ -121,8 +144,10 @@ function spotOf(item: FurnitureItem): { p: P2; yaw: number } {
 }
 
 function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; actorRef: React.MutableRefObject<Actor> }) {
-  const { layoutId, avatar, busy, hour, selectedId, onPick, onReady, insetTop = 0, insetBottom = 0, view, actorRef } = props;
-  const L = LAYOUTS[layoutId];
+  const { layoutId, owned, avatar, busy, hour, selectedId, onPick, onReady, insetTop = 0, insetBottom = 0, view, actorRef } = props;
+  const ownedKey = owned ? [...owned].sort().join(',') : null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const L = useMemo(() => furnishLayout(LAYOUTS[layoutId], owned), [layoutId, ownedKey]);
   const { gl, scene, camera, size, invalidate } = useThree();
   const cx = (L.lot[0] + L.lot[2]) / 2;
   const cz = (L.lot[1] + L.lot[3]) / 2;
@@ -281,7 +306,7 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
   // only unmounted for a moment, e.g. while the Sim sheet turntable was open)
   useEffect(() => {
     const a = actorRef.current;
-    const mem = memory && memory.layout === L.id && performance.now() - memory.at < 10 * 60_000 ? memory : null;
+    const mem = memory && memory.layout === memKey(L) && performance.now() - memory.at < 10 * 60_000 ? memory : null;
     if (mem) {
       a.pos = mem.pos;
       a.yaw = mem.yaw;
@@ -300,6 +325,7 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
     a.path = findPath(grid, doorPt, [L.home[0], L.home[1]]);
     a.seg = 1;
     a.mode = 'walk';
+    a.speed = WALK_SPEED;
     a.then = 'idle';
     a.faceTo = L.home[2];
     a.nextWander = performance.now() + 20000;
@@ -312,7 +338,7 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
       const a = holder.current;
       // ignore StrictMode's instant remount in dev
       if (performance.now() - born < 1500) return;
-      memory = { layout: L.id, pos: a.mode === 'pose' && a.item ? spotOf(a.item).p : a.pos, yaw: a.yaw, at: performance.now() };
+      memory = { layout: memKey(L), pos: a.mode === 'pose' && a.item ? spotOf(a.item).p : a.pos, yaw: a.yaw, at: performance.now() };
     };
   }, [L, actorRef]);
 
@@ -340,6 +366,22 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
         a.mode = 'walk';
         a.then = 'pose';
         a.faceTo = s.yaw;
+        a.speed = WALK_SPEED;
+        // short action: hurry (or just be there) so the Sim spends the action at the piece, not walking to it
+        const secs = busy.seconds;
+        if (secs !== undefined && Number.isFinite(secs)) {
+          const len = pathLength(a.path);
+          const budget = Math.min(WALK_MAX_S, Math.max(0, secs) * WALK_SHARE);
+          if (len / WALK_SPEED > budget) {
+            if (budget <= 0.05 || len / budget > WALK_SPEED * MAX_HURRY) {
+              a.pos = s.p;
+              a.yaw = s.yaw;
+              a.mode = 'pose';
+            } else {
+              a.speed = len / budget;
+            }
+          }
+        }
         if (first) {
           // the activity was already running when the home opened: be there already
           a.pos = s.p;
@@ -409,13 +451,14 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
         a.path = findPath(grid, a.pos, p);
         a.seg = 1;
         a.mode = 'walk';
+        a.speed = WALK_SPEED;
         a.then = 'idle';
         a.faceTo = null;
       }
     }
 
     if (a.mode === 'walk') {
-      let move = WALK_SPEED * step;
+      let move = a.speed * step;
       while (move > 0 && a.seg < a.path.length) {
         const tgt = a.path[a.seg];
         const dx = tgt[0] - a.pos[0];
@@ -442,7 +485,7 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
         a.mode = a.then === 'pose' ? 'pose' : 'idle';
         if (a.faceTo !== null) a.yaw = a.faceTo;
       }
-      poseWalk(ch, t, 1);
+      poseWalk(ch, t, Math.min(2, a.speed / WALK_SPEED));
     }
 
     let x = a.pos[0];
@@ -555,7 +598,7 @@ function House(props: HomeSceneProps & { view: React.MutableRefObject<View>; act
 
 export default function HomeScene(props: HomeSceneProps) {
   const view = useRef<View>({ yaw: BASE_YAW, zoom: 1, dragging: false, visible: true });
-  const actor = useRef<Actor>({ pos: [0, 0], yaw: 0, mode: 'idle', path: [], seg: 0, pose: 'stand', item: null, then: 'idle', nextWander: 0, faceTo: null });
+  const actor = useRef<Actor>({ pos: [0, 0], yaw: 0, mode: 'idle', path: [], seg: 0, pose: 'stand', item: null, then: 'idle', nextWander: 0, faceTo: null, speed: WALK_SPEED });
   const wrap = useRef<HTMLDivElement>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ d: number; zoom: number } | null>(null);

@@ -89,7 +89,7 @@ begin
   perform set_config('bl.test_offset_seconds', '361', true);
   r := do_activity('nap');
   select * into me from profiles where id = v;
-  perform pg_temp.assert(me.busy_started_at = bl_now() and me.busy_label = (select name from activities where id = 'nap'),
+  perform pg_temp.assert(me.busy_started_at = bl_now() and me.busy_label = (get_my_state()->'home'->'activities'->'nap'->>'label'),  -- furniture label (starter homes)
                          'next activity restarts busy_started_at');
   perform pg_temp.assert(me.busy_until = bl_now() + make_interval(secs => (90 * v_rate)::double precision), 'nap 90 x rate');
 

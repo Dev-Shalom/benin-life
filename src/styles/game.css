@@ -1316,6 +1316,14 @@ div.wish-chip {
   font-size: 13px;
   color: var(--text-2);
 }
+/* home activity the Sim's furniture doesn't allow yet (starter homes) */
+.act__need {
+  font-weight: 600;
+  color: var(--text);
+}
+.act__need::before {
+  content: '🔒 ';
+}
 .act__meta,
 .act__effects {
   display: flex;

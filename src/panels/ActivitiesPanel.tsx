@@ -5,6 +5,7 @@ import { rpc, errorMessage } from '../lib/api';
 import { useGameClock } from '../lib/clock';
 import { activitySeconds, secondsLabel, useActionConfig } from '../lib/live';
 import { naira } from '../lib/format';
+import { homeAct, scaleEffects } from '../lib/furniture';
 import { NEED_KEYS, NEED_META, type NeedKey } from '../lib/pidgin';
 import type { PanelProps } from '../lib/types';
 import { Button, EmptyState, Icon, toast } from '../ui';
@@ -108,16 +109,21 @@ export default function ActivitiesPanel({ state, location, refresh, close }: Pan
 
   return (
     <div className="acts">
-      {list.map((a) => {
+      {list
+        .map((a) => ({ a, v: homeAct(state, a) }))
+        .sort((x, y) => Number(y.v.ok) - Number(x.v.ok))
+        .map(({ a, v }) => {
         const nightLocked = a.night_only && !clock.is_night;
         const broke = a.cost > state.profile.cash;
-        const disabled = nightLocked || broke;
+        const missing = !v.ok;
+        const disabled = missing || nightLocked || broke;
         return (
           <article key={a.id} className={`act${disabled ? ' is-locked' : ''}`}>
             <div className="act__top">
               <div className="grow">
-                <h4 className="act__name">{a.name}</h4>
+                <h4 className="act__name">{v.label}</h4>
                 {a.description && <p className="act__desc">{a.description}</p>}
+                {missing && v.reason && <p className="act__desc act__need">{v.reason}</p>}
                 <div className="act__meta">
                   <span className="chip"><Icon name="clock" size={12} /> {secondsLabel(activitySeconds(a, state.profile, cfg))}</span>
                   <span className="chip">{a.cost > 0 ? naira(a.cost) : 'Free'}</span>
@@ -126,10 +132,10 @@ export default function ActivitiesPanel({ state, location, refresh, close }: Pan
               </div>
               <Button size="sm" variant={a.cost > 0 ? 'primary' : 'green'} loading={busyId === a.id}
                 disabled={disabled || (busyId !== null && busyId !== a.id)} onClick={() => void doIt(a)}>
-                {nightLocked ? 'Night only' : broke ? 'Not enough cash' : 'Do it'}
+                {missing ? 'Not yet' : nightLocked ? 'Night only' : broke ? 'Not enough cash' : 'Do it'}
               </Button>
             </div>
-            <EffectChips effects={a.effects} />
+            <EffectChips effects={scaleEffects(a.effects, v.pct)} />
           </article>
         );
       })}
