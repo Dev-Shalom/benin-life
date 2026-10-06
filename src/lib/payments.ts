@@ -97,7 +97,7 @@ async function verifyOnServer(reference: string): Promise<{ ok: boolean; credite
 }
 
 function paystackProvider(): PaymentProvider {
-  const key = (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ?? '').trim();
+  const key = String(import.meta.env.PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '').trim();
   return {
     id: 'paystack',
     name: 'Paystack',

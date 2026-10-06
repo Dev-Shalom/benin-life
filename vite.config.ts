@@ -30,6 +30,9 @@ function versionFile(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), versionFile()],
+  // PAY: Vercel holds the Paystack public key as PAYSTACK_PUBLIC_KEY (public by design). Only that exact
+  // family is exposed; never widen this to 'PAYSTACK_' (it would match PAYSTACK_SECRET_KEY).
+  envPrefix: ['VITE_', 'PAYSTACK_PUBLIC_'],
   define: {
     'import.meta.env.VITE_BUILD_ID': JSON.stringify(BUILD_ID),
   },

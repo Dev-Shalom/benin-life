@@ -150,7 +150,7 @@ The current banner is too small and plain. The hype must **carry aura and take o
 - Light on phones: CSS and canvas particles, capped, and reduced motion gets a calm version.
 - Reference: the user says "check the GitHub repo for a reference". **No hype reference is in the repo yet**; asked the user to upload it. Build from this spec meanwhile, and adjust once the reference arrives.
 
-## PAY. Paystack + leaderboards (user, 2026-10-07): [running], top priority
+## PAY. Paystack + leaderboards (user, 2026-10-07): [done, payments.enabled off until the user tests]
 - **Real top-ups with Paystack.** The user is verified on Paystack. Flow:
   1. Paystack Inline checkout opens on the client with the public key.
   2. The server verifies the payment in a Supabase Edge Function using the secret key (stored as a Supabase secret, never in the repo).
@@ -162,6 +162,7 @@ The current banner is too small and plain. The hype must **carry aura and take o
   - **VIP list:** real money spent on top-ups, with ranks and tiers.
 - **VIP perk:** when a top-3 VIP player enters a place, everyone there gets an arrival announcement.
 - **P3 hype aura** is parked on the branch `wip/p3-hype-aura` (unfinished; the agent hit the usage limit).
+- **Built (agent notes, see docs/PAYMENTS.md):** migration `20261007000100_payments.sql` (topup_packs with 5 packs, payments + RLS, `payment_init`, service-role-only idempotent `bl_payment_credit` with amount check + ledger "Top-up via Paystack", `leaderboard_rich` / `leaderboard_vip` with tiers + your rank, `bl_vip_arrival` called from `travel_arrive`, `admin_payments`, admin spec `topup_packs`); Edge Functions `paystack-verify` + `paystack-webhook` (HMAC-SHA512, verify_jwt=false) + workflow `supabase-functions.yml`; Wallet with live packs (`payments.enabled` default **off**); phone app **Ranks**; gold VIP arrival banner at any place; admin Payments view + Content → Top-up packs + Settings toggle. Public key read from `PAYSTACK_PUBLIC_KEY` (envPrefix `PAYSTACK_PUBLIC_`) or `VITE_PAYSTACK_PUBLIC_KEY`. Tests: `payments_test.sql`.
 
 ## E1. Economy + storyline (user, 2026-10-07): [todo, after PAY]
 - **Harder economy for LAPO and Nepo alike:**
