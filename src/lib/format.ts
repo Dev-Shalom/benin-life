@@ -36,7 +36,8 @@ const SCALE: [number, string][] = [[15, 'Q'], [12, 'T'], [9, 'B'], [6, 'M'], [3,
 export function nairaShort(n: MoneyInput): string {
   const { neg, digits } = toDigits(n);
   const sign = neg ? '-' : '';
-  if (digits.length <= 4) return `${sign}₦${group(digits)}`;
+  // Under ₦100,000 stays in full (user rule, 2026-10-06): ₦99,999 · ₦100K · ₦1.2M
+  if (digits.length <= 5) return `${sign}₦${group(digits)}`;
   for (const [exp, suffix] of SCALE) {
     if (digits.length <= exp) continue;
     const whole = digits.slice(0, digits.length - exp);

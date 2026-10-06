@@ -329,10 +329,10 @@ begin
   perform pg_temp.assert(bl_naira(1250000000000) = '₦1,250,000,000,000', 'bl_naira trillions');
   perform pg_temp.assert(bl_naira(2500000000000000000) = '₦2,500,000,000,000,000,000', 'bl_naira past quadrillion (old mask printed #)');
   perform pg_temp.assert(bl_naira(-500) = '-₦500' and bl_naira(0) = '₦0' and bl_naira(999) = '₦999', 'bl_naira small + negative');
-  perform pg_temp.assert(bl_naira_short(950) = '₦950' and bl_naira_short(12500) = '₦12.5K' and bl_naira_short(1234567) = '₦1.2M'
+  perform pg_temp.assert(bl_naira_short(950) = '₦950' and bl_naira_short(12500) = '₦12,500' and bl_naira_short(99999) = '₦99,999' and bl_naira_short(100000) = '₦100K' and bl_naira_short(250000) = '₦250K' and bl_naira_short(1234567) = '₦1.2M'
                          and bl_naira_short(3400000000) = '₦3.4B' and bl_naira_short(1100000000000) = '₦1.1T'
                          and bl_naira_short(2000000000000000) = '₦2Q' and bl_naira_short(999999) = '₦999K'
-                         and bl_naira_short(2500000000000000000) = '₦2,500Q' and bl_naira_short(-12500) = '-₦12.5K', 'bl_naira_short scale');
+                         and bl_naira_short(2500000000000000000) = '₦2,500Q' and bl_naira_short(-125000) = '-₦125K', 'bl_naira_short scale');
 
   r := admin_player_detail(v_p);
   perform pg_temp.assert(r ?& array['profile','ledger','inventory','audit'], 'detail shape');
