@@ -1430,16 +1430,16 @@ html[data-theme] .bl-toaster {
 .home3d__hint {
   position: absolute;
   z-index: 2;
-  max-width: min(240px, 70vw);
+  width: max-content;
+  max-width: min(230px, 70vw);
   padding: 6px 12px;
-  border-radius: var(--r-pill);
-  font: 600 12.5px/1.25 var(--font-display);
+  border-radius: 14px;
+  font: 600 12.5px/1.3 var(--font-display);
+  text-align: center;
+  text-wrap: balance;
   color: var(--glass-text);
   background: var(--glass-strong);
   box-shadow: var(--e3), inset 0 0 0 1px var(--line);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   pointer-events: none;
   transform: translate(-50%, calc(-100% - 10px));
   animation: home3d-hint 1.6s cubic-bezier(0.23, 1, 0.32, 1) both;

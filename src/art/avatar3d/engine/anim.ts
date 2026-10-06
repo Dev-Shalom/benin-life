@@ -328,9 +328,10 @@ export function stepLength(c: Character, w: number): number {
   return 2 * c.dims.hipY * c.dims.scale * Math.sin(amp);
 }
 
-/** Cruise speed that keeps the cadence natural for this stride (short steps in a wrapper walk slower). */
+/** Cruise speed for this stride: about 2.25 steps a second, but never below 0.72 m/s (short steps in a
+ * wrapper get a quicker cadence instead; the phase follows the distance, so the feet never slide). */
 export function cruiseSpeed(c: Character, base = 1.15): number {
-  return Math.min(base, stepLength(c, 1) * 2.25);
+  return Math.min(base, Math.max(0.72, stepLength(c, 1) * 2.25));
 }
 
 /**

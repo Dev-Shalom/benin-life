@@ -204,7 +204,7 @@ function House(props: HomeSceneProps & {
       screen: new MeshBasicMaterial({ color: '#15181d' }),
       pick: new MeshBasicMaterial({ visible: false }),
       ring: new MeshBasicMaterial({ color: '#17a05c', transparent: true, opacity: 0.38, depthWrite: false }),
-      tap: new MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false }),
+      tap: new MeshBasicMaterial({ color: '#17a05c', transparent: true, opacity: 0, depthWrite: false }),
       mark: new MeshLambertMaterial({ color: '#2fbf77', emissive: '#0e874e', flatShading: true }),
     }),
     [],
@@ -334,7 +334,7 @@ function House(props: HomeSceneProps & {
     return m;
   }, [floorGeo, mats.pick, L]);
   useEffect(() => () => floorGeo.dispose(), [floorGeo]);
-  const tapGeo = useMemo(() => new RingGeometry(0.15, 0.21, 32), []);
+  const tapGeo = useMemo(() => new RingGeometry(0.16, 0.25, 32), []);
   const tapMark = useMemo(() => {
     const m = new Mesh(tapGeo, mats.tap);
     m.rotation.x = -Math.PI / 2;
@@ -386,7 +386,17 @@ function House(props: HomeSceneProps & {
     let s = 1234567;
     return () => ((s = (s * 16807) % 2147483647) / 2147483647);
   }, []);
-  const nowS = () => performance.now() / 1000;
+  // dev only: window.__blSlowMo = 0.2 slows walks, blends and the tap marker (for frame-by-frame checks)
+  const slowMo = () => (import.meta.env.DEV ? Number((window as { __blSlowMo?: number }).__blSlowMo) || 1 : 1);
+  const clock = useRef({ real: performance.now() / 1000, virt: performance.now() / 1000 });
+  /** Seconds (performance clock; runs slower under the dev slow-motion switch, never jumps). */
+  const nowS = () => {
+    const c = clock.current;
+    const r = performance.now() / 1000;
+    c.virt += (r - c.real) * slowMo();
+    c.real = r;
+    return c.virt;
+  };
 
   // first arrival: from the door to the idle spot (or back where the Sim was, if the canvas was
   // only unmounted for a moment, e.g. while the Sim sheet turntable was open)
@@ -472,16 +482,19 @@ function House(props: HomeSceneProps & {
           a.mode = 'pose';
         }
       }
-    } else if (a.mode === 'pose' || (a.mode === 'walk' && a.then === 'pose')) {
-      // stand up next to the piece; the pose blend eases back to the idle (no frozen task pose)
-      if (a.item) {
-        const s = spotOf(a.item);
-        place(a.w, s.p, s.yaw);
+    } else {
+      // no wandering off right after a task
+      a.nextWander = Math.max(a.nextWander, performance.now() + 12000);
+      if (a.mode === 'pose' || (a.mode === 'walk' && a.then === 'pose')) {
+        // stand up next to the piece; the pose blend eases back to the idle (no frozen task pose)
+        if (a.item) {
+          const s = spotOf(a.item);
+          place(a.w, s.p, s.yaw);
+        }
+        a.mode = 'idle';
+        a.item = null;
+        a.idleSince = nowS();
       }
-      a.mode = 'idle';
-      a.item = null;
-      a.idleSince = nowS();
-      a.nextWander = performance.now() + 12000;
     }
     invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -571,7 +584,7 @@ function House(props: HomeSceneProps & {
     const a = actorRef.current;
     const t = state.clock.elapsedTime;
     const now = nowS();
-    const step = Math.min(dt, 0.1);
+    const step = Math.min(dt, 0.1) * slowMo();
     if (orbitOn && props.orbit && props.orbit > 0) {
       // dt is clamped, so a hidden tab (no frames) resumes where it left off
       view.current.yaw = (view.current.yaw + (Math.PI * 2 * step) / props.orbit) % (Math.PI * 2);
@@ -584,7 +597,7 @@ function House(props: HomeSceneProps & {
     const tired = mood?.tired ?? 0;
     const happy = mood?.happy ?? 0;
 
-    if (a.mode === 'idle' && !busy && !props.walkLock && performance.now() > a.nextWander) {
+    if (a.mode === 'idle' && !busy && !props.walkLock && performance.now() > a.nextWander && now - a.idleSince > 6) {
       const p = randomFree(grid, rnd, [0.4, 0.4, L.w - 0.4, L.d - 0.4]);
       a.nextWander = performance.now() + 16000 + rnd() * 18000;
       if (p) walkTo(p);
@@ -709,7 +722,7 @@ function House(props: HomeSceneProps & {
         marking = true;
         const e = 1 - Math.pow(1 - u, 3);
         tapMark.scale.setScalar(0.7 + 0.55 * e);
-        mats.tap.opacity = 0.9 * (1 - u) * (1 - u);
+        mats.tap.opacity = 0.95 * (1 - u * u);
       }
     }
     actorObj.position.set(x, y, z);
