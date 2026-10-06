@@ -144,6 +144,20 @@ export class HomeBuilder {
     this.push(g, color, opt.layer ?? 'solid', x, y, z, opt.rx, opt.ry ?? 0, opt.rz, opt, Boolean(opt.occ));
   }
 
+  /** P1: any geometry (an extruded car body...), placed like a box: (x, y, z) + rotation, in the current frame.
+   * Non-indexed geometry gets a trivial index so every part merges with the boxes. */
+  geo(g: BufferGeometry, x: number, y: number, z: number, color: string, opt: BoxOpt = {}) {
+    if (!g.index) {
+      const n = g.attributes.position.count;
+      const idx = new Array<number>(n);
+      for (let i = 0; i < n; i++) idx[i] = i;
+      g.setIndex(idx);
+    }
+    if (!g.attributes.normal) g.computeVertexNormals();
+    for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') g.deleteAttribute(k);
+    this.push(g, color, opt.layer ?? 'solid', x, y, z, opt.rx, opt.ry, opt.rz, opt, !opt.noOcc);
+  }
+
   /** Fake light pool on the floor: an additive disc, bright centre fading to nothing (vertex colours). */
   pool(x: number, z: number, r: number, color: string, y = 0.02, strength = 1) {
     const g = new CircleGeometry(r, 20, 0, Math.PI * 2);
@@ -151,8 +165,9 @@ export class HomeBuilder {
     // CircleGeometry has one centre vertex (index 0) and a rim: add a mid ring for a softer falloff
     const ring = new CircleGeometry(r * 0.55, 20);
     ring.rotateX(-Math.PI / 2);
-    this.pushLight(g, color, x, y, z, (px, pz) => 1 - Math.min(1, Math.hypot(px - x, pz - z) / r), strength);
-    this.pushLight(ring, color, x, y + 0.003, z, (px, pz) => Math.max(0, 1 - Math.hypot(px - x, pz - z) / (r * 0.55)) * 0.6, strength);
+    // P1: a smooth (squared) falloff: soft edges, no visible disc rim
+    this.pushLight(g, color, x, y, z, (px, pz) => { const u = 1 - Math.min(1, Math.hypot(px - x, pz - z) / r); return u * u; }, strength);
+    this.pushLight(ring, color, x, y + 0.003, z, (px, pz) => { const u = Math.max(0, 1 - Math.hypot(px - x, pz - z) / (r * 0.55)); return u * u * 0.45; }, strength);
   }
 
   /** Fake light beam: an open cone from (x, y, z) down to the floor, bright at the top. */

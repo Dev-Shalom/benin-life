@@ -177,9 +177,68 @@ heaviest rooms; set it to 3 to be strictly under).
 ### Dev
 `window.__blRigs = n` overrides the rig count; `__place.stats()` gains `rigs` and `rigTriangles`.
 
+## P1 polish (migration `20261006001600_polish.sql`, tests `supabase/tests/polish_test.sql`)
+### People walk around (`src/art/place3d/engine/wander.ts`, wired in `PlaceScene.tsx`)
+- One **agent** per drawn person (NPCs and real players' figures), all on the place's one M1 nav grid, moved by the
+  same `stepWalker` as the Sim (spring-eased speed, turn on the spot, eased final facing; NPC cruise ~1 m/s, dancers
+  0.55, the waiter 1.25). Pause (role motion) → walk → pause, with staggered, seeded timers (first walks 2–10 s after
+  you walk in), so the room moves but never looks chaotic.
+- **By role** (`wanderKind` in `model.ts`, from `motion` + seat + role): `roam` (idle / phone people) visit spots in
+  their own zone or one of the 4 nearest; `dance` shuffles ≤ 1.4 m inside the floor; `stay` (bouncer, trader,
+  cashier, worker, fans) steps out 0.5–1.3 m and comes back to their spot; `waiter` (role Waiter / Waitress)
+  goes bar ↔ tables / VIP; `fixed` = the **DJ behind the booth** (the booth is now a shallow desk at the front of its
+  zone with a riser behind it) and the hype man next to them; `seat` stays seated.
+- **Separation:** a walker waits for someone close in front (0.6 m; the lower index has right of way) or for the
+  Sim (0.8 m), and picks a new spot after ~2.4 s. NPCs are never in the grid, so real players are never blocked.
+  At most 2 path plans per frame (A* spread over frames). Agents keep their state across crowd re-plans (by id).
+- **Rigs** walk with the real walk cycle (`poseGait`, phase by distance so feet don't slide, blended with the role
+  motion by gait weight); **instanced figures** glide with a bob and a leg "stride" (legs scaled in depth) and a
+  slight lean. Animation LOD unchanged (2 nearest rigs every frame, next 2 every 2nd, rest every 3rd; instances every
+  2nd); positions update every frame. 30 fps while people walk at Graphics High (24 on Low, 12 reduced motion);
+  **reduced motion = nobody wanders**. Tap boxes, blobs, pills and bubbles follow the walkers.
+### People in every place
+- +63 roster people (184 active): every active place type now has 5+ of its own (car dealers 8, airport 7, cyber 6,
+  farm 5, palace 6, police 6, shrine 6, workshop 6, zoo 7, PoS 6, salon 6, museum 6, monument 7...).
+- Crowd profiles: the all-day base rows that were 0 or 1 now have staff on duty (bank / car dealer / museum / salon /
+  workshop / zoo / farm / office / PoS / shrine 2, cinema / mall / palace / cyber / monument 3, police / hotel /
+  airport 4), plus a few evening bands; seeded once (`places.p1_people_seeded`). Markets and bukas stay empty in the
+  dead of night on purpose. Closed / hidden places still have nobody.
+### Luxury cars at every dealer (`src/art/place3d/engine/cars.ts`)
+- Procedural low-poly models (extruded side profiles with a chamfer + greenhouse + wheels + glow lamps; no assets):
+  **Mercedes-AMG GLE 63 Coupe** (white; Panamericana vertical-slat grille, coupe roofline, quad pipes),
+  **Mercedes-AMG G 63 "G-Wagon"** (matte grey; boxy, upright glass, round lamps, fender indicators, spare wheel on the
+  back door), **Lamborghini Urus** (yellow, black roof; wedge nose, hexagon arches / grille / pipes, Y lamps),
+  **Tesla Cybertruck** (brushed steel wedge, trapezoid arches, light bars), **Cadillac Escalade** (black, chrome
+  grille, vertical lamps), **Mercedes-Benz C300** (blue, star grille), **Toyota Camry** (red), a **Bajaj Boxer**
+  motorcycle and a **bicycle**.
+- New props: `lux_cars` (the showroom: Urus, G 63, Cybertruck, GLE on spotlit pads with tag stands) and `car_lot`
+  (Escalade, C300, new Camry, a tokunbo saloon, the Boxer and the bicycle). The type's showroom / lot zones were
+  widened to 9 m (only if still at the seeded size). The Tokunbo Lot's hidden showroom became its **Luxury corner**.
+- Items (category `vehicle`, sold at Ighodalo Car Deals, SDD Motors and the Tokunbo Lot only; admin-editable):
+  G-Wagon ₦350M, GLE 63 ₦180M, Urus ₦450M, Cybertruck ₦250M, Escalade ₦250M, C300 ₦95M, new Camry ₦75M (the tokunbo
+  "Muscle" stays ₦6.5M), Bajaj Boxer ₦1.6M, bicycle ₦180k. Same purchase flow (one of each, second tap, bank first).
+- **Own-vehicle travel:** any of them unlocks "Your own …" (mode `car`). With no car, a bicycle gives "Your bicycle"
+  (12 km/h, free, no traffic) and a Boxer "Your motorcycle" (35 km/h, ₦40/km, a third of the traffic); config
+  `travel.bicycle.*` / `travel.motorcycle.*`. `bl_travel_quote` re-created from its live definition (grants kept);
+  options carry `vehicle`. Risk = the own-vehicle (`car`) multiplier, the same the arrival roll uses.
+### Cost (SwiftShader, `__place.stats()`, Graphics High)
+| Scene | Before (calls / tris) | After (calls / tris) |
+|---|---|---|
+| 360 Signature 11 PM, phone | 54 / 25.8k | 53–56 / 24.5–27.9k (3–6 rigs) |
+| 360 Signature 11 PM, desktop | 61 / 26.9k | 63 / 29.2k (6 rigs), 0.96 ms |
+| Mama Ebo, phone | 57 / 22.1k | 57 / 22.3k |
+| SDD Motors (7 cars + 2 bikes), phone / desktop | 47 / 19.2k | 54 / 35.1k · 60–63 / 39k, 0.6–0.9 ms |
+| Bronze Bank / Museum / Igun Street 8 PM, phone (people now) | 46–48 / 15–16k | 49–51 / 19–24k |
+| LAPO home | 45 / 16.1k | 45 / 16.1k |
+| 360 Signature 11 PM, phone, Graphics **Low** | – | 51 / 21.4k (2 rigs, no pools / fog), 0.9 ms |
+| Oba Market 9 AM, phone (walking crowd) | 53 / 26.7k | 55 / 29.4k (6 rigs), 0.5 ms |
+The cars add ~12k triangles to the dealer room (still 1 merged mesh, +0 calls); the user lifted the triangle guide.
+Walking costs CPU only (a few short A* plans per second, at most 2 per frame). `bench()` stays 0.3–1.5 ms.
+
 ## Not done here (next steps)
-- L3 leftovers: NPCs stand still (no wandering between zones); the DJ stands in front of the booth, not behind it;
-  rigs don't rebuild when the graphics tier changes mid-visit (they do on the next visit); no streaming "Loading…" pill.
+- L3 leftovers: rigs don't rebuild when the graphics tier changes mid-visit (they do on the next visit); no streaming
+  "Loading…" pill. (P1 did the wandering and put the DJ behind the booth.)
+- P1 optional, not done: the player's own car parked outside their home / on the street.
 - L4: map place sheet with "On today" events (match days, concerts), travel cards + Go, live banners.
 - Interiors are client-side only (where you stand is never sent to the server), like the home.
 - Homes of other players show a simple interior whose actions say "Only in your own home".

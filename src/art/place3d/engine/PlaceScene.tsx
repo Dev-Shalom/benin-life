@@ -53,6 +53,7 @@ import { applyFeelRender, makeFan, makeFeelMats, makeSteam, sampleFrames, tickFe
 import { looksNight } from '../../../lib/daylight';
 import { buildCrowdRig, type CrowdRig } from '../../avatar3d/engine/crowd';
 import { poseCrowd } from './crowdPose';
+import { makeAgents, stepAgents, type Agent } from './wander';
 
 /** F1: camera height / distance (was 0.82): lower and more cinematic. */
 const CAM_ELEV = 0.68;
@@ -153,7 +154,7 @@ const _p = new Vector3();
 const _yAxis = new Vector3(0, 1, 0);
 const _tint = new Color();
 
-function Driver({ view, actor, paused, lively }: { view: React.MutableRefObject<View>; actor: React.MutableRefObject<Actor>; paused: boolean; lively: boolean }) {
+function Driver({ view, actor, paused, lively, walkers, fast }: { view: React.MutableRefObject<View>; actor: React.MutableRefObject<Actor>; paused: boolean; lively: boolean; walkers: React.MutableRefObject<number>; fast: boolean }) {
   const invalidate = useThree((s) => s.invalidate);
   useEffect(() => {
     let raf = 0;
@@ -164,15 +165,16 @@ function Driver({ view, actor, paused, lively }: { view: React.MutableRefObject<
       const a = actor.current;
       const hot = a.hot || (!paused && view.current.dragging);
       if (paused && !hot) return;
-      // idle life + crowd: 24 fps (dancers read fine), 12 fps reduced motion / quiet rooms
-      const fps = view.current.reduced ? 12 : lively ? 24 : 20;
+      // idle life + crowd: 24 fps (dancers read fine), 12 fps reduced motion / quiet rooms;
+      // P1: 30 fps at Graphics High while people walk around (smoother steps), 24 on Low
+      const fps = view.current.reduced ? 12 : walkers.current > 0 ? (fast ? 30 : 24) : lively ? 24 : 20;
       if (!hot && now - last < 1000 / fps) return;
       last = now;
       invalidate();
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [invalidate, view, actor, paused, lively]);
+  }, [invalidate, view, actor, paused, lively, walkers, fast]);
   return null;
 }
 
@@ -437,14 +439,14 @@ function Interior(props: PlaceSceneProps & {
     const mixT = indoor ? Math.min(1, dark) : 0;
     lights.hemi.color.set(indoor ? mixHex(homeLight(12).hemiSky, base.hemiSky, mixT) : lt.hemiSky);
     lights.hemi.groundColor.set(lt.hemiGround);
-    lights.hemi.intensity = kit.party ? (closed ? 1.25 : 0.8 + 0.4 * (1 - lt.dark)) : indoor ? Math.max(1.15, lt.hemi) : lt.hemi;
+    lights.hemi.intensity = kit.party ? (closed ? 1.25 : 0.98 + 0.32 * (1 - lt.dark)) : indoor ? Math.max(1.15, lt.hemi) : lt.hemi;
     lights.sun.color.set(lt.sun);
     lights.sun.intensity = indoor ? Math.max(0.9, lt.sunI * 0.8) : lt.sunI;
     lights.sun.position.set(lt.sunDir[0] * 20, lt.sunDir[1] * 20, lt.sunDir[2] * 20);
     lights.sun.target.position.set(0, 0, 0);
     lights.sun.target.updateMatrixWorld();
-    lights.lamp.intensity = kit.party ? (closed ? 0.6 : 2.4) : indoor ? 1.2 + lt.dark * 1.6 : lt.lamp * 0.6;
-    lights.lamp.color.set(kit.party && !closed ? '#ff8ad0' : '#ffcf8a');
+    lights.lamp.intensity = kit.party ? (closed ? 0.6 : 1.5) : indoor ? 1.2 + lt.dark * 1.6 : lt.lamp * 0.6;
+    lights.lamp.color.set(kit.party && !closed ? '#f0a6d4' : '#ffcf8a');
     // F1 rig: contrast (less ambient), the room's light colour, the lamp, light pools by time of day
     lights.hemi.intensity *= closed && kit.party ? 0.9 : rig.ambient;
     if (indoor) lights.hemi.color.lerp(_tint.set(rig.tint), rig.tintMix * (kit.party && closed ? 0.3 : 1));
@@ -458,8 +460,9 @@ function Interior(props: PlaceSceneProps & {
     applyFeelRender(gl, scene, { fog: q.fog, color: lt.horizon, depth: 40 * Math.hypot(1, CAM_ELEV), radius: Math.hypot(room.W, room.D) / 2, exposure: rig.exposure });
     mats.glass.color.set(indoor ? lt.glass : '#3fb1d9');
     // screens / light-up floors: off-ish while a party place is closed
-    mats.screen.color.set(kit.party ? (closed ? '#3a3350' : '#ff4fa3') : '#7ec8ff');
-    mats.glow.color.set(mixHex('#e2dccf', '#ffffff', Math.max(lt.dark, kit.party ? 1 : 0)));
+    mats.screen.color.set(kit.party ? (closed ? '#3a3350' : '#c8709c') : '#7ec8ff');
+    // P1: LED strips / lamps glow softer (the club's neon was too strong)
+    mats.glow.color.set(kit.party ? '#a9a2b8' : mixHex('#d6d0c4', '#efebe4', lt.dark));
     invalidate();
   }, [hourKey, lights, mats, room, closed, invalidate, rig, feel, q.fog, q.motion, gl, scene]);
 
@@ -484,6 +487,7 @@ function Interior(props: PlaceSceneProps & {
   useEffect(() => () => tapGeo.dispose(), [tapGeo]);
   const markT0 = useRef(-1);
 
+  const lastTRef = useRef(0);
   // ---- the background crowd (instanced; players first, capped by the parent)
   const crowdGeo = useMemo(() => crowdGeometry(), []);
   useEffect(() => () => { crowdGeo.torsoG.dispose(); crowdGeo.legsG.dispose(); crowdGeo.headG.dispose(); }, [crowdGeo]);
@@ -524,7 +528,8 @@ function Interior(props: PlaceSceneProps & {
     if (!crowdBlob) return;
     _q.identity();
     crowd.forEach((p, i) => {
-      _m.compose(_p.set(p.p[0], 0.012, p.p[1]), _q, _s.set(1, 1, 1));
+      const ag = agents[i];
+      _m.compose(_p.set(ag ? ag.w.pos[0] : p.p[0], 0.012, ag ? ag.w.pos[1] : p.p[1]), _q, _s.set(1, 1, 1));
       crowdBlob.setMatrixAt(i, _m);
     });
     crowdBlob.instanceMatrix.needsUpdate = true;
@@ -533,6 +538,21 @@ function Interior(props: PlaceSceneProps & {
   // pill priority: real players, then standing people nearest the camera (front of the room)
   const crowdOrder = useMemo(() => [...crowd].sort((a, b) => Number(b.player) - Number(a.player) || Number(Boolean(b.headliner)) - Number(Boolean(a.headliner)) || Number(a.seated) - Number(b.seated) || b.p[1] + b.p[0] * 0.5 - (a.p[1] + a.p[0] * 0.5)), [crowd]);
   const placed = useMemo<[number, number, number, number][]>(() => [], []);
+  // ---- P1: everyone walks around (engine/wander.ts). Agents keep their state across crowd re-plans (by id).
+  const agentsPrev = useRef(new Map<string, Agent>());
+  const agents = useMemo(() => {
+    const fresh = makeAgents(crowd, lastTRef.current);
+    const out = fresh.map((a, i) => {
+      const old = agentsPrev.current.get(a.id);
+      if (old && old.kind === a.kind) return old;
+      void i;
+      return a;
+    });
+    agentsPrev.current = new Map(out.map((a) => [a.id, a]));
+    return out;
+  }, [crowd]);
+  const walkersRef = useRef(0);
+  const agentById = useMemo(() => new Map(agents.map((a) => [a.id, a])), [agents]);
   const salts = useMemo(() => crowd.map((_, i) => (i * 1.7) % 6.28), [crowd]);
 
   // ---- L3: the nearest people get the real avatar rig (one skinned mesh = 1 draw call each); the rest stay
@@ -549,7 +569,7 @@ function Interior(props: PlaceSceneProps & {
       .map((x) => x.id);
   }, [crowd, rigN]);
   const rigGroup = useMemo(() => new Group(), []);
-  const rigs = useRef(new Map<string, { rig: CrowdRig; g: Group; idx: number; rank: number; salt: number }>());
+  const rigs = useRef(new Map<string, { rig: CrowdRig; g: Group; idx: number; rank: number; salt: number; bufA: Float32Array; bufB: Float32Array }>());
   const rigDetail = q.tier === 'low' ? 0.2 : 0.25;
   // a build pump: one rig every ~45 ms (walking in never stalls a frame for long). It reads the wanted ids from a
   // ref, so a crowd re-plan (a player joins, presence syncs) never cancels builds that are under way.
@@ -575,7 +595,7 @@ function Interior(props: PlaceSceneProps & {
           g.position.set(p.p[0], 0, p.p[1]);
           g.rotation.y = p.yaw;
           rigGroup.add(g);
-          rigs.current.set(id, { rig, g, idx, rank: ids.indexOf(id), salt: (hashStr(id) % 1000) / 100 });
+          rigs.current.set(id, { rig, g, idx, rank: ids.indexOf(id), salt: (hashStr(id) % 1000) / 100, bufA: new Float32Array(POSE_SIZE), bufB: new Float32Array(POSE_SIZE) });
           placeCrowd(lastT.current, true);
           invalidate();
         } catch {
@@ -628,16 +648,46 @@ function Interior(props: PlaceSceneProps & {
   const placeCrowd = (t: number, force = false) => {
     lastT.current = t;
     const n = frameN.current++;
+    const reduced = view.current.reduced;
+    // P1: rigs follow their agent every frame (a cheap transform); the walk cycle advances by distance
+    for (const r of rigs.current.values()) {
+      const ag = agents[r.idx];
+      if (!ag) continue;
+      if (ag.moved > 0) ag.phase += ag.moved / (2 * stepLength(r.rig.ch, Math.max(0.25, ag.gait), 0.85));
+      if (ag.w.turning && ag.gait > 0) ag.phase += 0.004;
+      r.g.position.set(ag.w.pos[0], 0, ag.w.pos[1]);
+      r.g.rotation.y = ag.w.yaw;
+    }
     // animation LOD: rigs nearest the camera every frame, the next ones every 2nd, the farthest every 3rd
     for (const r of rigs.current.values()) {
       const every = r.rank < 2 ? 1 : r.rank < 4 ? 2 : 3;
       if (!force && (n + r.rank) % every !== 0) continue;
       const p = crowd[r.idx];
+      const ag = agents[r.idx];
       if (!p) continue;
-      poseCrowd(r.rig.ch, p.motion, t, r.salt, view.current.reduced);
+      const g = ag ? ag.gait : 0;
+      if (g <= 0.01) poseCrowd(r.rig.ch, p.motion, t, r.salt, reduced);
+      else if (g >= 0.98) {
+        resetRig(r.rig.ch);
+        r.rig.ch.root.position.y = 0;
+        poseGait(r.rig.ch, ag.phase, 1, { reduced, strideScale: 0.85 });
+      } else {
+        poseCrowd(r.rig.ch, p.motion === 'sit' ? 'idle' : p.motion, t, r.salt, reduced);
+        capturePose(r.rig.ch, r.bufA);
+        resetRig(r.rig.ch);
+        poseGait(r.rig.ch, ag.phase, g, { reduced, strideScale: 0.85 });
+        capturePose(r.rig.ch, r.bufB);
+        const e = g * g * (3 - 2 * g);
+        applyPose(r.rig.ch, mixPose(r.bufB, r.bufA, r.bufB, e));
+        r.rig.ch.root.position.y *= 1 - e;
+      }
     }
     // instanced figures: every 2nd frame (they are small and simple). Rigged people are left out of the
     // instance list entirely (compacted), so they cost no instanced triangles.
+    crowd.forEach((_, ci) => {
+      const ag = agents[ci];
+      if (ag && ag.moved > 0 && !rigged(ag.id)) ag.phase += ag.moved / 1.35;
+    });
     if (!force && n % 2 === 1) return;
     if (instSet.current !== rigs.current.size) {
       instSet.current = rigs.current.size;
@@ -659,22 +709,43 @@ function Interior(props: PlaceSceneProps & {
     crowd.forEach((p, ci) => {
       if (rigged(p.id)) return;
       const i = ++k;
-      const bounce = p.lively && !view.current.reduced ? Math.abs(Math.sin(t * 5.2 + salts[ci])) * 0.09 : 0;
-      const sway = p.lively && !view.current.reduced ? Math.sin(t * 2.6 + salts[ci]) * 0.35 : 0;
+      const ag = agents[ci];
+      const px = ag ? ag.w.pos[0] : p.p[0];
+      const pz = ag ? ag.w.pos[1] : p.p[1];
+      const yaw0 = ag ? ag.w.yaw : p.yaw;
+      const gw = ag ? ag.gait : 0;
+      // P1: a cheap walk: glide with a bob, the legs "stride" (scaled in depth), a slight lean
+      const stride = gw > 0 ? Math.abs(Math.sin(ag!.phase * Math.PI)) * gw : 0;
+      const still = 1 - gw;
+      const bounce = (p.lively && !reduced ? Math.abs(Math.sin(t * 5.2 + salts[ci])) * 0.09 * still : 0) + stride * 0.035;
+      const sway = p.lively && !reduced ? Math.sin(t * 2.6 + salts[ci]) * 0.35 * still : 0;
       const breathe = 1 + Math.sin(t * 1.6 + salts[ci]) * 0.012;
-      _q.setFromAxisAngle(_yAxis, p.yaw + sway);
+      _q.setFromAxisAngle(_yAxis, yaw0 + sway);
       const legH = p.seated ? 0.42 : 0.78;
       // legs (seated: short, as if bent under the seat)
-      _m.compose(_p.set(p.p[0], bounce, p.p[1]), _q, _s.set(p.female ? 1.12 : 1, p.seated ? 0.54 : 1, p.seated ? 1.6 : 1));
+      _m.compose(_p.set(px, bounce * 0.4, pz), _q, _s.set(p.female ? 1.12 : 1, (p.seated ? 0.54 : 1) * (1 - stride * 0.04), (p.seated ? 1.6 : 1) * (1 + stride * 1.6)));
       inst.legs.setMatrixAt(i, _m);
-      _m.compose(_p.set(p.p[0], legH + bounce, p.p[1]), _q, _s.set(p.female ? 0.92 : 1, breathe, 1));
+      _m.compose(_p.set(px, legH + bounce, pz), _q, _s.set(p.female ? 0.92 : 1, breathe, 1));
       inst.torso.setMatrixAt(i, _m);
-      _m.compose(_p.set(p.p[0], legH + 0.6 + bounce, p.p[1]), _q, _s.set(1, 1, 1));
+      _m.compose(_p.set(px, legH + 0.6 + bounce, pz), _q, _s.set(1, 1, 1));
       inst.head.setMatrixAt(i, _m);
     });
     inst.torso.instanceMatrix.needsUpdate = true;
     inst.legs.instanceMatrix.needsUpdate = true;
     inst.head.instanceMatrix.needsUpdate = true;
+    // tap boxes + blobs follow the walkers
+    if (walkersRef.current > 0 || force) {
+      crowd.forEach((p, ci) => {
+        const ag = agents[ci];
+        if (!ag) return;
+        _m.compose(_p.set(ag.w.pos[0], 0, ag.w.pos[1]), _q.identity(), _s.set(1, p.seated ? 0.75 : 1, 1));
+        personPicksRef.current?.setMatrixAt(ci, _m);
+      });
+      if (personPicksRef.current) {
+        personPicksRef.current.instanceMatrix.needsUpdate = true;
+        personPicksRef.current.computeBoundingSphere();
+      }
+    }
   };
   useEffect(() => {
     placeCrowd(0, true);
@@ -696,6 +767,8 @@ function Interior(props: PlaceSceneProps & {
     return m;
   }, [crowd, personGeo, mats.pick]);
   useEffect(() => () => personPicks.dispose(), [personPicks]);
+  const personPicksRef = useRef<InstancedMesh | null>(null);
+  personPicksRef.current = personPicks;
 
   // ---- the Sim
   const key = avatarKey(props.avatar);
@@ -1029,12 +1102,17 @@ function Interior(props: PlaceSceneProps & {
     shadow.position.y = -y + 0.002;
     shadow.visible = rootRotX > -0.5 && a.pose !== 'swim';
 
+    // P1: people walk around (one shared grid; NPCs give way to each other and to the Sim)
+    lastTRef.current = t;
+    if (agents.length) {
+      walkersRef.current = stepAgents(agents, step, t, { grid, room, zones, zoneByKey, sim: a.w.pos, budget: 2 }, view.current.reduced);
+    }
     // crowd + party lights
-    if (crowd.length && (lively || rigs.current.size > 0 || !view.current.reduced)) placeCrowd(t);
+    if (crowd.length && (lively || rigs.current.size > 0 || walkersRef.current > 0 || !view.current.reduced)) placeCrowd(t);
     if (room.kit.party && !closed && !view.current.reduced) {
       partyT.current += step;
-      const h = (partyT.current * 0.12) % 1;
-      mats.screen.color.setHSL(h, 0.85, 0.6);
+      const h = (partyT.current * 0.05) % 1;
+      mats.screen.color.setHSL(h, 0.5, 0.5);
     }
     // F1: club light cycle / sweep, fluorescent flicker, fan, steam (only at the idle frame rate)
     if (q.motion && !view.current.reduced) {
@@ -1052,7 +1130,8 @@ function Interior(props: PlaceSceneProps & {
       for (const p of crowdOrder) {
         const el = pills.get(p.id);
         if (!el) continue;
-        _v.set(p.p[0] - cx, (p.seated ? 1.38 : 1.82) + 0.12, p.p[1] - cz).project(camera);
+        const pa = agentById.get(p.id);
+        _v.set((pa ? pa.w.pos[0] : p.p[0]) - cx, (p.seated ? 1.38 : 1.82) + 0.12, (pa ? pa.w.pos[1] : p.p[1]) - cz).project(camera);
         const sx = ((_v.x + 1) / 2) * size.width;
         const sy = ((1 - _v.y) / 2) * size.height;
         const w = (el.offsetWidth || 60) + 4;
@@ -1073,7 +1152,8 @@ function Interior(props: PlaceSceneProps & {
         } else {
           const pp = crowd.find((c) => c.id === who);
           if (!pp) { el.style.opacity = '0'; continue; }
-          bx = pp.p[0]; bz = pp.p[1]; by = (pp.seated ? 1.38 : 1.82) + 0.12;
+          const pa = agentById.get(who);
+          bx = pa ? pa.w.pos[0] : pp.p[0]; bz = pa ? pa.w.pos[1] : pp.p[1]; by = (pp.seated ? 1.38 : 1.82) + 0.12;
         }
         _v.set(bx - cx, by, bz - cz).project(camera);
         const sx = ((_v.x + 1) / 2) * size.width;
@@ -1188,7 +1268,7 @@ function Interior(props: PlaceSceneProps & {
 
   return (
     <>
-      <Driver view={view} actor={actorRef} paused={Boolean(props.paused)} lively={lively} />
+      <Driver view={view} actor={actorRef} paused={Boolean(props.paused)} lively={lively} walkers={walkersRef} fast={q.tier === 'high'} />
       <primitive object={lights.g} />
       <group position={[-cx, 0, -cz]}>
         <primitive object={group} />

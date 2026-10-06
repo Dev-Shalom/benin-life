@@ -49,7 +49,7 @@ begin
   perform pg_temp.assert(bl_cfg('sim.walk_speed') = 1.9, 'sim.walk_speed defaults to 1.9');
   perform pg_temp.assert(bl_cfg('sim.robe_speed_mult') = 0.7, 'sim.robe_speed_mult defaults to 0.7');
   perform pg_temp.assert(bl_cfg('sim.tired_slowdown') = 0.18, 'sim.tired_slowdown defaults to 0.18');
-  perform pg_temp.assert(bl_cfg('action.queue_max') = 5, 'action.queue_max defaults to 5');
+  perform pg_temp.assert(bl_cfg('action.queue_max') in (5, 7), 'action.queue_max defaults to 5 (7 since P1)');
   perform pg_temp.assert((select category from game_config where key = 'sim.walk_speed') = 'sim', 'category sim');
   perform pg_temp.assert((select category from game_config where key = 'action.queue_max') = 'action', 'queue in action timing');
   perform pg_temp.assert((select min = 0.5 and max = 4 from game_config where key = 'sim.walk_speed'), 'walk speed range');

@@ -346,12 +346,13 @@ div.wish-chip {
 
 /* M2 task pill + queue (left column, under the top bar; the centre stays clear) */
 .task-col {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 5px;
-  width: 248px;
-  max-width: 100%;
+  width: auto;
+  max-width: calc(100vw - 20px);
 }
 .task-col > * {
   pointer-events: auto;
@@ -454,8 +455,7 @@ div.wish-chip {
     opacity: 0.5;
   }
 }
-.task-pill__x,
-.task-chip__btn {
+.task-pill__x {
   flex: none;
   display: grid;
   place-items: center;
@@ -469,66 +469,190 @@ div.wish-chip {
   cursor: pointer;
   transition: transform 140ms var(--ease-out), background-color 140ms ease;
 }
-.task-pill__x:active,
-.task-chip__btn:active {
+.task-pill__x:active {
   transform: scale(0.9);
 }
 @media (hover: hover) and (pointer: fine) {
-  .task-pill__x:hover,
-  .task-chip__btn:hover {
+  .task-pill__x:hover {
     background: var(--red-50);
     color: var(--red-600);
   }
 }
-.task-queue {
+/* P1: queue circles to the right of the pill (max 2, "+N" on the last), popover on tap */
+.task-row {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 0 0 0 10px;
-  list-style: none;
+  align-items: center;
+  gap: 6px;
   max-width: 100%;
 }
-.task-chip {
+.task-pill-wrap {
+  flex: 0 1 248px;
+  min-width: 0;
+  border-radius: 18px;
+  will-change: transform;
+}
+.task-pill-wrap.is-ghost {
+  height: 34px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  background: var(--glass-strong);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+  opacity: 0.8;
+}
+.task-pill-wrap.is-ghost > i {
+  display: block;
+  width: 248px;
+  padding-left: 12px;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+.task-pill-wrap.is-ghost > i::before {
+  content: 'Next…';
+}
+.task-dots {
   display: flex;
   align-items: center;
   gap: 5px;
-  max-width: 100%;
-  padding: 2px 3px 2px 3px;
-  border-radius: var(--r-pill);
-  background: var(--glass-strong);
-  color: var(--ink-2);
-  font-size: 12px;
-  font-weight: 600;
-  box-shadow: var(--e1), inset 0 0 0 1px var(--line);
-  animation: bl-rise 180ms var(--ease-out);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: none;
 }
-.task-chip__icon {
+.task-dots > li {
+  display: block;
+}
+.task-dot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--glass-strong);
+  box-shadow: var(--e1), inset 0 0 0 1px var(--line);
+  font-family: var(--font-emoji);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 140ms var(--ease-out), box-shadow 140ms ease;
+}
+.task-dot:active {
+  transform: scale(0.94);
+}
+.task-dot.is-open {
+  box-shadow: var(--e2), inset 0 0 0 2px var(--green-500);
+}
+.task-dot:focus-visible {
+  outline: 2px solid var(--green-500);
+  outline-offset: 2px;
+}
+.task-dot__more {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--ink, #131a24);
+  color: #fff;
+  font: 700 10px/16px var(--font-display);
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1.5px var(--surface, #fff);
+}
+.task-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 3;
+  display: grid;
+  gap: 2px;
+  min-width: 190px;
+  max-width: min(260px, calc(100vw - 24px));
+  padding: 5px;
+  border-radius: 14px;
+  background: var(--surface, #fff);
+  box-shadow: var(--e3, 0 8px 28px rgba(17, 32, 56, 0.18)), inset 0 0 0 1px var(--line);
+  transform-origin: var(--tx, 26px) 0;
+  animation: task-pop-in 160ms var(--ease-out);
+}
+@keyframes task-pop-in {
+  from { opacity: 0; transform: scale(0.94) translateY(-2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .task-pop { animation: task-pop-fade 120ms ease; }
+  @keyframes task-pop-fade { from { opacity: 0; } }
+}
+.task-pop__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 2px 2px 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.task-pop__icon {
   flex: none;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: var(--surface-2);
   font-family: var(--font-emoji);
-  font-size: 12px;
+  font-size: 13px;
 }
-.task-chip__name {
+.task-pop__name {
+  flex: 1;
   min-width: 0;
-  max-width: 130px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-right: 2px;
 }
-.task-chip__btn {
-  width: 22px;
-  height: 22px;
+.task-pop__btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: transform 140ms var(--ease-out), background-color 140ms ease;
+}
+.task-pop__btn:active {
+  transform: scale(0.9);
+}
+@media (hover: hover) and (pointer: fine) {
+  .task-pop__btn.is-remove:hover {
+    background: var(--red-50);
+    color: var(--red-600);
+  }
 }
 @media (max-width: 599px) {
   .task-col {
-    width: 214px;
+    width: auto;
+  }
+  .task-pill-wrap {
+    flex-basis: 196px;
+  }
+  .task-pill-wrap.is-ghost > i {
+    width: 196px;
+  }
+  .task-dot {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
   }
   .task-pill {
     padding: 4px;
@@ -546,9 +670,6 @@ div.wish-chip {
   .task-pill__x {
     width: 24px;
     height: 24px;
-  }
-  .task-chip__name {
-    max-width: 110px;
   }
 }
 
@@ -4866,13 +4987,14 @@ kbd {
 .feel-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .feel-overlay::before {
   content: ''; position: absolute; inset: 0;
-  background: radial-gradient(ellipse 75% 70% at 50% 48%, transparent 55%, rgba(10, 8, 20, 0.28) 100%);
+  /* P1: a lighter vignette */
+  background: radial-gradient(ellipse 80% 75% at 50% 48%, transparent 60%, rgba(10, 8, 20, 0.14) 100%);
 }
 .feel-overlay::after {
-  content: ''; position: absolute; inset: -50%; opacity: 0.07; mix-blend-mode: overlay;
+  content: ''; position: absolute; inset: -50%; opacity: 0.04; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1.4 -0.2'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
 }
-.feel-overlay.is-dark::before { background: radial-gradient(ellipse 72% 66% at 50% 48%, transparent 45%, rgba(4, 2, 12, 0.5) 100%); }
+.feel-overlay.is-dark::before { background: radial-gradient(ellipse 78% 72% at 50% 48%, transparent 52%, rgba(4, 2, 12, 0.28) 100%); }
 .feel-overlay.is-low::after { display: none; }
 
 /* ---- L3 crowds: tappable NPC pills, speech bubbles, "+N more here" ---- */

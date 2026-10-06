@@ -134,6 +134,8 @@ export const PROPS: Record<string, PropMeta> = {
   pitch: P(false, 'centre', 'stand', 0.2),
   statue: P(true, 'front', 'stand', 3),
   cars: P(false, 'centre', 'stand', 1.4),
+  lux_cars: P(true, 'front', 'stand', 1.5),
+  car_lot: P(true, 'front', 'stand', 1.4),
   lane: P(false, 'centre', 'stand', 0.3),
   none: P(false, 'centre', 'stand', 0.5),
 };
@@ -247,6 +249,49 @@ export interface NpcPlan {
   lines?: string[];
   avatar?: AvatarConfig | null;
   headliner?: boolean;
+  /** P1: the zone they belong to, and how they move around (see engine/wander.ts). */
+  zone?: string;
+  wander?: WanderKind;
+}
+
+/** P1: how a person moves around a place. fixed = on their spot (DJ / hype man behind the booth); seat = stays
+ * seated; stay = small steps around their spot (bouncer, trader, cashier); dance = shuffles on the floor;
+ * waiter = between the bar and the tables; roam = walks to spots in their zone or a nearby zone. */
+export type WanderKind = 'fixed' | 'seat' | 'stay' | 'dance' | 'waiter' | 'roam';
+
+export function wanderKind(motion: NpcMotion | undefined, seated: boolean, role?: string): WanderKind {
+  if (seated) return 'seat';
+  switch (motion) {
+    case 'dj':
+    case 'hype':
+      return 'fixed';
+    case 'dance':
+      return 'dance';
+    case 'serve':
+      return role && /waiter|waitress/i.test(role) ? 'waiter' : 'stay';
+    case 'guard':
+    case 'trade':
+    case 'work':
+    case 'cheer':
+    case 'sit':
+      return 'stay';
+    default:
+      return 'roam';
+  }
+}
+
+/** P1: where the DJ (and the hype man, `side` ±1) stand: on the riser behind the booth, facing the room. */
+export function boothSpot(z: PlaceZone, side = 0): { p: P2; yaw: number } {
+  const odd = ((z.rot % 4) + 4) % 2 === 1;
+  const lw = odd ? z.d : z.w;
+  const ld = odd ? z.w : z.d;
+  const bd = Math.min(0.6, ld * 0.45);
+  const lz = -ld / 2 + (ld - bd - 0.15) / 2 + 0.02;
+  const lx = side * Math.min(0.75, lw / 2 - 0.35);
+  const yaw = (z.rot * Math.PI) / 2;
+  const c = Math.cos(yaw);
+  const sn = Math.sin(yaw);
+  return { p: [z.x + lx * c + lz * sn, z.z - lx * sn + lz * c], yaw };
 }
 
 /** An npc_roster look (partial AvatarConfigV2 + `preset` = outfit preset, optional top colour) -> a full look. */
@@ -301,7 +346,7 @@ export function planCrowd(opts: {
     if (c <= 0 || r <= 0 || c >= grid.cols - 1 || r >= grid.rows - 1 || grid.blocked[r * grid.cols + c]) return false;
     return used.every((u) => Math.hypot(u[0] - p[0], u[1] - p[1]) > 0.55);
   };
-  const near = (z: PlaceZone): { p: P2; yaw: number; seated: boolean } | null => {
+  const near = (z: PlaceZone): { p: P2; yaw: number; seated: boolean; key?: string } | null => {
     const m = propMeta(z.prop);
     for (let tries = 0; tries < 14; tries++) {
       let p: P2;
@@ -316,7 +361,7 @@ export function planCrowd(opts: {
         used.push(p);
         const s = zoneSpot(z, room);
         const yaw = m.spot === 'centre' ? (m.pose === 'dance' ? rnd() * Math.PI * 2 : Math.PI + (rnd() - 0.5) * 1.2) : s.yaw + (rnd() - 0.5) * 0.8;
-        return { p, yaw, seated: m.pose === 'sit' || m.pose === 'lie' };
+        return { p, yaw, seated: m.pose === 'sit' || m.pose === 'lie', key: z.key };
       }
     }
     return null;
@@ -337,6 +382,7 @@ export function planCrowd(opts: {
       skin: look ? skinTone(look.skin).base : SKIN[hash(pl.id) % SKIN.length], female,
       lively: propMeta(z.prop).pose === 'dance', seated: at.seated, player: true, avatar: look,
       motion: propMeta(z.prop).pose === 'dance' ? 'dance' : 'idle',
+      zone: z.key, wander: at.seated ? 'seat' : propMeta(z.prop).pose === 'dance' ? 'dance' : 'roam',
     });
   }
   if (opts.npcs !== null) {
@@ -346,24 +392,34 @@ export function planCrowd(opts: {
     const danceZ = zones.filter((z) => propMeta(z.prop).pose === 'dance');
     const djZ = zones.find((z) => z.prop === 'dj_booth');
     let rr = 0;
+    let boothSide = 0;
     for (const n of list) {
       if (shown.length >= cap || !zones.length) break;
       const z = (n.zone && byKey.get(n.zone))
         || (n.motion === 'dance' && danceZ.length ? danceZ[Math.floor(rnd() * danceZ.length)] : null)
         || ((n.motion === 'dj' || n.motion === 'hype') && djZ ? djZ : null)
         || zones[(rr++ + Math.floor(rnd() * 2)) % zones.length];
-      const at = near(z) ?? near(zones[Math.floor(rnd() * zones.length)]);
+      // P1: the DJ (and the hype man beside them) stand behind the booth, facing the room
+      const booth = (n.motion === 'dj' || n.motion === 'hype') && z.prop === 'dj_booth';
+      let at = booth ? null : near(z) ?? near(zones[Math.floor(rnd() * zones.length)]);
+      if (booth) {
+        const bs = boothSpot(z, n.motion === 'dj' && boothSide === 0 ? 0 : (boothSide % 2 ? -1 : 1));
+        boothSide++;
+        at = { p: bs.p, yaw: bs.yaw, seated: false, key: z.key };
+      }
       if (!at) continue;
+      const zKey = at.key ?? z.key;
       const look = npcAvatar(n.avatar);
       const pose = propMeta(z.prop).pose;
       const motion: NpcMotion = n.motion === 'sit' && !at.seated ? 'idle' : at.seated && n.motion !== 'serve' ? 'sit' : n.motion;
       // performers face the room (the camera side), everyone else as placed
-      const yaw = motion === 'hype' || motion === 'dj' ? zoneSpot(z, room).yaw + Math.PI : at.yaw;
+      const yaw = booth ? at.yaw : motion === 'hype' || motion === 'dj' ? zoneSpot(z, room).yaw + Math.PI : at.yaw;
+      const seated = at.seated && motion === 'sit';
       shown.push({
         id: `npc-${n.id}`, name: n.name, p: at.p, yaw, color: look.top.c, legs: look.bottom.c, skin: skinTone(look.skin).base,
         female: look.gender === 'female', lively: motion === 'dance' || motion === 'hype' || motion === 'cheer' || pose === 'dance',
-        seated: at.seated && motion === 'sit', player: false, role: n.role, motion, line: n.line, lines: n.lines, avatar: look,
-        headliner: n.headliner,
+        seated, player: false, role: n.role, motion, line: n.line, lines: n.lines, avatar: look,
+        headliner: n.headliner, zone: zKey, wander: booth ? 'fixed' : wanderKind(motion, seated, n.role),
       });
     }
     return { shown, total: opts.players.length + Math.max(opts.npcTotal ?? 0, list.length) };
@@ -392,6 +448,8 @@ export function planCrowd(opts: {
         lively: m.pose === 'dance' || z.prop === 'stands',
         seated: at.seated,
         player: false,
+        zone: z.key,
+        wander: at.seated ? 'seat' : m.pose === 'dance' ? 'dance' : 'roam',
       });
     }
   }

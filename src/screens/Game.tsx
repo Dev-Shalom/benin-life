@@ -333,7 +333,7 @@ export default function Game() {
             hour={hourF}
             closed={!interior.data.open}
             crowd={crowdPlan.shown}
-            rigCount={import.meta.env.DEV && typeof (window as { __blRigs?: number }).__blRigs === 'number' ? (window as { __blRigs?: number }).__blRigs : Math.max(0, Math.min(8, Number(cfg(gfxTier === 'low' ? 'crowd.rigs_low' : 'crowd.rigs_high', gfxTier === 'low' ? 2 : 4)) || 0))}
+            rigCount={import.meta.env.DEV && typeof (window as { __blRigs?: number }).__blRigs === 'number' ? (window as { __blRigs?: number }).__blRigs : Math.max(0, Math.min(8, Number(cfg(gfxTier === 'low' ? 'crowd.rigs_low' : 'crowd.rigs_high', gfxTier === 'low' ? 2 : 6)) || 0))}
             chatterSeconds={Math.max(0, Number(cfg('crowd.chatter_seconds', 22)) || 0)}
             speech={speech}
             moreCount={Math.max(0, crowdPlan.total - crowdPlan.shown.length)}

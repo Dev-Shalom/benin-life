@@ -71,3 +71,17 @@ problem, and Auto's frame sample drops such devices to Low automatically.
 - Sun shafts are floor patches, not slanted beams; dust motes skipped.
 - Kit-specific clutter for the rarer types (shrine, palace, zoo, stadium...) uses the generic hall/market kits.
 - The Auto tier's sample is one synced burst; a longer rolling sample could step back up.
+
+## P1: lighting toned down (2026-10-06, user: "too strong, make it subtle")
+Everything is softer, across every place and both homes; each place keeps its mood (club still dark with colour,
+buka warm, bank cool), but nothing reads as neon and faces / pills stay readable.
+- **Rigs** (`rigs.ts`): light pools ~40–60 % lower (club night 1.25 → 0.55, warm halls 0.95 → 0.36, cool 0.7 → 0.28,
+  LAPO bulb 0.8 → 0.36, Nepo downlights 0.85 → 0.38, outdoor sun patches 0.22 → 0.09); lamps a notch lower
+  (club 2.6 → 1.6, warm 2.8 → 2.0); more even ambient (club 0.66 → 0.78) and less room tint; exposure 1.5 → 1.35 in clubs.
+- **Pools / beams** (`kit.ts`, `build.ts`): wider discs with a squared (soft) falloff, so there is no visible rim;
+  club beams 0.22 → 0.08; the back-wall wash halved.
+- **Club colour cycle** (`materials.ts`): hue drift 0.35 → 0.14 rad/s, sweep depth 35 % → 14 % and slower, 22 % less
+  saturation. In `PlaceScene.tsx`: LED strips / lamp boxes glow at ~65 % (`mats.glow`), screens cycle slower and less
+  saturated, the pink club lamp is paler, the club hemisphere a little brighter (faces).
+- **Overlay** (`game.css`): vignette 0.28 → 0.14 (dark rooms 0.5 → 0.28) over a wider clear centre; grain 0.07 → 0.04.
+- Low tier unchanged in kind (no fog, no pools). Before / after: scratchpad `p1/light-*-before-after.png`.

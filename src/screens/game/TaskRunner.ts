@@ -20,7 +20,7 @@ const WALK_TIMEOUT_MS = 20_000;
 const CLEAR_HINTS = ['busy', 'jailed', 'hospitalized', 'traveling', 'no_profile', 'banned'];
 
 export function queueMax(): number {
-  return Math.max(1, Math.round(Number(getCfg('action.queue_max', 5)) || 5));
+  return Math.max(1, Math.round(Number(getCfg('action.queue_max', 7)) || 7));
 }
 
 /** L2: extra details for tasks queued inside a place interior. */

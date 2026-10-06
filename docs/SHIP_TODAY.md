@@ -70,7 +70,7 @@ NPC + chat speech bubbles, "+N more here". Admin → Content → People (NPCs) /
 - **Soft launch:** `locations.active` (migration `20261006001400_soft_launch.sql`, tests `soft_launch_test.sql`, 16/16 suites pass). Hidden places have no pin, aren't in Ride/search, can't be travelled to (`bl_travel_quote`, hint `inactive`), and refuse `do_activity` / `shop_buy` / `work_shift`; players inside can still leave or go home. Seeded once (`places.soft_launch_seeded`): Club De Medici, Rome, Cube, Versus and Owambe Republic hidden; 360 Signature open 9 PM – 5 AM. Pre-L2 made-up Bronze Lounge and Kingdom Lounge left active (switch them off in admin if wanted). Admin → Content → Places: Active switch per row + Opens at / Closes at time inputs with validation, audited.
 - **Real feel:** shared `src/art/feel/` (texture atlas, baked AO, rigs per place type, clutter kits, outside world, fan / flicker / club sweep / steam, vignette + grain, per-place sound, Graphics Auto/Low/High in Settings). Home and 360 Signature first, then every kit through the shared shell. Details, perf table and what's left: docs/FEEL_PLAN.md "What F1 built". Screenshots: scratchpad `f1/` (before-*, after-*, montage-before-after.png).
 
-## P1. Polish batch (user, 2026-10-06 night): [running], then L4, push tonight
+## P1. Polish batch (user, 2026-10-06 night): [done]
 1. **People move around:** NPCs don't stand frozen. Everyone walks between their spots and zones naturally, using M1 locomotion and pathing, then idles and does their role motion.
 2. **Subtler lighting:** the light pools, beams and LED glow feel too strong. Use a soft, subtle ambient across all places (and the home).
 3. **People everywhere:** every place type has characters, not only the main ones.
@@ -79,7 +79,15 @@ NPC + chat speech bubbles, "+N more here". Admin → Content → People (NPCs) /
 5b. **More vehicles (user):** bicycle (~₦180k), motorcycle (~₦1.6M), Toyota Camry (~₦75M), Mercedes C300 (~₦95M) and Cadillac Escalade (~₦250M), at realistic Naija prices, admin-editable. Added to the P1 agent.
 6. **No hard budget:** the user says look matters more than staying under the triangle guide; keep it smooth on phones (Auto/Low tier).
 
-## P2. Club hype and party vibe (user, 2026-10-06 night): [todo, after P1, before L4]
+**P1 notes (agent, 2026-10-06, not committed; status marker left for the lead):**
+- **Walking people:** `src/art/place3d/engine/wander.ts`: every drawn person is an agent on the place's one nav grid with M1 locomotion; pause (role motion) → walk → pause, seeded + staggered. Roamers visit their / nearby zones, dancers shuffle on the floor, bouncers / traders / cashiers step around their spot, the waiter goes bar ↔ tables, the **DJ now stands behind the booth** (new shallow booth + riser) with the hype man beside, seated people stay seated. They give way to each other and to the Sim (never blocking players). Rigs use the real walk cycle, instanced figures glide with a bob and a leg stride; animation LOD kept; 30 fps while walking on High, reduced motion = no wandering.
+- **Subtler light:** pools, beams, LED strips, club colour cycle, sun patches, lamps, vignette and grain all toned down (docs/FEEL_PLAN.md "P1"); moods kept.
+- **People everywhere:** +63 roster people (every active type has 5+), staff on duty where the all-day crowd was 0/1 (seeded once). Bank, car dealer, museum and Igun Street had nobody at 8 PM; now 2–5 people.
+- **Cars:** procedural G 63 G-Wagon, GLE 63 Coupe, Urus, Cybertruck, plus (lead request) Escalade, C300, new Camry, Bajaj Boxer, bicycle (`engine/cars.ts`), on spotlit pads in the showroom and on the lot at all three dealers (Tokunbo Lot got a Luxury corner), buyable there only (₦450M / 350M / 250M / 180M / 250M / 95M / 75M / 1.6M / 180k), bank first. Bicycle / motorcycle unlock own-vehicle travel with their own speed + cost (`bl_travel_quote` re-created).
+- **Queue circles:** running pill + up to 2 circles to its right ("+N" badge), tap = popover with Move up / Remove, FLIP shift animation when the next task starts; `action.queue_max` 5 → 7 (only if untouched), `crowd.rigs_high` 4 → 6 (only if untouched).
+- Migration `20261006001600_polish.sql`, tests `polish_test.sql` (18/18 suites pass; `crowds_test` roster range and `sim_feel_test` queue default widened for P1), nav/pose/place checks pass, fresh-DB apply OK. Not done: the owned car parked outside the home (optional).
+
+## P2. Club hype and party vibe (user, 2026-10-06 night): [running]
 Different from Lagos Life:
 - **Big-spender announcements:** when a player buys a VIP table or bottles, sprays money, books the hype man or "shuts down the club", **everyone in that club** sees a hype-man announcement, live: a banner and a speech bubble from MC Lightning, e.g. "Make una hail @Nosa! E don buy 5 bottles of Ace, e wan shut down 360 tonight!". The feed is also visible in the club's chat.
   - Bigger spends (above an admin threshold) also go out **app-wide** as a ticker ("@Nosa is shutting down 360 Signature 🔥").

@@ -9,6 +9,7 @@ import type { Room } from '../model';
 import type { Mat } from '../../feel/atlas';
 import { buildClutter, buildOutside, buildPools, seeded, type ClutterKind, type Rect } from '../../feel/kit';
 import { rigFor, type Rig } from '../../feel/rigs';
+import { bicycle, drawCar, motorcycle, type LuxCar } from './cars';
 
 type B = HomeBuilder;
 
@@ -219,16 +220,21 @@ function buildProp(b: B, z: PlaceZone, room: Room, seed: number) {
       return;
     }
     case 'dj_booth': {
-      b.box(lw, 1.0, ld * 0.7, 0, 0, -hd * 0.3, '#151832');
-      b.box(lw, 0.06, 0.04, 0, 0.92, -hd * 0.3 + ld * 0.35, '#7ee0c5', { layer: 'glow' });
-      b.box(0.5, 0.06, 0.35, -0.35, 1.0, -hd * 0.3, BLACK);
-      b.box(0.5, 0.06, 0.35, 0.35, 1.0, -hd * 0.3, BLACK);
+      // P1: a shallow booth at the front of the zone, so the DJ stands BEHIND it facing the room
+      const bd = Math.min(0.6, ld * 0.45);
+      const bz = hd - bd / 2 - 0.05;
+      b.box(lw, 1.0, bd, 0, 0, bz, '#151832');
+      b.box(lw, 0.06, 0.04, 0, 0.92, bz + bd / 2, '#7ee0c5', { layer: 'glow' });
+      b.box(0.5, 0.06, 0.35, -0.35, 1.0, bz - 0.05, BLACK);
+      b.box(0.5, 0.06, 0.35, 0.35, 1.0, bz - 0.05, BLACK);
+      b.box(0.3, 0.05, 0.25, 0, 1.0, bz - 0.05, METAL_D); // mixer
+      // riser the DJ stands on
+      b.box(lw - 0.2, 0.12, ld - bd - 0.15, 0, 0, -hd + (ld - bd - 0.15) / 2 + 0.02, '#20223a');
       for (const sx of [-1, 1]) {
         b.box(0.6, 1.7, 0.55, sx * (hw + 0.45), 0, -hd * 0.2, BLACK);
         b.cyl(0.2, 0.2, 0.04, sx * (hw + 0.45), 0.9, -hd * 0.2 + 0.28, METAL_D, { seg: 10, rx: Math.PI / 2 });
         b.cyl(0.12, 0.12, 0.04, sx * (hw + 0.45), 1.35, -hd * 0.2 + 0.28, METAL_D, { seg: 10, rx: Math.PI / 2 });
       }
-      person(b, 0, -hd * 0.3 - 0.25, '#6d4aa0');
       return;
     }
     case 'atm': {
@@ -590,6 +596,51 @@ function buildProp(b: B, z: PlaceZone, room: Room, seed: number) {
       if (k.kind === 'indoor') b.box(lw, 0.02, ld, 0, 0.006, 0, '#cfd6dc');
       // price tags
       for (let i = 0; i < n; i++) b.box(0.4, 0.25, 0.03, -hw + (i + 0.5) * (lw / n) + 0.7, 0.9, hd - 0.2, '#f3cf5e', { layer: 'glow' });
+      return;
+    }
+    case 'lux_cars': {
+      // P1: the luxury line-up on spotlit pads, angled to the camera, a price-tag stand by each
+      const line: [LuxCar, string | undefined][] = [['urus', undefined], ['g63', undefined], ['cybertruck', undefined], ['gle63', undefined]];
+      const n = line.length;
+      const s = Math.min(0.64, (lw / n) / 3.4);
+      if (k.kind === 'indoor') b.box(lw, 0.02, ld, 0, 0.006, 0, '#d5dbe0');
+      line.forEach(([kind, paint], i) => {
+        const lx = -hw + (i + 0.5) * (lw / n);
+        const wx = z.x + Math.cos(yaw) * lx;
+        const wz = z.z - Math.sin(yaw) * lx;
+        b.setFrame(wx, 0, wz, yaw);
+        b.cyl(1.55 * s * 1.6, 1.6 * s * 1.6, 0.05, 0, 0, 0, '#2b3037', { seg: 24, mat: 'metal' });
+        b.cyl(1.62 * s * 1.6, 1.62 * s * 1.6, 0.012, 0, 0.0, 0, '#9fb3c4', { seg: 24, layer: 'glow' });
+        b.pool(0, 0, 1.7 * s * 1.6, '#ffffff', 0.065, 0.35);
+        b.box(0.3, 0.55, 0.04, lw / n / 2 - 0.25, 0.05, ld / 2 - 0.15, '#2c3540', { seg: 1 });
+        b.box(0.26, 0.16, 0.02, lw / n / 2 - 0.25, 0.48, ld / 2 - 0.12, '#f3cf5e', { layer: 'glow', seg: 1 });
+        drawCar(b, kind, wx, wz, yaw + 0.42, s, paint);
+      });
+      b.setFrame(z.x, 0, z.z, yaw);
+      return;
+    }
+    case 'car_lot': {
+      // P1: Escalade, C300, the new Camry, a tokunbo saloon, then a Bajaj Boxer and a bicycle
+      const s = Math.min(0.6, lw / 4.6 / 3.4);
+      const cars: (LuxCar | 'tokunbo')[] = ['escalade', 'c300', 'camry', 'tokunbo'];
+      const slot = (lw - 1.5) / cars.length;
+      if (k.kind === 'indoor') b.box(lw, 0.02, ld, 0, 0.006, 0, '#cfd6dc');
+      cars.forEach((kind, i) => {
+        const lx = -hw + (i + 0.5) * slot;
+        const wx = z.x + Math.cos(yaw) * lx;
+        const wz = z.z - Math.sin(yaw) * lx;
+        if (kind === 'tokunbo') car(b, wx, wz, yaw + 0.3, pick(['#c8ced4', '#9c1f19', '#2f6fb3'], 0), s * 1.05);
+        else drawCar(b, kind, wx, wz, yaw + 0.3, s);
+        b.setFrame(z.x, 0, z.z, yaw);
+        b.box(0.36, 0.22, 0.03, lx + 0.6, 0.8, hd - 0.15, '#f3cf5e', { layer: 'glow', seg: 1 });
+      });
+      const bx = hw - 0.75;
+      for (const [i, draw] of [[0, motorcycle], [1, bicycle]] as const) {
+        const lx = bx + (i - 0.5) * 0.7;
+        b.setFrame(z.x + Math.cos(yaw) * lx, 0, z.z - Math.sin(yaw) * lx, yaw + 0.5);
+        draw(b, 0.95);
+      }
+      b.setFrame(z.x, 0, z.z, yaw);
       return;
     }
     case 'lane': {

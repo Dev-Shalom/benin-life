@@ -82,7 +82,8 @@ function patchCycle(m: Material, u: CycleUniforms, key: string) {
         `#include <color_fragment>
         if (uCycle > 0.5) {
           // slow hue rotation (YIQ), phase by position so the room never shows one flat colour
-          float a = uTime * 0.35 + vFeelUv.x * 0.35 + vFeelUv.y * 0.2;
+          // P1: gentler: a slower hue drift, a softer sweep, a little less saturation
+          float a = uTime * 0.14 + vFeelUv.x * 0.25 + vFeelUv.y * 0.15;
           float ca = cos(a), sa = sin(a);
           vec3 c = diffuseColor.rgb;
           float Y = dot(c, vec3(0.299, 0.587, 0.114));
@@ -91,8 +92,8 @@ function patchCycle(m: Material, u: CycleUniforms, key: string) {
           float I2 = I * ca - Q * sa, Q2 = I * sa + Q * ca;
           diffuseColor.rgb = max(vec3(0.0), vec3(Y + 0.956 * I2 + 0.621 * Q2, Y - 0.272 * I2 - 0.647 * Q2, Y - 1.106 * I2 + 1.703 * Q2));
           // a slow sweep travelling across the floor
-          float sweep = 0.65 + 0.35 * sin(uTime * 1.3 + vFeelUv.x * 0.9 - vFeelUv.y * 0.6);
-          diffuseColor.rgb *= sweep;
+          float sweep = 0.86 + 0.14 * sin(uTime * 0.7 + vFeelUv.x * 0.9 - vFeelUv.y * 0.6);
+          diffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114))), diffuseColor.rgb, 0.78) * sweep;
         }
         diffuseColor.rgb *= uGain;`,
       );

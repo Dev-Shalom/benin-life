@@ -352,7 +352,7 @@ function House(props: HomeSceneProps & {
     lights.lamp.intensity = doll ? lt.lamp : rig.lampDay + (rig.lampNight - rig.lampDay) * lt.dark;
     lights.lamp.position.set(room.bulb[0] - cx, room.bulb[1], room.bulb[2] - cz);
     mats.glass.color.set(lt.glass);
-    mats.glow.color.set(mixHex('#e9e2d4', '#ffffff', lt.dark));
+    mats.glow.color.set(mixHex('#ddd6c8', '#f1ece2', lt.dark)); // P1: softer lamp glow
     mats.light.color.set(rig.pool);
     lightGain.current = rig.poolDay + (rig.poolNight - rig.poolDay) * lt.dark;
     tickFeel(feel, rig, 0, lightGain.current, q.motion);

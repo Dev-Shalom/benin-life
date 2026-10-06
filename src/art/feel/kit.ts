@@ -363,17 +363,18 @@ export function buildPools(b: HomeBuilder, o: { W: number; D: number; H: number;
       for (let k = 0; k < 2; k++) {
         const c = cols[i++ % cols.length];
         const px = x + (r() - 0.5) * 1.6, pz = z + (r() - 0.5) * 1.6;
-        b.pool(px, pz, 1.1 + r() * 0.6, c, 0.025, 0.9);
-        b.beam(px, o.H + 0.4, pz, 0.08, 0.7, c, 0.22);
+        // P1: wider, softer, dimmer pools; faint beams
+        b.pool(px, pz, 1.5 + r() * 0.6, c, 0.025, 0.55);
+        b.beam(px, o.H + 0.4, pz, 0.08, 0.85, c, 0.08);
       }
     }
     // a wash along the back wall
-    for (let x = 1.5; x < o.W - 1; x += 2.6) b.pool(x, 0.6, 1.2, cols[(i++) % cols.length], 0.02, 0.5);
+    for (let x = 1.5; x < o.W - 1; x += 2.6) b.pool(x, 0.6, 1.5, cols[(i++) % cols.length], 0.02, 0.28);
     return;
   }
   const spots = o.spots?.length ? o.spots : [[o.W / 2, o.D / 2]] as [number, number][];
   for (const [x, z] of spots) {
-    b.pool(x, z, o.kind === 'home_lapo' ? 1.9 : 1.5, '#ffffff', 0.02, 1);
-    if (o.kind === 'home_nepo') b.beam(x, o.H - 0.05, z, 0.06, 0.55, '#ffffff', 0.12);
+    b.pool(x, z, o.kind === 'home_lapo' ? 2.5 : 2.3, '#ffffff', 0.02, 0.6);
+    if (o.kind === 'home_nepo') b.beam(x, o.H - 0.05, z, 0.06, 0.6, '#ffffff', 0.05);
   }
 }

@@ -27,7 +27,7 @@ do $$
 declare v_missing text; n int;
 begin
   select count(*) into n from npc_roster where active;
-  perform pg_temp.assert(n between 80 and 140, format('roster has ~80-120 people (got %s)', n));
+  perform pg_temp.assert(n between 80 and 240, format('roster has ~80-200 people (got %s; P1 added more)', n));
   -- every non-home place type has people, and every place has at least one candidate
   select string_agg(distinct l.scene, ', ') into v_missing from locations l
    where l.scene not like 'home%'
