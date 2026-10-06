@@ -2,7 +2,7 @@
 
 Status markers: [todo] / [running] / [done]. Keep this file + HANDOFF STATUS LOG + CLOUD_PROMPT current.
 
-## 0. Starter homes by origin — [running] (see HANDOFF STATUS LOG)
+## 0. Starter homes by origin — [running] (see HANDOFF STATUS LOG). Partial work committed as `5c237bc Starter homes WIP snapshot`; if a session dies, resume from it (don't start over).
 Then push branch → main (it also carries the "full amount under ₦100,000" migration 000900; order 000400 before 000900).
 
 ## S1. Quick polish batch — [todo]
