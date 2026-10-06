@@ -6,11 +6,11 @@ import { adminApi } from './api';
 import { Btn, LoadError, PageHead, Skeleton } from './parts';
 import { useLoad } from './util';
 
-function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'green' | 'red' | 'amber' }) {
+function Stat({ label, value, sub, tone, title }: { label: string; value: string; sub?: string; tone?: 'green' | 'red' | 'amber'; title?: string }) {
   return (
     <div className={`adm-stat${tone ? ` adm-stat--${tone}` : ''}`}>
       <span className="adm-kicker">{label}</span>
-      <b className="adm-stat__value">{value}</b>
+      <b className="adm-stat__value" title={title}>{value}</b>
       {sub && <span className="adm-stat__sub">{sub}</span>}
     </div>
   );
@@ -52,8 +52,8 @@ export default function Overview() {
           <div className="adm-stats">
             <Stat label="Online now" value={String(s.online)} sub={`seen in the last ${s.online_minutes} min`} tone="green" />
             <Stat label="Players" value={s.players.toLocaleString()} sub={`${s.new_today} new today`} />
-            <Stat label="Money in the game" value={nairaShort(s.cash_total + s.bank_total)} sub={`${nairaShort(s.cash_total)} cash · ${nairaShort(s.bank_total)} bank`} />
-            <Stat label="Made today" value={nairaShort(s.created_today)} sub={`${nairaShort(s.destroyed_today)} spent or lost`} />
+            <Stat label="Money in the game" value={nairaShort(s.cash_total + s.bank_total)} title={naira(s.cash_total + s.bank_total)} sub={`${nairaShort(s.cash_total)} cash · ${nairaShort(s.bank_total)} bank`} />
+            <Stat label="Made today" value={nairaShort(s.created_today)} title={naira(s.created_today)} sub={`${nairaShort(s.destroyed_today)} spent or lost`} />
             <Stat label="Chat today" value={s.chat_today.toLocaleString()} sub="messages" />
             <Link to="/admin/chat" className="adm-statlink">
               <Stat label="Reports" value={String(s.reports_pending)} sub="waiting in Chat" tone={s.reports_pending > 0 ? 'amber' : undefined} />
@@ -74,8 +74,8 @@ export default function Overview() {
                         <span className="adm-flow__in"><span style={{ width: `${(m.created / moneyMax) * 100}%` }} /></span>
                       </span>
                       <span className="adm-flow__val">
-                        {m.created > 0 && <span className="is-pos">+{nairaShort(m.created)}</span>}
-                        {m.destroyed > 0 && <span className="is-neg">−{nairaShort(m.destroyed)}</span>}
+                        {m.created > 0 && <span className="is-pos" title={naira(m.created)}>+{nairaShort(m.created)}</span>}
+                        {m.destroyed > 0 && <span className="is-neg" title={naira(m.destroyed)}>−{nairaShort(m.destroyed)}</span>}
                       </span>
                     </div>
                   ))}
@@ -111,7 +111,7 @@ export default function Overview() {
                 <li key={r.id}>
                   <span className="adm-rich__n">{i + 1}</span>
                   <span className="adm-rich__name">{r.username}</span>
-                  <span className="adm-rich__split">{nairaShort(r.cash)} cash · {nairaShort(r.bank)} bank</span>
+                  <span className="adm-rich__split" title={`${naira(r.cash)} cash · ${naira(r.bank)} bank`}>{nairaShort(r.cash)} cash · {nairaShort(r.bank)} bank</span>
                   <b className="adm-money">{naira(r.total)}</b>
                 </li>
               ))}

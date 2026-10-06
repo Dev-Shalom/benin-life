@@ -114,7 +114,8 @@
   transition: background-color var(--t-fast) ease, transform var(--t-press) var(--ease-out);
 }
 .pill-bar__mute:active,
-.pill-bar__cash:active {
+.pill-bar__amount:active,
+.pill-bar__plus:active {
   transform: scale(0.96);
 }
 .pill-bar__cash {
@@ -131,13 +132,37 @@
   font: inherit;
   font-weight: 700;
   font-size: 15.5px;
+  min-width: 0;
+}
+.pill-bar__amount {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   cursor: pointer;
   transition: transform var(--t-press) var(--ease-out);
 }
-.pill-bar__amount {
-  font-variant-numeric: tabular-nums;
+/* Full figure revealed (₦1,500,000,000,000): a touch smaller so it fits a phone pill. */
+.pill-bar__cash.is-full .pill-bar__amount {
+  font-size: 0.86em;
+  letter-spacing: -0.01em;
+}
+/* On phones, make room for the full figure by hiding the online count and mute while it shows. */
+@media (max-width: 479px) {
+  .pill-bar:has(.pill-bar__cash.is-full) :is(.pill-bar__online, .pill-bar__sep--online, .pill-bar__mute) {
+    display: none;
+  }
 }
 .pill-bar__plus {
+  flex: none;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
   display: grid;
   place-items: center;
   width: 32px;
@@ -2377,6 +2402,7 @@ kbd {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 30px;
+  overflow-wrap: anywhere; /* ₦1,500,000,000,000 must not overflow the card */
 }
 .bank-card__sub {
   font-size: 12.5px;
@@ -3253,6 +3279,7 @@ kbd {
   font-family: var(--font-display);
   font-size: 19px;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 .bankx__bal--bank {
   color: #fff;

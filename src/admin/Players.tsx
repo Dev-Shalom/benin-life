@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from '../ui';
 import { errorMessage } from '../lib/api';
-import { naira, nairaShort } from '../lib/format';
+import { naira, nairaShort, parseNaira } from '../lib/format';
 import { useGame } from '../state/game';
 import { adminApi, type PlayerDetail, type PlayerRow } from './api';
 import { Badge, Btn, ConfirmButton, DetailPane, LoadError, PageHead, Skeleton } from './parts';
@@ -27,13 +27,100 @@ function PlayerBadges({ p }: { p: Pick<PlayerRow, 'banned' | 'is_admin' | 'chat_
   );
 }
 
+const GRANT_CONFIRM_AT = 1_000_000_000; // ₦1B and up asks first
+const GRANT_QUICK: [number, string][] = [[1e6, '+1M'], [1e9, '+1B'], [1e12, '+1T']];
+
+/** Give or take money: shorthand input (500K, 2.5M, 5B, 1T), live preview, quick adds, confirm on ≥ ₦1B. */
+function GrantMoney({ username, cash, bank, busy, onGrant }: {
+  username: string; cash: number; bank: number; busy: boolean;
+  onGrant: (account: 'cash' | 'bank', delta: number, note: string) => Promise<void>;
+}) {
+  const [account, setAccount] = useState<'cash' | 'bank'>('cash');
+  const [take, setTake] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const n = parseNaira(amount);
+  const bad = amount.trim() !== '' && n === null;
+  const have = account === 'cash' ? cash : bank;
+  const tooMuch = take && n !== null && n > have;
+  const verb = take ? 'Take' : 'Give';
+  const summary = n === null ? '' : `${verb} ${naira(n)} ${take ? 'from' : 'to'} @${username}'s ${account}`;
+  const quick = (add: number) => {
+    const next = Math.min((n ?? 0) + add, Number.MAX_SAFE_INTEGER);
+    setAmount(naira(next).replace('₦', ''));
+  };
+  const submit = async () => {
+    if (n === null) return;
+    setConfirming(false);
+    await onGrant(account, take ? -n : n, note);
+    setAmount('');
+  };
+  const go = () => {
+    if (n === null) { toast('Enter an amount above zero, e.g. 500K, 2.5M, 5B or 1T.', 'bad'); return; }
+    if (n >= GRANT_CONFIRM_AT) { setConfirming(true); return; }
+    void submit();
+  };
+  return (
+    <section className="adm-box">
+      <h3 className="adm-h3">Give or take money</h3>
+      <div className="adm-grant__row">
+        <div className="adm-chips" role="group" aria-label="Give or take">
+          <button type="button" className={`adm-chip${!take ? ' is-on' : ''}`} onClick={() => setTake(false)}>Give</button>
+          <button type="button" className={`adm-chip adm-chip--neg${take ? ' is-on' : ''}`} onClick={() => setTake(true)}>Take</button>
+        </div>
+        <div className="adm-chips" role="group" aria-label="Account">
+          {(['cash', 'bank'] as const).map((a) => (
+            <button key={a} type="button" className={`adm-chip${account === a ? ' is-on' : ''}`} onClick={() => setAccount(a)}>{a === 'cash' ? 'Cash' : 'Bank'}</button>
+          ))}
+        </div>
+      </div>
+      <label className={`adm-numbox adm-numbox--wide${bad ? ' is-invalid' : ''}`}>
+        <span className="adm-numbox__affix">{take ? '−₦' : '₦'}</span>
+        <input type="text" inputMode="decimal" autoComplete="off" spellCheck={false} placeholder="e.g. 500K, 2.5M, 5B, 1T"
+          aria-label="Amount" aria-invalid={bad} value={amount} onChange={(e) => setAmount(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') go(); }} />
+      </label>
+      <p className={`adm-grant__preview${bad || tooMuch ? ' is-bad' : ''}`} aria-live="polite">
+        {bad ? 'Use digits with K, M, B, T or Q, e.g. 2.5M (whole naira only).'
+          : n === null ? `They have ${naira(have)} in ${account}.`
+          : <>= <b>{take ? '−' : ''}{naira(n)}</b>{nairaShort(n) !== naira(n) && <> ({nairaShort(n)})</>}
+            {tooMuch && <> · they only have {naira(have)}</>}</>}
+      </p>
+      <div className="adm-chips">
+        {GRANT_QUICK.map(([v, label]) => (
+          <button key={label} type="button" className="adm-chip" onClick={() => quick(v)}>{label}</button>
+        ))}
+        {amount && <button type="button" className="adm-chip" onClick={() => setAmount('')}>Clear</button>}
+      </div>
+      <input className="adm-input" placeholder="Note (shown to the player, optional)" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
+      <div className="adm-btnrow">
+        <Btn tone={take ? 'danger' : 'primary'} disabled={busy || n === null || tooMuch} onClick={go}>
+          {n === null ? verb : `${verb} ${nairaShort(n)}`}
+        </Btn>
+      </div>
+      {confirming && n !== null && (
+        <div className="adm-dialog" role="dialog" aria-modal="true" aria-labelledby="grant-confirm-title" onClick={() => setConfirming(false)}>
+          <div className="adm-dialog__card" onClick={(e) => e.stopPropagation()}>
+            <h3 id="grant-confirm-title" className="adm-h3">{take ? 'Take' : 'Give'} {nairaShort(n)}?</h3>
+            <p className="adm-dialog__amount">{take ? '−' : ''}{naira(n)}</p>
+            <p className="adm-sub">{summary}. New {account} balance: <b>{naira(have + (take ? -n : n))}</b>.</p>
+            {note.trim() && <p className="adm-sub">Note: “{note.trim()}”</p>}
+            <div className="adm-btnrow">
+              <Btn onClick={() => setConfirming(false)}>Cancel</Btn>
+              <Btn tone={take ? 'danger' : 'primary'} disabled={busy} autoFocus onClick={() => void submit()}>Yes, {verb.toLowerCase()} it</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; onChanged: () => void }) {
   const { data, error, reload } = useLoad(() => adminApi.playerDetail(id), [id]);
   const { data: tiers } = useLoad(() => adminApi.tableRows('origin_tiers'));
   const me = useGame((s) => s.state?.profile.id);
-  const [account, setAccount] = useState<'cash' | 'bank'>('cash');
-  const [amount, setAmount] = useState('');
-  const [note, setNote] = useState('');
   const [origin, setOrigin] = useState('');
   const [perks, setPerks] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -46,11 +133,6 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
       await reload();
       onChanged();
     } catch (e) { toast(errorMessage(e), 'bad'); } finally { setBusy(false); }
-  };
-  const money = (sign: 1 | -1) => {
-    const n = Math.round(Number(amount));
-    if (!Number.isFinite(n) || n <= 0) { toast('Enter an amount above zero.', 'bad'); return; }
-    void run(() => adminApi.grantMoney(id, account, sign * n, note)).then(() => setAmount(''));
   };
 
   const p = data?.profile as PlayerDetail['profile'] | undefined;
@@ -75,23 +157,8 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
             {isMuted(p.chat_muted_until) && <><dt>Muted until</dt><dd>{new Date(p.chat_muted_until!).toLocaleString()}</dd></>}
           </dl>
 
-          <section className="adm-box">
-            <h3 className="adm-h3">Give or take money</h3>
-            <div className="adm-chips">
-              {(['cash', 'bank'] as const).map((a) => (
-                <button key={a} type="button" className={`adm-chip${account === a ? ' is-on' : ''}`} onClick={() => setAccount(a)}>{a === 'cash' ? 'Cash' : 'Bank'}</button>
-              ))}
-            </div>
-            <label className="adm-numbox adm-numbox--wide">
-              <span className="adm-numbox__affix">₦</span>
-              <input type="number" inputMode="numeric" min={1} placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            </label>
-            <input className="adm-input" placeholder="Note (shown to the player, optional)" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
-            <div className="adm-btnrow">
-              <Btn tone="primary" disabled={busy} onClick={() => money(1)}>Add</Btn>
-              <Btn tone="danger" disabled={busy} onClick={() => money(-1)}>Take</Btn>
-            </div>
-          </section>
+          <GrantMoney username={p.username} cash={p.cash} bank={p.bank} busy={busy}
+            onGrant={(account, delta, note) => run(() => adminApi.grantMoney(id, account, delta, note))} />
 
           <section className="adm-box">
             <h3 className="adm-h3">Chat mute</h3>
@@ -197,8 +264,8 @@ export default function Players() {
                     <span className="adm-row__sub">{p.online ? 'Online' : timeShort(p.last_seen)} · {p.location_name ?? p.location_id}{p.job_id ? ` · ${p.job_id}` : ''}</span>
                   </span>
                   <span className="adm-row__money">
-                    <b className="adm-money">{nairaShort(p.cash + p.bank)}</b>
-                    <small>{nairaShort(p.cash)} cash</small>
+                    <b className="adm-money" title={naira(p.cash + p.bank)}>{nairaShort(p.cash + p.bank)}</b>
+                    <small title={naira(p.cash)}>{nairaShort(p.cash)} cash</small>
                   </span>
                 </button>
               ))}

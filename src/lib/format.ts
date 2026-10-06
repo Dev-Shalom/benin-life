@@ -1,27 +1,78 @@
-// Formatting helpers — P1-SHELL.
+// Formatting helpers — P1-SHELL. Money uses the real-world short scale (K, M, B, T, Q).
 
-function group(n: number): string {
-  return Math.trunc(Math.abs(n))
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+/** Anything money-like the API might hand us: number, bigint, or a digit string (kept exact). */
+export type MoneyInput = number | bigint | string | null | undefined;
+
+/** Exact integer digits + sign for a money value. Strings/bigints keep full precision. */
+function toDigits(n: MoneyInput): { neg: boolean; digits: string } {
+  let s: string;
+  if (typeof n === 'bigint') s = n.toString();
+  else if (typeof n === 'string' && /^\s*-?\d+\s*$/.test(n)) s = n.trim();
+  else {
+    const v = Math.round(Number(n ?? 0) || 0);
+    s = Number.isFinite(v) ? BigInt(v).toString() : '0';
+  }
+  const neg = s.startsWith('-');
+  const digits = (neg ? s.slice(1) : s).replace(/^0+(?=\d)/, '');
+  return { neg: neg && digits !== '0', digits };
 }
 
-/** naira(12500) → "₦12,500"; naira(-500) → "-₦500". */
-export function naira(n: number | string | null | undefined): string {
-  const v = Math.round(Number(n ?? 0) || 0);
-  return `${v < 0 ? '-' : ''}₦${group(v)}`;
+function group(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-/** Compact naira for tight spots: ₦950, ₦12.5k, ₦1.2m, ₦3.4b. */
-export function nairaShort(n: number | string | null | undefined): string {
-  const v = Math.round(Number(n ?? 0) || 0);
-  const a = Math.abs(v);
-  const sign = v < 0 ? '-' : '';
-  const fmt = (x: number) => (x >= 100 ? Math.round(x).toString() : x.toFixed(1).replace(/\.0$/, ''));
-  if (a >= 1e9) return `${sign}₦${fmt(a / 1e9)}b`;
-  if (a >= 1e6) return `${sign}₦${fmt(a / 1e6)}m`;
-  if (a >= 1e4) return `${sign}₦${fmt(a / 1e3)}k`;
-  return `${sign}₦${group(a)}`;
+/** naira(12500) → "₦12,500"; naira(-500) → "-₦500"; naira(1.25e12) → "₦1,250,000,000,000". */
+export function naira(n: MoneyInput): string {
+  const { neg, digits } = toDigits(n);
+  return `${neg ? '-' : ''}₦${group(digits)}`;
+}
+
+const SCALE: [number, string][] = [[15, 'Q'], [12, 'T'], [9, 'B'], [6, 'M'], [3, 'K']];
+
+/**
+ * Compact naira for tight spots: ₦950, ₦9,999, ₦12.5K, ₦125K, ₦1.2M, ₦3.4B, ₦1.1T, ₦2Q, ₦2,500Q.
+ * Under ₦10,000 stays in full. Truncates (never rounds up), so ₦999,999 shows ₦999K, not ₦1M.
+ */
+export function nairaShort(n: MoneyInput): string {
+  const { neg, digits } = toDigits(n);
+  const sign = neg ? '-' : '';
+  if (digits.length <= 4) return `${sign}₦${group(digits)}`;
+  for (const [exp, suffix] of SCALE) {
+    if (digits.length <= exp) continue;
+    const whole = digits.slice(0, digits.length - exp);
+    const frac = digits.charAt(digits.length - exp);
+    const body = whole.length >= 3 ? group(whole) : frac === '0' ? whole : `${whole}.${frac}`;
+    return `${sign}₦${body}${suffix}`;
+  }
+  return `${sign}₦${group(digits)}`;
+}
+
+/** True when nairaShort would hide digits (so a title/tap should reveal the full amount). */
+export function isShortened(n: MoneyInput): boolean {
+  return nairaShort(n) !== naira(n);
+}
+
+const SUFFIX_EXP: Record<string, number> = { k: 3, m: 6, b: 9, t: 12, q: 15 };
+
+/**
+ * Parse typed money: "2.5M" → 2500000, "₦1,250,000" → 1250000, "500k" → 500000, "1 t" → 1e12.
+ * Returns null for anything invalid, fractional naira, zero (unless allowZero), negative (unless
+ * allowNegative) or beyond JS's exact range (~₦9Q).
+ */
+export function parseNaira(input: string, opts: { allowNegative?: boolean; allowZero?: boolean } = {}): number | null {
+  const s = String(input ?? '').replace(/[\s,₦_]/g, '').toLowerCase().replace(/^n(?=[\d.-])/, '');
+  const m = /^(-?)(\d*)(?:\.(\d*))?([kmbtq]?)$/.exec(s);
+  if (!m) return null;
+  const [, minus, int, frac = '', suf] = m;
+  if (!int && !frac) return null;
+  const exp = suf ? SUFFIX_EXP[suf] : 0;
+  if (frac.length > exp && /[1-9]/.test(frac.slice(exp))) return null; // fractional kobo / naira
+  const digits = ((int || '0') + frac.padEnd(exp, '0').slice(0, exp)).replace(/^0+(?=\d)/, '');
+  const v = Number(digits);
+  if (!Number.isSafeInteger(v)) return null;
+  if (v === 0 && !opts.allowZero) return null;
+  if (minus && v !== 0 && !opts.allowNegative) return null;
+  return minus ? -v : v;
 }
 
 /** Real-time countdown: 42 → "0:42", 3723 → "1:02:03". Input seconds. */

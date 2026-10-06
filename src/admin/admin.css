@@ -396,3 +396,21 @@
   .adm-detail, .adm-savebar { animation: none; }
   .adm-skel__row { animation: none; }
 }
+
+/* ---------- grant money (money format, 2026-10-06) ---------- */
+.adm-grant__row { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.adm-chip--neg.is-on { background: var(--red-500); border-color: var(--red-500); }
+.adm-grant__preview { margin: -2px 0 0; font-size: 0.8125rem; color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.adm-grant__preview b { color: var(--text); }
+.adm-grant__preview.is-bad { color: var(--red-500); }
+.adm-dialog {
+  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px;
+  background: rgba(10, 18, 32, 0.45);
+}
+.adm-dialog__card {
+  width: min(380px, 100%); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px;
+  padding: 18px; border-radius: 16px; background: var(--adm-card); box-shadow: 0 20px 50px -20px rgba(10, 18, 32, 0.5);
+}
+.adm-dialog__amount { margin: 0; font: 700 1.375rem var(--font-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.adm-dialog__card .adm-btnrow { justify-content: flex-end; margin-top: 6px; }
+.adm-balances .adm-money { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }

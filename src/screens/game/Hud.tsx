@@ -8,7 +8,7 @@ import { AvatarPortrait } from '../../art/avatar3d';
 import { dateLabel, useGameClock, weekdayOf } from '../../lib/clock';
 import { useLiveProfile } from '../../lib/live';
 import { getCfg } from '../../lib/config';
-import { clockTime, countdown, nairaShort } from '../../lib/format';
+import { clockTime, countdown, isShortened, naira, nairaShort } from '../../lib/format';
 import { rpc, errorMessage } from '../../lib/api';
 import { lowNeeds, moodOf, needValue } from '../../lib/mood';
 import { HUD_NEEDS, NEED_META, ORIGIN_UI, WEEKDAYS_SHORT, originCopy, type NeedKey } from '../../lib/pidgin';
@@ -98,11 +98,33 @@ export function TopPill({ state, clock }: { state: GameState; clock: GameClock }
         aria-label={muted ? 'Sound is off. Turn it on' : 'Sound is on. Mute'} title={muted ? 'Unmute' : 'Mute'}>
         <SpeakerIcon muted={muted} />
       </button>
-      <button type="button" className="pill-bar__cash" onClick={() => openPanel('wallet')} aria-label={`Cash ${nairaShort(p.cash)}. Open wallet`}>
-        <span className="pill-bar__amount">{nairaShort(p.cash)}</span>
-        <span className="pill-bar__plus" aria-hidden><Icon name="plus" size={16} stroke={3} /></span>
-      </button>
+      <CashPill cash={p.cash} onOpen={() => openPanel('wallet')} />
     </div>
+  );
+}
+
+/** Cash in the top pill. Short scale (₦1.5T); tapping the amount flips to the full figure for a few
+ *  seconds (hover shows it too). Small amounts are already full, so their tap opens the wallet. */
+function CashPill({ cash, onOpen }: { cash: number; onOpen: () => void }) {
+  const [full, setFull] = useState(false);
+  const shortened = isShortened(cash);
+  useEffect(() => {
+    if (!full) return;
+    const t = window.setTimeout(() => setFull(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [full, cash]);
+  const whole = naira(cash);
+  return (
+    <span className={`pill-bar__cash${full && shortened ? ' is-full' : ''}`}>
+      <button type="button" className="pill-bar__amount" title={shortened ? whole : undefined}
+        aria-label={shortened ? `Cash ${whole}. Tap to ${full ? 'shorten' : 'show the full amount'}` : `Cash ${whole}. Open wallet`}
+        onClick={() => (shortened ? setFull((v) => !v) : onOpen())}>
+        {full && shortened ? whole : nairaShort(cash)}
+      </button>
+      <button type="button" className="pill-bar__plus" onClick={onOpen} aria-label="Open wallet" title="Wallet">
+        <Icon name="plus" size={16} stroke={3} />
+      </button>
+    </span>
   );
 }
 
@@ -244,7 +266,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
               <span className="wish-chip__icon" aria-hidden>{job.emoji}</span>
               <span className="wish-chip__text">
                 <span className="wish-chip__title">Go to work</span>
-                <span className="wish-chip__sub">{job.title} · {nairaShort(job.pay_per_shift)}</span>
+                <span className="wish-chip__sub" title={naira(job.pay_per_shift)}>{job.title} · {nairaShort(job.pay_per_shift)}</span>
               </span>
             </button>
           )}
@@ -254,7 +276,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
               <span className="wish-chip__icon" aria-hidden>🏦</span>
               <span className="wish-chip__text">
                 <span className="wish-chip__title">Bank your cash</span>
-                <span className="wish-chip__sub">{nairaShort(p.cash)} on you at night · {bankAt.name}</span>
+                <span className="wish-chip__sub" title={naira(p.cash)}>{nairaShort(p.cash)} on you at night · {bankAt.name}</span>
               </span>
             </button>
           )}
@@ -264,7 +286,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
               <span className="wish-chip__icon" aria-hidden>💸</span>
               <span className="wish-chip__text">
                 <span className="wish-chip__title">{ORIGIN_UI.collectDad}</span>
-                <span className="wish-chip__sub">{nairaShort(origin.allowance_daily)} from {ORIGIN_UI.dadChip}</span>
+                <span className="wish-chip__sub" title={naira(origin.allowance_daily)}>{nairaShort(origin.allowance_daily)} from {ORIGIN_UI.dadChip}</span>
               </span>
             </button>
           )}

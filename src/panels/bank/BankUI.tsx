@@ -18,7 +18,7 @@ export function Balances({ state }: { state: GameState }) {
   );
 }
 
-/** Amount field with quick chips (₦1k / ₦5k / All). `max` is what "All" fills in. */
+/** Amount field with quick chips (₦1K / ₦5K / All). `max` is what "All" fills in. */
 export function AmountBox({ value, onChange, max, min, label = 'Amount' }: {
   value: string;
   onChange: (v: string) => void;
@@ -27,7 +27,7 @@ export function AmountBox({ value, onChange, max, min, label = 'Amount' }: {
   label?: string;
 }) {
   const n = Number(value) || 0;
-  const chips: [number, string][] = [[1000, '₦1k'], [5000, '₦5k']];
+  const chips: [number, string][] = [[1000, '₦1K'], [5000, '₦5K']];
   return (
     <div className="bankx__amount">
       <label className="bankx__amount-field">
@@ -36,7 +36,7 @@ export function AmountBox({ value, onChange, max, min, label = 'Amount' }: {
           <span aria-hidden>₦</span>
           <input className="input" inputMode="numeric" pattern="[0-9]*" placeholder="0" value={value}
             aria-label={label}
-            onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '').slice(0, 10))} />
+            onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '').slice(0, 16))} />
         </span>
       </label>
       <div className="bankx__chips">
@@ -47,7 +47,7 @@ export function AmountBox({ value, onChange, max, min, label = 'Amount' }: {
           </button>
         ))}
         <button type="button" className={`bankx__chip${n === max && max > 0 ? ' is-on' : ''}`} disabled={max < min}
-          onClick={() => onChange(String(max))}>
+          onClick={() => onChange(String(max))} title={max >= min ? naira(max) : undefined}>
           All{max >= min ? ` · ${nairaShort(max)}` : ''}
         </button>
       </div>

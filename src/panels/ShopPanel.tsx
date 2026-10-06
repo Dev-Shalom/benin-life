@@ -5,7 +5,7 @@ import { CATEGORY_ORDER, shopBuy, shopList } from '../api/shops';
 import { errorMessage } from '../lib/api';
 import { useGameClock } from '../lib/clock';
 import { getCfg } from '../lib/config';
-import { naira } from '../lib/format';
+import { naira, nairaShort } from '../lib/format';
 import type { PanelProps, ShopList } from '../lib/types';
 import { openPanel } from '../state/ui';
 import { Button, EmptyState, toast } from '../ui';
@@ -77,7 +77,7 @@ export default function ShopPanel({ state, location, refresh }: PanelProps) {
     <div className="shop stack">
       <div className="shop__head">
         <p className="shop__greet">{GREETING[location.scene] ?? 'Have a look around.'}</p>
-        <span className="shop__cash">Cash <b>{naira(p.cash)}</b></span>
+        <span className="shop__cash" title={naira(p.cash)}>Cash <b>{nairaShort(p.cash)}</b></span>
       </div>
       {groups.map((g) => (
         <section key={g.id} className="shop__group">

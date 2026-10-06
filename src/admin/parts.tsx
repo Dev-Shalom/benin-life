@@ -1,6 +1,7 @@
 // Small building blocks shared by the admin sections.
 import { useEffect, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { Icon } from '../ui';
+import { isShortened, naira, nairaShort } from '../lib/format';
 import { showSlider, sliderStep, fmtNumber } from './util';
 
 export function PageHead({ title, sub, actions }: { title: string; sub?: ReactNode; actions?: ReactNode }) {
@@ -74,6 +75,11 @@ export function Btn({ children, tone = 'ghost', small, icon, ...rest }: ButtonHT
 }
 
 /** Slider + exact number input. Emits numbers; shows min/max. */
+/** Range ends: naira in short scale (₦1 – ₦9Q), everything else as before. */
+function short(kind: string, v: number): string {
+  return kind === 'naira' ? nairaShort(v) : fmtNumber(kind, v);
+}
+
 export function NumberControl({ kind, value, min, max, onChange, invalid, id }: {
   kind: string; value: number | ''; min: number | null; max: number | null; onChange: (v: number | '') => void;
   invalid?: boolean; id?: string;
@@ -97,7 +103,10 @@ export function NumberControl({ kind, value, min, max, onChange, invalid, id }: 
         {kind === 'minutes' && <span className="adm-numbox__affix">min</span>}
       </label>
       {(min !== null || max !== null) && (
-        <span className="adm-num__range">{min !== null ? fmtNumber(kind, min) : '…'} – {max !== null ? fmtNumber(kind, max) : '…'}</span>
+        <span className="adm-num__range" title={kind === 'naira' ? `${min !== null ? naira(min) : '…'} – ${max !== null ? naira(max) : '…'}` : undefined}>
+          {kind === 'naira' && value !== '' && isShortened(value) && <>= {nairaShort(value)} · </>}
+          {min !== null ? short(kind, min) : '…'} – {max !== null ? short(kind, max) : '…'}
+        </span>
       )}
     </div>
   );

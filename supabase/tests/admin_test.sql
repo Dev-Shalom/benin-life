@@ -304,6 +304,36 @@ begin
   perform pg_temp.ad_hint(format('select admin_grant_money(%L, ''cash'', 0, '''')', v_p), 'bad_value');
   perform pg_temp.ad_hint(format('select admin_grant_money(%L, ''cash'', 5, '''')', gen_random_uuid()), 'no_player');
 
+  -- Money format (20261006000300): trillion-scale grants, exact balance math, caps, formatting.
+  v_cash := (select bank from profiles where id = v_p);
+  r := admin_grant_money(v_p, 'bank', 1000000000000, 'one trillion');
+  perform pg_temp.assert((select bank from profiles where id = v_p) = v_cash + 1000000000000, '₦1T grant added to bank');
+  perform pg_temp.assert((r->>'balance')::bigint = v_cash + 1000000000000, '₦1T grant returns new balance');
+  perform pg_temp.assert(r->>'message' like 'Added ₦1,000,000,000,000 (bank).%', '₦1T message full amount: ' || (r->>'message'));
+  perform pg_temp.assert(exists (select 1 from ledger where user_id = v_p and account = 'bank' and delta = 1000000000000
+                                  and balance_after = v_cash + 1000000000000), '₦1T ledger row + balance_after');
+  r := admin_grant_money(v_p, 'bank', 500000000000, '');
+  r := admin_grant_money(v_p, 'bank', -250000000001, '');
+  perform pg_temp.assert((select bank from profiles where id = v_p) = v_cash + 1249999999999, '1T + 0.5T - 250,000,000,001 exact');
+  r := admin_grant_money(v_p, 'bank', -1249999999999, '');
+  perform pg_temp.assert((select bank from profiles where id = v_p) = v_cash, 'taken back to the start balance');
+  r := admin_grant_money(v_p, 'cash', 1000000000000000, 'max grant');   -- ₦1Q default cap is allowed
+  r := admin_grant_money(v_p, 'cash', -1000000000000000, '');
+  perform pg_temp.ad_hint(format('select admin_grant_money(%L, ''cash'', 1000000000000001, '''')', v_p), 'too_big');
+  perform pg_temp.ad_hint(format('select admin_grant_money(%L, ''cash'', -1000000000000001, '''')', v_p), 'too_big');
+  update game_config set value = '9000000000000000' where key = 'admin.grant_max';
+  r := admin_grant_money(v_p, 'cash', 8000000000000000, '');
+  perform pg_temp.ad_hint(format('select admin_grant_money(%L, ''cash'', 1000000000000000, '''')', v_p), 'too_big'); -- past ₦9Q
+  r := admin_grant_money(v_p, 'cash', -8000000000000000, '');
+  update game_config set value = '1000000000000000' where key = 'admin.grant_max';
+  perform pg_temp.assert(bl_naira(1250000000000) = '₦1,250,000,000,000', 'bl_naira trillions');
+  perform pg_temp.assert(bl_naira(2500000000000000000) = '₦2,500,000,000,000,000,000', 'bl_naira past quadrillion (old mask printed #)');
+  perform pg_temp.assert(bl_naira(-500) = '-₦500' and bl_naira(0) = '₦0' and bl_naira(999) = '₦999', 'bl_naira small + negative');
+  perform pg_temp.assert(bl_naira_short(950) = '₦950' and bl_naira_short(12500) = '₦12.5K' and bl_naira_short(1234567) = '₦1.2M'
+                         and bl_naira_short(3400000000) = '₦3.4B' and bl_naira_short(1100000000000) = '₦1.1T'
+                         and bl_naira_short(2000000000000000) = '₦2Q' and bl_naira_short(999999) = '₦999K'
+                         and bl_naira_short(2500000000000000000) = '₦2,500Q' and bl_naira_short(-12500) = '-₦12.5K', 'bl_naira_short scale');
+
   r := admin_player_detail(v_p);
   perform pg_temp.assert(r ?& array['profile','ledger','inventory','audit'], 'detail shape');
   perform pg_temp.assert(r->'profile'->>'email' = 'player@admin.bl', 'detail email');
