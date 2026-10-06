@@ -210,6 +210,38 @@ const DEFS: TableDef[] = [
     newRow: { scene: 'club', location_id: null, part: 'night', icon: '✨', line: 'The DJ is warming up', sort: 50, active: true },
   },
   {
+    id: 'npcs', table: 'npc_roster', title: 'People (NPCs)', emoji: '🧍🏾', blurb: 'Named background people inside places (L3). Who is there is picked per place and hour from this list, the same for every player; how many comes from Crowd profiles.',
+    pk: ['id'], insert: true,
+    titleOf: (r) => `${r.name} · ${r.role}`, subOf: (r) => `${(r.location_ids as string[])?.length ? `at ${(r.location_ids as string[]).join(', ')}` : (r.scenes as string[])?.join(', ')} · ${r.motion}${r.headliner ? ' · headliner' : ''}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'name', label: 'Name', type: 'text', help: 'Shown on the white pill, e.g. Osaro, MC Lightning' },
+      { key: 'role', label: 'Role', type: 'text', help: 'e.g. Trader, Keke rider, Hype man, Bouncer' },
+      { key: 'motion', label: 'What they do', type: 'text', help: 'idle | dance | hype | dj | trade | serve | guard | sit | cheer | work | phone' },
+      { key: 'lines', label: 'Lines (English)', type: 'long', help: 'One line per row. Shown as a speech bubble when tapped, and now and then.' },
+      { key: 'pidgin', label: 'Pidgin lines', type: 'long', help: 'One per row. Only used at markets, streets, motor parks and PoS stands.' },
+      { key: 'scenes', label: 'Place types', type: 'list', help: 'e.g. market, club, campus (used when no place ids are set)' },
+      { key: 'location_ids', label: 'Only these places (ids)', type: 'list', help: 'e.g. club_360. Wins over place types.' },
+      { key: 'zone_key', label: 'Stands at zone', type: 'textnull', help: 'e.g. dj, dance, bar, counter, foodstuff (empty = anywhere)' },
+      { key: 'headliner', label: 'Headliner (always there while open)', type: 'bool' },
+      { key: 'avatar', label: 'Look', type: 'json', help: '{"v":2,"gender":"male","skin":"tone4","hair":"low_cut","preset":"keke","top":{"c":"#d2342a"}}. Presets: bini, agbada, senator, owambe, boubou, yahoo, glam, corporate, student, market, keke, nurse, police, street, ankara' },
+      { key: 'sort', label: 'Sort order', type: 'int' }, { key: 'active', label: 'Active', type: 'bool' },
+    ],
+    newRow: { name: 'Osaro', role: 'Trader', motion: 'trade', lines: 'Come and buy!', pidgin: '', scenes: ['market'], location_ids: [], zone_key: null, headliner: false, avatar: { v: 2, gender: 'male', skin: 'tone4', hair: 'low_cut', preset: 'ankara' }, sort: 500, active: true },
+  },
+  {
+    id: 'crowds', table: 'crowd_profiles', title: 'Crowd profiles', emoji: '👥', blurb: 'How many people are at each place type by hour and day. The most specific row wins (weekday / weekend before all, then the shortest band). Hours are Benin time, from is inclusive, to is exclusive (0–24).',
+    pk: ['id'], insert: true, inline: ['npcs'],
+    titleOf: (r) => `${r.scene} · ${r.days} · ${r.from_hour}:00–${r.to_hour}:00`, subOf: (r) => `${r.npcs} people${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'scene', label: 'Place type', type: 'text', help: 'e.g. market, club, campus, street' },
+      { key: 'days', label: 'Days', type: 'text', help: 'all | weekday | weekend' },
+      { key: 'from_hour', label: 'From hour (0–23)', type: 'int' }, { key: 'to_hour', label: 'To hour (1–24)', type: 'int' },
+      { key: 'npcs', label: 'People', type: 'int' },
+      { key: 'sort', label: 'Sort order', type: 'int' }, { key: 'active', label: 'Active', type: 'bool' },
+    ],
+    newRow: { scene: 'market', days: 'all', from_hour: 7, to_hour: 12, npcs: 40, sort: 0, active: true },
+  },
+  {
     id: 'origins', table: 'origin_tiers', title: 'Origins', emoji: '👶', blurb: 'LAPO / Nepo copy and perks. Chances and start money live in Settings → Origin.',
     pk: ['id'], insert: false, titleOf: (r) => String(r.name), subOf: (r) => String(r.tagline),
     fields: [

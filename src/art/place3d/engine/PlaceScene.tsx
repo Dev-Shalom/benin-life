@@ -51,13 +51,15 @@ import { hashStr } from '../../feel/kit';
 import { blobMaterial } from '../../feel/materials';
 import { applyFeelRender, makeFan, makeFeelMats, makeSteam, sampleFrames, tickFeel } from '../../feel/scene';
 import { looksNight } from '../../../lib/daylight';
+import { buildCrowdRig, type CrowdRig } from '../../avatar3d/engine/crowd';
+import { poseCrowd } from './crowdPose';
 
 /** F1: camera height / distance (was 0.82): lower and more cinematic. */
 const CAM_ELEV = 0.68;
 
 export interface PlaceApi {
   snapshot(): string | null;
-  stats(): { calls: number; triangles: number; roomTriangles: number; geometries: number };
+  stats(): { calls: number; triangles: number; roomTriangles: number; geometries: number; rigs: number; rigTriangles: number };
   bench(n?: number): number;
   /** Screen position (CSS px) of a zone's centre / a room point (tests). */
   screenOfZone(key: string): { x: number; y: number } | null;
@@ -93,6 +95,14 @@ export interface PlaceSceneProps {
   insetBottom?: number;
   onReady?: (api: PlaceApi) => void;
   onLost?: () => void;
+  /** L3: how many of the nearest people get the full avatar rig (players first, then headliners, then nearest). */
+  rigCount?: number;
+  /** L3: average seconds between background people saying a line (0 = never). */
+  chatterSeconds?: number;
+  /** L3: recent location chat lines; new ones show as a bubble over the speaker (`who` = player id or 'me'). */
+  speech?: { id: number; who: string; text: string }[];
+  /** L3: people here beyond the render cap ("+N more here"). */
+  moreCount?: number;
   className?: string;
   style?: CSSProperties;
 }
@@ -293,6 +303,8 @@ function Interior(props: PlaceSceneProps & {
   gesture: React.MutableRefObject<Gesture | null>;
   onHint: (text: string, x: number, y: number) => void;
   pillRefs: React.MutableRefObject<Map<string, HTMLSpanElement>>;
+  bubbleRefs: React.MutableRefObject<Map<string, HTMLSpanElement>>;
+  onTapPerson: (id: string) => void;
 }) {
   const { zones, scene: sceneType, hour, view, actorRef, insetTop = 0, insetBottom = 0 } = props;
   const { gl, scene, camera, size, invalidate } = useThree();
@@ -519,14 +531,137 @@ function Interior(props: PlaceSceneProps & {
   };
   const lively = crowd.some((p) => p.lively) && !closed;
   // pill priority: real players, then standing people nearest the camera (front of the room)
-  const crowdOrder = useMemo(() => [...crowd].sort((a, b) => Number(b.player) - Number(a.player) || Number(a.seated) - Number(b.seated) || b.p[1] + b.p[0] * 0.5 - (a.p[1] + a.p[0] * 0.5)), [crowd]);
+  const crowdOrder = useMemo(() => [...crowd].sort((a, b) => Number(b.player) - Number(a.player) || Number(Boolean(b.headliner)) - Number(Boolean(a.headliner)) || Number(a.seated) - Number(b.seated) || b.p[1] + b.p[0] * 0.5 - (a.p[1] + a.p[0] * 0.5)), [crowd]);
   const placed = useMemo<[number, number, number, number][]>(() => [], []);
   const salts = useMemo(() => crowd.map((_, i) => (i * 1.7) % 6.28), [crowd]);
-  const placeCrowd = (t: number) => {
-    crowd.forEach((p, i) => {
-      const bounce = p.lively && !view.current.reduced ? Math.abs(Math.sin(t * 5.2 + salts[i])) * 0.09 : 0;
-      const sway = p.lively && !view.current.reduced ? Math.sin(t * 2.6 + salts[i]) * 0.35 : 0;
-      const breathe = 1 + Math.sin(t * 1.6 + salts[i]) * 0.012;
+
+  // ---- L3: the nearest people get the real avatar rig (one skinned mesh = 1 draw call each); the rest stay
+  // instanced. Players first, then headliners (MC, DJ...), then whoever is nearest the camera.
+  const rigN = Math.max(0, Math.round(props.rigCount ?? 0));
+  const rigIds = useMemo(() => {
+    const sy = Math.sin(BASE_YAW);
+    const cy = Math.cos(BASE_YAW);
+    return crowd
+      .filter((p) => p.avatar)
+      .map((p) => ({ id: p.id, k: (p.player ? 100 : 0) + (p.headliner ? 50 : 0) + p.p[0] * sy + p.p[1] * cy }))
+      .sort((a, b) => b.k - a.k)
+      .slice(0, rigN)
+      .map((x) => x.id);
+  }, [crowd, rigN]);
+  const rigGroup = useMemo(() => new Group(), []);
+  const rigs = useRef(new Map<string, { rig: CrowdRig; g: Group; idx: number; rank: number; salt: number }>());
+  const rigDetail = q.tier === 'low' ? 0.2 : 0.25;
+  // a build pump: one rig every ~45 ms (walking in never stalls a frame for long). It reads the wanted ids from a
+  // ref, so a crowd re-plan (a player joins, presence syncs) never cancels builds that are under way.
+  const rigWant = useRef<{ ids: string[]; crowd: NpcPlan[] }>({ ids: [], crowd: [] });
+  rigWant.current = { ids: rigIds, crowd };
+  const pump = useRef({ timer: 0, alive: true });
+  const runPump = () => {
+    const pm = pump.current;
+    if (pm.timer || !pm.alive) return;
+    pm.timer = window.setTimeout(() => {
+      pm.timer = 0;
+      if (!pm.alive) return;
+      const { ids, crowd: cr } = rigWant.current;
+      const id = ids.find((x) => !rigs.current.has(x));
+      if (!id) return;
+      const idx = cr.findIndex((c) => c.id === id);
+      const p = cr[idx];
+      if (p?.avatar) {
+        try {
+          const rig = buildCrowdRig(p.avatar, rigDetail);
+          const g = new Group();
+          g.add(rig.ch.root);
+          g.position.set(p.p[0], 0, p.p[1]);
+          g.rotation.y = p.yaw;
+          rigGroup.add(g);
+          rigs.current.set(id, { rig, g, idx, rank: ids.indexOf(id), salt: (hashStr(id) % 1000) / 100 });
+          placeCrowd(lastT.current, true);
+          invalidate();
+        } catch {
+          /* a broken look stays a simple figure */
+        }
+      }
+      runPump();
+    }, 45);
+  };
+  useEffect(() => {
+    const want = new Set(rigIds);
+    for (const [id, r] of rigs.current) {
+      if (!want.has(id)) {
+        r.rig.dispose();
+        rigGroup.remove(r.g);
+        rigs.current.delete(id);
+      }
+    }
+    rigIds.forEach((id, rank) => {
+      const have = rigs.current.get(id);
+      if (!have) return;
+      const idx = crowd.findIndex((p) => p.id === id);
+      const p = crowd[idx];
+      Object.assign(have, { idx, rank });
+      have.g.position.set(p.p[0], 0, p.p[1]);
+      have.g.rotation.y = p.yaw;
+    });
+    instSet.current = -1;
+    runPump();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rigIds, crowd, rigDetail]);
+  useEffect(() => {
+    const pm = pump.current;
+    pm.alive = true;
+    return () => {
+      pm.alive = false;
+      window.clearTimeout(pm.timer);
+      pm.timer = 0;
+    };
+  }, []);
+  useEffect(() => () => {
+    for (const r of rigs.current.values()) r.rig.dispose();
+    rigs.current.clear();
+  }, []);
+  const rigged = (id: string) => rigs.current.has(id);
+  const frameN = useRef(0);
+  const lastT = useRef(0);
+  const instSet = useRef(-1);
+  useEffect(() => { instSet.current = -1; }, [inst]);
+  const placeCrowd = (t: number, force = false) => {
+    lastT.current = t;
+    const n = frameN.current++;
+    // animation LOD: rigs nearest the camera every frame, the next ones every 2nd, the farthest every 3rd
+    for (const r of rigs.current.values()) {
+      const every = r.rank < 2 ? 1 : r.rank < 4 ? 2 : 3;
+      if (!force && (n + r.rank) % every !== 0) continue;
+      const p = crowd[r.idx];
+      if (!p) continue;
+      poseCrowd(r.rig.ch, p.motion, t, r.salt, view.current.reduced);
+    }
+    // instanced figures: every 2nd frame (they are small and simple). Rigged people are left out of the
+    // instance list entirely (compacted), so they cost no instanced triangles.
+    if (!force && n % 2 === 1) return;
+    if (instSet.current !== rigs.current.size) {
+      instSet.current = rigs.current.size;
+      const c = new Color();
+      let k = 0;
+      crowd.forEach((p) => {
+        if (rigged(p.id)) return;
+        inst.torso.setColorAt(k, c.set(p.color));
+        inst.legs.setColorAt(k, c.set(p.legs));
+        inst.head.setColorAt(k, c.set(p.skin));
+        k++;
+      });
+      for (const m of [inst.torso, inst.legs, inst.head]) {
+        m.count = k;
+        if (m.instanceColor) m.instanceColor.needsUpdate = true;
+      }
+    }
+    let k = -1;
+    crowd.forEach((p, ci) => {
+      if (rigged(p.id)) return;
+      const i = ++k;
+      const bounce = p.lively && !view.current.reduced ? Math.abs(Math.sin(t * 5.2 + salts[ci])) * 0.09 : 0;
+      const sway = p.lively && !view.current.reduced ? Math.sin(t * 2.6 + salts[ci]) * 0.35 : 0;
+      const breathe = 1 + Math.sin(t * 1.6 + salts[ci]) * 0.012;
       _q.setFromAxisAngle(_yAxis, p.yaw + sway);
       const legH = p.seated ? 0.42 : 0.78;
       // legs (seated: short, as if bent under the seat)
@@ -542,10 +677,25 @@ function Interior(props: PlaceSceneProps & {
     inst.head.instanceMatrix.needsUpdate = true;
   };
   useEffect(() => {
-    placeCrowd(0);
+    placeCrowd(0, true);
     invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inst]);
+  // tap a person (invisible boxes, no draw calls): NPC -> their line as a bubble
+  const personGeo = useMemo(() => new BoxGeometry(0.62, 1.8, 0.62).translate(0, 0.9, 0), []);
+  useEffect(() => () => personGeo.dispose(), [personGeo]);
+  const personPicks = useMemo(() => {
+    const m = new InstancedMesh(personGeo, mats.pick, Math.max(1, crowd.length));
+    m.count = crowd.length;
+    crowd.forEach((p, i) => {
+      _m.compose(_p.set(p.p[0], 0, p.p[1]), _q.identity(), _s.set(1, p.seated ? 0.75 : 1, 1));
+      m.setMatrixAt(i, _m);
+    });
+    m.instanceMatrix.needsUpdate = true;
+    m.computeBoundingSphere();
+    return m;
+  }, [crowd, personGeo, mats.pick]);
+  useEffect(() => () => personPicks.dispose(), [personPicks]);
 
   // ---- the Sim
   const key = avatarKey(props.avatar);
@@ -880,7 +1030,7 @@ function Interior(props: PlaceSceneProps & {
     shadow.visible = rootRotX > -0.5 && a.pose !== 'swim';
 
     // crowd + party lights
-    if (crowd.length && (lively || !view.current.reduced)) placeCrowd(t);
+    if (crowd.length && (lively || rigs.current.size > 0 || !view.current.reduced)) placeCrowd(t);
     if (room.kit.party && !closed && !view.current.reduced) {
       partyT.current += step;
       const h = (partyT.current * 0.12) % 1;
@@ -913,6 +1063,25 @@ function Interior(props: PlaceSceneProps & {
         el.style.transform = `translate3d(${sx}px, ${sy}px, 0) translate(-50%, -100%)`;
       }
     }
+    // L3 speech bubbles: over a person's head (or the Sim's, 'me')
+    const bubbles = props.bubbleRefs.current;
+    if (bubbles.size) {
+      for (const [who, el] of bubbles) {
+        let bx: number, bz: number, by: number;
+        if (who === 'me') {
+          bx = actorObj.position.x; bz = actorObj.position.z; by = (a.mode === 'pose' && (a.pose === 'sit' || a.pose === 'lie') ? 1.3 : 1.9) + actorObj.position.y;
+        } else {
+          const pp = crowd.find((c) => c.id === who);
+          if (!pp) { el.style.opacity = '0'; continue; }
+          bx = pp.p[0]; bz = pp.p[1]; by = (pp.seated ? 1.38 : 1.82) + 0.12;
+        }
+        _v.set(bx - cx, by, bz - cz).project(camera);
+        const sx = ((_v.x + 1) / 2) * size.width;
+        const sy = ((1 - _v.y) / 2) * size.height;
+        el.style.opacity = '1';
+        el.style.transform = `translate3d(${sx}px, ${sy}px, 0) translate(-50%, calc(-100% - ${who === 'me' ? 4 : 24}px))`;
+      }
+    }
     a.hot = a.mode === 'walk' || a.gait > 0 || blending || marking;
   });
 
@@ -929,7 +1098,9 @@ function Interior(props: PlaceSceneProps & {
       },
       stats() {
         gl.render(scene, camera);
-        return { calls: gl.info.render.calls, triangles: gl.info.render.triangles, roomTriangles: built.tris, geometries: gl.info.memory.geometries };
+        let rigTris = 0;
+        for (const r of rigs.current.values()) rigTris += r.rig.tris;
+        return { calls: gl.info.render.calls, triangles: gl.info.render.triangles, roomTriangles: built.tris, geometries: gl.info.memory.geometries, rigs: rigs.current.size, rigTriangles: Math.round(rigTris) };
       },
       bench(n = 60) {
         const ctx = gl.getContext();
@@ -985,6 +1156,14 @@ function Interior(props: PlaceSceneProps & {
     invalidate();
   };
 
+  const onPerson = (e: ThreeEvent<MouseEvent>) => {
+    if (!isTap(e) || e.instanceId == null) return;
+    const p = crowd[e.instanceId];
+    if (!p) return;
+    e.stopPropagation();
+    props.onTapPerson(p.id);
+  };
+
   const onFloor = (e: ThreeEvent<MouseEvent>) => {
     if (!isTap(e)) return;
     e.stopPropagation();
@@ -1019,7 +1198,9 @@ function Interior(props: PlaceSceneProps & {
         <primitive object={sign.mesh} />
         <primitive object={ring} />
         <primitive object={inst.g} />
+        <primitive object={rigGroup} />
         <primitive object={actorObj} />
+        <primitive object={personPicks} onClick={onPerson} />
         <primitive object={tapMark} />
         <primitive object={floor} onClick={onFloor} />
         <primitive object={picks} onClick={onZone}
@@ -1056,6 +1237,88 @@ export default function PlaceScene(props: PlaceSceneProps) {
   });
   const gesture = useRef<Gesture | null>(null);
   const pillRefs = useRef(new Map<string, HTMLSpanElement>());
+  // ---- L3 speech bubbles (NPC lines on tap / now and then, location chat over the speaker)
+  const bubbleRefs = useRef(new Map<string, HTMLSpanElement>());
+  const [bubbles, setBubbles] = useState<{ who: string; text: string; kind: 'npc' | 'player' | 'me'; n: number }[]>([]);
+  const bubbleTimers = useRef(new Map<string, number>());
+  const bubbleN = useRef(0);
+  const say = (who: string, text: string, ms: number, kind: 'npc' | 'player' | 'me') => {
+    const t = text.length > 110 ? text.slice(0, 107) + '…' : text;
+    bubbleN.current += 1;
+    const n = bubbleN.current;
+    setBubbles((b) => [...b.filter((x) => x.who !== who), { who, text: t, kind, n }]);
+    window.clearTimeout(bubbleTimers.current.get(who));
+    bubbleTimers.current.set(who, window.setTimeout(() => setBubbles((b) => b.filter((x) => x.n !== n)), ms));
+  };
+  useEffect(() => () => { for (const t of bubbleTimers.current.values()) window.clearTimeout(t); }, []);
+  const crowdRef = useRef(props.crowd);
+  crowdRef.current = props.crowd;
+  const sayNpc = (id: string, pick: 'line' | 'random' = 'random') => {
+    const p = crowdRef.current.find((c) => c.id === id);
+    if (!p || p.player) return false;
+    const lines = p.lines?.length ? p.lines : p.line ? [p.line] : [];
+    if (!lines.length) return false;
+    say(id, pick === 'line' && p.line ? p.line : lines[Math.floor(Math.random() * lines.length)], 4000, 'npc');
+    return true;
+  };
+  const onTapPerson = (id: string) => {
+    if (!sayNpc(id)) {
+      const p = crowdRef.current.find((c) => c.id === id);
+      if (p?.player) {
+        const el = pillRefs.current.get(id);
+        const r = el?.getBoundingClientRect();
+        const w = wrap.current?.getBoundingClientRect();
+        if (r && w) onHint(p.name, r.left - w.left + r.width / 2, r.top - w.top);
+      }
+    }
+  };
+  // the People list (PlaceCard) asks a person to speak: window event 'bl:npc-say' { id: roster id }
+  useEffect(() => {
+    const on = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id;
+      if (id) sayNpc(`npc-${id}`, 'line');
+    };
+    window.addEventListener('bl:npc-say', on);
+    return () => window.removeEventListener('bl:npc-say', on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // background chatter: now and then someone says a line (low frequency; never while paused / hidden)
+  const chatterS = props.chatterSeconds ?? 22;
+  const pausedRef = useRef(props.paused);
+  pausedRef.current = props.paused;
+  useEffect(() => {
+    if (!(chatterS > 0)) return;
+    let timer = 0;
+    const next = () => {
+      timer = window.setTimeout(() => {
+        if (!document.hidden && !pausedRef.current) {
+          const npcs = crowdRef.current.filter((c) => !c.player && (c.lines?.length || c.line));
+          if (npcs.length) sayNpc(npcs[Math.floor(Math.random() * npcs.length)].id);
+        }
+        next();
+      }, chatterS * 1000 * (0.6 + Math.random() * 0.8));
+    };
+    next();
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatterS]);
+  // location chat: new lines (not the ones already there when we walked in) float over the speaker for ~5 s
+  const seenChat = useRef<number | null>(null);
+  useEffect(() => {
+    const list = props.speech ?? [];
+    const maxId = list.reduce((m, x) => Math.max(m, x.id), 0);
+    if (seenChat.current === null) {
+      seenChat.current = maxId;
+      return;
+    }
+    for (const m of list) {
+      if (m.id <= seenChat.current) continue;
+      const kind = m.who === 'me' ? 'me' : 'player';
+      if (kind === 'me' || crowdRef.current.some((c) => c.id === m.who)) say(m.who, m.text, 5000, kind);
+    }
+    seenChat.current = Math.max(seenChat.current, maxId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.speech]);
   const [tapHint, setTapHint] = useState<{ text: string; x: number; y: number; n: number } | null>(null);
   const hintTimer = useRef(0);
   const onHint = (text: string, x: number, y: number) => {
@@ -1156,17 +1419,28 @@ export default function PlaceScene(props: PlaceSceneProps) {
           });
         }}
       >
-        <Interior {...props} view={view} actorRef={actor} gesture={gesture} onHint={onHint} pillRefs={pillRefs} />
+        <Interior {...props} view={view} actorRef={actor} gesture={gesture} onHint={onHint} pillRefs={pillRefs} bubbleRefs={bubbleRefs} onTapPerson={onTapPerson} />
       </Canvas>
       <div className={`feel-overlay${looksNight(props.hour) || kitDark ? ' is-dark' : ''}${gfx.tier === 'low' ? ' is-low' : ''}`} aria-hidden />
       <div className="place3d__pills" aria-hidden>
         {props.crowd.map((p) => (
           <span key={p.id} ref={(el) => { if (el) pillRefs.current.set(p.id, el); else pillRefs.current.delete(p.id); }}
-            className={`place3d__pill${p.player ? ' is-player' : ''}${p.seated && !p.player ? ' is-seated' : ''}`}>
+            className={`place3d__pill${p.player ? ' is-player' : ' is-npc'}${p.seated && !p.player ? ' is-seated' : ''}`}
+            title={p.role} onClick={() => onTapPerson(p.id)}>
             {p.player && <i className="place3d__dot" />}{p.name}
           </span>
         ))}
+        {bubbles.map((b) => (
+          <span key={b.who} ref={(el) => { if (el) bubbleRefs.current.set(b.who, el); else bubbleRefs.current.delete(b.who); }}
+            className={`place3d__bubble is-${b.kind}`} style={{ opacity: 0 }}>
+            {b.text}
+          </span>
+        ))}
       </div>
+      {(props.moreCount ?? 0) > 0 && (
+        <span className="place3d__more" style={{ top: (props.insetTop ?? 0) + 8 }}>+{props.moreCount} more here</span>
+      )}
+      <div className="sr-only" aria-live="polite">{bubbles.length ? bubbles[bubbles.length - 1].text : ''}</div>
       {tapHint && (
         <span key={tapHint.n} className="home3d__hint" role="status" style={{ left: tapHint.x, top: tapHint.y }}>
           {tapHint.text}

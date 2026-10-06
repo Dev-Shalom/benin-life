@@ -5,8 +5,9 @@
 //   * each zone has a spot where the Sim stands to use it, and a pose (stand / sit / dance / lie / swim),
 //   * the walk grid blocks solid props (M1 pathing in ../sim/nav.ts),
 //   * background people per zone follow the type's busy curve over the day (render cap crowd.max_visible).
-import type { PlaceZone } from '../../api/places';
-import type { SceneType } from '../../lib/types';
+import type { NpcMotion, PlaceNpc, PlaceZone } from '../../api/places';
+import type { AvatarConfig, SceneType } from '../../lib/types';
+import { applyPreset, normalizeAvatar, skinTone } from '../avatar3d/catalog';
 import { blockRect, makeGrid, type NavGrid, type P2 } from '../sim/nav';
 
 export type KitKind = 'indoor' | 'outdoor';
@@ -239,6 +240,23 @@ export interface NpcPlan {
   seated: boolean;
   /** Real player (blue @name pill + green dot) or a background person (white pill). */
   player: boolean;
+  /** L3: role ("Hype man"), what they do, their lines (tap = bubble), their look (nearest ones get the full rig). */
+  role?: string;
+  motion?: NpcMotion;
+  line?: string | null;
+  lines?: string[];
+  avatar?: AvatarConfig | null;
+  headliner?: boolean;
+}
+
+/** An npc_roster look (partial AvatarConfigV2 + `preset` = outfit preset, optional top colour) -> a full look. */
+export function npcAvatar(raw: Record<string, unknown> | null | undefined): AvatarConfig {
+  const r = raw ?? {};
+  let cfg = normalizeAvatar({ v: 2, ...r });
+  if (typeof r.preset === 'string') cfg = applyPreset(cfg, r.preset);
+  const top = r.top as { c?: unknown } | undefined;
+  if (top && typeof top.c === 'string' && /^#[0-9a-f]{6}$/i.test(top.c)) cfg = { ...cfg, top: { ...cfg.top, c: top.c } };
+  return cfg;
 }
 
 function hash(s: string): number {
@@ -263,7 +281,11 @@ export function planCrowd(opts: {
   room: Room;
   zones: PlaceZone[];
   grid: NavGrid;
-  players: { id: string; username: string }[];
+  players: { id: string; username: string; avatar?: AvatarConfig | null }[];
+  /** L3: named people from place_people() (undefined = still loading: none drawn; null = failed: old random people). */
+  npcs?: PlaceNpc[] | null;
+  /** Everyone there per the crowd profile (place_people().total). */
+  npcTotal?: number;
   perZone: number;
   cap: number;
   closed: boolean;
@@ -307,8 +329,44 @@ export function planCrowd(opts: {
     const z = zones[Math.floor(rnd() * zones.length)];
     const at = near(z);
     if (!at) continue;
-    const female = rnd() < 0.5;
-    shown.push({ id: pl.id, name: `@${pl.username}`, p: at.p, yaw: at.yaw, color: NPC_COLORS[hash(pl.id) % NPC_COLORS.length], legs: '#2a2d3a', skin: SKIN[hash(pl.id) % SKIN.length], female, lively: propMeta(z.prop).pose === 'dance', seated: at.seated, player: true });
+    const look = pl.avatar ? normalizeAvatar(pl.avatar) : null;
+    const female = look ? look.gender === 'female' : rnd() < 0.5;
+    shown.push({
+      id: pl.id, name: `@${pl.username}`, p: at.p, yaw: at.yaw,
+      color: look?.top.c ?? NPC_COLORS[hash(pl.id) % NPC_COLORS.length], legs: look?.bottom.c ?? '#2a2d3a',
+      skin: look ? skinTone(look.skin).base : SKIN[hash(pl.id) % SKIN.length], female,
+      lively: propMeta(z.prop).pose === 'dance', seated: at.seated, player: true, avatar: look,
+      motion: propMeta(z.prop).pose === 'dance' ? 'dance' : 'idle',
+    });
+  }
+  if (opts.npcs !== null) {
+    // L3: the named people present (server-seeded, the same for every player)
+    const list = opts.closed ? [] : (opts.npcs ?? []);
+    const byKey = new Map(zones.map((z) => [z.key, z]));
+    const danceZ = zones.filter((z) => propMeta(z.prop).pose === 'dance');
+    const djZ = zones.find((z) => z.prop === 'dj_booth');
+    let rr = 0;
+    for (const n of list) {
+      if (shown.length >= cap || !zones.length) break;
+      const z = (n.zone && byKey.get(n.zone))
+        || (n.motion === 'dance' && danceZ.length ? danceZ[Math.floor(rnd() * danceZ.length)] : null)
+        || ((n.motion === 'dj' || n.motion === 'hype') && djZ ? djZ : null)
+        || zones[(rr++ + Math.floor(rnd() * 2)) % zones.length];
+      const at = near(z) ?? near(zones[Math.floor(rnd() * zones.length)]);
+      if (!at) continue;
+      const look = npcAvatar(n.avatar);
+      const pose = propMeta(z.prop).pose;
+      const motion: NpcMotion = n.motion === 'sit' && !at.seated ? 'idle' : at.seated && n.motion !== 'serve' ? 'sit' : n.motion;
+      // performers face the room (the camera side), everyone else as placed
+      const yaw = motion === 'hype' || motion === 'dj' ? zoneSpot(z, room).yaw + Math.PI : at.yaw;
+      shown.push({
+        id: `npc-${n.id}`, name: n.name, p: at.p, yaw, color: look.top.c, legs: look.bottom.c, skin: skinTone(look.skin).base,
+        female: look.gender === 'female', lively: motion === 'dance' || motion === 'hype' || motion === 'cheer' || pose === 'dance',
+        seated: at.seated && motion === 'sit', player: false, role: n.role, motion, line: n.line, lines: n.lines, avatar: look,
+        headliner: n.headliner,
+      });
+    }
+    return { shown, total: opts.players.length + Math.max(opts.npcTotal ?? 0, list.length) };
   }
   // background people
   let npcTotal = 0;

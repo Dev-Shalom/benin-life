@@ -92,6 +92,20 @@ export function grow(r: Ring, t: number, tz = t): Ring {
   return { ...r, w: r.w + t, df: r.df + tz, db: (r.db ?? r.df) + tz };
 }
 
+// L3 crowd LOD: a global segment multiplier while building a crowd character (1 = full detail, the default;
+// the player's Sim, portraits and the creator never change). Only `withDetail` sets it.
+let DETAIL = 1;
+export function withDetail<T>(f: number, fn: () => T): T {
+  const prev = DETAIL;
+  DETAIL = f;
+  try {
+    return fn();
+  } finally {
+    DETAIL = prev;
+  }
+}
+const lod = (n: number, min: number) => (DETAIL >= 1 ? n : Math.max(min, Math.round(n * DETAIL)));
+
 /**
  * Parametric grid surface. `fn(u, v)` with u, v in [0,1]; u runs around (or across), v along.
  * Winding: (dP/du x dP/dv) points outward. Set `flip` when it does not.
@@ -104,6 +118,8 @@ export function gridSurface(
   opts: { closed?: boolean; flip?: boolean; tile?: number; uAnchor?: number; patchUv?: boolean } = {},
 ): BufferGeometry {
   const { closed = false, flip = false, tile = 0.25, uAnchor = 0, patchUv = false } = opts;
+  cols = lod(cols, closed ? 4 : 2);
+  rows = lod(rows, 1);
   const nu = cols + 1;
   const nv = rows + 1;
   const pos = new Float32Array(nu * nv * 3);
@@ -173,18 +189,21 @@ export interface LoftOpts {
 /** Vertical loft through rings (sorted by y ascending). */
 export function loft(rings: Ring[], opts: LoftOpts = {}): BufferGeometry {
   const rs = [...rings].sort((a, b) => a.y - b.y);
-  const { seg = 14, a0 = 0, a1 = Math.PI * 2, tile = 0.25 } = opts;
+  const { a0 = 0, a1 = Math.PI * 2, tile = 0.25 } = opts;
+  const seg = lod(opts.seg ?? 14, 4);
+  // crowd LOD: fewer rings too (every other one at half detail); the first and last always stay
+  const rows = DETAIL >= 1 ? rs.length - 1 : Math.max(1, Math.min(rs.length - 1, Math.round((rs.length - 1) * Math.min(1, DETAIL * 2))));
   const full = Math.abs(a1 - a0 - Math.PI * 2) < 1e-6;
-  const geo = gridSurface(
+  const geo = withDetail(1, () => gridSurface(
     seg,
-    rs.length - 1,
+    rows,
     (u, v) => {
       const r = rs[Math.round(v * (rs.length - 1))];
       const [x, z] = ringXZ(r, lerp(a0, a1, u));
       return [x, r.y, z];
     },
     { closed: full, tile, uAnchor: full ? 0 : 0.5, patchUv: opts.patchUv },
-  );
+  ));
   const parts = [geo];
   if (opts.capLo) parts.push(fanCap(rs[0], seg, true));
   if (opts.capHi) parts.push(fanCap(rs[rs.length - 1], seg, false));
@@ -212,6 +231,7 @@ function fanCap(r: Ring, seg: number, down: boolean): BufferGeometry {
 
 /** Tube along a polyline with per-point radii. Ends are closed with a point. */
 export function tube(points: V3[], radii: number[] | number, sides = 5, tile = 0.1): BufferGeometry {
+  sides = lod(sides, 3);
   const P = points.map((p) => new Vector3(...p));
   const n = P.length;
   const R = (i: number) => (Array.isArray(radii) ? radii[Math.min(i, radii.length - 1)] : radii);
@@ -279,7 +299,7 @@ export function xf(geo: BufferGeometry, t: Xf): BufferGeometry {
 
 /** Scaled sphere (ellipsoid). */
 export function ellipsoid(rx: number, ry: number, rz: number, t: Xf = {}, ws = 10, hs = 7): BufferGeometry {
-  const g = new SphereGeometry(1, ws, hs);
+  const g = new SphereGeometry(1, lod(ws, 4), lod(hs, 3));
   g.scale(rx, ry, rz);
   return xf(g, t);
 }
@@ -289,15 +309,15 @@ export function box(sx: number, sy: number, sz: number, t: Xf = {}): BufferGeome
 }
 
 export function cyl(rTop: number, rBot: number, h: number, t: Xf = {}, seg = 10, open = false): BufferGeometry {
-  return xf(new CylinderGeometry(rTop, rBot, h, seg, 1, open), t);
+  return xf(new CylinderGeometry(rTop, rBot, h, lod(seg, 4), 1, open), t);
 }
 
 export function cone(r: number, h: number, t: Xf = {}, seg = 6): BufferGeometry {
-  return xf(new ConeGeometry(r, h, seg, 1), t);
+  return xf(new ConeGeometry(r, h, lod(seg, 3), 1), t);
 }
 
 export function torus(r: number, tubeR: number, t: Xf = {}, rs = 4, ts = 12, arc = Math.PI * 2): BufferGeometry {
-  return xf(new TorusGeometry(r, tubeR, rs, ts, arc), t);
+  return xf(new TorusGeometry(r, tubeR, lod(rs, 3), lod(ts, 4), arc), t);
 }
 
 export function bead(r: number, t: Xf = {}): BufferGeometry {

@@ -1,2 +1,2 @@
 export { PlaceView, type PlaceViewProps } from './PlaceView';
-export { planCrowd, roomFor, buildPlaceGrid, kitFor, busyness, type NpcPlan } from './model';
+export { planCrowd, npcAvatar, roomFor, buildPlaceGrid, kitFor, busyness, type NpcPlan } from './model';

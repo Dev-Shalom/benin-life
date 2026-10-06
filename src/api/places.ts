@@ -68,3 +68,31 @@ export interface PlaceInterior {
 }
 
 export const placeInterior = (location?: string) => rpc<PlaceInterior>('place_interior', location ? { p_location: location } : {});
+
+/** L3: a named background person present at a place (npc_roster via place_people()). */
+export type NpcMotion = 'idle' | 'dance' | 'hype' | 'dj' | 'trade' | 'serve' | 'guard' | 'sit' | 'cheer' | 'work' | 'phone';
+export interface PlaceNpc {
+  id: string;
+  name: string;
+  role: string;
+  motion: NpcMotion;
+  /** Preferred zone key (dj, dance, bar...), or null. */
+  zone: string | null;
+  headliner: boolean;
+  /** Partial AvatarConfigV2; `preset` = the outfit preset to apply (see npcAvatar in place3d/model). */
+  avatar: Record<string, unknown>;
+  /** The line for this hour, and every line (Pidgin first at markets / streets). */
+  line: string | null;
+  lines: string[];
+}
+export interface PlacePeople {
+  location: string;
+  hour: number;
+  weekday: number;
+  open: boolean;
+  /** Everyone there (the list is capped by crowd.npc_list_max). */
+  total: number;
+  npcs: PlaceNpc[];
+}
+export const placePeople = (location: string, hour?: number | null) =>
+  rpc<PlacePeople>('place_people', hour == null ? { p_location: location } : { p_location: location, p_hour: hour });

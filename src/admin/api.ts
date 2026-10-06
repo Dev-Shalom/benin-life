@@ -24,7 +24,7 @@ export type Row = Record<string, unknown>;
 export type AdminTable =
   | 'origin_tiers' | 'traits' | 'dreams' | 'start_homes' | 'career_tracks' | 'career_levels'
   | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture' | 'starter_furniture'
-  | 'place_zones' | 'zone_actions' | 'place_moods';
+  | 'place_zones' | 'zone_actions' | 'place_moods' | 'npc_roster' | 'crowd_profiles';
 
 export interface PlayerRow {
   id: string;

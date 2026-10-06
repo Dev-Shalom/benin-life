@@ -14,6 +14,7 @@ import { randomGreeting } from '../lib/pidgin';
 import { usePrefs } from '../lib/prefs';
 import { useCatalog } from '../state/catalog';
 import { useChat, useChatLive } from '../state/chat';
+import { useTier } from '../art/feel/quality';
 import { useGame } from '../state/game';
 import { usePresenceStore } from '../state/presence';
 import { useUi } from '../state/ui';
@@ -31,7 +32,7 @@ import { StatusBanners } from './game/StatusBanners';
 import { deriveStatus } from './game/status';
 import { useTaskRunner } from './game/TaskRunner';
 import { useTasks } from '../state/tasks';
-import { PlaceCard, usePlaceInterior, usePlayersAt } from './game/PlaceCard';
+import { PlaceCard, usePlaceInterior, usePlacePeople, usePlayersAt } from './game/PlaceCard';
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
@@ -138,6 +139,10 @@ export default function Game() {
   // V1-6: stay subscribed to the chat of the place you are at (unread dot while the sheet is closed).
   useChatLive(state && !state.travel ? state.location.id : null, p?.id ?? null);
   const chatUnread = useChat((s) => s.unread);
+  // L3: the last location chat lines float over the speaker's head inside a place
+  const chatMsgs = useChat((s) => s.messages);
+  const speech = useMemo(() => chatMsgs.slice(-8).map((m) => ({ id: m.id, who: m.mine ? 'me' : m.user_id, text: m.body })), [chatMsgs]);
+  const gfxTier = useTier();
 
   // A fresh game screen (e.g. after logging out and in again) starts clean: no sheet or map left
   // open from the previous session. The UI store outlives the screen.
@@ -244,13 +249,16 @@ export default function Game() {
   const crowdCap = Math.max(0, Math.min(30, Number(cfg('crowd.max_visible', 10)) || 0));
   const npcPerZone = Math.max(0, Math.min(6, Number(cfg('places.npc_per_zone', 2)) || 0));
   const hourInt = Math.floor(hourF);
+  const hourOverride = devHourOverride();
+  const people = usePlacePeople(showPlace && state ? state.location.id : null, hourInt, hourOverride == null ? null : Math.floor(hourOverride));
   const crowdPlan = useMemo(() => {
     if (!interior.data || !placeRoom || !placeGrid) return { shown: [], total: 0 };
     return planCrowd({
       placeId: interior.data.location.id, scene: interior.data.location.scene, hour: hourInt, room: placeRoom, zones: interior.data.zones,
       grid: placeGrid, players: playersHere, perZone: npcPerZone, cap: crowdCap, closed: !interior.data.open,
+      npcs: people === null ? null : people?.npcs, npcTotal: people?.total ?? 0,
     });
-  }, [interior.data, placeRoom, placeGrid, playersHere, npcPerZone, crowdCap, hourInt]);
+  }, [interior.data, placeRoom, placeGrid, playersHere, npcPerZone, crowdCap, hourInt, people]);
   // the first zone is picked on the way in, so its action cards show at once
   useEffect(() => {
     if (interior.data && !placeZone && interior.data.zones.length) setPlaceZone(interior.data.zones[0].key);
@@ -325,6 +333,10 @@ export default function Game() {
             hour={hourF}
             closed={!interior.data.open}
             crowd={crowdPlan.shown}
+            rigCount={import.meta.env.DEV && typeof (window as { __blRigs?: number }).__blRigs === 'number' ? (window as { __blRigs?: number }).__blRigs : Math.max(0, Math.min(8, Number(cfg(gfxTier === 'low' ? 'crowd.rigs_low' : 'crowd.rigs_high', gfxTier === 'low' ? 2 : 4)) || 0))}
+            chatterSeconds={Math.max(0, Number(cfg('crowd.chatter_seconds', 22)) || 0)}
+            speech={speech}
+            moreCount={Math.max(0, crowdPlan.total - crowdPlan.shown.length)}
             selectedZone={placeZone}
             onPickZone={setPlaceZone}
             task={runner.placeTask}
@@ -410,7 +422,8 @@ export default function Game() {
           {!clean && showPlace && (
             <PlaceCard state={state} data={interior.data} error={interior.error} zone={placeZone} onZone={setPlaceZone}
               peopleCount={crowdPlan.total + 1} moodSeconds={Number(cfg('places.mood_seconds', 7)) || 7}
-              onMap={() => onDock('map')} onHome={goHome} atHome={atHome} />
+              onMap={() => onDock('map')} onHome={goHome} atHome={atHome}
+              players={playersHere} npcs={people?.npcs ?? []} me={{ username: p.username, avatar: p.avatar }} />
           )}
           {!clean && !state.travel && !showHome && !showPlace && (
             <div className="where-row">

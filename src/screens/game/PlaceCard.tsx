@@ -5,18 +5,20 @@
 // the action starts (activities, shifts, purchases); tabs (bank counter, PoS, the whole shop) open the
 // place sheet on that tab. The server stays authoritative (hours, cash, night only...).
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { placeInterior, type PlaceInterior, type PlaceZone, type ZoneAction } from '../../api/places';
+import { placeInterior, placePeople, type PlaceInterior, type PlaceNpc, type PlacePeople, type PlaceZone, type ZoneAction } from '../../api/places';
 import { chatSend } from '../../api/chat';
 import { errorMessage, rpc } from '../../lib/api';
 import { serverNow } from '../../lib/clock';
 import { districtName, naira, nairaShort } from '../../lib/format';
 import { activitySeconds, useActionConfig } from '../../lib/live';
 import { NEED_META, type NeedKey } from '../../lib/pidgin';
-import type { GameState, PanelId, PublicPlayer } from '../../lib/types';
+import type { AvatarConfig, GameState, PanelId, PublicPlayer } from '../../lib/types';
 import { usePresenceStore, usePresentAt } from '../../state/presence';
 import { useTasks } from '../../state/tasks';
 import { useUi } from '../../state/ui';
-import { Icon, toast } from '../../ui';
+import { Icon, Sheet, toast } from '../../ui';
+import { AvatarPortrait } from '../../art/avatar3d';
+import { npcAvatar } from '../../art/place3d/model';
 import { placeEmoji } from '../../art/city3d';
 import { deriveStatus } from './status';
 import { queueTask } from './TaskRunner';
@@ -50,8 +52,27 @@ export function usePlaceInterior(locationId: string | null, hour: number, bump: 
   return { data: shown, error };
 }
 
+/**
+ * L3: the named background people at a place this hour (place_people). undefined while loading, null when the
+ * call failed (the 3D then falls back to unnamed people). `hour` = the visual hour override (dev) or null = now.
+ */
+export function usePlacePeople(locationId: string | null, hourKey: number, override: number | null): PlacePeople | null | undefined {
+  const [data, setData] = useState<PlacePeople | null | undefined>(undefined);
+  useEffect(() => {
+    if (!locationId) return;
+    let alive = true;
+    placePeople(locationId, override == null ? null : ((Math.floor(override) % 24) + 24) % 24)
+      .then((d) => alive && setData(d))
+      .catch(() => alive && setData(null));
+    return () => {
+      alive = false;
+    };
+  }, [locationId, hourKey, override]);
+  return data && data.location !== locationId ? undefined : data;
+}
+
 /** Real players connected at a place (Realtime Presence ids -> players_here for names), me excluded. */
-export function usePlayersAt(locationId: string | null, meId: string): { id: string; username: string }[] {
+export function usePlayersAt(locationId: string | null, meId: string): { id: string; username: string; avatar: PublicPlayer['avatar'] | null }[] {
   const ids = usePresentAt(locationId);
   const live = usePresenceStore((s) => s.online !== null);
   const [list, setList] = useState<PublicPlayer[]>([]);
@@ -73,7 +94,7 @@ export function usePlayersAt(locationId: string | null, meId: string): { id: str
   }, [locationId, meId, ids]);
   return useMemo(() => {
     const on = new Set(ids);
-    return list.filter((p) => !live || on.has(p.id)).map((p) => ({ id: p.id, username: p.username }));
+    return list.filter((p) => !live || on.has(p.id)).map((p) => ({ id: p.id, username: p.username, avatar: p.avatar ?? null }));
   }, [list, ids, live]);
 }
 
@@ -189,10 +210,60 @@ export interface PlaceCardProps {
   onMap: () => void;
   onHome: () => void;
   atHome: boolean;
+  /** L3 People list: players here (me excluded), the named people present, and everyone counted. */
+  players?: { id: string; username: string; avatar: AvatarConfig | null }[];
+  npcs?: PlaceNpc[];
+  me?: { username: string; avatar: AvatarConfig };
 }
 
-export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodSeconds, onMap, onHome, atHome }: PlaceCardProps) {
+/** L3 "People N": real players first (portraits), then the people present with their role and a line. */
+function PeopleSheet({ open, onClose, total, players, npcs, me, placeName, onSheet }: {
+  open: boolean; onClose: () => void; total: number; players: NonNullable<PlaceCardProps['players']>; npcs: PlaceNpc[];
+  me?: PlaceCardProps['me']; placeName: string; onSheet: () => void;
+}) {
+  const looks = useMemo(() => new Map(npcs.map((n) => [n.id, npcAvatar(n.avatar)])), [npcs]);
+  const more = Math.max(0, total - players.length - npcs.length - (me ? 1 : 0));
+  const speak = (id: string) => {
+    onClose();
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent('bl:npc-say', { detail: { id } })), 120);
+  };
+  return (
+    <Sheet open={open} onClose={onClose} title={`People here · ${total}`} subtitle={placeName} size="tall"
+      footer={<button type="button" className="bl-btn bl-btn--ghost" onClick={() => { onClose(); onSheet(); }}>Place details &amp; chat</button>}>
+      <div className="people-list">
+        <h3 className="people-list__h">Players</h3>
+        {me && (
+          <div className="people-row">
+            <span className="people-row__av"><AvatarPortrait config={me.avatar} size={40} /></span>
+            <span className="people-row__main"><span className="people-row__name"><span className="people-row__dot" aria-hidden />@{me.username} (you)</span></span>
+          </div>
+        )}
+        {players.map((pl) => (
+          <div key={pl.id} className="people-row">
+            <span className="people-row__av">{pl.avatar ? <AvatarPortrait config={pl.avatar} size={40} /> : '🙂'}</span>
+            <span className="people-row__main"><span className="people-row__name"><span className="people-row__dot" aria-label="online" />@{pl.username}</span></span>
+          </div>
+        ))}
+        {!players.length && <p className="people-row__role">No other players here right now. Share the place to bring friends.</p>}
+        {npcs.length > 0 && <h3 className="people-list__h">Around you</h3>}
+        {npcs.map((n) => (
+          <button key={n.id} type="button" className="people-row" onClick={() => speak(n.id)} aria-label={`${n.name}, ${n.role}. Tap to hear them`}>
+            <span className="people-row__av"><AvatarPortrait config={looks.get(n.id)!} size={40} /></span>
+            <span className="people-row__main">
+              <span className="people-row__name">{n.name} <span className="people-row__role">· {n.role}</span></span>
+              {n.line && <span className="people-row__line">“{n.line}”</span>}
+            </span>
+          </button>
+        ))}
+        {more > 0 && <p className="people-list__more">+{more} more people here</p>}
+      </div>
+    </Sheet>
+  );
+}
+
+export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodSeconds, onMap, onHome, atHome, players = [], npcs = [], me }: PlaceCardProps) {
   const select = useUi((s) => s.select);
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const loc = state.location;
   const queued = useTasks((s) => (s.current ? 1 : 0) + s.queue.length);
   const [open, setOpen] = useState(true);
@@ -292,7 +363,7 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
             <span aria-hidden>{z.icon}</span> {z.label}
           </button>
         ))}
-        <button type="button" className="pc-chip is-people" onClick={() => select(loc.id)} aria-label={`People here: ${peopleCount}. Open the place sheet`}>
+        <button type="button" className="pc-chip is-people" onClick={() => setPeopleOpen(true)} aria-label={`People here: ${peopleCount}. Open the people list`}>
           <span aria-hidden>👥</span> People <b>{peopleCount}</b>
         </button>
       </div>
@@ -304,6 +375,8 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
           ))}
         </div>
       )}
+      <PeopleSheet open={peopleOpen} onClose={() => setPeopleOpen(false)} total={peopleCount} players={players} npcs={npcs} me={me}
+        placeName={name} onSheet={() => select(loc.id)} />
       {open && current?.note && <p className="place-card__note"><span aria-hidden>🎩</span> {current.note}</p>}
       {open && current && current.actions.length === 0 && (
         <p className="place-card__hint">Nothing to do here right now. Tap the floor to walk around.</p>

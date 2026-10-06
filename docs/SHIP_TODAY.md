@@ -47,10 +47,19 @@ The user finds the map "looking weird". Improve the 3D city's look: clearer road
 
 **M2 notes (agent, 2026-10-06, not committed):** details in docs/HUD_HOME.md "M2 movement & task feel". (1) Walk 1.15 → **1.9 m/s** (robes 0.72 → 1.33), stride + cadence scale with speed, admin keys `sim.walk_speed` / `sim.robe_speed_mult` / `sim.tired_slowdown`. (2) Every task walks first (M1 pathing) and `do_activity` is called **on arrival**; the 15 % / 1.4× / placed-there rules are gone; × or a floor tap drops the walking task; errors toast and the queue goes on; no-furniture tasks start at once. (3) Progress pill moved to the **left column** (icon, name, thin live bar, seconds, ×; shift pay counter kept); bottom busy banner removed. (4) **Queue** (zustand, max `action.queue_max` = 5, full toast, × and ↑ per chip, cleared on logout / leaving / travel / jail / hospital / server busy). New `activity_stop()` RPC for the × on a running task (keeps the share earned so far, no refund). (5) Bent legs: `restPose()` never straightened the knees, so a sit's 1.45 rad knee bend leaked into standing; fixed + `scripts/pose-check.mjs` + dev `__legCheck`. Migration `20261006001200_sim_feel.sql`, tests `sim_feel_test.sql`.
 
-## L2+. Places, crowds, events, landmarks — [L2 done; L3 crowds running; L4 events next] (first L2 agent hit a usage limit before changing anything)
+## L2+. Places, crowds, events, landmarks — [L2 + L3 done; L4 events next] (first L2 agent hit a usage limit before changing anything)
 As in docs/REAL_LIFE_PLAN.md. Landmarks (docs/LANDMARKS.md): keep the REAL names the user chose (ShopRite/Benin City Mall, Kada Plaza, Mama Ebo, Protea, Golden Tulip, Ogba Zoo, Ogbe/Samuel Ogbemudia Stadium, Emotan Statue, real clubs) and **mix in local made-up names** so it isn't built only on real brands. Add:
 - **Car dealers** (buy cars): real Benin options along Sapele Rd — e.g. Ighodalo Car Deals (Km 5 Sapele Rd), SDD Motors (174 Sapele Rd), Otos Autos (near Santana Market), Dominion Automobile; official Toyota (Mandilas, 45 Benin–Agbor Rd). Pick 1–2 real + a made-up "Tokunbo lot".
 - **Top clubs with hype men & big spenders**: 360 Signature (GRA, 1st Ugbor Rd), Club De Medici (23 Benoni off Airport Rd, GRA), Rome Night Club ("biggest in Benin"), Club Vibes (DJ + hype man), Cube Nightlife, Versus Lounge, Havana. Club actions: table/bottle service (VIP prices), "spray money", hype man shout-out (costly, + street cred), dance.
+
+**L3 crowds (agent notes, 2026-10-06; status marker left for the lead):** named NPC roster (121 Benin people, roles, looks,
+English lines + Pidgin at markets/streets/parks/PoS) in `npc_roster`; how many by place type × hour band × weekday/weekend in
+`crowd_profiles`; `place_people()` picks the same people for every player per place × hour. Nearest 4 people (2 on Low) use
+the real avatar baked into a 1-call skinned mesh with role motions (MC Lightning hyping and DJ Ekpen at 360 Signature,
+dancers, traders, bouncers); the rest stay instanced; animation LOD. White NPC pills, blue @player pills, People N list,
+NPC + chat speech bubbles, "+N more here". Admin → Content → People (NPCs) / Crowd profiles; config `crowd.npc_list_max`,
+`crowd.rigs_high`, `crowd.rigs_low`, `crowd.chatter_seconds`. Migration `20261006001500_crowds.sql`, tests
+`crowds_test.sql`. Details + cost: docs/PLACES.md "L3 crowds".
 
 ## F1. Club soft launch + real feel (user, 2026-10-06 evening): [done]
 - **Soft launch:** only **360 Signature** is open at first. The other clubs (and any place) can be hidden or shown with an admin switch (`locations.active`); hidden places have no map pin and can't be travelled to. Each place's opening and closing hours are editable in admin → Places.

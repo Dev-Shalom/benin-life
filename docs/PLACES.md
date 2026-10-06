@@ -11,8 +11,8 @@ with **Map** or **Home** (dock or the card's buttons). The map is still there: o
   lamps on, clubs go dark with party colours; a closed place has its lights down). Tap the floor to walk
   (M1 pathing), drag to turn ±43°, pinch / wheel to zoom.
 - **People**: real players at the place (S1 Realtime Presence) as blue **@name** pills with a green dot,
-  then background people per zone (L3-lite), drawn up to `crowd.max_visible` (players first). The card's
-  **People N** counts everyone (players + background people + you).
+  then the named background people of the hour (L3, white pills), drawn up to `crowd.max_visible` (players first,
+  the rest as "+N more here"). The card's **People N** counts everyone and opens the People list (L3 crowds below).
 - **The place card** (bottom): emoji, name · district, a rotating **mood line** (place type × part of day;
   "Closed now · Opens 9 PM" while closed), **Say something out loud…** (location chat, `chat_send`; behind
   a chat button on phones), Share / Map / Home, **zone chips**, and the picked zone's **action cards**.
@@ -140,10 +140,46 @@ Content → **Place zones** (x/z inline; "Add"), **Zone actions**, **Mood lines*
 Icon, Only at these places, Risky, Rush hour sell-out; **Places** gained Opens at / Closes at. Settings →
 category "places" (keys above). All writes audited as before.
 
+## L3 crowds (migration `20261006001500_crowds.sql`, tests `supabase/tests/crowds_test.sql`)
+"Places should feel alive": named Benin people at every place, the same for every player, busy and quiet by real
+Benin rhythm.
+
+### Server
+| Piece | What |
+|---|---|
+| `npc_roster` | 121 seeded people: `name`, `role`, `motion` (idle, dance, hype, dj, trade, serve, guard, sit, cheer, work, phone), `avatar` (a partial AvatarConfigV2; `preset` = outfit preset, optional `top.c`), `lines` (English, one per row), `pidgin` (one per row, only used at market / street / motor park / PoS), `scenes` (place types) and/or `location_ids` (only these places; wins), `zone_key` (where they stand: dj, dance, bar, counter, foodstuff...), `headliner` (always there while the place has people), `sort`, `active`. Benin names (Osaro, Eki, Nosa, Uyi, Efosa, Osas, Ivie, Imade, Omoruyi, Ehis...). 360 Signature has **MC Lightning** (hype man), **DJ Ekpen**, **Big Osaze** (bouncer) and Ivie (waitress) on top of the club-wide bouncer, bartender, big spenders and 9 dancers; the hidden clubs share **DJ Uyi**. Every non-home place type has people (traders and a mama put at markets, agberos and keke riders at parks, students and a lecturer at UNIBEN, nurses, bankers, police, a barber, car salesmen, bronze casters at Igun Street...). |
+| `crowd_profiles` | place type × hour band (`from_hour` inclusive, `to_hour` exclusive, Benin time) × `days` (all / weekday / weekend) → `npcs` (how many people are there). Most specific wins: weekday/weekend before all, then the shortest band, then `sort`. Every type has an all-day base row, so every hour of every day is covered. Seeded: markets 60 at 7–12 and empty at night, UNIBEN 40 on weekday daytime and 8 at weekends, clubs 24–28 at night and 40–45 on weekend nights, streets 1 at 0–5 AM, the stadium 120 on weekend afternoons, banks weekdays only... |
+| `place_people(p_location, p_hour default null, p_weekday default null)` | Who is present: `{location, hour, weekday, open, total, npcs[{id, name, role, motion, zone, headliner, avatar, line, lines}]}`. Deterministic per place × date × hour (md5 seed), so every player sees the same people; headliners first, then the seeded order; list capped by `crowd.npc_list_max` (30), `total` = the profile number. Closed / hidden places and homes = nobody. `p_hour` is the dev visual-hour override (any authenticated player may ask for another hour; harmless). Authenticated only. Helpers `bl_crowd_count`, `bl_lines` revoked from clients. |
+| Admin | `bl_admin_table_spec` re-created from its live (F1) definition + `npc_roster` and `crowd_profiles`: **Content → People (NPCs)** and **Crowd profiles** (people count inline), audited by `admin_row_upsert`. Check constraints refuse an unknown motion, a bad day kind and a band with from ≥ to. |
+
+### Client
+| Piece | Files |
+|---|---|
+| `placePeople()` + types | `src/api/places.ts` |
+| `usePlacePeople` (per place × hour, re-reads on the hour; dev `?hour=` / `__blHour` override goes to the server), `usePlayersAt` now carries avatars | `src/screens/game/PlaceCard.tsx` |
+| `planCrowd`: players first, then the named people at their zone (`zone_key`, else dancers on the dance floor, the DJ / hype man at the booth, the rest round-robin); `npcAvatar(raw)` = full look. While loading nobody is drawn; if the call fails the old unnamed people come back | `src/art/place3d/model.ts` |
+| **Crowd rigs**: the real avatar built at ~25 % segment detail (`withDetail` in `engine/geo.ts`; the Sim, portraits and the creator are untouched, `MODEL_VERSION` unchanged), tiny face parts and skin under clothes dropped, braids/locs swapped for a look-alike, then baked into **one skinned mesh with vertex colours** (rigid skinning on the same 16 bones): ~1.1k triangles and 1 draw call per person | `src/art/avatar3d/engine/crowd.ts` |
+| Motions on top of the M1 idle life: dance, hype (arm pumping, jumps on the beat), DJ (hands on the decks, head nod, hand to the headphones), trader beckoning, serving tray, guard arms folded, work (bent), phone, cheer, sit | `src/art/place3d/engine/crowdPose.ts` |
+| Who gets a rig: real players, then headliners, then whoever is nearest the camera, up to `crowd.rigs_high` (4) at Graphics High / `crowd.rigs_low` (2) at Low; built one every ~45 ms (a pump that a crowd re-plan never cancels). The rest stay the 3-call instanced figures (rigged people are compacted out of the instance list). **Animation LOD**: the 2 nearest rigs pose every frame, the next 2 every 2nd, the rest every 3rd; instanced figures every 2nd frame. | `src/art/place3d/engine/PlaceScene.tsx` |
+| Pills + bubbles: white NPC pills (tap = their line, ~4 s), blue @player pills with the green dot; headliners get pill priority. Tap a person in 3D (invisible instanced boxes, 0 draw calls) or in the People list → a speech bubble over the head. A new location chat line floats over the speaker for ~5 s (your own over your Sim). Now and then (`crowd.chatter_seconds`, 22 s average) someone says a line; never while paused or hidden. "+N more here" chip over the room. | `PlaceScene.tsx`, styles `.place3d__bubble`, `.place3d__more`, `.people-*` in `src/styles/game.css` |
+| **People N** opens the People list: you and the real players (cached portraits), then the people around with role and their line (portraits too, lazily); tap one = bubble in the room; "+N more people here"; "Place details & chat" opens the old place sheet. | `PeopleSheet` in `src/screens/game/PlaceCard.tsx` |
+
+### Cost (SwiftShader, `__place.stats()`, Graphics High; before = F1 numbers)
+| Scene | Before (calls / tris) | After (calls / tris) |
+|---|---|---|
+| 360 Signature at 11 PM, phone | 50 / 21.2k | 54 / 25.6k (4 rigs, 4.9k) |
+| 360 Signature at 11 PM, desktop | 57 / 22.5k | 61 / 26.9k (4 rigs) |
+| Oba Market at 9 AM, phone | 49 / 22.3k | 53 / 26.7k (4 rigs) |
+CPU submit (`bench()`) 0.4–1.3 ms. The same rooms with `__blRigs = 0` (dev) are back at the F1 numbers. Six rigs would be
+~+7k triangles; `crowd.rigs_high` = 4 keeps the busiest rooms at ~25–27k (slightly over the ~25k guide on the
+heaviest rooms; set it to 3 to be strictly under).
+
+### Dev
+`window.__blRigs = n` overrides the rig count; `__place.stats()` gains `rigs` and `rigTriangles`.
+
 ## Not done here (next steps)
-- L3: real NPC roster (names/outfits/lines from a table by place type × hour × weekday), chat bubbles over
-  heads, a "People N" list sheet with NPCs, full avatar rigs for nearby people (now: low-poly instanced
-  figures), animation LOD.
+- L3 leftovers: NPCs stand still (no wandering between zones); the DJ stands in front of the booth, not behind it;
+  rigs don't rebuild when the graphics tier changes mid-visit (they do on the next visit); no streaming "Loading…" pill.
 - L4: map place sheet with "On today" events (match days, concerts), travel cards + Go, live banners.
 - Interiors are client-side only (where you stand is never sent to the server), like the home.
 - Homes of other players show a simple interior whose actions say "Only in your own home".
