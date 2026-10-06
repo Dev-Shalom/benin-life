@@ -2,17 +2,33 @@
 
 This file is kept current after every step. The detailed live status is the STATUS LOG at the bottom of `docs/HANDOFF.md`.
 
-## Where the project is (2026-10-05, ~21:00 UTC)
-- **Goal right now:** finish **v1** (a launchable game). Plan: `docs/V1_PLAN.md`. The user keeps ALL default numbers and will tune them in the admin dashboard before announcing.
-- **Done and live (pushed to main):**
-  - Phase 1 (2D art, map geography, LAPO/Nepo roll, 6-min sleep, landing).
-  - Phase R redesign R1–R6: light Lagos Life-style UI, English copy (Pidgin only in street moments, Nepo says "Dad"), 3D characters, 5-step creator, 3D home, HUD + dock (Home · Buy · Map · Phone), phone apps, Sim sheet, Bladder, 3D Benin City map (2D map only as weak-network fallback).
-  - V1-3 jobs that pay · V1-4 shops + Bag + ChopNow + weekly rent · V1-5 bank/PoS/transfers · V1-6 chat per place · V1-7 admin page (`/admin`).
-- **Done:** V1-8 launch check — **v1 is ready** (`docs/DEPLOY.md`). Now: Phase L.
-- **Watch:** the GitHub Action that pushes migrations to the hosted DB was slow/queued for the chat (20261005001000) and admin (20261005001100) migrations; one run was cancelled. It now runs on `main` only. Check the Actions tab: if "Supabase preview DB" isn't green on the latest `main` commit, re-run it (Actions → Supabase preview DB → Run workflow). Until it's green, chat/admin on the live site can error.
-- **User to do after V1-8:** claim admin at https://benin-life.vercel.app/admin with dev.shalom1@gmail.com or code.devshalom@gmail.com (then clear `admin.bootstrap_emails` in Settings → Admin; fallback SQL: `update profiles set is_admin = true where username = '<name>';`), tune numbers, then announce.
-- **New user direction (top priority after V1-8):** `docs/REAL_LIFE_PLAN.md` Phase L (L1 real Benin time → L2 place interiors + zones + action cards → L3 crowds with render cap → L4 map sheet + live events → L5 landmarks). References: `docs/references/lagos-life/NOTES.md` "Live places walkthrough".
-- **Next after v1, in order:** 1) real Benin landmarks (`docs/LANDMARKS.md`; ask real brand names vs nods), 2) PvP robbery + police/jail/bail, 3) loans/esusu (LAPO hook), 4) farming, 5) Babalawo, 6) more careers + hustles (agbero, Yahoo/EFCC), 7) buy mode/furniture, 8) Paystack top-ups (test key only from the user), 9) DMs, 10) airport, 11) skills/feelings/wishes/perks, 12) Terms/Privacy pages.
+## Where the project is (2026-10-06, local session)
+- **Live on main / https://benin-life.vercel.app:**
+  - v1: the 3D game, creator, jobs, shops, rent, bank, chat and admin.
+  - **L1 real Benin time:** WAT clock; every action takes seconds (sleep ≤15 s scaled by tiredness, shift 18 s, travel ≤20 s, hospital 30 s, jail 45 s); live progress bars; "Action timing" in admin.
+  - **Money format:** K/M/B/T/Q, plus admin Give/Take money with shorthand ("5B"), preview and confirmation.
+- **On the work branch only, NOT yet on main:**
+  - The money short form now starts at ₦100,000 (user rule: under ₦100,000 shows in full). Migration 20261006000900.
+  - **Hold it off main until "Starter homes" lands.** Its migration is 20261006000400, and the hosted DB must receive the migrations in number order.
+- **Running:** **Starter homes by origin.**
+  - LAPO: drum + bucket, one stool, small stove, mat.
+  - Nepo: moderate furniture.
+  - Actions match the furniture; the walk is skipped on short actions.
+  - Migration 20261006000400_starter_furniture (applied locally). If the session died, check `git status` for its uncommitted files, verify, commit, then push the branch to main.
+- **Next, in order:**
+  1. **L2:** enter places. A 3D interior with zones and action cards, using the REAL Benin places by their real names (docs/LANDMARKS.md, user decided) plus the real housing ladder (face-me-I-face-you → self-contain → mini-flat → Ikpokpan Rd apartment → Aideyan Rd duplex → Estate Gate mansion).
+  2. **L3:** crowds. NPCs plus real players with name pills, capped.
+  3. **L4:** map place sheet plus "On today" events.
+  4. Then the post-v1 list: PvP robbery/police, loans/esusu, farming, Babalawo, more careers/hustles, buy mode, Paystack (test key from the user), DMs, airport, skills/perks, and the Terms/Privacy pages.
+- **User rules (binding):**
+  - Every action is short, with live progress.
+  - Money shows in full under ₦100,000, short form from ₦100,000 up.
+  - Real place names.
+  - LAPO starts with trench basics.
+  - 18+.
+  - Keep the default numbers; the user tunes them in admin.
+  - One agent at a time.
+- **User to do:** claim admin at https://benin-life.vercel.app/admin (see docs/ADMIN.md), then tune the numbers.
 
 ## How it is deployed
 - **Preview / live site:** https://benin-life.vercel.app — Vercel deploys **`main`**. `.env.production` points at Supabase project `twwttirvesbwjvzjmenp`.
