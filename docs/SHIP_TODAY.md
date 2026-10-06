@@ -70,6 +70,14 @@ NPC + chat speech bubbles, "+N more here". Admin → Content → People (NPCs) /
 - **Soft launch:** `locations.active` (migration `20261006001400_soft_launch.sql`, tests `soft_launch_test.sql`, 16/16 suites pass). Hidden places have no pin, aren't in Ride/search, can't be travelled to (`bl_travel_quote`, hint `inactive`), and refuse `do_activity` / `shop_buy` / `work_shift`; players inside can still leave or go home. Seeded once (`places.soft_launch_seeded`): Club De Medici, Rome, Cube, Versus and Owambe Republic hidden; 360 Signature open 9 PM – 5 AM. Pre-L2 made-up Bronze Lounge and Kingdom Lounge left active (switch them off in admin if wanted). Admin → Content → Places: Active switch per row + Opens at / Closes at time inputs with validation, audited.
 - **Real feel:** shared `src/art/feel/` (texture atlas, baked AO, rigs per place type, clutter kits, outside world, fan / flicker / club sweep / steam, vignette + grain, per-place sound, Graphics Auto/Low/High in Settings). Home and 360 Signature first, then every kit through the shared shell. Details, perf table and what's left: docs/FEEL_PLAN.md "What F1 built". Screenshots: scratchpad `f1/` (before-*, after-*, montage-before-after.png).
 
+## P1. Polish batch (user, 2026-10-06 night): [running], then L4, push tonight
+1. **People move around:** NPCs don't stand frozen. Everyone walks between their spots and zones naturally, using M1 locomotion and pathing, then idles and does their role motion.
+2. **Subtler lighting:** the light pools, beams and LED glow feel too strong. Use a soft, subtle ambient across all places (and the home).
+3. **People everywhere:** every place type has characters, not only the main ones.
+4. **Car stands:** car models with real shapes, a **Mercedes GLE AMG, G-Wagon (G-Class), Lamborghini Urus and Tesla Cybertruck**, on display at every car dealer and buyable there.
+5. **Queue UI:** the running task pill, plus small **circles to its right** with the icon of each queued task. Show the running task plus at most 2 circles; when the running task ends, the next one shifts in. `action.queue_max` default is now **7**.
+6. **No hard budget:** the user says look matters more than staying under the triangle guide; keep it smooth on phones (Auto/Low tier).
+
 ## LATER (user, 2026-10-06): welcome-back redo. Do NOT touch today; S2 stays as shipped.
 The user wants the welcome screen to look like Lagos Life (`docs/references/lagos-life/welcome-back-1.jpg`, `welcome-back-2-newlife.jpg`):
 - Game logo and title at the top, with a tagline (e.g. "Live your Benin story.").
