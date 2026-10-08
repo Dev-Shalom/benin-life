@@ -127,6 +127,10 @@ export default function Game() {
   }, [state]);
 
   const p = state?.profile;
+  const ownedVehicleId = useMemo(
+    () => state?.inventory?.filter((item) => item.category === 'vehicle').sort((a, b) => b.price - a.price)[0]?.id ?? null,
+    [state?.inventory],
+  );
   // the player's own furniture (starter set by origin + home); reloads when the home changes
   const furnKey = p ? `${p.id}:${p.home_location_id}:${p.housing_id ?? ''}` : null;
   const lastFurnKey = useRef<string | null>(null);
@@ -417,6 +421,7 @@ export default function Game() {
           <HomeView
             layoutId={layout}
             layout={furnished}
+            vehicleId={ownedVehicleId}
             walk={walk}
             avatar={p.avatar}
             busy={busyGroup}

@@ -6,6 +6,17 @@ The user asked the lead to check the real map instead of guessing. Sources:
 
 All offsets below are in km from King's Square (6.33297 N, 5.62262 E). E is east and N is north.
 
+## OSM 3D city-core layer (2026-10-08)
+
+The 3D renderer now uses a bundled OpenStreetMap building-footprint snapshot for the downtown core, rendered as one merged low-poly mesh. This follows the same OSM-data-to-3D-extrusion approach documented by [MapLibre's 3D building example](https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/), adapted to Benin Life's existing Three.js renderer so map pins, travel, day/night, and the weak-network 2D fallback keep working.
+
+- Data source: OpenStreetMap API `/api/0.6/map`, bbox `5.61262,6.32297,5.63262,6.34297` (W,S,E,N), retrieved 2026-10-08.
+- The extract contains **5,281 closed building ways** in this downtown window. Footprints are transformed around King's Square using the existing 80 map-units/km local scale. `building:levels` and `height` are used where present; missing heights use a conservative game-scale default.
+- Data file: `src/art/city3d/data/benin-core-buildings.json`. Import/update script: `scripts/import-osm-buildings.mjs`.
+- Buildings inside the mapped window replace procedural houses; outside it the current procedural city remains. The broader road network, many landmark pads, and outer-city blocks remain the existing curated approximation. This is therefore a real-footprint city core, not yet a complete exact OSM render of all Benin City.
+- Attribution appears on both 3D and Lite maps. The derived footprint dataset is released under ODbL 1.0; see `docs/maps/README.md` and [OpenStreetMap copyright and licence](https://www.openstreetmap.org/copyright).
+- Before release, profile the merged mesh on a low-end Android device. The current full-city triangle and draw-call figures predate this layer and must not be quoted as the new totals.
+
 ## Verified facts
 - **Oba's Palace:** 6.33222 N, 5.62000 E, which is **E-0.29 N-0.08**. It sits just **west (slightly south)** of King's Square, outside the ring.
   - **The old map was wrong:** it had the palace at SSE.

@@ -2962,6 +2962,33 @@ kbd {
   display: grid;
   place-items: center;
 }
+.map-attribution {
+  position: absolute;
+  z-index: 4;
+  right: calc(10px + var(--sar, 0px));
+  bottom: calc(72px + var(--sab, 0px));
+  max-width: calc(100vw - 24px);
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #344256;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  box-shadow: 0 1px 4px rgba(17, 32, 56, 0.14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  -webkit-tap-highlight-color: transparent;
+}
+.map-attribution:hover,
+.map-attribution:focus-visible {
+  background: #fff;
+  color: #163d2b;
+  outline: 2px solid var(--green-600);
+  outline-offset: 2px;
+}
 .lite-badge {
   position: absolute;
   z-index: 3;

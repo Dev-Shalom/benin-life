@@ -2,6 +2,9 @@
 
 Status markers: [todo] / [running] / [done]. Keep this file + HANDOFF STATUS LOG + CLOUD_PROMPT current.
 
+## VQ. Visual quality + Benin map fidelity (user, 2026-10-08): [running]
+Reference files are summarized at the top of `docs/references/lagos-life/NOTES.md`. Keep the existing stylized character identity, enrich home materials/landscaping/room props and day/night readability, and keep one low-cost 3D canvas with the Lite fallback. Done in this pass: the GRA duplex gained a compact pool deck, loungers, tropical planters, a lit carport and a vehicle that reflects the player's owned inventory. The map now has an OSM-derived downtown building-footprint mesh and visible attribution; outer-city roads/buildings are still curated/procedural. Next: inspect both scenes at runtime, profile the changed map on mobile/low quality, then continue home/interior polish and expand the OSM extract only where coverage and performance justify it. Do not call the full-city map exact yet.
+
 ## 0. Starter homes by origin — [done] (see HANDOFF STATUS LOG). Partial work committed as `5c237bc Starter homes WIP snapshot`; if a session dies, resume from it (don't start over).
 Then push branch → main (it also carries the "full amount under ₦100,000" migration 000900; order 000400 before 000900).
 
@@ -131,7 +134,8 @@ Different from Lagos Life:
 - Migration `20261006001700_hype.sql`, tests `supabase/tests/hype_test.sql`; details in docs/PLACES.md "P2 hype",
   docs/ADMIN.md (hype.* and music.club_track_url), docs/FEEL_PLAN.md "P2".
 
-## P3. Hype with aura (user, 2026-10-06 night): [running]
+## P3. Hype with aura (user, 2026-10-06 night): [paused]
+The unfinished database snapshot is on `origin/wip/p3-hype-aura` (commit `288a284`); there is no full-screen client takeover in `main`. Resume only after the user asks to continue the hype work. This is separate from the current visual/map refresh.
 The current banner is too small and plain. The hype must **carry aura and take over the whole screen** for everyone in the club:
 - A full-screen moment of about 3–5 s, which a tap skips:
   - the backdrop dims

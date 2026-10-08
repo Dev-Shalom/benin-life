@@ -331,7 +331,8 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
     label: 'GRA duplex',
     w: 10.0,
     d: 7.6,
-    lot: [0, 0, 11.6, 9.0],
+    // Wider GRA compound: leave room for a small pool, driveway and carport around the cut-away home.
+    lot: [-1, -0.4, 14.5, 10.6],
     floor: { a: '#f4f1ec', b: '#e8e3da', tile: 0.8 },
     patches: [[0, 0, 3.8, 3.2, '#c9a27a', '#bf976e', 0.4], [7.2, 0, 10.0, 2.8, '#dfe9ee', '#cfdde4', 0.4]],
     wall: '#2f3640',

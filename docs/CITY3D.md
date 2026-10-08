@@ -86,6 +86,12 @@ A small badge sits under the HUD pill: "🪶 Lite map" + **Switch to 3D** (netwo
 - Locations come from `src/art/city3d/dev/fixture.ts` (a snapshot of the seeded table; regenerate it if positions change). The route is tree-shaken out of production builds.
 - Dev globals: `__city` (stats, bench, flyTo, screenOf, snapshot), `__cityView` (camera state), `__cityGl`.
 
+## OSM 3D footprint layer (2026-10-08)
+
+The downtown core now uses 5,281 OpenStreetMap building-way outlines, converted to the existing 1000×1000 map space and extruded into a single flat-shaded mesh. OSM footprints replace the generated houses inside the 200×200 map-space coverage window; generated houses remain outside it. The map keeps the current R5 camera and UI instead of loading a remote map tile service at runtime. Both the 3D map and the Lite fallback show a link to OpenStreetMap contributors. Data and ODbL terms: `docs/maps/README.md`; geographic details: `docs/MAP_GEO.md`.
+
+**Coverage limit:** this is only the mapped downtown extract. Road geometry and locations outside that window still use the curated map data, and buildings without OSM height tags use game-scaled inferred heights. The old city performance measurements do not include the footprint mesh; measure updated triangle count and low-end Android frame time before treating the new map as release-ready.
+
 ## How to add…
 - **A place:** add the row to `locations` (migration); give it a short name and tier in `PIN_META` (`mapGeo.ts`) and, if its scene's emoji does not fit, an entry in `ID_EMOJI` (`model.ts`). Regenerate `dev/fixture.ts`. Labels, filters and routes pick it up automatically.
 - **A landmark model:** add a block in `buildLandmarks()` (`engine/build.ts`). Use `at2(mapX, mapY, yaw)` to set the frame, then `b.box(w, h, d, x, y, z, colour)` / `b.cyl(rTop, rBot, h, x, y, z, colour, { seg, ry })` in world units (bottom-centre placement). `{ layer: 'glow' }` parts light up at night. Keep the zone clear of generated buildings by adding it to `special()` in `engine/layout.ts` (or a polygon in `mapGeo.ts`).

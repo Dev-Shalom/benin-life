@@ -3,6 +3,12 @@
 This file is kept current after every step. The detailed live status is the STATUS LOG at the bottom of `docs/HANDOFF.md`.
 
 ## Where the project is (2026-10-06, local session)
+- **Current snapshot (2026-10-08; overrides the historical notes below):** branch `codex/visual-quality` is based on `origin/main` at `1d3e159`; the working tree contains the current visual/map pass and is not pushed. The closed-place fix is already in `origin/main` at `cbe6fe8` (travel to closed places is refused server-side, map sheet explains opening time, and players inside are returned home when a place closes). Vercel deploys `main`; verify the deployment in Vercel before claiming the live site has updated.
+- **Visual/map pass in progress:** newest home references are the three 2026-10-08 files documented in `docs/references/lagos-life/NOTES.md`. The GRA duplex now has a pool deck, planted yard and owned-vehicle carport. The downtown 3D map draws a bundled OpenStreetMap footprint snapshot (5,281 source building ways) with visible attribution; the wider map remains curated/procedural. This is not yet a full-city exact OSM map. `npm run build` passes; profile mobile performance and inspect screenshots before release. Runtime browser preview was blocked by the app's browser permission policy, so visuals have not been independently confirmed in-browser. See `docs/MAP_GEO.md`, `docs/CITY3D.md`, `docs/maps/README.md`, and `docs/HUD_HOME.md`.
+- **Paused / next systems:** P3 full-screen hype aura is unfinished on `origin/wip/p3-hype-aura` (SQL migration/test snapshot only; no finished client takeover on main) and should stay paused unless the user resumes it. E1 economy/storyline remains todo. Paystack `payments.enabled` remains off until the user completes a live test.
+- **Push/deploy:** this work has not been pushed. Do not push the visual pass to `main` until the user has reviewed it and the required build/mobile checks are complete. The previous user request to push applied to completing/verified code; do not state a deployment is live based only on matching local and remote Git SHAs.
+
+### Historical snapshot (2026-10-06; superseded by current snapshot above)
 - **Live on main / https://benin-life.vercel.app:**
   - v1: the 3D game, creator, jobs, shops, rent, bank, chat and admin.
   - **L1 real Benin time:** WAT clock; every action takes seconds (sleep ≤15 s scaled by tiredness, shift 18 s, travel ≤20 s, hospital 30 s, jail 45 s); live progress bars; "Action timing" in admin.

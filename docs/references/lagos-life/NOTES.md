@@ -12,6 +12,18 @@ These are style references only. Don't copy their branding or assets.
 
 User's direction: see docs/FEEDBACK_PHASE1.md. More screenshots are coming; the user will add them to this folder through GitHub.
 
+## New home references (uploaded 2026-10-08)
+
+| File | Screen | What to take from it |
+|---|---|---|
+| `1791390706223.jpg` | Bright premium home | Open-plan cutaway with distinct rooms; believable tile and wall finishes; planted perimeter; pool and loungers; driveway, gates and parked cars; calm daylight and soft contact shadows. The floating HUD is clean and does not obscure the home. |
+| `Screenshot_2026-10-08-13-34-39-325_com.twitter.android.jpg` | Purple luxury home | Room-specific props and furniture (pool table, office, kitchen, bath, music room); readable paths between rooms; water edge, garden and vehicle display. Premium assets should be gated by the player's home tier, not added to every starter home. |
+| `Screenshot_2026-10-08-13-34-41-616_com.twitter.android.jpg` | Night home | Same home reads clearly at night through warm wall lights and restrained violet accents. Preserve dark detail and navigation contrast; avoid making the whole scene depend on neon. |
+
+These are visual targets, not assets to copy. Keep Benin Life's existing character identity and readable low-poly presentation. The practical target is richer materials, room-specific furnishing, landscaped plots and deliberate day/night lighting while retaining the current single-canvas, low-end-phone rendering path. The screenshots are home references; they do not provide a street/building-footprint dataset for the Benin map.
+
+**First implementation (2026-10-08):** the premium GRA duplex plot now has a compact pool deck, two loungers, planted edges, a lit open carport and parking for one owned vehicle. The vehicle is selected from the player's inventory, so the property does not show a car the player has not bought. This is intentionally limited to the duplex tier; starter homes stay appropriate to their price/origin. Runtime/mobile review is still outstanding.
+
 ## Full walkthrough (IMG_2358–IMG_2395, uploaded by the user)
 Everything is **3D**: low-poly three.js-style characters, an isometric 3D home, and a 3D city map. The UI is light and clean: white floating cards, soft shadows, green primary buttons, emoji icons, rounded pills.
 

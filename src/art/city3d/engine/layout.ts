@@ -5,6 +5,13 @@ import {
   AIRPORT, CAMPUS, CORES, FARMLAND, GRA_ZONE, GROVE, KINGS_SQUARE, MARKETS, PALACE, POLICE, RAMAT, RING, RIVER, TECH_HUB,
   ROAD_HW, ROADS, RUNWAY, UBTH, at, inPoly, rng, spline, type Pt, type RoadKind, type Spline,
 } from '../../map/mapGeo';
+import osmCore from '../data/benin-core-buildings.json';
+
+type OSMCoreData = {
+  bounds: readonly [number, number, number, number];
+  features: { id: string; levels: number; heightM: number; ring: [number, number][] }[];
+};
+const OSM_CORE = osmCore as unknown as OSMCoreData;
 
 export type Style = 'core' | 'res' | 'cramped' | 'gra' | 'campus' | 'market';
 export type Roof = 'hip' | 'gable' | 'flat';
@@ -24,6 +31,15 @@ export interface Building {
   lit: boolean;
   /** district style (S3: plot colour, palette) */
   st: Style;
+}
+
+/** OSM footprint with a game-scaled height and the existing district palette. */
+export interface OSMBuilding {
+  id: string;
+  ring: Pt[];
+  h: number;
+  wall: string;
+  roof: string;
 }
 
 export interface Tree {
@@ -63,6 +79,7 @@ export interface CityLayout {
   roads: RoadLine[];
   river: Spline;
   buildings: Building[];
+  osmBuildings: OSMBuilding[];
   trees: Tree[];
   vehicles: Vehicle[];
   lamps: [number, number][];
@@ -280,9 +297,30 @@ function build(): CityLayout {
 
   /* ---------- buildings ---------- */
   const buildings: Building[] = [];
+  const osmBuildings: OSMBuilding[] = [];
   const occ = new Grid(14);
+  const osmBounds = OSM_CORE.bounds;
+  const inOsmCoverage = (x: number, y: number) => x >= osmBounds[0] && x <= osmBounds[2] && y >= osmBounds[1] && y <= osmBounds[3];
+  for (const f of OSM_CORE.features) {
+    const x = f.ring.reduce((sum, p) => sum + p[0], 0) / f.ring.length;
+    const y = f.ring.reduce((sum, p) => sum + p[1], 0) / f.ring.length;
+    // Keep the modeled landmark pads, King's Square and named roads clean.
+    if (special(x, y) || onPad(x, y) || roadClear(x, y, 3) < 1.6) continue;
+    let radius = 0;
+    for (const p of f.ring) radius = Math.max(radius, dist(x, y, p[0], p[1]));
+    if (radius < 0.45) continue;
+    const st = styleAt(x, y, urban(x, y));
+    const h = f.heightM > 0
+      ? Math.max(0.22, Math.min(1.8, f.heightM * 0.075))
+      : f.levels > 0
+        ? Math.max(0.22, Math.min(1.8, f.levels * 0.22))
+        : st === 'core' ? 0.46 : 0.38;
+    osmBuildings.push({ id: f.id, ring: f.ring, h, wall: pick(WALLS[st]), roof: pick(ROOFS[st]) });
+    occ.add(x, y, radius + 0.6);
+  }
   const tryPlace = (x: number, y: number, a: number, st: Style, wMul = 1): boolean => {
     if (x < -40 || x > 1040 || y < -40 || y > 1040) return false;
+    if (inOsmCoverage(x, y)) return false;
     let w: number, d: number, h: number, roofType: Roof;
     switch (st) {
       case 'core':
@@ -542,5 +580,5 @@ function build(): CityLayout {
     }
   }
 
-  return { roads, river, buildings, trees, vehicles, lamps, urban, riverDist, ms: Math.round(performance.now() - t0) };
+  return { roads, river, buildings, osmBuildings, trees, vehicles, lamps, urban, riverDist, ms: Math.round(performance.now() - t0) };
 }

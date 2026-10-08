@@ -74,6 +74,7 @@ export function CityView({ suspended, night, ...props }: CityViewProps) {
         <Suspense fallback={<div className="city-view__loading"><span className="home3d__loader" aria-label="Loading the map" /></div>}>
           <BeninMap {...mapProps} />
         </Suspense>
+        <MapAttribution />
         <div className="lite-badge" role="status">
           <span className="lite-badge__tag"><span aria-hidden>🪶</span> Lite map</span>
           {r === 'nowebgl' ? (
@@ -100,6 +101,21 @@ export function CityView({ suspended, night, ...props }: CityViewProps) {
         </ErrorBoundary>
       )}
       {still && <img className="city-view__still" src={still} alt="" aria-hidden />}
+      <MapAttribution />
     </div>
+  );
+}
+
+function MapAttribution() {
+  return (
+    <a
+      className="map-attribution"
+      href="https://www.openstreetmap.org/copyright"
+      target="_blank"
+      rel="noreferrer"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      Map data © OpenStreetMap contributors
+    </a>
   );
 }

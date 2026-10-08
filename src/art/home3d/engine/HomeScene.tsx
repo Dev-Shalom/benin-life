@@ -58,6 +58,8 @@ export interface HomeSceneProps {
   /** The layout with the player's own furniture (furnishLayout); keep it memoised. Default: LAYOUTS[layoutId]. */
   layout?: HomeLayout;
   avatar: AvatarConfig;
+  /** Highest-value owned vehicle (inventory item id), shown in the GRA duplex carport. */
+  vehicleId?: string | null;
   /** The home activity running now on the server (key changes with each new run), or null. M2: the Sim
    * normally already stands at the piece (it walked there before the action started); if not, it walks. */
   busy: { group: HomeGroup; key: string; activity?: string; seconds?: number } | null;
@@ -211,7 +213,7 @@ function House(props: HomeSceneProps & {
   // ---- static room (rebuilt only when the layout changes)
   const doll = Boolean(props.dollhouse);
   const q = feelQuality(useTier());
-  const room = useMemo(() => buildRoom(L, { dollhouse: doll, density: q.clutter }), [L, doll, q.clutter]);
+  const room = useMemo(() => buildRoom(L, { dollhouse: doll, density: q.clutter, vehicleId: props.vehicleId }), [L, doll, q.clutter, props.vehicleId]);
   const rig = rigFor(room.rich ? 'home_nepo' : 'home_lapo', false);
   const grid = useMemo(() => buildGrid(L), [L]);
   const feel = useMemo(() => makeFeelMats(q), [q.atlas]); // eslint-disable-line react-hooks/exhaustive-deps

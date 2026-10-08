@@ -21,6 +21,8 @@ import {
   PlaneGeometry,
   RingGeometry,
   SphereGeometry,
+  ShapeUtils,
+  Vector2,
   type Material,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -593,6 +595,63 @@ export function buildCity(L: CityLayout): CityMeshes {
     sh.renderOrder = 2;
     group.add(sh);
     countTris(shGeo, B.length);
+  }
+
+  /* ---------- mapped Benin City core buildings (OpenStreetMap footprints) ---------- */
+  if (L.osmBuildings.length) {
+    const positions: number[] = [];
+    const colors: number[] = [];
+    const c = new Color();
+    const vertex = (x: number, y: number, z: number, color: string) => {
+      positions.push(x, y, z);
+      c.set(color);
+      colors.push(c.r, c.g, c.b);
+    };
+    const tri = (a: [number, number, number], b: [number, number, number], d: [number, number, number], color: string) => {
+      vertex(...a, color); vertex(...b, color); vertex(...d, color);
+    };
+    for (const building of L.osmBuildings) {
+      const ring = building.ring;
+      if (ring.length < 3) continue;
+      let area = 0;
+      const contour = ring.map(([x, z]) => new Vector2(W(x), W(z)));
+      for (let i = 0; i < contour.length; i++) {
+        const a = contour[i], b = contour[(i + 1) % contour.length];
+        area += a.x * b.y - b.x * a.y;
+      }
+      const ccw = area > 0;
+      for (let i = 0; i < ring.length; i++) {
+        const [x0, z0] = ring[i];
+        const [x1, z1] = ring[(i + 1) % ring.length];
+        const low0: [number, number, number] = [W(x0), 0, W(z0)];
+        const low1: [number, number, number] = [W(x1), 0, W(z1)];
+        const high0: [number, number, number] = [W(x0), building.h, W(z0)];
+        const high1: [number, number, number] = [W(x1), building.h, W(z1)];
+        if (ccw) {
+          tri(low0, high0, high1, building.wall);
+          tri(low0, high1, low1, building.wall);
+        } else {
+          tri(low0, high1, high0, building.wall);
+          tri(low0, low1, high1, building.wall);
+        }
+      }
+      const roofTris = ShapeUtils.triangulateShape(contour, []);
+      for (const face of roofTris) {
+        let [a, b, d] = face;
+        const pa = contour[a], pb = contour[b], pd = contour[d];
+        const signed = (pb.x - pa.x) * (pd.y - pa.y) - (pb.y - pa.y) * (pd.x - pa.x);
+        // In Three.js x/z is the ground plane; reverse positive 2D winding to
+        // keep roof normals pointed upward for the single merged mesh.
+        if (signed > 0) [b, d] = [d, b];
+        const p0 = ring[a], p1 = ring[b], p2 = ring[d];
+        tri([W(p0[0]), building.h, W(p0[1])], [W(p1[0]), building.h, W(p1[1])], [W(p2[0]), building.h, W(p2[1])], building.roof);
+      }
+    }
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+    geometry.computeVertexNormals();
+    addMesh(geometry, keep(new MeshLambertMaterial({ vertexColors: true, flatShading: true, side: DoubleSide })), 'osm-core-buildings');
   }
 
   /* ---------- trees and palms ---------- */
