@@ -421,6 +421,7 @@ export default function Game() {
           <HomeView
             layoutId={layout}
             layout={furnished}
+            origin={p.origin === 'nepo' ? 'nepo' : 'lapo'}
             vehicleId={ownedVehicleId}
             walk={walk}
             avatar={p.avatar}

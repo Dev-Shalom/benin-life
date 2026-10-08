@@ -91,6 +91,8 @@ The shared home/place solid material now uses roughness-aware `MeshStandardMater
 
 The LAPO room adds a visible surface cable to its bare bulb, and compound exteriors get a compact standby generator. NEPO home windows now have full-length curtains and a rail. This is a shared rendering/detail pass, not a finished photoreal overhaul: scene-by-scene visual review and low-end phone profiling remain release checks.
 
+The 2026-10-08 live screenshot exposed an origin-style mismatch: `self_contain` was always rendered with LAPO finishes, even when the profile origin was NEPO. `HomeView` now passes the profile origin to the room builder; NEPO profiles get painted walls, tiled floors, curtains and warm downlights in a self-contain, while the selected housing tier can still give any profile a premium flat/duplex finish.
+
 ## P2: place soundtracks, the beat clock and the hype sounds (2026-10-06)
 All original and synthesized (no songs, no samples); `src/lib/music.ts` holds the synth, `src/lib/sound.ts` plays it.
 - **One scheduler** (100 ms tick, ~0.3 s lookahead, WebAudio-timed) for the place you're in; nothing runs while the

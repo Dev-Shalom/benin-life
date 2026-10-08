@@ -105,9 +105,11 @@ function buildDuplexYard(b: HomeBuilder, vehicleId: string | null | undefined) {
   }
 }
 
-export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: number; outside?: boolean; vehicleId?: string | null } = {}): BuiltRoom {
+export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: number; outside?: boolean; vehicleId?: string | null; origin?: 'lapo' | 'nepo' } = {}): BuiltRoom {
   const doll = Boolean(opts.dollhouse);
-  const rich = RICH_LAYOUTS.has(L.id);
+  // A NEPO player keeps the brighter painted/tiled finish even in a modest self-contain.
+  // The house tier still upgrades any player's home independently of origin.
+  const rich = opts.origin === 'nepo' || RICH_LAYOUTS.has(L.id);
   const b = new HomeBuilder();
   const [lx0, lz0, lx1, lz1] = L.lot;
   const cx = (lx0 + lx1) / 2;

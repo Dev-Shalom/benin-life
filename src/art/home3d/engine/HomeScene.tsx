@@ -55,6 +55,8 @@ export interface HomeApi {
 
 export interface HomeSceneProps {
   layoutId: HomeLayoutId;
+  /** Birth tier controls the home finish details as well as the starter inventory. */
+  origin?: 'lapo' | 'nepo';
   /** The layout with the player's own furniture (furnishLayout); keep it memoised. Default: LAYOUTS[layoutId]. */
   layout?: HomeLayout;
   avatar: AvatarConfig;
@@ -213,7 +215,7 @@ function House(props: HomeSceneProps & {
   // ---- static room (rebuilt only when the layout changes)
   const doll = Boolean(props.dollhouse);
   const q = feelQuality(useTier());
-  const room = useMemo(() => buildRoom(L, { dollhouse: doll, density: q.clutter, vehicleId: props.vehicleId }), [L, doll, q.clutter, props.vehicleId]);
+  const room = useMemo(() => buildRoom(L, { dollhouse: doll, density: q.clutter, vehicleId: props.vehicleId, origin: props.origin }), [L, doll, q.clutter, props.vehicleId, props.origin]);
   const rig = rigFor(room.rich ? 'home_nepo' : 'home_lapo', false);
   const grid = useMemo(() => buildGrid(L), [L]);
   const feel = useMemo(() => makeFeelMats(q), [q.atlas]); // eslint-disable-line react-hooks/exhaustive-deps

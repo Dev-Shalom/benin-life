@@ -37,7 +37,7 @@ export default function HomeLab() {
   const avatar = useMemo(() => defaultAvatar(q.get('g') === 'female' ? 'female' : 'male'), [q]);
   return (
     <div style={{ position: 'fixed', inset: 0 }}>
-      <HomeView layoutId={layout} layout={furnished} avatar={avatar} hour={hour} busy={busy ? { group: busy, key: busy } : null}
+      <HomeView layoutId={layout} layout={furnished} origin={origin === 'nepo' ? 'nepo' : origin === 'lapo' ? 'lapo' : undefined} avatar={avatar} hour={hour} busy={busy ? { group: busy, key: busy } : null}
         selectedId={picked} onPick={(f) => setPicked(f.id)} fallbackScene="home_flat" insetTop={70} insetBottom={110} />
       <div style={{ position: 'fixed', left: 8, top: 8, display: 'flex', gap: 6, flexWrap: 'wrap', zIndex: 5 }}>
         {(Object.keys(LAYOUTS) as HomeLayoutId[]).map((l) => (
