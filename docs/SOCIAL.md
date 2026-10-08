@@ -32,7 +32,8 @@ All writes use authenticated server functions. Friendship, message, home-invite,
 Run the rollback-only database test against the local Supabase database:
 
 ```sh
-bash scripts/sql-test.sh supabase/migrations/20261008000200_chat_new_sims_can_send.sql supabase/tests/fixtures/social_legacy_home.sql supabase/migrations/20261008000300_friends_messages_visits.sql -- supabase/tests/social_test.sql
+bash scripts/sql-test.sh supabase/migrations/20261008000200_chat_new_sims_can_send.sql supabase/tests/fixtures/social_legacy_home.sql supabase/migrations/20261008000300_friends_messages_visits.sql supabase/migrations/20261008000400_shared_house_and_voice_chat.sql -- supabase/tests/social_test.sql
+bash scripts/sql-test.sh supabase/migrations/20261008000200_chat_new_sims_can_send.sql supabase/tests/fixtures/social_legacy_home.sql supabase/migrations/20261008000300_friends_messages_visits.sql supabase/migrations/20261008000400_shared_house_and_voice_chat.sql -- supabase/tests/chat_test.sql
 ```
 
 The client build and lint use `npm run build` and `npm run lint`.
