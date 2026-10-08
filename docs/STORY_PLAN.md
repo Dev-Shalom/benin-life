@@ -20,7 +20,7 @@ The feature remains part of **Benin Life**; do not rename the game or ship a sep
 
 1. **A long-term direction:** keep the selected lifetime dream visible and turn its goal into measurable milestones. Milestones should name existing actions (career shifts, saving, skills, friendships), persist on the server, and grant modest in-game rewards. Do not show fake progress: dream progress is still marked as unimplemented in SimSheet until its server tracking ships.
 2. **A continuing Benin City thread:** retain the weekly, WAT-based story choice and grow the catalogue into linked chapters. Each chapter should resolve the previous week's outcome where appropriate, allow a practical/helpful/social/opt-out response, and use the player's origin, dream and current life stage to vary dialogue or eligible choices. Never make a story choice mandatory to continue the main game.
-3. **People to meet:** keep location chat available where players meet. Build later toward repeat NPC relationships and small cooperative goals (for example, help prepare a public market or match-day event); do not promise NPC friendship or co-op rewards until they persist and work server-side. Private messages remain later work.
+3. **People to meet:** location chat and accepted-friend messaging/house visits work. Build later toward repeat NPC relationships and small cooperative goals (for example, help prepare a public market or match-day event); do not promise NPC friendship or co-op rewards until they persist and work server-side.
 4. **Fair, earned rewards:** attach small, bounded cash, street-cred, item or cosmetic rewards to completed story/goal milestones; persist the claim server-side and reject duplicate claims. Avoid random punishment, pay-to-win pressure and rewards large enough to break the early economy.
 5. **A useful first session:** introduce the current working controls after a new Sim moves into a home, show the origin/dream context, teach needs/home, map/opening hours/chat, phone/weekly Stories, then offer a direct map action. Keep unavailable phone services out of the app grid until they work.
 
@@ -30,6 +30,7 @@ The feature remains part of **Benin Life**; do not rename the game or ship a sep
 - The Phone grid now shows the implemented apps only. Contacts, Health, Invest, BetNaija, Family, Hustle and Edo Gov stay out of the player-facing grid until their services are implemented.
 - The synthesized home/city loop has a slightly brighter 96 BPM day groove, a gentler 76 BPM night groove, soft syncopated bass and a very quiet synthesized shaker. The existing music preference, mute and first-gesture unlock still control playback; no audio files are added.
 - Existing weekly Stories and location chat remain the continuing content/social hooks. The first-session guide explains where to find them; this slice does not yet add persistent dream milestones, linked chapter outcomes, NPC relationship progression, cooperative goals or server-side reward claims.
+- Real-player social play now includes friend requests, private text and voice notes, and house visits that require the host to be home before admitting guests. The private-home and messaging rules are documented in `docs/SOCIAL.md`; these features add no admin dashboard settings.
 
 ### Local setting references and guardrails
 
@@ -43,7 +44,7 @@ The feature remains part of **Benin Life**; do not rename the game or ship a sep
 2. **Story interactions:** choices can adjust bounded needs and street cred. A fictional reckless choice may trigger a brief jail timer, demonstrating the existing status/jail UI. It is not a simulation of a particular real offence or sentence.
 3. **Police phone:** a player files a report only against a real robbery alert belonging to that account, at Police HQ or while held in the fictional cell. Case rows are private to the player. Bail draws from bank first, then cash.
 4. **Cars app:** lists the existing dealer stock and directs the player to the selected dealer; purchases still go through the existing server purchase RPC (one of each, bank first, then cash).
-5. **People:** tap a named NPC in the room or in the People list to open a small conversation with reply choices. Free-form messages to real players remain in the per-location Chat tab.
+5. **People:** tap a named NPC in the room or in the People list to open a small conversation with reply choices. Real-player social features are available through the per-location Chat tab and the phone's Friends and Messages app.
 
 ## Remaining E1 work
 

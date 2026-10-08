@@ -1,6 +1,6 @@
 # Chat (V1-6)
 
-Each location has its own chat room. There is no global chat: Lagos Life's global chat ran out of bandwidth at about 50k players online. Private messages (DMs) come after v1, and the phone's Messages app says "Coming soon" for them.
+Each location has its own chat room. There is no global chat: Lagos Life's global chat ran out of bandwidth at about 50k players online. Accepted friends can also use private direct messages and voice notes in the phone's Messages app. See [SOCIAL.md](SOCIAL.md) for friend requests, private homes, knocks and visits.
 
 - **Server:** `supabase/migrations/20261005001000_chat.sql`
 - **Tests:** `supabase/tests/chat_test.sql`
@@ -9,7 +9,7 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
   - `src/state/chat.ts` (live state and subscription)
   - `src/panels/ChatPanel.tsx` (the Chat tab)
   - the HUD chat chip in `src/screens/Game.tsx`
-  - the Messages app in `src/screens/game/Phone.tsx`
+  - the Friends and Messages app in `src/screens/game/phone/SocialApp.tsx`
   - the blocked list in `src/screens/game/SimSheet.tsx` (People tab)
 
 ## Rules
@@ -116,4 +116,4 @@ Clients get select only on `chat_messages` and on their own `chat_blocks` rows. 
   - the Chat tab's badge;
   - the Messages app icon on the phone.
 - **Phone → Messages:** a "Chat at <place>" button ("Chat with your neighbours" at home). This opens the same live, place-based chat; private one-to-one messages are not part of this feature.
-- **NPC conversations (2026-10-08, pushed in `247d1b4`):** tapping a named NPC in the 3D place or People list opens short scripted reply choices. This is separate from location chat and does not persist a relationship or send a message to a player. Private player-to-player DMs remain later work.
+- **NPC conversations (2026-10-08, pushed in `247d1b4`):** tapping a named NPC in the 3D place or People list opens short scripted reply choices. This is separate from location chat and does not persist a relationship. Private player-to-player chat is in Phone → Messages; see `docs/SOCIAL.md`.

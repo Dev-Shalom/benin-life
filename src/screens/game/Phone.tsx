@@ -1,7 +1,7 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
 // Built: Ride (S1: book keke/bus/drop/car with price, time and risk, lazy), Jobs (V1-3), Chowdeck + Houses (V1-4, lazy),
-// Bank (V1-5, lazy: transfers, history, where to cash in/out), Ranks (PAY, lazy: Rich list + VIP leaderboards), Messages (V1-6: shortcut to the location chat;
-// private messages later), Wallet, Alerts, Settings (Sim sheet). Apps without working features stay hidden.
+// Bank (V1-5), Ranks (PAY), Messages (friend requests, private text/voice chat and house visits), Wallet, Alerts and Settings.
+// Apps without working features stay hidden.
 // Esc closes the phone.
 import { lazy, Suspense, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -18,6 +18,7 @@ import { AlertsList } from './Overlays';
 import { nearestWorkplace } from '../../api/careers';
 import { JobCard, PerfBar, Promotion, QuitButton, ShiftStats, TrackList } from '../../panels/careers/CareerUI';
 import { useCareerActions, useJobsCatalog } from '../../panels/careers/careerHooks';
+const SocialApp = lazy(() => import('./phone/SocialApp'));
 
 const FoodApp = lazy(() => import('./phone/FoodApp'));
 const HousesApp = lazy(() => import('./phone/HousesApp'));
@@ -39,7 +40,7 @@ interface App {
 
 const APPS: App[] = [
   { id: 'jobs', name: 'Jobs', emoji: '💼', bg: 'linear-gradient(160deg,#34c77f,#0e874e)', pitch: 'Find work across Benin City: shop hands, PoS agents, nurses, tech interns and more.' },
-  { id: 'messages', name: 'Messages', emoji: '💬', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Chat with friends, neighbours and the people you meet around town.' },
+  { id: 'messages', name: 'Messages', emoji: '💬', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Add friends, message them, and invite them over.' },
   { id: 'stories', name: 'Stories', emoji: '📖', bg: 'linear-gradient(160deg,#f0a45a,#d66830)', pitch: 'Weekly stories shaped by everyday Benin City life.' },
   { id: 'bank', name: 'Bank', emoji: '🏦', bg: 'linear-gradient(160deg,#9b8cff,#5b4fd6)', pitch: '' },
   { id: 'ranks', name: 'Ranks', emoji: '🏆', bg: 'linear-gradient(160deg,#ffd76a,#c9851a)', pitch: '' },
@@ -101,28 +102,6 @@ function JobsApp({ state, onGo }: { state: GameState; onGo: (id: string) => void
   );
 }
 
-/** V1-6: location chat shortcut; private messages (DMs) come after v1. */
-function MessagesApp({ state, onChat }: { state: GameState; onChat: () => void }) {
-  const unread = useChat((s) => s.unread);
-  const byId = useGame((s) => s.locationsById);
-  const here = byId[state.location.id] ?? state.location;
-  const atHome = state.profile.location_id === state.profile.home_location_id;
-  return (
-    <div className="phone-app__body messages-app">
-      {state.travel ? (
-        <p className="phone-app__lead">You're on the road. You can chat with the people at your next stop when you arrive.</p>
-      ) : (
-        <>
-          <p className="phone-app__lead">Every place in Benin has its own chat. Talk to the people around you right now.</p>
-          <Button variant="green" icon="chat" block onClick={onChat}>
-            {atHome ? 'Chat with your neighbours' : `Chat at ${here.name}`}{unread > 0 ? ` · ${unread > 9 ? '9+' : unread} new` : ''}
-          </Button>
-        </>
-      )}
-    </div>
-  );
-}
-
 export function Phone({ state, clock }: { state: GameState; clock: GameClock }) {
   const overlay = useUi((s) => s.overlay);
   const phoneApp = useUi((s) => s.phoneApp);
@@ -134,6 +113,8 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const unread = useGame((s) => s.unread);
   const chatUnread = useChat((s) => s.unread);
   const events = useGame((s) => s.events);
+  const lastReadEventId = useGame((s) => s.lastReadEventId);
+  const socialUnread = events.filter((e) => ['friend_request', 'house_invite', 'house_knock', 'private_message'].includes(e.kind) && e.id > lastReadEventId).length;
   const open = overlay === 'phone';
   const { mounted, closing } = usePresence(open, 200);
   const [screen, setScreen] = useState<'lock' | 'home' | string>('lock');
@@ -175,9 +156,10 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
     setMapOpen(true);
     select(id);
   };
-  const openChat = () => {
+  const goHome = () => {
     close();
-    select(state.location.id, 'chat');
+    setMapOpen(true);
+    select(state.profile.home_location_id);
   };
   const app = APPS.find((a) => a.id === screen);
   const latest = events[0];
@@ -217,7 +199,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                     <span className="app-icon__tile" style={{ background: a.bg }} aria-hidden>
                       {a.emoji}
                       {a.id === 'alerts' && unread > 0 && <span className="app-icon__badge">{unread > 99 ? '99+' : unread}</span>}
-                      {a.id === 'messages' && chatUnread > 0 && <span className="app-icon__badge">{chatUnread > 9 ? '9+' : chatUnread}</span>}
+                      {a.id === 'messages' && chatUnread + socialUnread > 0 && <span className="app-icon__badge">{chatUnread + socialUnread > 9 ? '9+' : chatUnread + socialUnread}</span>}
                       {a.id === 'houses' && (state.rent?.owed ?? 0) > 0 && <span className="app-icon__badge">!</span>}
                     </span>
                     <span className="app-icon__name">{a.name}</span>
@@ -235,7 +217,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                 <span className="phone-app__title"><span aria-hidden>{app.emoji}</span> {app.name}</span>
               </div>
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
-                : app.id === 'messages' ? <MessagesApp state={state} onChat={openChat} />
+                : app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp state={state} onGoHome={goHome} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
                   : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>

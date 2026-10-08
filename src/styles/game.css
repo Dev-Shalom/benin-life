@@ -5095,6 +5095,61 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .people-row__dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
 .people-list__more { margin: 8px 0 0; font-size: 13px; color: var(--muted, #6b7280); text-align: center; }
 
+/* Friends, private messages, voice notes, and host-controlled house visits. */
+.social-app { display: flex; flex-direction: column; gap: 14px; }
+.social-section { display: flex; flex-direction: column; gap: 8px; padding: 11px; border-radius: 16px; background: var(--surface, #fff); box-shadow: 0 3px 12px rgba(20, 32, 50, .06); }
+.social-section__title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.social-section__title h3 { margin: 0; font: 750 14px/1.2 var(--font-display); }
+.social-section__title span, .social-muted, .social-door-note, .social-compose__hint { font-size: 11px; color: var(--muted, #6b7280); }
+.social-muted { margin: 0; line-height: 1.5; }
+.social-search { display: flex; gap: 7px; }
+.social-search input { min-width: 0; flex: 1; padding: 9px 11px; border: 1px solid var(--line, #dce2e9); border-radius: 12px; background: var(--surface, #fff); color: var(--ink); font: inherit; }
+.social-list { display: flex; flex-direction: column; gap: 6px; }
+.social-list--sent { padding-top: 6px; border-top: 1px solid var(--line, #e6e9ee); }
+.social-player, .social-friend { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 7px; border-radius: 12px; background: var(--surface-2, #f5f7fa); }
+.social-avatar { display: grid; place-items: center; flex: none; width: 38px; height: 38px; overflow: hidden; border-radius: 50%; background: var(--surface-3, #e8edf2); }
+.social-player .grow, .social-friend__main { min-width: 0; flex: 1; }
+.social-player b, .social-friend__main b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.social-friend__pick { display: grid; place-items: center; flex: none; padding: 3px; }
+.social-friend__pick input { width: 17px; height: 17px; accent-color: var(--green-600, #0b8a52); }
+.social-friend__main { display: flex; flex-direction: column; gap: 2px; }
+.social-friend__main span { overflow: hidden; color: var(--muted, #687386); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.social-group-invite { display: grid; gap: 6px; padding-top: 5px; }
+.social-group-invite small { color: var(--muted, #687386); font-size: 11px; line-height: 1.4; text-align: center; }
+.social-invite { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 9px; border: 1px solid var(--line, #e3e7ed); border-radius: 13px; background: var(--surface, #fff); }
+.social-invite.is-knock { border-color: rgba(218, 143, 29, .55); background: #fff9eb; }
+.social-invite__copy { display: flex; flex: 1 1 100%; flex-direction: column; gap: 3px; min-width: 0; }
+.social-invite__copy b { font-size: 12px; }
+.social-invite__copy span { color: var(--muted, #687386); font-size: 11px; line-height: 1.35; }
+.social-invite-tag { color: #946113; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.social-door-note { display: flex; align-items: center; gap: 5px; margin: 0; color: #946113; }
+.social-error { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; border-radius: 12px; background: #fff0ec; color: #9b3f2c; font-size: 12px; }
+.social-loading { display: grid; min-height: 36px; place-items: center; }
+.social-app--conversation { min-height: 0; gap: 7px; overflow: hidden; padding: 4px 8px 10px; }
+.social-conversation-head { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding-bottom: 6px; border-bottom: 1px solid var(--line, #e4e8ed); }
+.social-conversation-head__who { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 100px; }
+.social-conversation-head__who b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.social-conversation-head .social-avatar { width: 34px; height: 34px; }
+.social-message-list { display: flex; flex: 1; flex-direction: column; gap: 7px; min-height: 0; overflow-y: auto; padding: 8px 2px; overscroll-behavior: contain; }
+.social-message { display: flex; justify-content: flex-start; width: 100%; }
+.social-message.is-mine { justify-content: flex-end; }
+.social-message__bubble { display: flex; flex-direction: column; gap: 4px; max-width: 88%; padding: 8px 10px; border-radius: 14px 14px 14px 4px; background: var(--surface-2, #edf1f5); overflow-wrap: anywhere; }
+.social-message.is-mine .social-message__bubble { border-radius: 14px 14px 4px 14px; background: #e0f4e9; }
+.social-message__name { color: var(--green-700, #087246); font-size: 10px; }
+.social-message__bubble p { margin: 0; font-size: 13px; line-height: 1.4; white-space: pre-wrap; }
+.social-message__bubble time { align-self: flex-end; color: var(--muted, #687386); font-size: 9px; }
+.social-voice { display: block; width: min(230px, 68vw); max-width: 100%; height: 36px; }
+.social-voice-loading { display: inline-flex; align-items: center; gap: 5px; color: var(--muted, #687386); font-size: 11px; }
+.social-voice-error { color: #9b3f2c; font-size: 11px; }
+.social-compose { display: grid; gap: 5px; padding-top: 6px; border-top: 1px solid var(--line, #e4e8ed); }
+.social-compose textarea { width: 100%; min-height: 48px; max-height: 130px; resize: vertical; padding: 9px 10px; border: 1px solid var(--line, #dce2e9); border-radius: 12px; background: var(--surface, #fff); color: var(--ink); font: inherit; font-size: 13px; }
+.social-compose__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.social-compose__hint { flex: 1 1 100%; }
+.social-recording { display: flex; align-items: center; gap: 6px; color: #a43333; font-size: 12px; font-weight: 700; }
+.social-recording__dot { width: 8px; height: 8px; border-radius: 50%; background: #df3434; animation: social-pulse 1s infinite alternate; }
+@keyframes social-pulse { to { opacity: .32; transform: scale(.8); } }
+@media (prefers-reduced-motion: reduce) { .social-recording__dot { animation: none; } }
+
 /* ---- P2 club hype: banner (the hype man's line), app-wide ticker, hype rows in chat ---- */
 .hype-banner-wrap {
   position: absolute;

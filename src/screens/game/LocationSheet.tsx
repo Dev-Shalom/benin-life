@@ -16,6 +16,7 @@ import type { PlayerStatus } from './status';
 import { TravelCards } from './TravelPicker';
 import { OnToday } from './Events';
 import { placeInterior, placePeople, type PlaceInterior } from '../../api/places';
+import { SocialPlayerButton } from './SocialPlayerButton';
 import { placeEmoji } from '../../art/city3d';
 import { useConfig } from '../../lib/config';
 import { useGameClock } from '../../lib/clock';
@@ -184,6 +185,7 @@ function PeopleHere({ loc, meId }: { loc: Location; meId: string }) {
             <b>{person.username}</b>
             <div className="muted" style={{ fontSize: 13 }}><Icon name="star" size={12} style={{ display: 'inline' }} /> Street cred {person.street_cred}</div>
           </div>
+          <SocialPlayerButton userId={person.id} />
           {canProfile && (
             <Button size="sm" variant="ghost" onClick={() => openPanel('profile', { targetId: person.id })}>Profile</Button>
           )}

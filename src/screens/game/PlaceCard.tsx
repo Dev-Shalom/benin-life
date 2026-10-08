@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { placeInterior, placePeople, type PlaceInterior, type PlaceNpc, type PlacePeople, type PlaceZone, type ZoneAction } from '../../api/places';
 import { chatSend } from '../../api/chat';
+import { SocialPlayerButton } from './SocialPlayerButton';
 import { errorMessage, rpc } from '../../lib/api';
 import { serverNow } from '../../lib/clock';
 import { districtName, naira, nairaShort } from '../../lib/format';
@@ -273,6 +274,7 @@ function PeopleSheet({ open, onClose, total, players, npcs, me, placeName, onShe
           <div key={pl.id} className="people-row">
             <span className="people-row__av">{pl.avatar ? <AvatarPortrait config={pl.avatar} size={40} /> : '🙂'}</span>
             <span className="people-row__main"><span className="people-row__name"><span className="people-row__dot" aria-label="online" />@{pl.username}</span></span>
+            <SocialPlayerButton userId={pl.id} />
           </div>
         ))}
         {!players.length && <p className="people-row__role">No other players here right now. Share the place to bring friends.</p>}

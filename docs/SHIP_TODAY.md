@@ -187,6 +187,13 @@ The current banner is too small and plain. The hype must **carry aura and take o
 ## Benin Life first-session journey + retention plan (user, 2026-10-08): [running]
 Keep the product name **Benin Life**. The opening story is integrated into the game after a new Sim moves into a home; its copy responds to LAPO/NEPO origin and the chosen lifetime dream. The four-card guide teaches home/needs, map/opening hours/location chat, phone/weekly Stories, and offers a map handoff. Unfinished phone apps are hidden. The synthesized day/night bed is brighter and gently more rhythmic while remaining calm. See `docs/STORY_PLAN.md` for the five retention pillars and the concrete unfinished work. The first slice is browser-local and introductory; server-persisted dream milestones/rewards, linked weekly chapters, NPC relationships and co-op events are still TODO. Do not claim the full retention plan is complete.
 
+## Player friendships, direct messages and private house visits (user, 2026-10-08): [done in this change]
+- Add/accept friend requests from player lists or username search; private conversations are limited to accepted friends.
+- Add realtime text messaging, recorded voice notes with no in-game duration cap, unread indicators, block/unfriend controls.
+- Make each home a private location. Guests accept an invite to knock; the named knock is delivered to the host, who must be at home before server-side admission. Hosts can invite several friends together; leaving restores the guest's own home layout.
+- No admin dashboard settings were added. Voice files use private Supabase Storage; service quota/browser limits still apply.
+- Implementation/test details: `docs/SOCIAL.md`, migration `20261008000300_friends_messages_visits.sql`, test `supabase/tests/social_test.sql`.
+
 ## V1 quality and differentiation work order (user, 2026-10-08)
 The goal is a dependable Benin City life sim with a distinct local identity and a reason to return; don't promise it is objectively better than Lagos Life before player feedback.
 
@@ -197,13 +204,14 @@ The goal is a dependable Benin City life sim with a distinct local identity and 
 5. **Full-flow and mobile check:** manually verify account recovery, home needs/actions, work/pay/rent, bank, car purchase, closed-place enforcement, weekly-choice replay rejection, location chat/moderation, police case privacy/bail and event participation. Profile low-end phones and slow connections; keep the Lite path usable.
 6. **Release operations:** confirm GitHub Actions and Vercel production status, verify the deployed `/version.json`, and retain a clear rollback route. Keep payments disabled until a real payment, duplicate-webhook and refund/support path have been checked. Track privacy-respecting aggregate onboarding completion, week-one return and error rates.
 
-**V1 scope line:** complete one polished origin/dream/story/reward loop plus the launch checks above. Direct messages, full crime investigation, gangs/turf, private aircraft and every planned phone service can follow after the first release.
+**V1 scope line:** complete one polished origin/dream/story/reward loop plus the launch checks above. Friend requests, private text/voice messages and invitation-only house visits are implemented. Full crime investigation, gangs/turf, private aircraft and other unfinished phone services can follow after the first release.
 
 ## Current phase board (2026-10-08)
 - **Done:** V1 launch systems; real-time Benin clock and short actions; homes/origin; movement; place interiors/crowds/events; closed-place entry enforcement; payment integration code (live top-ups remain disabled pending the user's live test); initial map and visual passes.
 - **Running:** E1 storyline/economy first slice; VQ broader visual quality and mobile performance review.
 - **Still to finish before calling those phases complete:** E1's larger economy/career progression, deeper stories, real police investigation/caught-crime gameplay; VQ review of remaining scenes and low-end phone performance. The downtown footprint import is not a complete exact city map.
-- **Later/paused:** direct messages between players (location chat already works); gangs/robbery and turf; airport/private planes; unfinished P3 hype aura. See `docs/V1_PLAN.md`, `docs/GANGS_PLAN.md`, and `docs/STORY_PLAN.md`.
+- **Implemented social systems:** accepted-friend requests, private text/voice messages and private house visits; see `docs/SOCIAL.md`.
+- **Later/paused:** gangs/robbery and turf; airport/private planes; unfinished P3 hype aura. See `docs/V1_PLAN.md`, `docs/GANGS_PLAN.md`, and `docs/STORY_PLAN.md`.
 
 ## LATER: private jets and planes (user)
 A place to buy private jets and planes, tied to the airport feature (fly to Lagos, Abuja or PH). Not started.
