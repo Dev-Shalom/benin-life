@@ -1,6 +1,6 @@
 # Chat (V1-6)
 
-Each location has its own chat room. There is no global chat: Lagos Life's global chat ran out of bandwidth at about 50k players online. Accepted friends can also use private direct messages and voice notes in the phone's Messages app. See [SOCIAL.md](SOCIAL.md) for friend requests, private homes, knocks and visits.
+Each location has its own chat room. There is no global chat: Lagos Life's global chat ran out of bandwidth at about 50k players online. Accepted friends can also use private direct messages and voice notes in the phone's Messages app. Admitted visitors and the owner share the private home's room chat. See [SOCIAL.md](SOCIAL.md) for friend requests, private homes, knocks, live visits, and shared furniture.
 
 - **Server:** `supabase/migrations/20261005001000_chat.sql`
 - **Tests:** `supabase/tests/chat_test.sql`
@@ -26,7 +26,7 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
   2. Turn newlines and tabs into spaces.
   3. Strip control and zero-width characters.
   4. Squeeze repeated spaces.
-  5. Refuse an empty message, or one longer than `chat.max_len`.
+  5. Refuse an empty message. Text length is not capped by the app.
 - Rate limits, all on real time:
   - a wait of `chat.rate_seconds` between messages;
   - at most `chat.burst_per_minute` messages per minute;
@@ -53,7 +53,6 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
 | key | default |
 |---|---|
 | chat.enabled | true |
-| chat.max_len | 200 |
 | chat.rate_seconds | 3 |
 | chat.burst_per_minute | 8 |
 | chat.duplicate_window_seconds | 120 |
@@ -66,7 +65,8 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
 ## RPCs
 | RPC | Args | Returns |
 |---|---|---|
-| `chat_send` | p_body | message row + `{message, masked}` (hints: chat_off, muted, traveling, too_new, empty, too_long, too_fast, duplicate, banned, no_home) |
+| `chat_send` | p_body | message row + `{message, masked}` (hints: chat_off, muted, traveling, too_new, empty, too_fast, duplicate, banned, no_home) |
+| `chat_send_voice` | p_audio_path, p_audio_mime | location or private-home voice message row; guarded by chat, travel, mute, rate, and room access rules |
 | `chat_recent` | p_location, p_limit | last `min(p_limit, chat.recent_limit)` visible rows at your current place, oldest first, with `avatar` and `mine` (hint not_here) |
 | `chat_report` | p_message_id, p_reason | `{message, reports, hidden}` |
 | `chat_block` / `chat_unblock` | p_user | `{message, id, username?}` |
@@ -108,7 +108,7 @@ Clients get select only on `chat_messages` and on their own `chat_blocks` rows. 
   - It shows each message's avatar portrait, name, time and text.
   - Your own bubbles are green and on the right.
   - Tapping someone's message (or its ⋯ button) opens Report (with a reason) or Block @name.
-  - The input has a character counter, and the Send button shows a countdown during the rate limit.
+  - The text/voice composer has no app character counter. When text is present, the microphone control becomes Send; when empty, it starts voice recording. Playback uses a custom player with speed choices and no visible download control.
   - Server errors appear inline.
   - Note at the top: "Be respectful — 18+ only".
 - **Unread:** messages from others that arrive while the Chat tab isn't on screen count as unread. The count shows on:

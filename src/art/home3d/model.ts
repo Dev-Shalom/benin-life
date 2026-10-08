@@ -424,6 +424,12 @@ export interface OwnedPiece {
   color?: string | null;
 }
 
+export interface SavedHomePosition {
+  x: number;
+  z: number;
+  rotation: number;
+}
+
 const SEATS = new Set<string>(['sofa', 'sofa_l', 'armchair']);
 
 /**
@@ -453,6 +459,20 @@ export function furnishLayout(base: HomeLayout, pieces: OwnedPiece[] | null): Ho
     });
   }
   return { ...base, furniture: [...fixtures, ...own] };
+}
+
+/** Apply the homeowner's saved furniture positions to the shared house layout. */
+export function applyHomePositions(base: HomeLayout, positions: Record<string, SavedHomePosition>): HomeLayout {
+  if (!Object.keys(positions).length) return base;
+  let changed = false;
+  const furniture = base.furniture.map((item) => {
+    if (!item.id.startsWith('own_')) return item;
+    const position = positions[item.id];
+    if (!position) return item;
+    changed = true;
+    return { ...item, x: position.x, z: position.z, rot: ((position.rotation % 4) + 4) % 4 };
+  });
+  return changed ? { ...base, furniture } : base;
 }
 
 /** Where an activity happens: the group's explicit actor (sofa for TV), then a piece that hosts the

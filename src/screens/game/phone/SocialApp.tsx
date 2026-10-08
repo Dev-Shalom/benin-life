@@ -17,6 +17,8 @@ import type { GameState } from '../../../lib/types';
 import { useGame } from '../../../state/game';
 import { Button, EmptyState, Icon, Spinner, toast } from '../../../ui';
 import { SocialPlayerButton } from '../SocialPlayerButton';
+import { VoicePlayer } from '../../../ui/VoicePlayer';
+import ChatPanel from '../../../panels/ChatPanel';
 
 const PAGE_SIZE = 50;
 
@@ -40,7 +42,7 @@ function VoiceNote({ path, mine }: { path: string; mine: boolean }) {
   }, [path]);
   if (error) return <span className="social-voice-error">Voice note unavailable</span>;
   if (!url) return <span className="social-voice-loading"><Spinner size={14} /> Loading voice…</span>;
-  return <audio className={`social-voice${mine ? ' is-mine' : ''}`} controls preload="none" src={url} aria-label="Voice message" />;
+  return <VoicePlayer src={url} mine={mine} />;
 }
 
 function MessageBubble({ message }: { message: DirectMessage }) {
@@ -81,6 +83,8 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
   const [audioBusy, setAudioBusy] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const eventsRevision = useGame((s) => s.events[0]?.id ?? 0);
+  const refreshGame = useGame((s) => s.refresh);
+  const [houseChat, setHouseChat] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -178,6 +182,7 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
   const pendingRequests = useMemo(() => (requests ?? []).filter((r) => r.direction === 'incoming'), [requests]);
   const sentRequests = useMemo(() => (requests ?? []).filter((r) => r.direction === 'outgoing'), [requests]);
   const homeNow = state.profile.location_id === state.profile.home_location_id && !state.travel;
+  useEffect(() => { if (!homeNow) setHouseChat(false); }, [homeNow]);
 
   const search = async (event: FormEvent) => {
     event.preventDefault();
@@ -251,10 +256,9 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
     setDraft('');
   };
 
-  const sendText = async (event: FormEvent) => {
-    event.preventDefault();
+  const sendText = async () => {
     const body = draft.trim();
-    if (!conversation || !body || sending || body.length > 2000) return;
+    if (!conversation || !body || sending || recording || audioBusy) return;
     setSending(true);
     try {
       appendMessage(await socialSendMessage(conversation.id, body));
@@ -363,7 +367,6 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
   };
 
   if (conversation) {
-    const tooLong = draft.length > 2000;
     return (
       <div className="phone-app__body social-app social-app--conversation">
         <div className="social-conversation-head">
@@ -382,18 +385,33 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
               : messages.map((m) => <MessageBubble key={m.id} message={m} />)}
         </div>
         {recording && <div className="social-recording" role="status"><span className="social-recording__dot" /> Recording voice note · {durationLabel(recordSeconds)}</div>}
-        <form className="social-compose" onSubmit={(e) => void sendText(e)}>
-          <textarea value={draft} maxLength={2050} rows={2} placeholder="Write a private message…" aria-label="Private message"
+        <form className="social-compose" onSubmit={(e) => { e.preventDefault(); void sendText(); }}>
+          <textarea value={draft} rows={1} placeholder="Message" aria-label="Private message"
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendText(); } }}
             disabled={sending || recording || audioBusy} onChange={(e) => setDraft(e.target.value)} />
           <div className="social-compose__actions">
-            <span className="social-compose__hint">{draft.length}/2000 · Voice notes have no app duration cap</span>
-            {recording ? <Button type="button" variant="danger" size="sm" onClick={stopRecording}>Stop &amp; send · {durationLabel(recordSeconds)}</Button>
-              : <Button type="button" variant="ghost" size="sm" disabled={audioBusy || sending} onClick={() => void startRecording()}>
-                {audioBusy ? 'Uploading…' : '🎙 Record voice'}
-              </Button>}
-            {!recording && <Button type="submit" variant="green" size="sm" disabled={!draft.trim() || tooLong || sending || audioBusy} loading={sending}>Send</Button>}
+            <Button type={draft.trim() ? 'submit' : 'button'} className={`social-compose__primary${recording ? ' is-recording' : ''}`} variant="green"
+              aria-label={recording ? `Send voice note, ${durationLabel(recordSeconds)}` : draft.trim() ? 'Send message' : 'Record voice message'}
+              title={recording ? `Send voice note · ${durationLabel(recordSeconds)}` : draft.trim() ? 'Send message' : 'Record voice message'}
+              disabled={audioBusy || sending} loading={sending || (audioBusy && !recording)}
+              onClick={() => { if (recording) stopRecording(); else if (!draft.trim()) void startRecording(); }}>
+              <Icon name={recording || draft.trim() ? 'send' : 'mic'} size={18} />
+            </Button>
           </div>
         </form>
+        <span className="social-compose__hint">Enter to send · Shift+Enter for a new line</span>
+      </div>
+    );
+  }
+
+  if (houseChat && homeNow) {
+    return (
+      <div className="phone-app__body social-app social-app--house-chat">
+        <div className="social-conversation-head">
+          <Button size="sm" variant="ghost" onClick={() => setHouseChat(false)}>‹ Messages</Button>
+          <b className="grow">House chat · everyone inside</b>
+        </div>
+        <ChatPanel state={state} location={state.location} refresh={refreshGame} close={() => setHouseChat(false)} />
       </div>
     );
   }
@@ -401,6 +419,14 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
   return (
     <div className="phone-app__body social-app">
       {loadError && <div className="social-error" role="alert">{loadError}<Button size="sm" variant="ghost" onClick={() => void reload()}>Retry</Button></div>}
+
+      {homeNow && (
+        <button type="button" className="social-house-chat" onClick={() => setHouseChat(true)}>
+          <span className="social-house-chat__icon"><Icon name="chat" size={19} /></span>
+          <span className="grow"><b>House chat</b><small>Talk with everyone currently inside</small></span>
+          <Icon name="chevronRight" size={17} />
+        </button>
+      )}
 
       <section className="social-section">
         <div className="social-section__title"><h3>Find a player</h3><span>Search by username</span></div>

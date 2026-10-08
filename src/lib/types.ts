@@ -114,6 +114,8 @@ export interface Profile {
   stress: number;
   location_id: string;
   home_location_id: string;
+  /** Non-null while this Sim is admitted inside another player's private home. */
+  home_visit_host_id?: string | null;
   housing_id: string;
   job_id: string | null;
   job_level: number;
@@ -665,7 +667,9 @@ export interface ChatMessage {
   location_id: string;
   user_id: string;
   username: string;
-  body: string;
+  body: string | null;
+  audio_path?: string | null;
+  audio_mime?: string | null;
   created_at: string;
   avatar?: AvatarConfig | null;
   mine?: boolean;

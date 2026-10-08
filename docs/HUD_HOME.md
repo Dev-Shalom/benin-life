@@ -1,5 +1,8 @@
 # 3D home, HUD, Sim sheet and phone (R4)
 
+## 2026-10-09: shared private-home visits
+Admitted visitors render the host's housing layout, owned furniture, and saved furniture placements. The homeowner can tap an owned movable piece, then tap a floor position to move it or use the rotate control; these placements are stored server-side and broadcast to admitted people in that home. Structural fixtures and non-owned pieces are not movable through this editor. Host and visitor avatars broadcast their positions and interpolate other players' movement. Guests can use normal home activities but cannot edit the homeowner's furniture. A private house chat opens from the home chip or Phone → Messages and uses the same text/voice composer as place chat. See `docs/SOCIAL.md` and migration `20261008000400_shared_house_and_voice_chat.sql`.
+
 ## 2026-10-08: GRA duplex exterior
 The rich duplex lot has a pool deck, loungers, small tropical planters, and an open carport. When the player owns a vehicle, the highest-value vehicle in inventory is shown parked at home (luxury car, motorcycle or bicycle); an empty bay stays empty. Other homes are unchanged. Geometry is built into the existing merged home scene. See `docs/references/lagos-life/NOTES.md`.
 

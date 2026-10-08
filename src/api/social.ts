@@ -51,6 +51,22 @@ export interface DirectMessage {
   mine: boolean;
 }
 
+export interface HouseInfo {
+  owner_id: string;
+  username: string;
+  housing_id: string;
+  origin: 'lapo' | 'nepo';
+  home_location_id: string;
+}
+
+export interface HouseFurniturePlacement {
+  owner_id: string;
+  furniture_key: string;
+  x: number;
+  z: number;
+  rotation: number;
+}
+
 type Result = { message: string; status?: string };
 
 export const socialSearchPlayers = (query: string) => rpc<SocialPlayer[]>('social_search_players', { p_query: query });
@@ -74,6 +90,23 @@ export const socialRespondHouseInvite = (id: number, accept: boolean) =>
 export const socialCancelHouseInvite = (id: number) => rpc<Result>('social_cancel_house_invite', { p_invite_id: id });
 export const socialHomeAdmit = (id: number, admit = true) =>
   rpc<{ id: number; status: string; message: string }>('social_home_admit', { p_invite_id: id, p_admit: admit });
+export const socialHouseInfo = () => rpc<HouseInfo>('social_house_info');
+export const socialHomePlaceFurniture = (key: string, x: number, z: number, rotation: number) =>
+  rpc<HouseFurniturePlacement>('social_home_place_furniture', { p_furniture_key: key, p_x: x, p_z: z, p_rotation: rotation });
+export const socialHomeOffer = (guest: string, item: string) => rpc<Result>('social_home_offer', { p_guest: guest, p_item: item });
+
+export async function uploadHouseVoiceMessage(location: string, sender: string, blob: Blob, rawMime: string) {
+  const mime = rawMime.toLowerCase().split(';')[0];
+  const ext = MIME_EXT[mime];
+  if (!ext) throw new GameError('This device recorded an unsupported voice format. Please try a browser that supports audio/webm or audio/mp4.', 'unsupported_audio');
+  const path = `chat/${location}/${sender}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from('player-voice').upload(path, blob, { contentType: mime, upsert: false });
+  if (error) {
+    const tooLarge = /size|large|limit|413/i.test(error.message);
+    throw new GameError(tooLarge ? 'This voice note is larger than your storage plan allows.' : 'Voice note upload failed. Check your connection and try again.', error.statusCode ?? undefined);
+  }
+  return { path, mime };
+}
 
 const MIME_EXT: Record<string, string> = {
   'audio/webm': 'webm', 'audio/mp4': 'mp4', 'audio/ogg': 'ogg',

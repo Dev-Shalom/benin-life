@@ -4,7 +4,7 @@ update game_config set value = '"accelerated"' where key = 'clock.mode';
 update game_config set value = '"game_minutes"' where key = 'action.mode';
 
 -- Chat tests (V1-6): config + privileges (no direct writes), chat_send at a place (refused while
--- travelling / banned / muted / configurable new-account wait / too fast / burst / too long / empty / duplicate),
+-- travelling / banned / muted / configurable new-account wait / too fast / burst / empty / duplicate),
 -- profanity masking + control-character cleanup, chat_recent only for the current place, RLS
 -- (select only at your place, minus blocked players, minus hidden), report + auto-hide, block /
 -- unblock, lazy retention delete, admin_chat_hide guard. Run (migrations applied):
@@ -76,7 +76,6 @@ do $$ begin
   perform set_config('bl.test_offset_seconds', '', true);
   perform set_config('bl.test_rand', '', true);
   update game_config set value = 'true' where key = 'chat.enabled';
-  update game_config set value = '200' where key = 'chat.max_len';
   update game_config set value = '3' where key = 'chat.rate_seconds';
   update game_config set value = '8' where key = 'chat.burst_per_minute';
   update game_config set value = '120' where key = 'chat.duplicate_window_seconds';
@@ -92,7 +91,7 @@ end $$;
 do $$
 declare k text;
 begin
-  foreach k in array array['chat.enabled','chat.max_len','chat.rate_seconds','chat.burst_per_minute','chat.duplicate_window_seconds',
+  foreach k in array array['chat.enabled','chat.rate_seconds','chat.burst_per_minute','chat.duplicate_window_seconds',
                            'chat.min_account_real_minutes','chat.recent_limit','chat.report_hide_count','chat.retention_hours','chat.max_blocks'] loop
     perform pg_temp.assert(exists (select 1 from game_config where key = k and category = 'chat' and label <> '' and description <> ''),
                            'config ' || k);
@@ -110,6 +109,8 @@ begin
                          'chat_messages in realtime');
   perform pg_temp.assert((select value = '0' from game_config where key = 'chat.min_account_real_minutes'),
                          'new Sims can chat immediately by default');
+  perform pg_temp.assert(not exists (select 1 from game_config where key = 'chat.max_len'),
+                         'chat no longer has an admin-configured character cap');
   foreach k in array array['bl_chat_clean(text)','bl_chat_mask(text)','bl_chat_me()','bl_chat_row(chat_messages,jsonb,uuid)'] loop
     perform pg_temp.assert(not has_function_privilege('authenticated', 'public.' || k, 'execute'), 'helper revoked: ' || k);
   end loop;
@@ -153,8 +154,10 @@ declare a uuid := pg_temp.ch_u('chatada'); i int;
 begin
   perform pg_temp.login(a);
   perform pg_temp.ch_hint($q$select chat_send('   ')$q$, 'empty');
-  perform pg_temp.ch_hint(format('select chat_send(%L)', repeat('a', 201)), 'too_long');
-  perform chat_send(repeat('b', 200));                                   -- exactly the limit is fine
+  perform pg_temp.assert(char_length((chat_send(repeat('x', 5001))->>'body')) = 5001,
+                         'location chat has no application character cap');
+  perform pg_temp.ch_advance(4);
+  perform chat_send(repeat('b', 200));                                   -- text length does not affect delivery
   perform pg_temp.ch_hint($q$select chat_send('again so soon')$q$, 'too_fast');
   perform pg_temp.ch_advance(4);
   perform pg_temp.ch_hint(format('select chat_send(%L)', repeat('B', 200)), 'duplicate');  -- same text, any case
