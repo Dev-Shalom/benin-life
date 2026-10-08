@@ -1,7 +1,7 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
 // Built: Ride (S1: book keke/bus/drop/car with price, time and risk, lazy), Jobs (V1-3), Chowdeck + Houses (V1-4, lazy),
 // Bank (V1-5, lazy: transfers, history, where to cash in/out), Ranks (PAY, lazy: Rich list + VIP leaderboards), Messages (V1-6: shortcut to the location chat;
-// private messages later), Wallet, Alerts, Settings (Sim sheet). Everything else opens a "Coming soon" screen.
+// private messages later), Wallet, Alerts, Settings (Sim sheet). Unfinished apps still open a "Coming soon" screen.
 // Esc closes the phone.
 import { lazy, Suspense, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -24,6 +24,9 @@ const HousesApp = lazy(() => import('./phone/HousesApp'));
 const BankApp = lazy(() => import('./phone/BankApp'));
 const RideApp = lazy(() => import('./phone/RideApp'));
 const RanksApp = lazy(() => import('./phone/RanksApp'));
+const CarsApp = lazy(() => import('./phone/CarsApp'));
+const StoriesApp = lazy(() => import('./phone/StoriesApp'));
+const PoliceApp = lazy(() => import('./phone/PoliceApp'));
 
 interface App {
   id: string;
@@ -37,6 +40,7 @@ interface App {
 const APPS: App[] = [
   { id: 'jobs', name: 'Jobs', emoji: '💼', bg: 'linear-gradient(160deg,#34c77f,#0e874e)', pitch: 'Find work across Benin City: shop hands, PoS agents, nurses, tech interns and more.' },
   { id: 'messages', name: 'Messages', emoji: '💬', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Chat with friends, neighbours and the people you meet around town.' },
+  { id: 'stories', name: 'Stories', emoji: '📖', bg: 'linear-gradient(160deg,#f0a45a,#d66830)', pitch: 'Weekly stories shaped by everyday Benin City life.' },
   { id: 'bank', name: 'Bank', emoji: '🏦', bg: 'linear-gradient(160deg,#9b8cff,#5b4fd6)', pitch: '' },
   { id: 'contacts', name: 'Contacts', emoji: '📇', bg: 'linear-gradient(160deg,#4fd28a,#1f9a57)', pitch: 'Everyone you know, with how close you are.' },
   { id: 'ranks', name: 'Ranks', emoji: '🏆', bg: 'linear-gradient(160deg,#ffd76a,#c9851a)', pitch: '' },
@@ -190,6 +194,11 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
     setMapOpen(true);
     select(id, 'jobs');
   };
+  const goToPlace = (id: string) => {
+    close();
+    setMapOpen(true);
+    select(id);
+  };
   const openChat = () => {
     close();
     select(state.location.id, 'chat');
@@ -252,10 +261,13 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'messages' ? <MessagesApp state={state} onChat={openChat} />
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' ? (
+                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
                         {app.id === 'ranks' ? <RanksApp /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
-                          : app.id === 'food' ? <FoodApp state={state} /> : app.id === 'bank' ? <BankApp state={state} /> : <HousesApp state={state} />}
+                          : app.id === 'cars' ? <CarsApp state={state} onGo={goToPlace} />
+                            : app.id === 'police' ? <PoliceApp state={state} onGo={goToPlace} />
+                              : app.id === 'stories' ? <StoriesApp />
+                                : app.id === 'food' ? <FoodApp state={state} /> : app.id === 'bank' ? <BankApp state={state} /> : <HousesApp state={state} />}
                       </Suspense>
                     )
                       : <ComingSoon app={app} />}

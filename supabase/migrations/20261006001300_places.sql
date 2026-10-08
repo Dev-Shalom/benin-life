@@ -252,7 +252,8 @@ insert into public.activities (id, name, scenes, home_only, cost, game_minutes, 
 ('side_project',   'Hack on a side project',                '{office,cyber}', false, 0,    60, '{"fun": 15, "energy": -6}', false, 390, 14, 7, false, '{}', false, '{}', '👩🏾‍💻'),
 ('farm_walk',      'Walk the cassava rows',                 '{farm}',       false, 0,      40, '{"fun": 8, "stress": -8, "energy": -6}', false, 391, 10, 5, false, '{}', false, '{}', '🌱'),
 ('pos_banter',     'Banter in the PoS line',                '{pos}',        false, 0,      20, '{"social": 10, "fun": 4}', false, 392, 6, 3, false, '{}', false, '{}', '💬'),
-('night_stroll',   'Late-night stroll with the boys',       '{street}',     false, 0,      40, '{"fun": 15, "social": 15, "stress": -5}', true, 393, 10, 5, false, '{}', true, '{}', '🌙')
+('night_stroll',   'Late-night stroll with the boys',       '{street}',     false, 0,      40, '{"fun": 15, "social": 15, "stress": -5}', true, 393, 10, 5, false, '{}', true, '{}', '🌙'),
+('relax_sofa',     'Relax on the sofa',                      '{home_duplex}', true, 0,      30, '{"stress": -4, "fun": 5}', false, 394, 8, 4, false, '{}', false, '{}', '🛋️')
 on conflict (id) do nothing;
 
 -- icons for the existing activities (cards); only where none was set

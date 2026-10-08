@@ -168,7 +168,7 @@ The current banner is too small and plain. The hype must **carry aura and take o
 - **P3 hype aura** is parked on the branch `wip/p3-hype-aura` (unfinished; the agent hit the usage limit).
 - **Built (agent notes, see docs/PAYMENTS.md):** migration `20261007000100_payments.sql` (topup_packs with 5 packs, payments + RLS, `payment_init`, service-role-only idempotent `bl_payment_credit` with amount check + ledger "Top-up via Paystack", `leaderboard_rich` / `leaderboard_vip` with tiers + your rank, `bl_vip_arrival` called from `travel_arrive`, `admin_payments`, admin spec `topup_packs`); Edge Functions `paystack-verify` + `paystack-webhook` (HMAC-SHA512, verify_jwt=false) + workflow `supabase-functions.yml`; Wallet with live packs (`payments.enabled` default **off**); phone app **Ranks**; gold VIP arrival banner at any place; admin Payments view + Content → Top-up packs + Settings toggle. Public key read from `PAYSTACK_PUBLIC_KEY` (envPrefix `PAYSTACK_PUBLIC_`) or `VITE_PAYSTACK_PUBLIC_KEY`. Tests: `payments_test.sql`.
 
-## E1. Economy + storyline (user, 2026-10-07): [todo, after PAY]
+## E1. Economy + storyline (user, 2026-10-07): [running, first playable slice]
 - **Harder economy for LAPO and Nepo alike:**
   - Slower money, real costs and a hierarchy.
   - Grindable career ladders in every industry. Example: a medical doctor goes through school, housemanship and residency to consultant. Others: software dev, game dev, engineer, lawyer, scholar, tax collector, BEDC lineman, and so on.
@@ -181,6 +181,14 @@ The current banner is too small and plain. The hype must **carry aura and take o
 - **Laws:** research real Edo/Nigerian laws that fit the game. Examples: the Edo anti-touting/agbero law, the sanitation day, the okada ban zones, and the tax/levy enforcers.
 - **Lifestyles (all player choice):** playboy, "hookup" scene (18+, tasteful, no explicit content), agbero, scholar, engineer, and more.
 - This is big; plan it in docs/STORY_PLAN.md first, then build it in steps.
+
+**E1 first-slice implementation (2026-10-08, local/unpushed):** `20261008000100_story_police.sql` adds rotating WAT-week story choices with server-side once-per-week persistence, bounded need/street-cred outcomes, a fictional brief hold on one reckless story branch, private robbery case filing, and bank-first bail. Phone Stories, Police and Cars apps are wired to these services; car buying still uses existing dealer inventory and `shop_buy`. Named NPCs now open a short conversation sheet when tapped in the scene or People list. The local Docker migration chain applies through E1; rollback-only RPC checks pass for story load/choice persistence, robbery report/case listing, and bank-first bail; `npm run build` passes. Duplicate/replay and cross-player privacy rules, car purchase and NPC client flows still need checks before pushing. This is a foundation, not the complete economy/storyline phase. See `docs/STORY_PLAN.md` for researched local context, guardrails and remaining work.
+
+## Current phase board (2026-10-08)
+- **Done:** V1 launch systems; real-time Benin clock and short actions; homes/origin; movement; place interiors/crowds/events; closed-place entry enforcement; payment integration code (live top-ups remain disabled pending the user's live test); initial map and visual passes.
+- **Running:** E1 storyline/economy first slice; VQ broader visual quality and mobile performance review.
+- **Still to finish before calling those phases complete:** E1's larger economy/career progression, deeper stories, real police investigation/caught-crime gameplay; VQ review of remaining scenes and low-end phone performance. The downtown footprint import is not a complete exact city map.
+- **Later/paused:** direct messages between players (location chat already works); gangs/robbery and turf; airport/private planes; unfinished P3 hype aura. See `docs/V1_PLAN.md`, `docs/GANGS_PLAN.md`, and `docs/STORY_PLAN.md`.
 
 ## LATER: private jets and planes (user)
 A place to buy private jets and planes, tied to the airport feature (fly to Lagos, Abuja or PH). Not started.

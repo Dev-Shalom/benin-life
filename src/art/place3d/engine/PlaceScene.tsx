@@ -1366,6 +1366,8 @@ export default function PlaceScene(props: PlaceSceneProps) {
         const w = wrap.current?.getBoundingClientRect();
         if (r && w) onHint(p.name, r.left - w.left + r.width / 2, r.top - w.top);
       }
+    } else {
+      window.dispatchEvent(new CustomEvent('bl:npc-talk', { detail: { id: id.replace(/^npc-/, '') } }));
     }
   };
   // the People list (PlaceCard) asks a person to speak: window event 'bl:npc-say' { id: roster id }
