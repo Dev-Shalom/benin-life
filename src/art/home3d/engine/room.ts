@@ -183,6 +183,7 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
       b.box(0.03, hh + 0.25, 0.22, 0.06, y0 - 0.1, a0 - 0.08, '#d9a441');
       b.box(0.03, hh + 0.25, 0.22, 0.06, y0 - 0.1, a1 + 0.08, '#d9a441');
     }
+    nepoCurtains(b, side, a0, a1, y0, hh);
   }
   b.mat = null;
   // POP ceiling cornice round the top of the walls (Nepo)
@@ -246,6 +247,8 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
       for (const [fx, fz] of [[0.3, 0.3], [0.7, 0.3], [0.3, 0.72], [0.7, 0.72]] as const) pools.push([L.w * fx, L.d * fz]);
     } else {
       b.box(0.012, 0.35, 0.012, bulb[0], bulb[1] + 0.1, bulb[2], '#222');
+      // Exposed surface wiring gives the single-bulb LAPO room a specific, lived-in ceiling detail.
+      b.box(0.012, 0.012, Math.max(0.1, bulb[2] - 0.12), bulb[0], H2 - 0.025, bulb[2] / 2, '#302a24', { mat: 'metal', noOcc: true });
       b.cyl(0.05, 0.035, 0.1, bulb[0], bulb[1], bulb[2], '#fff3c4', { layer: 'glow', seg: 8 });
       pools.push([bulb[0], bulb[2]]);
     }
@@ -296,4 +299,24 @@ function louvres(b: HomeBuilder, side: 'n' | 'w', a0: number, a1: number, y0: nu
   // faded curtain bunched at one side
   if (side === 'n') b.box(0.24, hh + 0.2, 0.04, a0 - 0.06, y0 - 0.1, 0.07, '#b5503c', { mat: 'fabric' });
   else b.box(0.04, hh + 0.2, 0.24, 0.07, y0 - 0.1, a0 - 0.06, '#b5503c', { mat: 'fabric' });
+}
+
+/** Floor-length fabric panels and a slim rail give NEPO windows a softer, more finished silhouette. */
+function nepoCurtains(b: HomeBuilder, side: 'n' | 'w', a0: number, a1: number, y0: number, hh: number) {
+  const m = (a0 + a1) / 2;
+  const panel = Math.min(0.34, (a1 - a0) * 0.22);
+  const top = y0 + hh + 0.08;
+  if (side === 'n') {
+    b.box(a1 - a0 + 0.28, 0.035, 0.035, m, top, 0.095, '#887b69', { mat: 'metal' });
+    for (const x of [a0 - 0.015, a1 + 0.015]) {
+      b.box(panel, hh + 0.18, 0.055, x, y0 - 0.04, 0.085, '#c7b69e', { mat: 'fabric' });
+      for (let i = -1; i <= 1; i++) b.box(0.018, hh + 0.12, 0.06, x + i * panel * 0.22, y0 - 0.01, 0.12, '#ad9b83', { mat: 'fabric' });
+    }
+  } else {
+    b.box(0.035, 0.035, a1 - a0 + 0.28, 0.095, top, m, '#887b69', { mat: 'metal' });
+    for (const z of [a0 - 0.015, a1 + 0.015]) {
+      b.box(0.055, hh + 0.18, panel, 0.085, y0 - 0.04, z, '#c7b69e', { mat: 'fabric' });
+      for (let i = -1; i <= 1; i++) b.box(0.06, hh + 0.12, 0.018, 0.12, y0 - 0.01, z + i * panel * 0.22, '#ad9b83', { mat: 'fabric' });
+    }
+  }
 }

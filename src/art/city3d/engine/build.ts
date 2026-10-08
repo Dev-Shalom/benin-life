@@ -16,7 +16,7 @@ import {
   InstancedMesh,
   Mesh,
   MeshBasicMaterial,
-  MeshLambertMaterial,
+  MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
   RingGeometry,
@@ -201,10 +201,10 @@ export interface CityMeshes {
   group: Group;
   /** Materials whose colour changes between day and night. */
   mats: {
-    ground: MeshLambertMaterial;
-    solid: MeshLambertMaterial;
+    ground: MeshStandardMaterial;
+    solid: MeshStandardMaterial;
     glow: MeshBasicMaterial;
-    water: MeshLambertMaterial;
+    water: MeshStandardMaterial;
     windows: MeshBasicMaterial;
     bulbs: MeshBasicMaterial;
     pools: MeshBasicMaterial;
@@ -303,10 +303,10 @@ export function buildCity(L: CityLayout): CityMeshes {
   };
 
   const mats = {
-    ground: keep(new MeshLambertMaterial({ vertexColors: true })),
-    solid: keep(new MeshLambertMaterial({ vertexColors: true, flatShading: true })),
+    ground: keep(new MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 })),
+    solid: keep(new MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.86, metalness: 0.015 })),
     glow: keep(new MeshBasicMaterial({ vertexColors: true, color: '#9db4c4' })),
-    water: keep(new MeshLambertMaterial({ color: '#3d8fb8' })),
+    water: keep(new MeshStandardMaterial({ color: '#3d8fb8', roughness: 0.28, metalness: 0.08 })),
     windows: keep(new MeshBasicMaterial({ color: '#ffdc8a', map: keep(windowTexture()), transparent: true, alphaTest: 0.5 })),
     bulbs: keep(new MeshBasicMaterial({ color: '#d8d2c4' })),
     pools: keep(new MeshBasicMaterial({ color: '#ffcf7a', map: keep(radialTexture()), transparent: true, opacity: 0.8, depthWrite: false, blending: AdditiveBlending })),
@@ -514,7 +514,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     box.translate(0, 0.5, 0);
     box.deleteAttribute('uv');
     const walls = new InstancedMesh(keep(box), mats.solid.clone(), B.length + flats.length);
-    (walls.material as MeshLambertMaterial).vertexColors = false;
+    (walls.material as MeshStandardMaterial).vertexColors = false;
     keep(walls.material as Material);
     let k = 0;
     for (const b of B) {
@@ -542,7 +542,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     hipGeo.translate(0, 0.5, 0);
     hipGeo.deleteAttribute('uv');
     const gabGeo = keep(gableGeometry());
-    const roofMat = keep(new MeshLambertMaterial({ flatShading: true }));
+    const roofMat = keep(new MeshStandardMaterial({ flatShading: true, roughness: 0.76, metalness: 0.025 }));
     for (const [type, geo] of [['hip', hipGeo], ['gable', gabGeo]] as const) {
       const list = B.filter((b) => b.roofType === type);
       const im = new InstancedMesh(geo, roofMat, list.length);
@@ -651,7 +651,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
     geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
     geometry.computeVertexNormals();
-    addMesh(geometry, keep(new MeshLambertMaterial({ vertexColors: true, flatShading: true, side: DoubleSide })), 'osm-core-buildings');
+    addMesh(geometry, keep(new MeshStandardMaterial({ vertexColors: true, flatShading: true, side: DoubleSide, roughness: 0.88, metalness: 0.01 })), 'osm-core-buildings');
   }
 
   /* ---------- trees and palms ---------- */
@@ -661,12 +661,12 @@ export function buildCity(L: CityLayout): CityMeshes {
     const greens = ['#4f8f3a', '#5f9f45', '#3f7f35', '#6aa84c'];
     const canopyGeo = keep(new IcosahedronGeometry(1, 0));
     canopyGeo.deleteAttribute('uv');
-    const leafMat = keep(new MeshLambertMaterial({ flatShading: true }));
+    const leafMat = keep(new MeshStandardMaterial({ flatShading: true, roughness: 0.95 }));
     const canopy = new InstancedMesh(canopyGeo, leafMat, T.length);
     const trunkGeo = keep(new CylinderGeometry(0.5, 0.65, 1, 4, 1, true));
     trunkGeo.translate(0, 0.5, 0);
     trunkGeo.deleteAttribute('uv');
-    const barkMat = keep(new MeshLambertMaterial({ color: '#7a5233', flatShading: true }));
+    const barkMat = keep(new MeshStandardMaterial({ color: '#7a5233', flatShading: true, roughness: 0.94 }));
     const trunks = new InstancedMesh(trunkGeo, barkMat, T.length + P.length);
     T.forEach((t, i) => {
       const r = t.r * WS;
@@ -684,7 +684,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     });
     const frondGeo = keep(new ConeGeometry(1, 0.38, 7, 1, true));
     frondGeo.deleteAttribute('uv');
-    const frondMat = keep(new MeshLambertMaterial({ flatShading: true, side: DoubleSide }));
+    const frondMat = keep(new MeshStandardMaterial({ flatShading: true, side: DoubleSide, roughness: 0.9 }));
     const fronds = new InstancedMesh(frondGeo, frondMat, P.length);
     P.forEach((t, i) => {
       const r = t.r * WS;
@@ -715,7 +715,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     const n = L.lamps.length;
     const poleGeo = keep(new BoxGeometry(0.035, 0.55, 0.035));
     poleGeo.translate(0, 0.275, 0);
-    const poleMat = keep(new MeshLambertMaterial({ color: '#7d8389' }));
+    const poleMat = keep(new MeshStandardMaterial({ color: '#7d8389', roughness: 0.72, metalness: 0.18 }));
     const poles = new InstancedMesh(poleGeo, poleMat, n);
     const bulbGeo = keep(new BoxGeometry(0.12, 0.05, 0.08));
     const bulbs = new InstancedMesh(bulbGeo, mats.bulbs, n);
@@ -750,7 +750,7 @@ export function buildCity(L: CityLayout): CityMeshes {
   /* ---------- vehicles ---------- */
   const V = L.vehicles;
   const vGeo = keep(vehicleGeometry());
-  const vMat = keep(new MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  const vMat = keep(new MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.42, metalness: 0.1 }));
   const vehicles = new InstancedMesh(vGeo, vMat, V.length);
   vehicles.name = 'vehicles';
   V.forEach((v, i) => vehicles.setColorAt(i, _c.set(v.color)));

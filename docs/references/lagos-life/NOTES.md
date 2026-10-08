@@ -24,6 +24,8 @@ These are visual targets, not assets to copy. Keep Benin Life's existing charact
 
 **First implementation (2026-10-08):** the premium GRA duplex plot now has a compact pool deck, two loungers, planted edges, a lit open carport and parking for one owned vehicle. The vehicle is selected from the player's inventory, so the property does not show a car the player has not bought. This is intentionally limited to the duplex tier; starter homes stay appropriate to their price/origin. Runtime/mobile review is still outstanding.
 
+**Graphics follow-up (2026-10-08):** the shared home/place solid material now uses per-surface roughness with the existing procedural atlas, so lighting reads more physically across LAPO rooms, NEPO homes and place interiors. City buildings, roads/ground, roofs, trees, water and traffic use tuned standard materials. LAPO gains visible bulb wiring and a compound generator; NEPO windows gain full-length curtains. This is a broad renderer/detail improvement, not a complete art replacement; the scenes still need visual review and low-end phone profiling. Keep the OSM credit while the OSM-derived downtown data remains in the game.
+
 ## Full walkthrough (IMG_2358–IMG_2395, uploaded by the user)
 Everything is **3D**: low-poly three.js-style characters, an isometric 3D home, and a 3D city map. The UI is light and clean: white floating cards, soft shadows, green primary buttons, emoji icons, rounded pills.
 

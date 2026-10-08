@@ -9,7 +9,7 @@ import {
   CanvasTexture,
   LinearMipmapLinearFilter,
   MeshBasicMaterial,
-  MeshLambertMaterial,
+  MeshStandardMaterial,
   SRGBColorSpace,
   type Material,
   type Texture,
@@ -38,9 +38,9 @@ export interface CycleUniforms {
   uGain: { value: number };
 }
 
-/** Lambert with the atlas detail. */
-export function feelSolid(size: number): MeshLambertMaterial {
-  const m = new MeshLambertMaterial({ vertexColors: true, flatShading: true });
+/** PBR solid with the shared atlas detail. One material keeps all home/place geometry merged. */
+export function feelSolid(size: number): MeshStandardMaterial {
+  const m = new MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.82, metalness: 0.025 });
   const map = atlasTexture(size);
   m.onBeforeCompile = (sh) => {
     sh.uniforms.feelMap = { value: map };
@@ -63,6 +63,30 @@ export function feelSolid(size: number): MeshLambertMaterial {
           diffuseColor.rgb *= textureGrad(feelMap, auv, gx, gy).rgb * ${FEEL_GAIN.toFixed(3)};
         }`,
       );
+    sh.fragmentShader = sh.fragmentShader.replace(
+      '#include <roughnessmap_fragment>',
+      `#include <roughnessmap_fragment>
+      {
+        float ft = floor(vFeelTile + 0.5);
+        vec2 feelCell = vec2(mod(ft, 4.0), 3.0 - floor(ft / 4.0));
+        vec2 feelF = fract(vFeelUv);
+        vec2 feelAtlasUv = (feelCell + 0.012 + feelF * 0.976) * 0.25;
+        vec2 feelDx = dFdx(vFeelUv) * 0.244;
+        vec2 feelDy = dFdy(vFeelUv) * 0.244;
+        float surfaceRoughness = 0.92;
+        if (ft < 1.5) surfaceRoughness = 0.9;
+        else if (ft < 2.5) surfaceRoughness = 0.48;
+        else if (ft < 3.5) surfaceRoughness = 0.68;
+        else if (ft < 4.5) surfaceRoughness = 0.96;
+        else if (ft < 5.5) surfaceRoughness = 0.94;
+        else if (ft < 6.5) surfaceRoughness = 0.62;
+        else if (ft < 7.5) surfaceRoughness = 0.98;
+        else if (ft < 8.5) surfaceRoughness = 0.56;
+        else if (ft < 10.5) surfaceRoughness = 0.46;
+        float surfaceGrain = textureGrad(feelMap, feelAtlasUv, feelDx, feelDy).r;
+        roughnessFactor = clamp(surfaceRoughness + (0.86 - surfaceGrain) * 0.24, 0.32, 1.0);
+      }`,
+    );
   };
   m.customProgramCacheKey = () => 'feelSolid';
   return m;
