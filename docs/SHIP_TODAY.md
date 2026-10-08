@@ -187,7 +187,7 @@ The current banner is too small and plain. The hype must **carry aura and take o
 ## Benin Life first-session journey + retention plan (user, 2026-10-08): [running]
 Keep the product name **Benin Life**. The opening story is integrated into the game after a new Sim moves into a home; its copy responds to LAPO/NEPO origin and the chosen lifetime dream. The four-card guide teaches home/needs, map/opening hours/location chat, phone/weekly Stories, and offers a map handoff. Unfinished phone apps are hidden. The synthesized day/night bed is brighter and gently more rhythmic while remaining calm. See `docs/STORY_PLAN.md` for the five retention pillars and the concrete unfinished work. The first slice is browser-local and introductory; server-persisted dream milestones/rewards, linked weekly chapters, NPC relationships and co-op events are still TODO. Do not claim the full retention plan is complete.
 
-## Player friendships, direct messages and private house visits (user, 2026-10-08): [done in this change]
+## Player friendships, direct messages and private house visits (user, 2026-10-08): [done, pushed to main at `edac975`]
 - Add/accept friend requests from player lists or username search; private conversations are limited to accepted friends.
 - Add realtime text messaging, recorded voice notes with no in-game duration cap, unread indicators, block/unfriend controls.
 - Make each home a private location. Guests accept an invite to knock; the named knock is delivered to the host, who must be at home before server-side admission. Hosts can invite several friends together; leaving restores the guest's own home layout.
