@@ -116,4 +116,4 @@ Clients get select only on `chat_messages` and on their own `chat_blocks` rows. 
   - the Chat tab's badge;
   - the Messages app icon on the phone.
 - **Phone → Messages:** a "Chat at <place>" button ("Chat with your neighbours" at home), plus the "Private messages — Coming soon" card.
-- **NPC conversations (2026-10-08, local/unpushed):** tapping a named NPC in the 3D place or People list opens short scripted reply choices. This is separate from location chat and does not persist a relationship or send a message to a player. Private player-to-player DMs remain later work.
+- **NPC conversations (2026-10-08, pushed in `247d1b4`):** tapping a named NPC in the 3D place or People list opens short scripted reply choices. This is separate from location chat and does not persist a relationship or send a message to a player. Private player-to-player DMs remain later work.

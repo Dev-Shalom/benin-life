@@ -1,6 +1,6 @@
 # E1 — Benin Life stories, choices and civic systems
 
-Status: first playable slice implemented locally on 2026-10-08; `npm run build` passes; migrations apply through E1 on local Docker Postgres; rollback-only RPC checks pass for story loading/choice persistence, robbery report filing, case listing and bank-first bail. Nothing from this slice is pushed or deployed. Interactive client checks, replay/ownership rejection checks, more story content and the broader E1 economy remain unfinished.
+Status: first playable slice pushed to `main` in `247d1b4` on 2026-10-08; GitHub's Supabase migration workflow succeeded; `npm run build` passes; local Docker migrations and rollback-only RPC checks pass for story loading/choice persistence, robbery report filing, case listing and bank-first bail. Vercel deployment is not yet independently confirmed. Interactive client checks, replay/ownership rejection checks, more story content and the broader E1 economy remain unfinished.
 
 ## Design rules
 

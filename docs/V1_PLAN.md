@@ -17,7 +17,7 @@ every day. Other features ship one by one after launch.
 
 ## After v1 (one by one)
 **First after v1: real Benin landmarks** (docs/LANDMARKS.md — ShopRite/Benin City Mall, Kada Plaza, Mama Ebo, Ogba Zoo, stadium, Emotan Statue, hotels, GRA lounges, fun parks).
-PvP robbery/gangs and full caught-crime investigation, loans + esusu (LAPO hook), farming at Iguobazuwa, Babalawo charms, more careers + hustles (agbero, Yahoo/EFCC), buy mode + furniture, airport/private flights, skills/feelings/wishes/perks. Police robbery reports, bail, and a fictional story-only jail branch are in the E1 local first slice; real crime/arrest mechanics are still future work. Location chat works; one-to-one DMs remain later work. Paystack is implemented but top-ups remain off until the user completes a live test.
+PvP robbery/gangs and full caught-crime investigation, loans + esusu (LAPO hook), farming at Iguobazuwa, Babalawo charms, more careers + hustles (agbero, Yahoo/EFCC), buy mode + furniture, airport/private flights, skills/feelings/wishes/perks. Police robbery reports, bail, and a fictional story-only jail branch are in the E1 first slice (`247d1b4`); real crime/arrest mechanics are still future work. Location chat works; one-to-one DMs remain later work. Paystack is implemented but top-ups remain off until the user completes a live test.
 
 ## Preview
 - Site: https://benin-life.vercel.app (Vercel deploys `main`; `.env.production` points at Supabase project `twwttirvesbwjvzjmenp`).
