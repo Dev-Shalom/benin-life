@@ -1,7 +1,7 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
 // Built: Ride (S1: book keke/bus/drop/car with price, time and risk, lazy), Jobs (V1-3), Chowdeck + Houses (V1-4, lazy),
 // Bank (V1-5, lazy: transfers, history, where to cash in/out), Ranks (PAY, lazy: Rich list + VIP leaderboards), Messages (V1-6: shortcut to the location chat;
-// private messages later), Wallet, Alerts, Settings (Sim sheet). Unfinished apps still open a "Coming soon" screen.
+// private messages later), Wallet, Alerts, Settings (Sim sheet). Apps without working features stay hidden.
 // Esc closes the phone.
 import { lazy, Suspense, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -42,18 +42,11 @@ const APPS: App[] = [
   { id: 'messages', name: 'Messages', emoji: '💬', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Chat with friends, neighbours and the people you meet around town.' },
   { id: 'stories', name: 'Stories', emoji: '📖', bg: 'linear-gradient(160deg,#f0a45a,#d66830)', pitch: 'Weekly stories shaped by everyday Benin City life.' },
   { id: 'bank', name: 'Bank', emoji: '🏦', bg: 'linear-gradient(160deg,#9b8cff,#5b4fd6)', pitch: '' },
-  { id: 'contacts', name: 'Contacts', emoji: '📇', bg: 'linear-gradient(160deg,#4fd28a,#1f9a57)', pitch: 'Everyone you know, with how close you are.' },
   { id: 'ranks', name: 'Ranks', emoji: '🏆', bg: 'linear-gradient(160deg,#ffd76a,#c9851a)', pitch: '' },
   { id: 'ride', name: 'Ride', emoji: '🛺', bg: 'linear-gradient(160deg,#ffd45c,#f0a316)', pitch: '' },
   { id: 'food', name: 'Chowdeck', emoji: '🍲', bg: 'linear-gradient(160deg,#4fc98a,#0f7a4c)', pitch: 'Order rice, swallow and small chops to your door, from bukas all over Benin.' },
   { id: 'houses', name: 'Houses', emoji: '🔑', bg: 'linear-gradient(160deg,#f2a65a,#c96a1f)', pitch: 'Rent a bigger place, from a self-contain in Uselu to a duplex in GRA.' },
   { id: 'cars', name: 'Cars', emoji: '🚗', bg: 'linear-gradient(160deg,#4aa3ff,#1f62c9)', pitch: 'Buy a tokunbo or a brand-new ride. Fuel money not included.' },
-  { id: 'health', name: 'Health', emoji: '💊', bg: 'linear-gradient(160deg,#ff7aa2,#e0457b)', pitch: 'Book a clinic visit, buy drugs and keep an eye on your health.' },
-  { id: 'invest', name: 'Invest', emoji: '📈', bg: 'linear-gradient(160deg,#3fd0b5,#0f8f7a)', pitch: 'Grow your money slowly with savings and investments.' },
-  { id: 'bet', name: 'BetNaija', emoji: '⚽', bg: 'linear-gradient(160deg,#2b2f3a,#11141b)', pitch: 'Football predictions with fake game money. 18+ only, and the house usually wins.' },
-  { id: 'family', name: 'Family', emoji: '👪', bg: 'linear-gradient(160deg,#ffb36b,#f07b2a)', pitch: 'Partners, children and family meetings. Your village people will call.' },
-  { id: 'hustle', name: 'Hustle', emoji: '🧰', bg: 'linear-gradient(160deg,#a3b86a,#5f7a2a)', pitch: 'Side gigs and quick jobs for when the month is long.' },
-  { id: 'gov', name: 'Edo Gov', emoji: '🏛️', bg: 'linear-gradient(160deg,#2fa36b,#13603c)', pitch: 'Pay levies, register a business and follow city news.' },
   { id: 'police', name: 'Police', emoji: '🚓', bg: 'linear-gradient(160deg,#4f6bd8,#26388f)', pitch: 'Report a robbery, check your case file and pay bail.' },
   { id: 'wallet', name: 'Wallet', emoji: '👛', bg: 'linear-gradient(160deg,#34c77f,#0a6f40)', pitch: '' },
   { id: 'alerts', name: 'Alerts', emoji: '🔔', bg: 'linear-gradient(160deg,#ff9d5c,#e2552c)', pitch: '' },
@@ -126,23 +119,6 @@ function MessagesApp({ state, onChat }: { state: GameState; onChat: () => void }
           </Button>
         </>
       )}
-      <div className="phone-soon" style={{ paddingTop: 8 }}>
-        <span className="phone-soon__icon" style={{ background: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)' }} aria-hidden>✉️</span>
-        <h3>Private messages</h3>
-        <p>One-to-one chats with friends and the people you meet around town.</p>
-        <span className="soon-pill soon-pill--lg">Coming soon</span>
-      </div>
-    </div>
-  );
-}
-
-function ComingSoon({ app }: { app: App }) {
-  return (
-    <div className="phone-soon">
-      <span className="phone-soon__icon" style={{ background: app.bg }} aria-hidden>{app.emoji}</span>
-      <h3>{app.name}</h3>
-      <p>{app.pitch}</p>
-      <span className="soon-pill soon-pill--lg">Coming soon</span>
     </div>
   );
 }
@@ -270,7 +246,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                                 : app.id === 'food' ? <FoodApp state={state} /> : app.id === 'bank' ? <BankApp state={state} /> : <HousesApp state={state} />}
                       </Suspense>
                     )
-                      : <ComingSoon app={app} />}
+                      : null}
             </div>
           )}
           <button type="button" className="phone__home-bar" onClick={() => setScreen(screen === 'home' ? 'lock' : 'home')}

@@ -12,6 +12,31 @@ Status: first playable slice pushed to `main` in `247d1b4` on 2026-10-08; GitHub
 - Keep outcomes server-authoritative, one choice per story week, no repeated reward farming, and all amounts/timers configurable. Money is game-only.
 - Stories should be positive and age-appropriate. The previously specified hookup content remains 18+, tasteful and non-explicit.
 
+## Retention and first-session journey (2026-10-08)
+
+The feature remains part of **Benin Life**; do not rename the game or ship a separate “Beni Story” product. The selected creator origin and lifetime dream should make a player's opening feel personal, then connect to systems already present in the game.
+
+### Five reasons to return
+
+1. **A long-term direction:** keep the selected lifetime dream visible and turn its goal into measurable milestones. Milestones should name existing actions (career shifts, saving, skills, friendships), persist on the server, and grant modest in-game rewards. Do not show fake progress: dream progress is still marked as unimplemented in SimSheet until its server tracking ships.
+2. **A continuing Benin City thread:** retain the weekly, WAT-based story choice and grow the catalogue into linked chapters. Each chapter should resolve the previous week's outcome where appropriate, allow a practical/helpful/social/opt-out response, and use the player's origin, dream and current life stage to vary dialogue or eligible choices. Never make a story choice mandatory to continue the main game.
+3. **People to meet:** keep location chat available where players meet. Build later toward repeat NPC relationships and small cooperative goals (for example, help prepare a public market or match-day event); do not promise NPC friendship or co-op rewards until they persist and work server-side. Private messages remain later work.
+4. **Fair, earned rewards:** attach small, bounded cash, street-cred, item or cosmetic rewards to completed story/goal milestones; persist the claim server-side and reject duplicate claims. Avoid random punishment, pay-to-win pressure and rewards large enough to break the early economy.
+5. **A useful first session:** introduce the current working controls after a new Sim moves into a home, show the origin/dream context, teach needs/home, map/opening hours/chat, phone/weekly Stories, then offer a direct map action. Keep unavailable phone services out of the app grid until they work.
+
+### Implemented first slice
+
+- `src/screens/game/JourneyGuide.tsx` opens only after a newly created Sim chooses a home. It personalizes the introduction by LAPO/NEPO origin and the saved dream, provides a four-card responsive guide, and offers “Explore the map” as the final action. It is dismissible and records completion per profile in browser storage; this is device/browser-local and is not yet a cross-device server record.
+- The Phone grid now shows the implemented apps only. Contacts, Health, Invest, BetNaija, Family, Hustle and Edo Gov stay out of the player-facing grid until their services are implemented.
+- The synthesized home/city loop has a slightly brighter 96 BPM day groove, a gentler 76 BPM night groove, soft syncopated bass and a very quiet synthesized shaker. The existing music preference, mute and first-gesture unlock still control playback; no audio files are added.
+- Existing weekly Stories and location chat remain the continuing content/social hooks. The first-session guide explains where to find them; this slice does not yet add persistent dream milestones, linked chapter outcomes, NPC relationship progression, cooperative goals or server-side reward claims.
+
+### Local setting references and guardrails
+
+- Use recognizable, ordinary city routines: getting around, work and school, buka/market visits, weather and drainage, power interruptions, football and public community events. Treat a fictional event as fiction and do not encode a current law, service schedule or emergency claim without a current authoritative check.
+- Use public cultural references carefully. Edo State's public culture pages describe bronze craft, festivals, dance and coral regalia; its tourism page identifies Igun Street with bronze and craft makers. They are context for respectful public-facing scenes, not permission to simulate sacred rites. Sources: [Edo State — Arts and Culture](https://edostate.gov.ng/the-beauty-of-arts-and-culture-in-edo/), [Edo State — Festival of Arts and Culture](https://edostate.gov.ng/obaseki-declares-open-2023-edo-festival-of-arts-culture/), [Edo State — Visit Edo](https://edostate.gov.ng/visit-edo-explore-our-tourist-sites-treat-yourself-to-our-culture-hospitality/).
+- Avoid treating LAPO/NEPO origin as a moral score. It changes the starting resources and some opening narration; the player's choices determine the life.
+
 ## First slice
 
 1. **Weekly story rotation:** one story is selected from an admin-editable catalogue for the WAT week. The server stores the player's choice and result and rejects a second choice that week.

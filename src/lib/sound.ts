@@ -1,6 +1,6 @@
 // S1 sound: everything is synthesized with WebAudio (no audio files, nothing to download).
 //   SFX      click on buttons/taps (one delegated listener), cues: money in, action done, alert, error
-//   music    a soft highlife-flavoured pad + pluck loop; slower, minor chords at night
+//   music    a calm, gently upbeat highlife-flavoured pad + pluck groove; softer at night
 //   ambience city bed (filtered noise) with distant horns by day, crickets at night
 //   places   P2: each place's own soundtrack from src/lib/music.ts (club amapiano groove, buka radio, market,
 //            stadium, cinema, hotel lounge, motor park), one scheduler; readBeat() = the beat clock for visuals;
@@ -138,7 +138,7 @@ let nextAt = 0;
 function scheduleMusic() {
   if (!ctx) return;
   const night = scene.night;
-  const bpm = night ? 70 : 92;
+  const bpm = night ? 76 : 96;
   const eighth = 60 / bpm / 2;
   const chords = night ? CHORDS_NIGHT : CHORDS_DAY;
   const pluck = night ? PLUCK_NIGHT : PLUCK_DAY;
@@ -153,7 +153,9 @@ function scheduleMusic() {
         tone(hz(n) * 1.004, nextAt, eighth * 16, { type: 'sine', gain: 0.04, attack: 1.1, release: eighth * 16, dest: musicBus });
       }
     }
-    if (s === 0 || (!night && s === 5)) tone(hz(chord[0] - 12), nextAt, eighth * 2, { type: 'sine', gain: 0.14, release: eighth * 2.5, dest: musicBus });
+    if (s === 0 || s === 4) tone(hz(chord[0] - 12), nextAt, eighth * 2, { type: 'sine', gain: night ? 0.095 : 0.12, release: eighth * 2.5, dest: musicBus });
+    // A very quiet, synthesized shaker on the off-beats adds lift without turning the home bed into a club track.
+    if (s === 2 || (!night && s === 6)) softShaker(nextAt, night ? 0.008 : 0.012);
     if (pluck.includes(s)) {
       const n = chord[(bar + s) % chord.length] + 12;
       tone(hz(n), nextAt, 0.3, { type: 'triangle', gain: 0.06, release: 0.35, dest: musicBus, cutoff: cutoff * 2 });
@@ -161,6 +163,23 @@ function scheduleMusic() {
     step++;
     nextAt += eighth;
   }
+}
+
+function softShaker(at: number, level: number) {
+  if (!ctx || !noise) return;
+  const src = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  src.buffer = noise;
+  filter.type = 'highpass';
+  filter.frequency.value = 6200;
+  gain.gain.setValueAtTime(level, at);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.055);
+  src.connect(filter);
+  filter.connect(gain);
+  gain.connect(musicBus);
+  src.start(at);
+  src.stop(at + 0.06);
 }
 
 // ---------- ambience ----------

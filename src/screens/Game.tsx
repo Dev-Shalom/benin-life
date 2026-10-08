@@ -38,6 +38,7 @@ import { HypeBanner, HypeTicker } from './game/Hype';
 import { useHypeLive } from '../state/hype';
 import { useEventsLive } from '../state/events';
 import { EventBanner, useEventBadges } from './game/Events';
+import JourneyGuide from './game/JourneyGuide';
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
@@ -532,6 +533,7 @@ export default function Game() {
       <BuySheet />
       <ShortcutsSheet />
       <Phone state={state} clock={clock} />
+      <JourneyGuide state={state} onFinish={(explore) => { if (explore) setMapOpen(true); }} />
     </div>
   );
 }
