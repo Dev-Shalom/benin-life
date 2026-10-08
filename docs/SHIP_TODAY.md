@@ -187,6 +187,18 @@ The current banner is too small and plain. The hype must **carry aura and take o
 ## Benin Life first-session journey + retention plan (user, 2026-10-08): [running]
 Keep the product name **Benin Life**. The opening story is integrated into the game after a new Sim moves into a home; its copy responds to LAPO/NEPO origin and the chosen lifetime dream. The four-card guide teaches home/needs, map/opening hours/location chat, phone/weekly Stories, and offers a map handoff. Unfinished phone apps are hidden. The synthesized day/night bed is brighter and gently more rhythmic while remaining calm. See `docs/STORY_PLAN.md` for the five retention pillars and the concrete unfinished work. The first slice is browser-local and introductory; server-persisted dream milestones/rewards, linked weekly chapters, NPC relationships and co-op events are still TODO. Do not claim the full retention plan is complete.
 
+## V1 quality and differentiation work order (user, 2026-10-08)
+The goal is a dependable Benin City life sim with a distinct local identity and a reason to return; don't promise it is objectively better than Lagos Life before player feedback.
+
+1. **First-session proof:** run a fresh-account journey from sign-up through origin/dream selection, home selection, the welcome guide and its map handoff. Test phone, tablet and desktop layouts. Decide whether guide completion should move from browser storage to the server so it follows a player across devices.
+2. **Persistent life goal:** implement server-tracked milestones for the creator's lifetime dream using existing job, skill, saving and social systems; show truthful progress and grant a modest reward once, with server-side duplicate-claim protection.
+3. **Connected Benin story:** expand the weekly WAT story into a short authored chapter arc, with later scenes responding to earlier choices and appropriate origin/life-path context. Ground seasonal/legal details in current authoritative sources; keep stories optional and choices bounded.
+4. **Shared-city loop:** add one cooperative event objective at a real in-game place (for example, help prepare for a public match-day or market event), using existing events and location chat. Add persistent NPC relationships only after their state and rewards can be saved reliably.
+5. **Full-flow and mobile check:** manually verify account recovery, home needs/actions, work/pay/rent, bank, car purchase, closed-place enforcement, weekly-choice replay rejection, location chat/moderation, police case privacy/bail and event participation. Profile low-end phones and slow connections; keep the Lite path usable.
+6. **Release operations:** confirm GitHub Actions and Vercel production status, verify the deployed `/version.json`, and retain a clear rollback route. Keep payments disabled until a real payment, duplicate-webhook and refund/support path have been checked. Track privacy-respecting aggregate onboarding completion, week-one return and error rates.
+
+**V1 scope line:** complete one polished origin/dream/story/reward loop plus the launch checks above. Direct messages, full crime investigation, gangs/turf, private aircraft and every planned phone service can follow after the first release.
+
 ## Current phase board (2026-10-08)
 - **Done:** V1 launch systems; real-time Benin clock and short actions; homes/origin; movement; place interiors/crowds/events; closed-place entry enforcement; payment integration code (live top-ups remain disabled pending the user's live test); initial map and visual passes.
 - **Running:** E1 storyline/economy first slice; VQ broader visual quality and mobile performance review.
