@@ -20,7 +20,7 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
   - you are banned;
   - you are muted (`profiles.chat_muted_until`; an admin sets it in V1-7);
   - chat is switched off (`chat.enabled`);
-  - your Sim is younger than `chat.min_account_real_minutes`.
+  - your Sim is younger than `chat.min_account_real_minutes` (default `0`, so new Sims can join the conversation immediately; admins can raise it).
 - Cleaning, in order:
   1. Trim the message.
   2. Turn newlines and tabs into spaces.
@@ -57,7 +57,7 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
 | chat.rate_seconds | 3 |
 | chat.burst_per_minute | 8 |
 | chat.duplicate_window_seconds | 120 |
-| chat.min_account_real_minutes | 5 |
+| chat.min_account_real_minutes | 0 |
 | chat.recent_limit | 30 |
 | chat.report_hide_count | 3 |
 | chat.retention_hours | 48 |
@@ -115,5 +115,5 @@ Clients get select only on `chat_messages` and on their own `chat_blocks` rows. 
   - a small "N new in chat" chip above the "You're at" chip (it opens the sheet on Chat);
   - the Chat tab's badge;
   - the Messages app icon on the phone.
-- **Phone → Messages:** a "Chat at <place>" button ("Chat with your neighbours" at home), plus the "Private messages — Coming soon" card.
+- **Phone → Messages:** a "Chat at <place>" button ("Chat with your neighbours" at home). This opens the same live, place-based chat; private one-to-one messages are not part of this feature.
 - **NPC conversations (2026-10-08, pushed in `247d1b4`):** tapping a named NPC in the 3D place or People list opens short scripted reply choices. This is separate from location chat and does not persist a relationship or send a message to a player. Private player-to-player DMs remain later work.

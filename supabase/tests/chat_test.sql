@@ -4,7 +4,7 @@ update game_config set value = '"accelerated"' where key = 'clock.mode';
 update game_config set value = '"game_minutes"' where key = 'action.mode';
 
 -- Chat tests (V1-6): config + privileges (no direct writes), chat_send at a place (refused while
--- travelling / banned / muted / brand new / too fast / burst / too long / empty / duplicate),
+-- travelling / banned / muted / configurable new-account wait / too fast / burst / too long / empty / duplicate),
 -- profanity masking + control-character cleanup, chat_recent only for the current place, RLS
 -- (select only at your place, minus blocked players, minus hidden), report + auto-hide, block /
 -- unblock, lazy retention delete, admin_chat_hide guard. Run (migrations applied):
@@ -80,7 +80,6 @@ do $$ begin
   update game_config set value = '3' where key = 'chat.rate_seconds';
   update game_config set value = '8' where key = 'chat.burst_per_minute';
   update game_config set value = '120' where key = 'chat.duplicate_window_seconds';
-  update game_config set value = '5' where key = 'chat.min_account_real_minutes';
   update game_config set value = '30' where key = 'chat.recent_limit';
   update game_config set value = '3' where key = 'chat.report_hide_count';
   update game_config set value = '48' where key = 'chat.retention_hours';
@@ -109,6 +108,8 @@ begin
   perform pg_temp.assert(not has_table_privilege('authenticated', 'public.chat_reports', 'select'), 'reports are private');
   perform pg_temp.assert(exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'chat_messages'),
                          'chat_messages in realtime');
+  perform pg_temp.assert((select value = '0' from game_config where key = 'chat.min_account_real_minutes'),
+                         'new Sims can chat immediately by default');
   foreach k in array array['bl_chat_clean(text)','bl_chat_mask(text)','bl_chat_me()','bl_chat_row(chat_messages,jsonb,uuid)'] loop
     perform pg_temp.assert(not has_function_privilege('authenticated', 'public.' || k, 'execute'), 'helper revoked: ' || k);
   end loop;
@@ -175,9 +176,13 @@ begin
   update game_config set value = 'false' where key = 'chat.enabled';
   perform pg_temp.ch_hint($q$select chat_send('hi')$q$, 'chat_off');
   update game_config set value = 'true' where key = 'chat.enabled';
-  -- brand-new account
+  -- Brand-new accounts can send immediately; an admin can still opt into a wait.
   update profiles set created_at = bl_now() - interval '1 minute' where id = a;
+  perform chat_send('Hello from a fresh Sim');
+  perform pg_temp.ch_advance(4);
+  update game_config set value = '5' where key = 'chat.min_account_real_minutes';
   perform pg_temp.ch_hint($q$select chat_send('first post')$q$, 'too_new');
+  update game_config set value = '0' where key = 'chat.min_account_real_minutes';
   update profiles set created_at = bl_now() - interval '1 day' where id = a;
   -- burst: 8 per minute even when spaced past the 3 s wait
   update game_config set value = '1' where key = 'chat.rate_seconds';
