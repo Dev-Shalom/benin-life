@@ -2,6 +2,9 @@
 
 Status markers: [todo] / [running] / [done]. Keep this file + HANDOFF STATUS LOG + CLOUD_PROMPT current.
 
+## VQ. Visual quality + Benin map fidelity (user, 2026-10-08): [running]
+Reference files are summarized at the top of `docs/references/lagos-life/NOTES.md`. Keep the existing stylized character identity, enrich home materials/landscaping/room props and day/night readability, and keep one low-cost 3D canvas with the Lite fallback. The initial pass added a GRA duplex pool deck, loungers, tropical planters, a lit carport and an owned-vehicle display, plus a downtown OSM footprint mesh. The follow-up pass upgrades the shared home/place material to roughness-aware PBR, tunes the city materials for soft surface response, adds LAPO bulb wiring and a compound generator, and adds NEPO window curtains. Screenshot review exposed that home finish was selected by housing type only; the renderer now receives player origin, so NEPO self-contains get painted/tiled/window treatments. The map footprint snapshot covers downtown only; outer roads/buildings remain curated/procedural. Still needed: inspect more scenes at runtime, profile low-tier/mobile performance, and continue art direction across additional interiors and the broader city. Do not call the full-city map exact or the whole visual overhaul complete yet.
+
 ## 0. Starter homes by origin — [done] (see HANDOFF STATUS LOG). Partial work committed as `5c237bc Starter homes WIP snapshot`; if a session dies, resume from it (don't start over).
 Then push branch → main (it also carries the "full amount under ₦100,000" migration 000900; order 000400 before 000900).
 
@@ -131,7 +134,8 @@ Different from Lagos Life:
 - Migration `20261006001700_hype.sql`, tests `supabase/tests/hype_test.sql`; details in docs/PLACES.md "P2 hype",
   docs/ADMIN.md (hype.* and music.club_track_url), docs/FEEL_PLAN.md "P2".
 
-## P3. Hype with aura (user, 2026-10-06 night): [running]
+## P3. Hype with aura (user, 2026-10-06 night): [paused]
+The unfinished database snapshot is on `origin/wip/p3-hype-aura` (commit `288a284`); there is no full-screen client takeover in `main`. Resume only after the user asks to continue the hype work. This is separate from the current visual/map refresh.
 The current banner is too small and plain. The hype must **carry aura and take over the whole screen** for everyone in the club:
 - A full-screen moment of about 3–5 s, which a tap skips:
   - the backdrop dims
@@ -164,7 +168,7 @@ The current banner is too small and plain. The hype must **carry aura and take o
 - **P3 hype aura** is parked on the branch `wip/p3-hype-aura` (unfinished; the agent hit the usage limit).
 - **Built (agent notes, see docs/PAYMENTS.md):** migration `20261007000100_payments.sql` (topup_packs with 5 packs, payments + RLS, `payment_init`, service-role-only idempotent `bl_payment_credit` with amount check + ledger "Top-up via Paystack", `leaderboard_rich` / `leaderboard_vip` with tiers + your rank, `bl_vip_arrival` called from `travel_arrive`, `admin_payments`, admin spec `topup_packs`); Edge Functions `paystack-verify` + `paystack-webhook` (HMAC-SHA512, verify_jwt=false) + workflow `supabase-functions.yml`; Wallet with live packs (`payments.enabled` default **off**); phone app **Ranks**; gold VIP arrival banner at any place; admin Payments view + Content → Top-up packs + Settings toggle. Public key read from `PAYSTACK_PUBLIC_KEY` (envPrefix `PAYSTACK_PUBLIC_`) or `VITE_PAYSTACK_PUBLIC_KEY`. Tests: `payments_test.sql`.
 
-## E1. Economy + storyline (user, 2026-10-07): [todo, after PAY]
+## E1. Economy + storyline (user, 2026-10-07): [running, first playable slice]
 - **Harder economy for LAPO and Nepo alike:**
   - Slower money, real costs and a hierarchy.
   - Grindable career ladders in every industry. Example: a medical doctor goes through school, housemanship and residency to consultant. Others: software dev, game dev, engineer, lawyer, scholar, tax collector, BEDC lineman, and so on.
@@ -177,6 +181,45 @@ The current banner is too small and plain. The hype must **carry aura and take o
 - **Laws:** research real Edo/Nigerian laws that fit the game. Examples: the Edo anti-touting/agbero law, the sanitation day, the okada ban zones, and the tax/levy enforcers.
 - **Lifestyles (all player choice):** playboy, "hookup" scene (18+, tasteful, no explicit content), agbero, scholar, engineer, and more.
 - This is big; plan it in docs/STORY_PLAN.md first, then build it in steps.
+
+**E1 first-slice implementation (2026-10-08, pushed in `247d1b4`):** `20261008000100_story_police.sql` adds rotating WAT-week story choices with server-side once-per-week persistence, bounded need/street-cred outcomes, a fictional brief hold on one reckless story branch, private robbery case filing, and bank-first bail. Phone Stories, Police and Cars apps are wired to these services; car buying still uses existing dealer inventory and `shop_buy`. Named NPCs now open a short conversation sheet when tapped in the scene or People list. The GitHub Supabase migration workflow succeeded; local rollback-only RPC checks pass for story load/choice persistence, robbery report/case listing, and bank-first bail; `npm run build` passes. Duplicate/replay and cross-player privacy rules, car purchase and NPC client flows still need checks. Vercel deployment has not been independently confirmed. This is a foundation, not the complete economy/storyline phase. See `docs/STORY_PLAN.md` for researched local context, guardrails and remaining work.
+
+## Benin Life first-session journey + retention plan (user, 2026-10-08): [running]
+Keep the product name **Benin Life**. The opening story is integrated into the game after a new Sim moves into a home; its copy responds to LAPO/NEPO origin and the chosen lifetime dream. The four-card guide teaches home/needs, map/opening hours/location chat, phone/weekly Stories, and offers a map handoff. Unfinished phone apps are hidden. The synthesized day/night bed is brighter and gently more rhythmic while remaining calm. See `docs/STORY_PLAN.md` for the five retention pillars and the concrete unfinished work. The first slice is browser-local and introductory; server-persisted dream milestones/rewards, linked weekly chapters, NPC relationships and co-op events are still TODO. Do not claim the full retention plan is complete.
+
+## Player friendships, direct messages and private house visits (user, 2026-10-08): [done, pushed to main at `edac975`]
+- Add/accept friend requests from player lists or username search; private conversations are limited to accepted friends.
+- Add realtime text messaging, recorded voice notes with no in-game duration cap, unread indicators, block/unfriend controls.
+- Make each home a private location. Guests accept an invite to knock; the named knock is delivered to the host, who must be at home before server-side admission. Hosts can invite several friends together; leaving restores the guest's own home layout.
+- No admin dashboard settings were added. Voice files use private Supabase Storage; service quota/browser limits still apply.
+- Implementation/test details: `docs/SOCIAL.md`, migration `20261008000300_friends_messages_visits.sql`, test `supabase/tests/social_test.sql`.
+
+## V1 quality and differentiation work order (user, 2026-10-08)
+The goal is a dependable Benin City life sim with a distinct local identity and a reason to return; don't promise it is objectively better than Lagos Life before player feedback.
+
+**Reference audit update (2026-10-09):** 126 images in `docs/references/lagos-life/` were reviewed, including 64 new phone screenshots on GitHub `main` at `4067a6f`. The complete comparison and staged roadmap are in [`docs/LAGOS_LIFE_REFERENCE_PLAN.md`](LAGOS_LIFE_REFERENCE_PLAN.md). The user has approved proceeding. **Immediate Phase 0 is a repair:** the code for house visits, live avatars and house chat is present, but the user reports that admitted guests are not actually visible to each other and house chat does not work. Fix and verify the two-account flow before visual expansion. Next: multi-avatar animated home and mobile review → full furniture buy/place mode → persistent dream/story loop. Treat betting and real-election screens as references, not commitments; relationship/family features remain optional, consent-based and private.
+
+1. **First-session proof:** run a fresh-account journey from sign-up through origin/dream selection, home selection, the welcome guide and its map handoff. Test phone, tablet and desktop layouts. Decide whether guide completion should move from browser storage to the server so it follows a player across devices.
+2. **Persistent life goal:** implement server-tracked milestones for the creator's lifetime dream using existing job, skill, saving and social systems; show truthful progress and grant a modest reward once, with server-side duplicate-claim protection.
+3. **Connected Benin story:** expand the weekly WAT story into a short authored chapter arc, with later scenes responding to earlier choices and appropriate origin/life-path context. Ground seasonal/legal details in current authoritative sources; keep stories optional and choices bounded.
+4. **Shared-city loop:** add one cooperative event objective at a real in-game place (for example, help prepare for a public match-day or market event), using existing events and location chat. Add persistent NPC relationships only after their state and rewards can be saved reliably.
+5. **Full-flow and mobile check:** manually verify account recovery, home needs/actions, work/pay/rent, bank, car purchase, closed-place enforcement, weekly-choice replay rejection, location chat/moderation, police case privacy/bail and event participation. Profile low-end phones and slow connections; keep the Lite path usable.
+6. **Release operations:** confirm GitHub Actions and Vercel production status, verify the deployed `/version.json`, and retain a clear rollback route. Keep payments disabled until a real payment, duplicate-webhook and refund/support path have been checked. Track privacy-respecting aggregate onboarding completion, week-one return and error rates.
+
+**V1 scope line:** complete one polished origin/dream/story/reward loop plus the launch checks above. Friend requests, private text/voice messages and invitation-only house visits are implemented. Full crime investigation, gangs/turf, private aircraft and other unfinished phone services can follow after the first release.
+
+## Current phase board (2026-10-08)
+- **Done:** V1 launch systems; real-time Benin clock and short actions; homes/origin; movement; place interiors/crowds/events; closed-place entry enforcement; payment integration code (live top-ups remain disabled pending the user's live test); initial map and visual passes.
+- **Running:** E1 storyline/economy first slice; VQ broader visual quality and mobile performance review.
+- **Still to finish before calling those phases complete:** E1's larger economy/career progression, deeper stories, real police investigation/caught-crime gameplay; VQ review of remaining scenes and low-end phone performance. The downtown footprint import is not a complete exact city map.
+- **Implemented social systems:** accepted-friend requests, private text/voice messages and private house visits; see `docs/SOCIAL.md`.
+- **Later/paused:** gangs/robbery and turf; airport/private planes; unfinished P3 hype aura. See `docs/V1_PLAN.md`, `docs/GANGS_PLAN.md`, and `docs/STORY_PLAN.md`.
+
+## Approved reference roadmap status (2026-10-09)
+- **Phase 0 — RUNNING:** repair accepted house visits so host/guests share the same home scene, see each other's interpolated 3D movement, use house chat, and can leave safely. A local patch adds guest-state detection, distinct stable arrival points, a Realtime join snapshot and a Leave house action/RPC. Build and rollback-only SQL suites pass; lint exits 0 with warnings. Browser control is blocked by a saved permission setting, so two-account live verification is still outstanding; the patch is not pushed/deployed.
+- **Phase 1 — NEXT:** multi-rigged 3D home characters with visible walking and permitted activities, plus scene consistency and phone/tablet/desktop review.
+- **Phase 2 — PLANNED:** complete home furniture catalogue, purchase, placement, rotation, removal, persistence and visitor read-only interaction.
+- **Later:** persistent origin/life-path story and goals; wardrobe; career then business; player-centered co-op/community; evidence-backed fictional police/court. Full scope and done criteria: `docs/LAGOS_LIFE_REFERENCE_PLAN.md`.
 
 ## LATER: private jets and planes (user)
 A place to buy private jets and planes, tied to the airport feature (fly to Lagos, Abuja or PH). Not started.

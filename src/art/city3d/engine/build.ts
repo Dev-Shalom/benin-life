@@ -16,11 +16,13 @@ import {
   InstancedMesh,
   Mesh,
   MeshBasicMaterial,
-  MeshLambertMaterial,
+  MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
   RingGeometry,
   SphereGeometry,
+  ShapeUtils,
+  Vector2,
   type Material,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -199,10 +201,10 @@ export interface CityMeshes {
   group: Group;
   /** Materials whose colour changes between day and night. */
   mats: {
-    ground: MeshLambertMaterial;
-    solid: MeshLambertMaterial;
+    ground: MeshStandardMaterial;
+    solid: MeshStandardMaterial;
     glow: MeshBasicMaterial;
-    water: MeshLambertMaterial;
+    water: MeshStandardMaterial;
     windows: MeshBasicMaterial;
     bulbs: MeshBasicMaterial;
     pools: MeshBasicMaterial;
@@ -301,10 +303,10 @@ export function buildCity(L: CityLayout): CityMeshes {
   };
 
   const mats = {
-    ground: keep(new MeshLambertMaterial({ vertexColors: true })),
-    solid: keep(new MeshLambertMaterial({ vertexColors: true, flatShading: true })),
+    ground: keep(new MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 })),
+    solid: keep(new MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.86, metalness: 0.015 })),
     glow: keep(new MeshBasicMaterial({ vertexColors: true, color: '#9db4c4' })),
-    water: keep(new MeshLambertMaterial({ color: '#3d8fb8' })),
+    water: keep(new MeshStandardMaterial({ color: '#3d8fb8', roughness: 0.28, metalness: 0.08 })),
     windows: keep(new MeshBasicMaterial({ color: '#ffdc8a', map: keep(windowTexture()), transparent: true, alphaTest: 0.5 })),
     bulbs: keep(new MeshBasicMaterial({ color: '#d8d2c4' })),
     pools: keep(new MeshBasicMaterial({ color: '#ffcf7a', map: keep(radialTexture()), transparent: true, opacity: 0.8, depthWrite: false, blending: AdditiveBlending })),
@@ -512,7 +514,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     box.translate(0, 0.5, 0);
     box.deleteAttribute('uv');
     const walls = new InstancedMesh(keep(box), mats.solid.clone(), B.length + flats.length);
-    (walls.material as MeshLambertMaterial).vertexColors = false;
+    (walls.material as MeshStandardMaterial).vertexColors = false;
     keep(walls.material as Material);
     let k = 0;
     for (const b of B) {
@@ -540,7 +542,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     hipGeo.translate(0, 0.5, 0);
     hipGeo.deleteAttribute('uv');
     const gabGeo = keep(gableGeometry());
-    const roofMat = keep(new MeshLambertMaterial({ flatShading: true }));
+    const roofMat = keep(new MeshStandardMaterial({ flatShading: true, roughness: 0.76, metalness: 0.025 }));
     for (const [type, geo] of [['hip', hipGeo], ['gable', gabGeo]] as const) {
       const list = B.filter((b) => b.roofType === type);
       const im = new InstancedMesh(geo, roofMat, list.length);
@@ -595,6 +597,63 @@ export function buildCity(L: CityLayout): CityMeshes {
     countTris(shGeo, B.length);
   }
 
+  /* ---------- mapped Benin City core buildings (OpenStreetMap footprints) ---------- */
+  if (L.osmBuildings.length) {
+    const positions: number[] = [];
+    const colors: number[] = [];
+    const c = new Color();
+    const vertex = (x: number, y: number, z: number, color: string) => {
+      positions.push(x, y, z);
+      c.set(color);
+      colors.push(c.r, c.g, c.b);
+    };
+    const tri = (a: [number, number, number], b: [number, number, number], d: [number, number, number], color: string) => {
+      vertex(...a, color); vertex(...b, color); vertex(...d, color);
+    };
+    for (const building of L.osmBuildings) {
+      const ring = building.ring;
+      if (ring.length < 3) continue;
+      let area = 0;
+      const contour = ring.map(([x, z]) => new Vector2(W(x), W(z)));
+      for (let i = 0; i < contour.length; i++) {
+        const a = contour[i], b = contour[(i + 1) % contour.length];
+        area += a.x * b.y - b.x * a.y;
+      }
+      const ccw = area > 0;
+      for (let i = 0; i < ring.length; i++) {
+        const [x0, z0] = ring[i];
+        const [x1, z1] = ring[(i + 1) % ring.length];
+        const low0: [number, number, number] = [W(x0), 0, W(z0)];
+        const low1: [number, number, number] = [W(x1), 0, W(z1)];
+        const high0: [number, number, number] = [W(x0), building.h, W(z0)];
+        const high1: [number, number, number] = [W(x1), building.h, W(z1)];
+        if (ccw) {
+          tri(low0, high0, high1, building.wall);
+          tri(low0, high1, low1, building.wall);
+        } else {
+          tri(low0, high1, high0, building.wall);
+          tri(low0, low1, high1, building.wall);
+        }
+      }
+      const roofTris = ShapeUtils.triangulateShape(contour, []);
+      for (const face of roofTris) {
+        let [a, b, d] = face;
+        const pa = contour[a], pb = contour[b], pd = contour[d];
+        const signed = (pb.x - pa.x) * (pd.y - pa.y) - (pb.y - pa.y) * (pd.x - pa.x);
+        // In Three.js x/z is the ground plane; reverse positive 2D winding to
+        // keep roof normals pointed upward for the single merged mesh.
+        if (signed > 0) [b, d] = [d, b];
+        const p0 = ring[a], p1 = ring[b], p2 = ring[d];
+        tri([W(p0[0]), building.h, W(p0[1])], [W(p1[0]), building.h, W(p1[1])], [W(p2[0]), building.h, W(p2[1])], building.roof);
+      }
+    }
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+    geometry.computeVertexNormals();
+    addMesh(geometry, keep(new MeshStandardMaterial({ vertexColors: true, flatShading: true, side: DoubleSide, roughness: 0.88, metalness: 0.01 })), 'osm-core-buildings');
+  }
+
   /* ---------- trees and palms ---------- */
   {
     const T = L.trees.filter((t) => !t.palm);
@@ -602,12 +661,12 @@ export function buildCity(L: CityLayout): CityMeshes {
     const greens = ['#4f8f3a', '#5f9f45', '#3f7f35', '#6aa84c'];
     const canopyGeo = keep(new IcosahedronGeometry(1, 0));
     canopyGeo.deleteAttribute('uv');
-    const leafMat = keep(new MeshLambertMaterial({ flatShading: true }));
+    const leafMat = keep(new MeshStandardMaterial({ flatShading: true, roughness: 0.95 }));
     const canopy = new InstancedMesh(canopyGeo, leafMat, T.length);
     const trunkGeo = keep(new CylinderGeometry(0.5, 0.65, 1, 4, 1, true));
     trunkGeo.translate(0, 0.5, 0);
     trunkGeo.deleteAttribute('uv');
-    const barkMat = keep(new MeshLambertMaterial({ color: '#7a5233', flatShading: true }));
+    const barkMat = keep(new MeshStandardMaterial({ color: '#7a5233', flatShading: true, roughness: 0.94 }));
     const trunks = new InstancedMesh(trunkGeo, barkMat, T.length + P.length);
     T.forEach((t, i) => {
       const r = t.r * WS;
@@ -625,7 +684,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     });
     const frondGeo = keep(new ConeGeometry(1, 0.38, 7, 1, true));
     frondGeo.deleteAttribute('uv');
-    const frondMat = keep(new MeshLambertMaterial({ flatShading: true, side: DoubleSide }));
+    const frondMat = keep(new MeshStandardMaterial({ flatShading: true, side: DoubleSide, roughness: 0.9 }));
     const fronds = new InstancedMesh(frondGeo, frondMat, P.length);
     P.forEach((t, i) => {
       const r = t.r * WS;
@@ -656,7 +715,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     const n = L.lamps.length;
     const poleGeo = keep(new BoxGeometry(0.035, 0.55, 0.035));
     poleGeo.translate(0, 0.275, 0);
-    const poleMat = keep(new MeshLambertMaterial({ color: '#7d8389' }));
+    const poleMat = keep(new MeshStandardMaterial({ color: '#7d8389', roughness: 0.72, metalness: 0.18 }));
     const poles = new InstancedMesh(poleGeo, poleMat, n);
     const bulbGeo = keep(new BoxGeometry(0.12, 0.05, 0.08));
     const bulbs = new InstancedMesh(bulbGeo, mats.bulbs, n);
@@ -691,7 +750,7 @@ export function buildCity(L: CityLayout): CityMeshes {
   /* ---------- vehicles ---------- */
   const V = L.vehicles;
   const vGeo = keep(vehicleGeometry());
-  const vMat = keep(new MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  const vMat = keep(new MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.42, metalness: 0.1 }));
   const vehicles = new InstancedMesh(vGeo, vMat, V.length);
   vehicles.name = 'vehicles';
   V.forEach((v, i) => vehicles.setColorAt(i, _c.set(v.color)));

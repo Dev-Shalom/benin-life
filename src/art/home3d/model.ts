@@ -331,7 +331,8 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
     label: 'GRA duplex',
     w: 10.0,
     d: 7.6,
-    lot: [0, 0, 11.6, 9.0],
+    // Wider GRA compound: leave room for a small pool, driveway and carport around the cut-away home.
+    lot: [-1, -0.4, 14.5, 10.6],
     floor: { a: '#f4f1ec', b: '#e8e3da', tile: 0.8 },
     patches: [[0, 0, 3.8, 3.2, '#c9a27a', '#bf976e', 0.4], [7.2, 0, 10.0, 2.8, '#dfe9ee', '#cfdde4', 0.4]],
     wall: '#2f3640',
@@ -423,6 +424,12 @@ export interface OwnedPiece {
   color?: string | null;
 }
 
+export interface SavedHomePosition {
+  x: number;
+  z: number;
+  rotation: number;
+}
+
 const SEATS = new Set<string>(['sofa', 'sofa_l', 'armchair']);
 
 /**
@@ -452,6 +459,20 @@ export function furnishLayout(base: HomeLayout, pieces: OwnedPiece[] | null): Ho
     });
   }
   return { ...base, furniture: [...fixtures, ...own] };
+}
+
+/** Apply the homeowner's saved furniture positions to the shared house layout. */
+export function applyHomePositions(base: HomeLayout, positions: Record<string, SavedHomePosition>): HomeLayout {
+  if (!Object.keys(positions).length) return base;
+  let changed = false;
+  const furniture = base.furniture.map((item) => {
+    if (!item.id.startsWith('own_')) return item;
+    const position = positions[item.id];
+    if (!position) return item;
+    changed = true;
+    return { ...item, x: position.x, z: position.z, rot: ((position.rotation % 4) + 4) % 4 };
+  });
+  return changed ? { ...base, furniture } : base;
 }
 
 /** Where an activity happens: the group's explicit actor (sofa for TV), then a piece that hosts the

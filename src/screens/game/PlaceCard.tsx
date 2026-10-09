@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { placeInterior, placePeople, type PlaceInterior, type PlaceNpc, type PlacePeople, type PlaceZone, type ZoneAction } from '../../api/places';
 import { chatSend } from '../../api/chat';
+import { SocialPlayerButton } from './SocialPlayerButton';
 import { errorMessage, rpc } from '../../lib/api';
 import { serverNow } from '../../lib/clock';
 import { districtName, naira, nairaShort } from '../../lib/format';
@@ -229,15 +230,39 @@ function PeopleSheet({ open, onClose, total, players, npcs, me, placeName, onShe
   me?: PlaceCardProps['me']; placeName: string; onSheet: () => void;
 }) {
   const looks = useMemo(() => new Map(npcs.map((n) => [n.id, npcAvatar(n.avatar)])), [npcs]);
+  const [talking, setTalking] = useState<PlaceNpc | null>(null);
+  const [reply, setReply] = useState<string | null>(null);
+  useEffect(() => {
+    const onTalk = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id;
+      const npc = npcs.find((person) => person.id === id);
+      if (npc) { setTalking(npc); setReply(null); }
+    };
+    window.addEventListener('bl:npc-talk', onTalk);
+    return () => window.removeEventListener('bl:npc-talk', onTalk);
+  }, [npcs]);
   const more = Math.max(0, total - players.length - npcs.length - (me ? 1 : 0));
   const speak = (id: string) => {
+    const npc = npcs.find((n) => n.id === id);
+    if (npc) { setTalking(npc); setReply(null); }
     onClose();
     window.setTimeout(() => window.dispatchEvent(new CustomEvent('bl:npc-say', { detail: { id } })), 120);
   };
+  const talk = (kind: 'hello' | 'day' | 'tip') => {
+    if (!talking) return;
+    const role = talking.role.toLowerCase();
+    const response = kind === 'hello'
+      ? `“${talking.line || 'You’re welcome here. How your day dey go?'}”`
+      : kind === 'day'
+        ? `“${talking.name} says the day has been ${role.includes('trader') || role.includes('seller') ? 'busy with customers' : 'moving at its own pace'}. ${talking.line || 'Make you take am easy.'}”`
+        : `“For around here, ask someone local before you move. ${talking.line || 'You go find your way.'}”`;
+    setReply(response);
+  };
   return (
-    <Sheet open={open} onClose={onClose} title={`People here · ${total}`} subtitle={placeName} size="tall"
-      footer={<button type="button" className="bl-btn bl-btn--ghost" onClick={() => { onClose(); onSheet(); }}>Place details &amp; chat</button>}>
-      <div className="people-list">
+    <>
+      <Sheet open={open} onClose={onClose} title={`People here · ${total}`} subtitle={placeName} size="tall"
+        footer={<button type="button" className="bl-btn bl-btn--ghost" onClick={() => { onClose(); onSheet(); }}>Place details &amp; chat</button>}>
+        <div className="people-list">
         <h3 className="people-list__h">Players</h3>
         {me && (
           <div className="people-row">
@@ -249,12 +274,13 @@ function PeopleSheet({ open, onClose, total, players, npcs, me, placeName, onShe
           <div key={pl.id} className="people-row">
             <span className="people-row__av">{pl.avatar ? <AvatarPortrait config={pl.avatar} size={40} /> : '🙂'}</span>
             <span className="people-row__main"><span className="people-row__name"><span className="people-row__dot" aria-label="online" />@{pl.username}</span></span>
+            <SocialPlayerButton userId={pl.id} />
           </div>
         ))}
         {!players.length && <p className="people-row__role">No other players here right now. Share the place to bring friends.</p>}
         {npcs.length > 0 && <h3 className="people-list__h">Around you</h3>}
         {npcs.map((n) => (
-          <button key={n.id} type="button" className="people-row" onClick={() => speak(n.id)} aria-label={`${n.name}, ${n.role}. Tap to hear them`}>
+          <button key={n.id} type="button" className="people-row" onClick={() => speak(n.id)} aria-label={`${n.name}, ${n.role}. Tap to talk`}>
             <span className="people-row__av"><AvatarPortrait config={looks.get(n.id)!} size={40} /></span>
             <span className="people-row__main">
               <span className="people-row__name">{n.name} <span className="people-row__role">· {n.role}</span></span>
@@ -263,8 +289,22 @@ function PeopleSheet({ open, onClose, total, players, npcs, me, placeName, onShe
           </button>
         ))}
         {more > 0 && <p className="people-list__more">+{more} more people here</p>}
-      </div>
-    </Sheet>
+        </div>
+      </Sheet>
+      <Sheet open={Boolean(talking)} onClose={() => { setTalking(null); setReply(null); }}
+        title={talking ? `Chat with ${talking.name}` : 'Chat'} subtitle={talking?.role}>
+        {talking && <div className="npc-dialogue">
+          <p className="npc-dialogue__line">{talking.line ? `“${talking.line}”` : `${talking.name} looks over and greets you.`}</p>
+          {reply ? <><p className="npc-dialogue__reply">{reply}</p><button type="button" className="bl-btn bl-btn--ghost" onClick={() => { setTalking(null); setReply(null); }}>Finish chat</button></>
+            : <div className="npc-dialogue__choices">
+              <button type="button" className="bl-btn bl-btn--green" onClick={() => talk('hello')}>Say hello</button>
+              <button type="button" className="bl-btn bl-btn--green" onClick={() => talk('day')}>Ask how their day is</button>
+              <button type="button" className="bl-btn bl-btn--green" onClick={() => talk('tip')}>Ask for a local tip</button>
+            </div>}
+          <small>NPC conversations are roleplay. For live player chat, open the place Chat tab.</small>
+        </div>}
+      </Sheet>
+    </>
   );
 }
 

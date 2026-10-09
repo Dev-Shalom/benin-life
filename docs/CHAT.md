@@ -1,6 +1,6 @@
 # Chat (V1-6)
 
-Each location has its own chat room. There is no global chat: Lagos Life's global chat ran out of bandwidth at about 50k players online. Private messages (DMs) come after v1, and the phone's Messages app says "Coming soon" for them.
+Each location has its own chat room. There is no global chat: Lagos Life's global chat ran out of bandwidth at about 50k players online. Accepted friends can also use private direct messages and voice notes in the phone's Messages app. Admitted visitors and the owner share the private home's room chat. See [SOCIAL.md](SOCIAL.md) for friend requests, private homes, knocks, live visits, and shared furniture.
 
 - **Server:** `supabase/migrations/20261005001000_chat.sql`
 - **Tests:** `supabase/tests/chat_test.sql`
@@ -9,7 +9,7 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
   - `src/state/chat.ts` (live state and subscription)
   - `src/panels/ChatPanel.tsx` (the Chat tab)
   - the HUD chat chip in `src/screens/Game.tsx`
-  - the Messages app in `src/screens/game/Phone.tsx`
+  - the Friends and Messages app in `src/screens/game/phone/SocialApp.tsx`
   - the blocked list in `src/screens/game/SimSheet.tsx` (People tab)
 
 ## Rules
@@ -20,13 +20,13 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
   - you are banned;
   - you are muted (`profiles.chat_muted_until`; an admin sets it in V1-7);
   - chat is switched off (`chat.enabled`);
-  - your Sim is younger than `chat.min_account_real_minutes`.
+  - your Sim is younger than `chat.min_account_real_minutes` (default `0`, so new Sims can join the conversation immediately; admins can raise it).
 - Cleaning, in order:
   1. Trim the message.
   2. Turn newlines and tabs into spaces.
   3. Strip control and zero-width characters.
   4. Squeeze repeated spaces.
-  5. Refuse an empty message, or one longer than `chat.max_len`.
+  5. Refuse an empty message. Text length is not capped by the app.
 - Rate limits, all on real time:
   - a wait of `chat.rate_seconds` between messages;
   - at most `chat.burst_per_minute` messages per minute;
@@ -53,11 +53,10 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
 | key | default |
 |---|---|
 | chat.enabled | true |
-| chat.max_len | 200 |
 | chat.rate_seconds | 3 |
 | chat.burst_per_minute | 8 |
 | chat.duplicate_window_seconds | 120 |
-| chat.min_account_real_minutes | 5 |
+| chat.min_account_real_minutes | 0 |
 | chat.recent_limit | 30 |
 | chat.report_hide_count | 3 |
 | chat.retention_hours | 48 |
@@ -66,7 +65,8 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
 ## RPCs
 | RPC | Args | Returns |
 |---|---|---|
-| `chat_send` | p_body | message row + `{message, masked}` (hints: chat_off, muted, traveling, too_new, empty, too_long, too_fast, duplicate, banned, no_home) |
+| `chat_send` | p_body | message row + `{message, masked}` (hints: chat_off, muted, traveling, too_new, empty, too_fast, duplicate, banned, no_home) |
+| `chat_send_voice` | p_audio_path, p_audio_mime | location or private-home voice message row; guarded by chat, travel, mute, rate, and room access rules |
 | `chat_recent` | p_location, p_limit | last `min(p_limit, chat.recent_limit)` visible rows at your current place, oldest first, with `avatar` and `mine` (hint not_here) |
 | `chat_report` | p_message_id, p_reason | `{message, reports, hidden}` |
 | `chat_block` / `chat_unblock` | p_user | `{message, id, username?}` |
@@ -108,11 +108,12 @@ Clients get select only on `chat_messages` and on their own `chat_blocks` rows. 
   - It shows each message's avatar portrait, name, time and text.
   - Your own bubbles are green and on the right.
   - Tapping someone's message (or its ⋯ button) opens Report (with a reason) or Block @name.
-  - The input has a character counter, and the Send button shows a countdown during the rate limit.
+  - The text/voice composer has no app character counter. When text is present, the microphone control becomes Send; when empty, it starts voice recording. Playback uses a custom player with speed choices and no visible download control.
   - Server errors appear inline.
   - Note at the top: "Be respectful — 18+ only".
 - **Unread:** messages from others that arrive while the Chat tab isn't on screen count as unread. The count shows on:
   - a small "N new in chat" chip above the "You're at" chip (it opens the sheet on Chat);
   - the Chat tab's badge;
   - the Messages app icon on the phone.
-- **Phone → Messages:** a "Chat at <place>" button ("Chat with your neighbours" at home), plus the "Private messages — Coming soon" card.
+- **Phone → Messages:** a "Chat at <place>" button ("Chat with your neighbours" at home). This opens the same live, place-based chat; private one-to-one messages are not part of this feature.
+- **NPC conversations (2026-10-08, pushed in `247d1b4`):** tapping a named NPC in the 3D place or People list opens short scripted reply choices. This is separate from location chat and does not persist a relationship. Private player-to-player chat is in Phone → Messages; see `docs/SOCIAL.md`.

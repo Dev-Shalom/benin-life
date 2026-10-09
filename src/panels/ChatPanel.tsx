@@ -4,13 +4,15 @@
 // Tap someone's message (or its ⋯ button) to report or block them.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AvatarPortrait } from '../art/avatar3d';
-import { chatBlock, chatReport, chatSend } from '../api/chat';
+import { chatBlock, chatReport, chatSend, chatSendVoice } from '../api/chat';
+import { discardVoiceUpload, socialVoiceUrl, uploadHouseVoiceMessage } from '../api/social';
 import { errorMessage, GameError } from '../lib/api';
 import { useConfig } from '../lib/config';
 import type { ChatMessage, PanelProps } from '../lib/types';
 import { useChat } from '../state/chat';
 import { useHype, type Announcement } from '../state/hype';
 import { Button, EmptyState, Icon, Spinner, toast } from '../ui';
+import { VoicePlayer } from '../ui/VoicePlayer';
 
 const REASONS = ['Insults', 'Spam', 'Scam', 'Sexual', 'Other'];
 
@@ -22,6 +24,18 @@ function timeOf(iso: string) {
   }
 }
 
+function VoiceNote({ path, mine }: { path: string; mine: boolean }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    socialVoiceUrl(path).then((value) => alive && setUrl(value)).catch(() => alive && setFailed(true));
+    return () => { alive = false; };
+  }, [path]);
+  if (failed) return <span className="social-voice-error">Voice message unavailable</span>;
+  return url ? <VoicePlayer src={url} mine={mine} /> : <span className="social-voice-loading"><Spinner size={14} /> Loading voice…</span>;
+}
+
 function mergeHype(msgs: ChatMessage[], hype: Announcement[]): (ChatMessage | Announcement)[] {
   if (!hype.length) return msgs;
   return [...msgs, ...hype].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
@@ -29,7 +43,6 @@ function mergeHype(msgs: ChatMessage[], hype: Announcement[]): (ChatMessage | An
 
 export default function ChatPanel({ state, location }: PanelProps) {
   const { cfg } = useConfig();
-  const maxLen = cfg('chat.max_len', 200);
   const rateSec = cfg('chat.rate_seconds', 3);
   const enabled = cfg('chat.enabled', true);
   const messages = useChat((s) => s.messages);
@@ -51,9 +64,21 @@ export default function ChatPanel({ state, location }: PanelProps) {
   const [note, setNote] = useState<string | null>(null);
   const [menu, setMenu] = useState<number | null>(null);
   const [reporting, setReporting] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordingBusy, setRecordingBusy] = useState(false);
+  const discardOnStop = useRef(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const here = state.location.id === location.id && !state.travel;
+
+  useEffect(() => () => {
+    discardOnStop.current = true;
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   // While this tab is on screen, new messages don't count as unread.
   useEffect(() => {
@@ -83,10 +108,9 @@ export default function ChatPanel({ state, location }: PanelProps) {
 
   const wait = Math.max(0, Math.ceil((waitUntil - now) / 1000));
   const trimmed = text.trim();
-  const tooLong = trimmed.length > maxLen;
 
   const send = async () => {
-    if (!trimmed || tooLong || sending || wait > 0) return;
+    if (!trimmed || sending || wait > 0 || recording || recordingBusy) return;
     setSending(true);
     setNote(null);
     try {
@@ -108,6 +132,70 @@ export default function ChatPanel({ state, location }: PanelProps) {
       setNote(errorMessage(e));
     } finally {
       setSending(false);
+    }
+  };
+
+  const stopRecording = () => {
+    if (recorderRef.current?.state === 'recording') {
+      setRecordingBusy(true);
+      recorderRef.current.stop();
+    }
+  };
+
+  const startRecording = async () => {
+    if (!enabled || sending || wait > 0 || recording || recordingBusy) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setNote('Voice recording is not supported by this browser.');
+      return;
+    }
+    setRecordingBusy(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const preferred = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus'];
+      const mimeType = preferred.find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      discardOnStop.current = false;
+      chunksRef.current = [];
+      recorder.ondataavailable = (event) => { if (event.data.size) chunksRef.current.push(event.data); };
+      recorder.onerror = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setRecording(false);
+        setRecordingBusy(false);
+        setNote('The voice note stopped unexpectedly. Please try again.');
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        recorderRef.current = null;
+        setRecording(false);
+        if (discardOnStop.current) { chunksRef.current = []; return; }
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        chunksRef.current = [];
+        void (async () => {
+          if (!blob.size) throw new Error('No audio was recorded.');
+          const uploaded = await uploadHouseVoiceMessage(location.id, state.profile.id, blob, blob.type);
+          try {
+            const result = await chatSendVoice(uploaded.path, uploaded.mime);
+            add(result);
+            stick.current = true;
+            setWaitUntil(Date.now() + rateSec * 1000);
+            setNow(Date.now());
+          } catch (error) {
+            await discardVoiceUpload(uploaded.path).catch(() => undefined);
+            throw error;
+          }
+        })().catch((error) => setNote(errorMessage(error))).finally(() => setRecordingBusy(false));
+      };
+      recorder.start(1000);
+      setRecording(true);
+      setRecordingBusy(false);
+    } catch {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      setRecordingBusy(false);
+      setNote('Microphone access was not allowed. Enable it in your browser settings and try again.');
     }
   };
 
@@ -169,14 +257,15 @@ export default function ChatPanel({ state, location }: PanelProps) {
               {m.avatar ? <AvatarPortrait config={m.avatar} size={32} /> : <span className="chat-msg__initial">{m.username.slice(0, 1).toUpperCase()}</span>}
             </span>
             <div className="chat-msg__main">
-              <button type="button" className="chat-msg__bubble" onClick={() => openMenu(m)} disabled={m.mine}
-                aria-label={m.mine ? undefined : `Message from ${m.username}. Options`}>
+              <div className="chat-msg__bubble" onClick={() => openMenu(m)} role={m.mine ? undefined : 'button'} tabIndex={m.mine ? undefined : 0}
+                onKeyDown={(event) => { if (!m.mine && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openMenu(m); } }}>
                 <span className="chat-msg__meta">
                   <b>{m.mine ? 'You' : m.username}</b>
                   <span>{timeOf(m.created_at)}</span>
                 </span>
-                <span className="chat-msg__body">{m.body}</span>
-              </button>
+                {m.body !== null && <span className="chat-msg__body">{m.body}</span>}
+                {m.audio_path && <VoiceNote path={m.audio_path} mine={Boolean(m.mine)} />}
+              </div>
               {menu === m.id && (
                 <div className="chat-msg__menu">
                   {!reporting ? (
@@ -203,14 +292,19 @@ export default function ChatPanel({ state, location }: PanelProps) {
         ))}
       </div>
       {note && <p className="chat__note" role="status">{note}</p>}
+      {recording && <div className="chat__recording" role="status"><span className="social-recording__dot" /> Recording voice message</div>}
       <form className="chat__form" onSubmit={(e) => { e.preventDefault(); void send(); }}>
-        <input className="chat__input" value={text} maxLength={maxLen + 50} enterKeyHint="send" autoComplete="off"
-          placeholder={enabled ? `Talk to people at ${location.name}…` : 'Chat is switched off for now'}
-          disabled={!enabled} aria-label="Message" onChange={(e) => { setText(e.target.value); if (note) setNote(null); }} />
-        <span className={`chat__count${tooLong ? ' is-over' : ''}`} aria-live="off">{trimmed.length}/{maxLen}</span>
-        <Button type="submit" size="sm" variant="green" className="chat__send" loading={sending}
-          disabled={!enabled || !trimmed || tooLong || wait > 0}>
-          {wait > 0 ? `${wait}s` : 'Send'}
+        <textarea className="chat__input" value={text} rows={1} enterKeyHint="send" autoComplete="off"
+          placeholder={enabled ? `Message people at ${location.name}…` : 'Chat is switched off for now'}
+          disabled={!enabled || recording || recordingBusy || sending} aria-label="Message"
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
+          onChange={(e) => { setText(e.target.value); if (note) setNote(null); }} />
+        <Button type={trimmed ? 'submit' : 'button'} size="sm" variant="green" className={`chat__send${recording ? ' is-recording' : ''}`}
+          aria-label={recording ? 'Send voice message' : trimmed ? 'Send message' : 'Record voice message'}
+          title={recording ? 'Send voice message' : trimmed ? 'Send message' : 'Record voice message'}
+          loading={sending || (recordingBusy && !recording)} disabled={!enabled || sending || recordingBusy || (!trimmed && !recording && wait > 0)}
+          onClick={() => { if (recording) stopRecording(); else if (!trimmed) void startRecording(); }}>
+          {wait > 0 && !recording ? `${wait}s` : <Icon name={trimmed || recording ? 'send' : 'mic'} size={18} />}
         </Button>
       </form>
     </div>

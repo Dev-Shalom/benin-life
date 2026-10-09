@@ -1,7 +1,7 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
 // Built: Ride (S1: book keke/bus/drop/car with price, time and risk, lazy), Jobs (V1-3), Chowdeck + Houses (V1-4, lazy),
-// Bank (V1-5, lazy: transfers, history, where to cash in/out), Ranks (PAY, lazy: Rich list + VIP leaderboards), Messages (V1-6: shortcut to the location chat;
-// private messages later), Wallet, Alerts, Settings (Sim sheet). Everything else opens a "Coming soon" screen.
+// Bank (V1-5), Ranks (PAY), Messages (friend requests, private text/voice chat and house visits), Wallet, Alerts and Settings.
+// Apps without working features stay hidden.
 // Esc closes the phone.
 import { lazy, Suspense, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -18,12 +18,16 @@ import { AlertsList } from './Overlays';
 import { nearestWorkplace } from '../../api/careers';
 import { JobCard, PerfBar, Promotion, QuitButton, ShiftStats, TrackList } from '../../panels/careers/CareerUI';
 import { useCareerActions, useJobsCatalog } from '../../panels/careers/careerHooks';
+const SocialApp = lazy(() => import('./phone/SocialApp'));
 
 const FoodApp = lazy(() => import('./phone/FoodApp'));
 const HousesApp = lazy(() => import('./phone/HousesApp'));
 const BankApp = lazy(() => import('./phone/BankApp'));
 const RideApp = lazy(() => import('./phone/RideApp'));
 const RanksApp = lazy(() => import('./phone/RanksApp'));
+const CarsApp = lazy(() => import('./phone/CarsApp'));
+const StoriesApp = lazy(() => import('./phone/StoriesApp'));
+const PoliceApp = lazy(() => import('./phone/PoliceApp'));
 
 interface App {
   id: string;
@@ -36,20 +40,14 @@ interface App {
 
 const APPS: App[] = [
   { id: 'jobs', name: 'Jobs', emoji: '💼', bg: 'linear-gradient(160deg,#34c77f,#0e874e)', pitch: 'Find work across Benin City: shop hands, PoS agents, nurses, tech interns and more.' },
-  { id: 'messages', name: 'Messages', emoji: '💬', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Chat with friends, neighbours and the people you meet around town.' },
+  { id: 'messages', name: 'Messages', emoji: '💬', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Add friends, message them, and invite them over.' },
+  { id: 'stories', name: 'Stories', emoji: '📖', bg: 'linear-gradient(160deg,#f0a45a,#d66830)', pitch: 'Weekly stories shaped by everyday Benin City life.' },
   { id: 'bank', name: 'Bank', emoji: '🏦', bg: 'linear-gradient(160deg,#9b8cff,#5b4fd6)', pitch: '' },
-  { id: 'contacts', name: 'Contacts', emoji: '📇', bg: 'linear-gradient(160deg,#4fd28a,#1f9a57)', pitch: 'Everyone you know, with how close you are.' },
   { id: 'ranks', name: 'Ranks', emoji: '🏆', bg: 'linear-gradient(160deg,#ffd76a,#c9851a)', pitch: '' },
   { id: 'ride', name: 'Ride', emoji: '🛺', bg: 'linear-gradient(160deg,#ffd45c,#f0a316)', pitch: '' },
   { id: 'food', name: 'Chowdeck', emoji: '🍲', bg: 'linear-gradient(160deg,#4fc98a,#0f7a4c)', pitch: 'Order rice, swallow and small chops to your door, from bukas all over Benin.' },
   { id: 'houses', name: 'Houses', emoji: '🔑', bg: 'linear-gradient(160deg,#f2a65a,#c96a1f)', pitch: 'Rent a bigger place, from a self-contain in Uselu to a duplex in GRA.' },
   { id: 'cars', name: 'Cars', emoji: '🚗', bg: 'linear-gradient(160deg,#4aa3ff,#1f62c9)', pitch: 'Buy a tokunbo or a brand-new ride. Fuel money not included.' },
-  { id: 'health', name: 'Health', emoji: '💊', bg: 'linear-gradient(160deg,#ff7aa2,#e0457b)', pitch: 'Book a clinic visit, buy drugs and keep an eye on your health.' },
-  { id: 'invest', name: 'Invest', emoji: '📈', bg: 'linear-gradient(160deg,#3fd0b5,#0f8f7a)', pitch: 'Grow your money slowly with savings and investments.' },
-  { id: 'bet', name: 'BetNaija', emoji: '⚽', bg: 'linear-gradient(160deg,#2b2f3a,#11141b)', pitch: 'Football predictions with fake game money. 18+ only, and the house usually wins.' },
-  { id: 'family', name: 'Family', emoji: '👪', bg: 'linear-gradient(160deg,#ffb36b,#f07b2a)', pitch: 'Partners, children and family meetings. Your village people will call.' },
-  { id: 'hustle', name: 'Hustle', emoji: '🧰', bg: 'linear-gradient(160deg,#a3b86a,#5f7a2a)', pitch: 'Side gigs and quick jobs for when the month is long.' },
-  { id: 'gov', name: 'Edo Gov', emoji: '🏛️', bg: 'linear-gradient(160deg,#2fa36b,#13603c)', pitch: 'Pay levies, register a business and follow city news.' },
   { id: 'police', name: 'Police', emoji: '🚓', bg: 'linear-gradient(160deg,#4f6bd8,#26388f)', pitch: 'Report a robbery, check your case file and pay bail.' },
   { id: 'wallet', name: 'Wallet', emoji: '👛', bg: 'linear-gradient(160deg,#34c77f,#0a6f40)', pitch: '' },
   { id: 'alerts', name: 'Alerts', emoji: '🔔', bg: 'linear-gradient(160deg,#ff9d5c,#e2552c)', pitch: '' },
@@ -104,45 +102,6 @@ function JobsApp({ state, onGo }: { state: GameState; onGo: (id: string) => void
   );
 }
 
-/** V1-6: location chat shortcut; private messages (DMs) come after v1. */
-function MessagesApp({ state, onChat }: { state: GameState; onChat: () => void }) {
-  const unread = useChat((s) => s.unread);
-  const byId = useGame((s) => s.locationsById);
-  const here = byId[state.location.id] ?? state.location;
-  const atHome = state.profile.location_id === state.profile.home_location_id;
-  return (
-    <div className="phone-app__body messages-app">
-      {state.travel ? (
-        <p className="phone-app__lead">You're on the road. You can chat with the people at your next stop when you arrive.</p>
-      ) : (
-        <>
-          <p className="phone-app__lead">Every place in Benin has its own chat. Talk to the people around you right now.</p>
-          <Button variant="green" icon="chat" block onClick={onChat}>
-            {atHome ? 'Chat with your neighbours' : `Chat at ${here.name}`}{unread > 0 ? ` · ${unread > 9 ? '9+' : unread} new` : ''}
-          </Button>
-        </>
-      )}
-      <div className="phone-soon" style={{ paddingTop: 8 }}>
-        <span className="phone-soon__icon" style={{ background: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)' }} aria-hidden>✉️</span>
-        <h3>Private messages</h3>
-        <p>One-to-one chats with friends and the people you meet around town.</p>
-        <span className="soon-pill soon-pill--lg">Coming soon</span>
-      </div>
-    </div>
-  );
-}
-
-function ComingSoon({ app }: { app: App }) {
-  return (
-    <div className="phone-soon">
-      <span className="phone-soon__icon" style={{ background: app.bg }} aria-hidden>{app.emoji}</span>
-      <h3>{app.name}</h3>
-      <p>{app.pitch}</p>
-      <span className="soon-pill soon-pill--lg">Coming soon</span>
-    </div>
-  );
-}
-
 export function Phone({ state, clock }: { state: GameState; clock: GameClock }) {
   const overlay = useUi((s) => s.overlay);
   const phoneApp = useUi((s) => s.phoneApp);
@@ -154,6 +113,8 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const unread = useGame((s) => s.unread);
   const chatUnread = useChat((s) => s.unread);
   const events = useGame((s) => s.events);
+  const lastReadEventId = useGame((s) => s.lastReadEventId);
+  const socialUnread = events.filter((e) => ['friend_request', 'house_invite', 'house_knock', 'private_message'].includes(e.kind) && e.id > lastReadEventId).length;
   const open = overlay === 'phone';
   const { mounted, closing } = usePresence(open, 200);
   const [screen, setScreen] = useState<'lock' | 'home' | string>('lock');
@@ -190,9 +151,15 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
     setMapOpen(true);
     select(id, 'jobs');
   };
-  const openChat = () => {
+  const goToPlace = (id: string) => {
     close();
-    select(state.location.id, 'chat');
+    setMapOpen(true);
+    select(id);
+  };
+  const goHome = () => {
+    close();
+    setMapOpen(true);
+    select(state.profile.home_location_id);
   };
   const app = APPS.find((a) => a.id === screen);
   const latest = events[0];
@@ -232,7 +199,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                     <span className="app-icon__tile" style={{ background: a.bg }} aria-hidden>
                       {a.emoji}
                       {a.id === 'alerts' && unread > 0 && <span className="app-icon__badge">{unread > 99 ? '99+' : unread}</span>}
-                      {a.id === 'messages' && chatUnread > 0 && <span className="app-icon__badge">{chatUnread > 9 ? '9+' : chatUnread}</span>}
+                      {a.id === 'messages' && chatUnread + socialUnread > 0 && <span className="app-icon__badge">{chatUnread + socialUnread > 9 ? '9+' : chatUnread + socialUnread}</span>}
                       {a.id === 'houses' && (state.rent?.owed ?? 0) > 0 && <span className="app-icon__badge">!</span>}
                     </span>
                     <span className="app-icon__name">{a.name}</span>
@@ -250,15 +217,18 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                 <span className="phone-app__title"><span aria-hidden>{app.emoji}</span> {app.name}</span>
               </div>
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
-                : app.id === 'messages' ? <MessagesApp state={state} onChat={openChat} />
+                : app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp state={state} onGoHome={goHome} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' ? (
+                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
                         {app.id === 'ranks' ? <RanksApp /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
-                          : app.id === 'food' ? <FoodApp state={state} /> : app.id === 'bank' ? <BankApp state={state} /> : <HousesApp state={state} />}
+                          : app.id === 'cars' ? <CarsApp state={state} onGo={goToPlace} />
+                            : app.id === 'police' ? <PoliceApp state={state} onGo={goToPlace} />
+                              : app.id === 'stories' ? <StoriesApp />
+                                : app.id === 'food' ? <FoodApp state={state} /> : app.id === 'bank' ? <BankApp state={state} /> : <HousesApp state={state} />}
                       </Suspense>
                     )
-                      : <ComingSoon app={app} />}
+                      : null}
             </div>
           )}
           <button type="button" className="phone__home-bar" onClick={() => setScreen(screen === 'home' ? 'lock' : 'home')}

@@ -107,6 +107,7 @@ export default function CreateSim() {
     setBusy(true);
     try {
       const st = await createProfileV2({ username, gender: avatar.gender, avatar, traits, dream });
+      try { window.localStorage.setItem('bl.journey.new-profile', st.profile.id); } catch { /* private browsing */ }
       setFreshRoll(true);
       setStep(LOTTERY);
       applyState(st);
@@ -135,6 +136,12 @@ export default function CreateSim() {
       const res = await chooseStartHome(home);
       applyState(res);
       void useGame.getState().refresh();
+      try {
+        if (window.localStorage.getItem('bl.journey.new-profile') === res.profile.id) {
+          window.localStorage.setItem(`bl.journey.pending.${res.profile.id}`, '1');
+          window.localStorage.removeItem('bl.journey.new-profile');
+        }
+      } catch { /* private browsing */ }
       markWelcomed(res.profile.id); // S2: a brand-new Sim goes straight into the game
       nav('/play', { replace: true });
     } catch (e) {

@@ -95,6 +95,15 @@ export function buildOutside(b: HomeBuilder, o: OutsideOpts) {
   if (o.style === 'estate') {
     b.box(o.x1 - o.x0 + 6, 0.08, 0.26, cx + 1, fh - 0.05, o.z0 - 2.2, '#9a8f80', { mat: 'concrete' });
     b.box(0.26, 0.08, o.z1 - o.z0 + 5, o.x0 - 2.2, fh - 0.05, cz + 1.5, '#9a8f80', { mat: 'concrete' });
+  } else if (o.style === 'compound') {
+    // A compact standby generator sits by the compound wall, grounded in the same Benin street scene.
+    const gx = o.x1 + 2.1, gz = o.z1 - 0.9;
+    b.box(0.9, 0.58, 0.54, gx, -0.04, gz, '#59616b', { mat: 'metal' });
+    b.box(0.72, 0.38, 0.025, gx, 0.04, gz + 0.29, '#34383d', { mat: 'metal' });
+    for (let i = -2; i <= 2; i++) b.box(0.018, 0.28, 0.03, gx + i * 0.12, 0.09, gz + 0.31, '#9aa3ab', { mat: 'metal' });
+    b.box(0.13, 0.11, 0.018, gx + 0.25, 0.12, gz + 0.33, '#c64b3d', { mat: 'metal' });
+    b.cyl(0.035, 0.035, 0.22, gx - 0.52, 0.36, gz, '#7f898f', { mat: 'metal', seg: 7 });
+    for (const dx of [-0.31, 0.31]) b.box(0.1, 0.08, 0.08, gx + dx, -0.04, gz, '#25292c', { mat: 'metal' });
   }
   // trees behind (mango / almond / palm), never in front of the room
   const nt = Math.round((3 + r() * 2) * den);

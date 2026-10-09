@@ -86,6 +86,13 @@ buka warm, bank cool), but nothing reads as neon and faces / pills stay readable
 - **Overlay** (`game.css`): vignette 0.28 → 0.14 (dark rooms 0.5 → 0.28) over a wider clear centre; grain 0.07 → 0.04.
 - Low tier unchanged in kind (no fog, no pools). Before / after: scratchpad `p1/light-*-before-after.png`.
 
+## VQ extension (2026-10-08)
+The shared home/place solid material now uses roughness-aware `MeshStandardMaterial` shading while retaining the procedural atlas, baked AO, merged layers, and graphics tiers. Texture tiles feed a small per-surface roughness range (ceramic, wood, plaster, fabric, metal, and ground), so daylight and room lights shape surfaces across every home and place without adding new meshes or downloads. The city ground, buildings, downtown OSM core, roofs, trees, water, street furniture, and traffic also use roughness-tuned standard materials.
+
+The LAPO room adds a visible surface cable to its bare bulb, and compound exteriors get a compact standby generator. NEPO home windows now have full-length curtains and a rail. This is a shared rendering/detail pass, not a finished photoreal overhaul: scene-by-scene visual review and low-end phone profiling remain release checks.
+
+The 2026-10-08 live screenshot exposed an origin-style mismatch: `self_contain` was always rendered with LAPO finishes, even when the profile origin was NEPO. `HomeView` now passes the profile origin to the room builder; NEPO profiles get painted walls, tiled floors, curtains and warm downlights in a self-contain, while the selected housing tier can still give any profile a premium flat/duplex finish.
+
 ## P2: place soundtracks, the beat clock and the hype sounds (2026-10-06)
 All original and synthesized (no songs, no samples); `src/lib/music.ts` holds the synth, `src/lib/sound.ts` plays it.
 - **One scheduler** (100 ms tick, ~0.3 s lookahead, WebAudio-timed) for the place you're in; nothing runs while the

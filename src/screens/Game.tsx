@@ -2,7 +2,7 @@
 // (the 2D map only as the lite fallback, see src/art/city3d/CityView.tsx).
 // HUD: top pill, left rail, needs card, dock (Home · Buy · Map · Phone), status banners, toasts.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { HomeView, LAYOUTS, activityGroup, furnishLayout, homeLayoutFor, itemGroup, type FurnitureItem } from '../art/home3d';
+import { HomeView, LAYOUTS, activityGroup, applyHomePositions, furnishLayout, homeLayoutFor, itemGroup, type FurnitureItem, type SavedHomePosition } from '../art/home3d';
 import { CityView } from '../art/city3d';
 import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
 import { serverNow, useGameClock } from '../lib/clock';
@@ -34,10 +34,14 @@ import { useTaskRunner } from './game/TaskRunner';
 import { useTasks } from '../state/tasks';
 import { PlaceCard, usePlaceInterior, usePlacePeople, usePlayersAt } from './game/PlaceCard';
 import { placeClosedEject } from '../api/places';
+import { socialHouseInfo, socialHomeOffer, socialHomePlaceFurniture, socialLeaveHouse, type HouseFurniturePlacement, type HouseInfo } from '../api/social';
+import { supabase } from '../lib/supabase';
+import { useHouseRoom } from '../state/houseRoom';
 import { HypeBanner, HypeTicker } from './game/Hype';
 import { useHypeLive } from '../state/hype';
 import { useEventsLive } from '../state/events';
 import { EventBanner, useEventBadges } from './game/Events';
+import JourneyGuide from './game/JourneyGuide';
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
@@ -127,18 +131,79 @@ export default function Game() {
   }, [state]);
 
   const p = state?.profile;
+  const homeOwnerId = p ? (p.home_visit_host_id ?? p.id) : null;
+  const [houseInfo, setHouseInfo] = useState<HouseInfo | null>(null);
+  const [housePositions, setHousePositions] = useState<Record<string, SavedHomePosition>>({});
+  const [arrangingHome, setArrangingHome] = useState(false);
+  const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
+  const [selectedHousePlayer, setSelectedHousePlayer] = useState<string | null>(null);
+  const [houseOfferBusy, setHouseOfferBusy] = useState<string | null>(null);
+  const [leavingHouse, setLeavingHouse] = useState(false);
+  const ownedVehicleId = useMemo(
+    () => state?.inventory?.filter((item) => item.category === 'vehicle').sort((a, b) => b.price - a.price)[0]?.id ?? null,
+    [state?.inventory],
+  );
   // the player's own furniture (starter set by origin + home); reloads when the home changes
-  const furnKey = p ? `${p.id}:${p.home_location_id}:${p.housing_id ?? ''}` : null;
+  const furnKey = p && homeOwnerId ? `${homeOwnerId}:${p.home_location_id}:${p.housing_id ?? ''}` : null;
   const lastFurnKey = useRef<string | null>(null);
   useEffect(() => {
-    if (!furnKey || !p) return;
+    if (!furnKey || !homeOwnerId) return;
     const force = lastFurnKey.current !== null && lastFurnKey.current !== furnKey;
     lastFurnKey.current = furnKey;
-    void loadFurniture(p.id, force);
+    void loadFurniture(homeOwnerId, force);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [furnKey, loadFurniture]);
-  const atHome = Boolean(p && !state?.travel && p.location_id === p.home_location_id);
+  }, [furnKey, homeOwnerId, loadFurniture]);
+  const atHome = Boolean(p && state && !state.travel && p.location_id === state.location.id
+    && (p.location_id === p.home_location_id || p.home_visit_host_id));
   const showHome = atHome && !mapOpen;
+  const houseRoomId = atHome && state ? state.location.id : null;
+  const { members: houseMembers, publish: publishHouseMove } = useHouseRoom(houseRoomId, p ?? null);
+
+  useEffect(() => {
+    let alive = true;
+    if (!atHome || !p || !homeOwnerId) {
+      setHouseInfo(null);
+      setHousePositions({});
+      setArrangingHome(false);
+      setSelectedFurnitureId(null);
+      setSelectedHousePlayer(null);
+      return;
+    }
+    setHouseInfo(null);
+    setHousePositions({});
+    void Promise.all([
+      socialHouseInfo(),
+      supabase.from('player_house_furniture').select('owner_id,furniture_key,x,z,rotation').eq('owner_id', homeOwnerId),
+    ]).then(([info, rows]) => {
+      if (!alive) return;
+      setHouseInfo(info);
+      if (!rows.error) {
+        setHousePositions(Object.fromEntries(((rows.data ?? []) as HouseFurniturePlacement[]).map((row) => [row.furniture_key, {
+          x: Number(row.x), z: Number(row.z), rotation: Number(row.rotation),
+        }])));
+      }
+    }).catch(() => { /* retain the local default furnishing if house metadata is temporarily unavailable */ });
+    const channel = supabase.channel(`house-furniture:${homeOwnerId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_house_furniture', filter: `owner_id=eq.${homeOwnerId}` }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          const old = payload.old as Partial<HouseFurniturePlacement>;
+          if (old.furniture_key) setHousePositions((positions) => {
+            const next = { ...positions };
+            delete next[old.furniture_key!];
+            return next;
+          });
+          return;
+        }
+        const row = payload.new as HouseFurniturePlacement;
+        if (row.furniture_key) setHousePositions((positions) => ({
+          ...positions, [row.furniture_key]: { x: Number(row.x), z: Number(row.z), rotation: Number(row.rotation) },
+        }));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_furniture', filter: `user_id=eq.${homeOwnerId}` }, () => {
+        void loadFurniture(homeOwnerId, true);
+      }).subscribe();
+    return () => { alive = false; void supabase.removeChannel(channel); };
+  }, [atHome, homeOwnerId, p?.id, loadFurniture]);
   // L2: anywhere else (not on the road) you are INSIDE the place: its 3D interior + the place card
   const showPlace = Boolean(p && state && !state.travel && !atHome && !mapOpen);
   // V1-6: stay subscribed to the chat of the place you are at (unread dot while the sheet is closed).
@@ -146,7 +211,7 @@ export default function Game() {
   const chatUnread = useChat((s) => s.unread);
   // L3: the last location chat lines float over the speaker's head inside a place
   const chatMsgs = useChat((s) => s.messages);
-  const speech = useMemo(() => chatMsgs.slice(-8).map((m) => ({ id: m.id, who: m.mine ? 'me' : m.user_id, text: m.body })), [chatMsgs]);
+  const speech = useMemo(() => chatMsgs.slice(-8).map((m) => ({ id: m.id, who: m.mine ? 'me' : m.user_id, text: m.body ?? 'Voice message' })), [chatMsgs]);
   const gfxTier = useTier();
 
   // A fresh game screen (e.g. after logging out and in again) starts clean: no sheet or map left
@@ -227,7 +292,7 @@ export default function Game() {
 
   // M2: the action queue. Tasks walk first (3D home on screen), then start; see game/TaskRunner.ts.
   const suspendHomeNow = (overlay === 'sim' && simTab === 'profile') || overlay === 'look';
-  const homeLive = showHome && Boolean(p) && furnitureOf === p?.id && !suspendHomeNow;
+  const homeLive = showHome && Boolean(p) && furnitureOf === homeOwnerId && !suspendHomeNow;
   const placeLive = showPlace && !suspendHomeNow && state ? state.location.id : null;
   const runner = useTaskRunner(state, homeLive, placeLive);
   const taskPhase = useTasks((s) => s.current?.phase ?? null);
@@ -345,7 +410,55 @@ export default function Game() {
   }, []);
 
   const layoutId = p ? homeLayoutFor(p.housing_id, (state && byId[state.location.id]?.scene) ?? state?.location.scene) : 'face_me';
-  const furnished = useMemo(() => furnishLayout(LAYOUTS[layoutId], furniture), [layoutId, furniture]);
+  const furnished = useMemo(() => applyHomePositions(furnishLayout(LAYOUTS[layoutId], furniture), housePositions), [layoutId, furniture, housePositions]);
+
+  const saveHousePlacement = useCallback(async (key: string, x: number, z: number, rotation: number) => {
+    if (!p || p.home_visit_host_id || !atHome) return;
+    try {
+      const placement = await socialHomePlaceFurniture(key, x, z, rotation);
+      setHousePositions((rows) => ({ ...rows, [placement.furniture_key]: {
+        x: Number(placement.x), z: Number(placement.z), rotation: Number(placement.rotation),
+      } }));
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Could not save that furniture position.', 'bad');
+    }
+  }, [p, atHome]);
+
+  const rotateSelectedFurniture = useCallback(() => {
+    if (!selectedFurnitureId) return;
+    const item = furnished.furniture.find((piece) => piece.id === selectedFurnitureId);
+    if (!item) return;
+    const current = housePositions[selectedFurnitureId] ?? { x: item.x, z: item.z, rotation: item.rot ?? 0 };
+    void saveHousePlacement(selectedFurnitureId, current.x, current.z, (current.rotation + 1) % 4);
+  }, [selectedFurnitureId, furnished, housePositions, saveHousePlacement]);
+
+  const offerHouseItem = useCallback(async (guestId: string, itemId: string) => {
+    setHouseOfferBusy(itemId);
+    try {
+      const result = await socialHomeOffer(guestId, itemId);
+      toast(result.message, 'good');
+      setSelectedHousePlayer(null);
+      await useGame.getState().refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Could not share that item.', 'bad');
+    } finally { setHouseOfferBusy(null); }
+  }, []);
+
+  const leaveHouse = useCallback(async () => {
+    if (!p?.home_visit_host_id || leavingHouse) return;
+    setLeavingHouse(true);
+    try {
+      const result = await socialLeaveHouse();
+      closeAll();
+      setMapOpen(false);
+      await useGame.getState().refresh();
+      toast(result.message, 'good');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Could not leave this home. Try again.', 'bad');
+    } finally {
+      setLeavingHouse(false);
+    }
+  }, [p?.home_visit_host_id, leavingHouse, closeAll, setMapOpen]);
 
   if (!state || !p) return <LoadingScreen />;
 
@@ -411,12 +524,15 @@ export default function Game() {
               </button>
             }
           />
-        ) : showHome && furnitureOf !== p.id ? (
+        ) : showHome && furnitureOf !== homeOwnerId ? (
           <div className="home3d home3d--loading"><span className="home3d__loader" aria-label="Loading your home" /></div>
         ) : showHome ? (
           <HomeView
             layoutId={layout}
             layout={furnished}
+            playerId={p.id}
+            origin={(houseInfo?.origin ?? p.origin) === 'nepo' ? 'nepo' : 'lapo'}
+            vehicleId={ownedVehicleId}
             walk={walk}
             avatar={p.avatar}
             busy={busyGroup}
@@ -431,6 +547,17 @@ export default function Game() {
             paused={coveredHome}
             selectedId={homePick?.id ?? null}
             onPick={onPick}
+            onActorState={publishHouseMove}
+            remotePlayers={houseMembers}
+            onPickRemote={(id) => setSelectedHousePlayer(id)}
+            editableFurniture={arrangingHome && !p.home_visit_host_id}
+            selectedFurnitureId={selectedFurnitureId}
+            onSelectFurniture={(item) => setSelectedFurnitureId(item.id)}
+            onMoveFurniture={(id, x, z) => {
+              const current = furnished.furniture.find((piece) => piece.id === id);
+              const position = housePositions[id] ?? { x, z, rotation: current?.rot ?? 0 };
+              void saveHousePlacement(id, x, z, position.rotation);
+            }}
             insetTop={clean ? 70 : insets.top}
             insetBottom={clean ? 40 : insets.bottom}
             fallbackScene={here.scene}
@@ -459,6 +586,39 @@ export default function Game() {
           />
         )}
       </div>
+
+      {showHome && !p.home_visit_host_id && (
+        <div className={`house-arrange${arrangingHome ? ' is-open' : ''}`}>
+          {!arrangingHome ? (
+            <button type="button" className="house-arrange__toggle" onClick={() => setArrangingHome(true)}>
+              <Icon name="rotate" size={17} /> Arrange home
+            </button>
+          ) : (
+            <div className="house-arrange__tools">
+              <span>{selectedFurnitureId ? 'Tap a floor spot to move this item' : 'Tap one of your furniture pieces to select it'}</span>
+              {selectedFurnitureId && <button type="button" onClick={rotateSelectedFurniture}><Icon name="rotate" size={16} /> Rotate</button>}
+              <button type="button" className="house-arrange__done" onClick={() => { setArrangingHome(false); setSelectedFurnitureId(null); }}>Done</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showHome && selectedHousePlayer && (() => {
+        const guest = houseMembers.find((member) => member.id === selectedHousePlayer);
+        const food = (state.inventory ?? []).filter((item) => ['food', 'drink'].includes(item.category) && item.kind === 'use' && item.qty > 0);
+        if (!guest) return null;
+        return (
+          <div className="house-guest-card">
+            <div className="house-guest-card__head"><b>@{guest.username}</b><button type="button" onClick={() => setSelectedHousePlayer(null)} aria-label="Close player actions"><Icon name="close" size={15} /></button></div>
+            <span>Offer something from your Bag</span>
+            {food.length ? food.slice(0, 5).map((item) => (
+              <button key={item.id} type="button" disabled={houseOfferBusy !== null} onClick={() => void offerHouseItem(guest.id, item.id)}>
+                <span>{item.icon ?? '🍽️'} {item.name}</span><small>×{item.qty}</small>
+              </button>
+            )) : <small>You have no food or drinks in your Bag.</small>}
+          </div>
+        );
+      })()}
 
       {!clean && <TopPill state={state} clock={clock} />}
       <HypeBanner mcName={inClub ? people?.npcs.find((n) => n.motion === 'hype')?.name ?? 'The hype man' : 'VIP alert'} top={inClub ? (clean ? 70 : insets.top) + 6 : clean ? 70 : insets.narrow ? 200 : insets.top + 6} />
@@ -502,10 +662,18 @@ export default function Game() {
             </div>
           )}
           {!clean && showHome && (
-            <button type="button" className="home-chip" onClick={() => select(here.id)}>
-              <span aria-hidden>🏠</span> <span className="home-chip__name">{here.name.replace(/ \(.*\)$/, '')}</span>
-              <span className="home-chip__go">Things to do <Icon name="chevronUp" size={13} /></span>
-            </button>
+            <div className="home-chip-row">
+              <button type="button" className="home-chip" onClick={() => select(here.id)}>
+                <span aria-hidden>🏠</span> <span className="home-chip__name">{here.name.replace(/ \(.*\)$/, '')}</span>
+                <span className="home-chip__go">Things to do <Icon name="chevronUp" size={13} /></span>
+              </button>
+              <button type="button" className="home-chip-chat" onClick={() => select(here.id, 'chat')}>
+                <Icon name="chat" size={15} /> House chat
+              </button>
+              {p.home_visit_host_id && <button type="button" className="home-chip-chat home-chip-leave" onClick={() => void leaveHouse()} disabled={leavingHouse}>
+                <Icon name="back" size={15} /> {leavingHouse ? 'Leaving…' : 'Leave house'}
+              </button>}
+            </div>
           )}
         </div>
         {!clean && (
@@ -526,6 +694,7 @@ export default function Game() {
       <BuySheet />
       <ShortcutsSheet />
       <Phone state={state} clock={clock} />
+      <JourneyGuide state={state} onFinish={(explore) => { if (explore) setMapOpen(true); }} />
     </div>
   );
 }

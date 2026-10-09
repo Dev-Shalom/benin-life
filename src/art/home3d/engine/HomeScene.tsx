@@ -29,7 +29,7 @@ import { avatarKey } from '../../avatar3d/catalog';
 import { buildCharacter } from '../../avatar3d/engine/character';
 import { applyPose, capturePose, DEFAULT_WALK, gaitFor, legRotationDiff, mixPose, poseGait, poseIdle, poseLife, POSE_SIZE, resetRig, stepLength } from '../../avatar3d/engine/anim';
 import { makeShadow } from '../../avatar3d/engine/scene';
-import { GROUP_META, itemGroup, KINDS, LAYOUTS, pieceFor, type FurnitureItem, type HomeGroup, type HomeLayout, type HomeLayoutId, type HomePose } from '../model';
+import { activityGroup, GROUP_META, itemGroup, KINDS, LAYOUTS, pieceFor, type FurnitureItem, type HomeGroup, type HomeLayout, type HomeLayoutId, type HomePose } from '../model';
 import { buildGrid, footprint, planPath, randomFree, toLayout, type P2 } from '../nav';
 import { angleTo, DEFAULT_GAIT, makeWalker, place, stepWalker, stopWalk, walkPath, type Gait, type Walker } from '../../sim/locomotion';
 import { homeLight } from './light';
@@ -40,6 +40,7 @@ import { LAYERS } from './build';
 import { feelQuality, useTier } from '../../feel/quality';
 import { rigFor } from '../../feel/rigs';
 import { applyFeelRender, makeFan, makeFeelMats, sampleFrames, tickFeel } from '../../feel/scene';
+import type { HouseActorState } from '../../../state/houseRoom';
 
 export interface HomeApi {
   /** Render once and return the frame as an image (to show while the canvas is unmounted). */
@@ -55,9 +56,15 @@ export interface HomeApi {
 
 export interface HomeSceneProps {
   layoutId: HomeLayoutId;
+  /** Stable player identity gives each visitor a distinct arrival point in the shared room. */
+  playerId?: string;
+  /** Birth tier controls the home finish details as well as the starter inventory. */
+  origin?: 'lapo' | 'nepo';
   /** The layout with the player's own furniture (furnishLayout); keep it memoised. Default: LAYOUTS[layoutId]. */
   layout?: HomeLayout;
   avatar: AvatarConfig;
+  /** Highest-value owned vehicle (inventory item id), shown in the GRA duplex carport. */
+  vehicleId?: string | null;
   /** The home activity running now on the server (key changes with each new run), or null. M2: the Sim
    * normally already stands at the piece (it walked there before the action started); if not, it walks. */
   busy: { group: HomeGroup; key: string; activity?: string; seconds?: number } | null;
@@ -69,6 +76,10 @@ export interface HomeSceneProps {
   onTaskCancel?: (key: string) => void;
   /** M2: a walk the player asked for (floor tap) ended. */
   onWalkDone?: () => void;
+  /** Position and action snapshots are broadcast only to the homeowner and admitted guests. */
+  onActorState?: (state: Omit<HouseActorState, 'id' | 'username' | 'avatar' | 'updatedAt'>) => void;
+  remotePlayers?: HouseActorState[];
+  onPickRemote?: (userId: string) => void;
   /** M2: walk tuning from config (sim.walk_speed, sim.robe_speed_mult, sim.tired_slowdown). */
   walk?: { speed: number; robeMult: number; tiredSlow: number };
   /** Game hour as a float (14.5 = 2:30 pm). */
@@ -76,6 +87,11 @@ export interface HomeSceneProps {
   paused?: boolean;
   selectedId?: string | null;
   onPick?: (item: FurnitureItem) => void;
+  /** Owner-only tap-to-move mode; guests never receive an edit callback. */
+  editableFurniture?: boolean;
+  selectedFurnitureId?: string | null;
+  onSelectFurniture?: (item: FurnitureItem) => void;
+  onMoveFurniture?: (itemId: string, x: number, z: number) => void;
   onReady?: (api: HomeApi) => void;
   onLost?: () => void;
   /** Pixels covered by HUD chrome at the top / bottom, so the house is framed between them. */
@@ -128,11 +144,18 @@ const PREWALK_MAX_S = 7;
 const BLEND_S = 0.42;
 /** Tap marker fade, seconds. */
 const MARK_S = 0.7;
-/** Where the Sim was when the canvas last unmounted (so a short suspend doesn't replay the arrival). */
-let memory: { layout: string; pos: P2; yaw: number; at: number } | null = null;
+/** Where this Sim was when the canvas last unmounted (so a short suspend doesn't replay the arrival). */
+let memory: { playerId: string; layout: string; pos: P2; yaw: number; at: number } | null = null;
 const _v = new Vector3();
 const _r = new Vector3();
 const _u = new Vector3();
+
+function seededRandom(seedText: string) {
+  let seed = 2166136261;
+  for (let i = 0; i < seedText.length; i++) seed = Math.imul(seed ^ seedText.charCodeAt(i), 16777619);
+  seed = ((seed >>> 0) % 2147483646) + 1;
+  return () => ((seed = (seed * 48271) % 2147483647) - 1) / 2147483646;
+}
 
 interface Actor {
   w: Walker;
@@ -189,6 +212,71 @@ function pickHeight(f: FurnitureItem): number {
   return 1.1;
 }
 
+function RemoteHomeAvatar({ actor, layout, cx, cz, onPick }: {
+  actor: HouseActorState; layout: HomeLayout; cx: number; cz: number; onPick?: (id: string) => void;
+}) {
+  const key = avatarKey(actor.avatar);
+  // The avatar is built once per remote player, not on each movement update.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const character = useMemo(() => buildCharacter(actor.avatar), [key]);
+  const outer = useMemo(() => {
+    const group = new Group();
+    group.add(makeShadow(0.34));
+    return group;
+  }, []);
+  const target = useRef(new Vector3());
+  useEffect(() => {
+    outer.add(character.root);
+    return () => character.dispose();
+  }, [outer, character]);
+  useFrame((state, dt) => {
+    const item = actor.activity ? pieceFor(layout, actor.activity, activityGroup(actor.activity)) : null;
+    const group = actor.activity ? activityGroup(actor.activity) : null;
+    const pose = group ? GROUP_META[group].pose : null;
+    const meta = item ? KINDS[item.kind] : null;
+    let x = actor.x;
+    let z = actor.z;
+    let y = 0;
+    let yaw = actor.yaw;
+    const rig = character.root;
+    rig.rotation.set(0, 0, 0);
+    rig.position.set(0, 0, 0);
+    resetRig(character);
+    if (item && meta && pose === 'lie' && meta.seat) {
+      const [sx, sy, sz] = meta.seat;
+      [x, z] = toLayout(item, sx, sz);
+      y = sy + (item.y ?? 0);
+      yaw = ((item.rot ?? 0) * Math.PI) / 2;
+      rig.rotation.x = -Math.PI / 2;
+      poseLie(character, state.clock.elapsedTime);
+    } else if (item && meta && pose === 'sit' && meta.seat) {
+      const [sx, sy, sz, seatYaw] = meta.seat;
+      [x, z] = toLayout(item, sx, sz);
+      yaw = ((item.rot ?? 0) * Math.PI) / 2 + seatYaw;
+      poseSit(character, state.clock.elapsedTime, actor.id.length);
+      rig.position.y = sitRootY(character, sy + (item.y ?? 0));
+    } else if (actor.activity && pose === 'cook') {
+      poseCook(character, state.clock.elapsedTime, actor.id.length);
+    } else if (actor.activity && pose === 'scrub') {
+      poseScrub(character, state.clock.elapsedTime, actor.id.length);
+    } else if (actor.moving) {
+      poseGait(character, state.clock.elapsedTime * 1.2, 1);
+    } else {
+      poseLife(character, state.clock.elapsedTime, actor.id.length, { idleFor: 3 });
+    }
+    target.current.set(x - cx, y, z - cz);
+    outer.position.lerp(target.current, 1 - Math.exp(-Math.min(dt, 0.1) * 15));
+    outer.rotation.y = yaw;
+  });
+  return <primitive object={outer} onClick={(event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onPick?.(actor.id); }} />;
+}
+
+function RemoteHomeAvatars({ actors, layout, cx, cz, onPick }: {
+  actors: HouseActorState[]; layout: HomeLayout; cx: number; cz: number; onPick?: (id: string) => void;
+}) {
+  return <>{actors.map((actor) => <RemoteHomeAvatar key={actor.id} actor={actor} layout={layout} cx={cx} cz={cz} onPick={onPick} />)}</>;
+}
+
 function spotOf(item: FurnitureItem): { p: P2; yaw: number } {
   const k = KINDS[item.kind];
   const [lx, lz, ly] = k.spot ?? [0, k.d / 2 + 0.35, Math.PI];
@@ -211,7 +299,7 @@ function House(props: HomeSceneProps & {
   // ---- static room (rebuilt only when the layout changes)
   const doll = Boolean(props.dollhouse);
   const q = feelQuality(useTier());
-  const room = useMemo(() => buildRoom(L, { dollhouse: doll, density: q.clutter }), [L, doll, q.clutter]);
+  const room = useMemo(() => buildRoom(L, { dollhouse: doll, density: q.clutter, vehicleId: props.vehicleId, origin: props.origin }), [L, doll, q.clutter, props.vehicleId, props.origin]);
   const rig = rigFor(room.rich ? 'home_nepo' : 'home_lapo', false);
   const grid = useMemo(() => buildGrid(L), [L]);
   const feel = useMemo(() => makeFeelMats(q), [q.atlas]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -410,6 +498,7 @@ function House(props: HomeSceneProps & {
   const gait = useMemo<Gait>(() => ({ ...DEFAULT_GAIT, cruise: tune.cruise, brake: 1.5 * Math.max(1, tune.cruise / 1.15) }), [tune]);
   const propsRef = useRef(props);
   propsRef.current = props;
+  const lastPresence = useRef({ at: 0, x: Number.NaN, z: Number.NaN, yaw: Number.NaN, moving: false, activity: null as string | null });
   // pose buffers (idle, walk, blend source, last frame) and the last frame's placement
   const buf = useMemo(
     () => ({
@@ -454,7 +543,8 @@ function House(props: HomeSceneProps & {
   // only unmounted for a moment, e.g. while the Sim sheet turntable was open)
   useEffect(() => {
     const a = actorRef.current;
-    const mem = memory && memory.layout === L.id && performance.now() - memory.at < 10 * 60_000 ? memory : null;
+    const playerId = props.playerId ?? 'preview';
+    const mem = memory && memory.playerId === playerId && memory.layout === L.id && performance.now() - memory.at < 10 * 60_000 ? memory : null;
     a.item = null;
     a.idleSince = nowS();
     if (mem) {
@@ -466,7 +556,8 @@ function House(props: HomeSceneProps & {
     }
     const d = L.doors[0];
     const doorPt: P2 = d ? (d[0] === 'e' ? [L.w + 0.7, (d[1] + d[2]) / 2] : [(d[1] + d[2]) / 2, L.d + 0.7]) : [L.home[0], L.home[1]];
-    const plan = planPath(grid, doorPt, [L.home[0], L.home[1]], { round: 0.22 });
+    const arrivalSpot = randomFree(grid, seededRandom(`${playerId}:${L.id}`), [0.4, 0.4, L.w - 0.4, L.d - 0.4]) ?? [L.home[0], L.home[1]];
+    const plan = planPath(grid, doorPt, arrivalSpot, { round: 0.22 });
     const first = plan.points[1] ?? plan.end;
     place(a.w, doorPt, Math.atan2(first[0] - doorPt[0], first[1] - doorPt[1]));
     walkPath(a.w, plan.points, L.home[2]);
@@ -474,7 +565,7 @@ function House(props: HomeSceneProps & {
     a.then = 'idle';
     a.nextWander = performance.now() + 20000;
     invalidate();
-  }, [L, grid, actorRef, invalidate]);
+  }, [L, grid, actorRef, invalidate, props.playerId]);
   useEffect(() => {
     const born = performance.now();
     const holder = actorRef; // a mutable state holder, not a DOM node: read it at unmount on purpose
@@ -482,9 +573,9 @@ function House(props: HomeSceneProps & {
       const a = holder.current;
       // ignore StrictMode's instant remount in dev
       if (performance.now() - born < 1500) return;
-      memory = { layout: L.id, pos: a.mode === 'pose' && a.item ? spotOf(a.item).p : a.w.pos, yaw: a.w.yaw, at: performance.now() };
+      memory = { playerId: props.playerId ?? 'preview', layout: L.id, pos: a.mode === 'pose' && a.item ? spotOf(a.item).p : a.w.pos, yaw: a.w.yaw, at: performance.now() };
     };
-  }, [L, actorRef]);
+  }, [L, actorRef, props.playerId]);
 
   /** Walk to a point in layout space (client-side only). Returns where the walk ends. */
   const walkTo = (to: P2, opts: { snap?: boolean; faceTo?: number | null; then?: 'idle' | 'pose' | 'task'; manual?: boolean } = {}) => {
@@ -847,6 +938,19 @@ function House(props: HomeSceneProps & {
     }
     actorObj.position.set(x, y, z);
     actorObj.rotation.y = yaw;
+    const liveProps = propsRef.current;
+    if (liveProps.onActorState) {
+      const moving = a.mode === 'walk';
+      const activity = liveProps.busy?.activity ?? null;
+      const prior = lastPresence.current;
+      const changed = !Number.isFinite(prior.x) || !Number.isFinite(prior.z) || !Number.isFinite(prior.yaw)
+        || moving !== prior.moving || activity !== prior.activity
+        || Math.hypot(x - prior.x, z - prior.z) > 0.035 || Math.abs(angleTo(prior.yaw, yaw)) > 0.035;
+      if (changed && (moving ? now - prior.at >= 90 : now - prior.at >= 160)) {
+        liveProps.onActorState({ x, z, yaw, moving, activity });
+        lastPresence.current = { at: now, x, z, yaw, moving, activity };
+      }
+    }
     // the blob shadow stays on the floor
     const shadow = actorObj.children[0];
     shadow.position.y = -y + 0.002;
@@ -918,6 +1022,11 @@ function House(props: HomeSceneProps & {
     e.stopPropagation();
     const item = e.object.userData.item as FurnitureItem | undefined;
     if (!item) return;
+    if (props.editableFurniture) {
+      if (item.id.startsWith('own_')) props.onSelectFurniture?.(item);
+      else hint(e, 'Only your movable furniture can be arranged here.');
+      return;
+    }
     onPick?.(item);
     // walk over while the sheet opens (client-side only; a long walk is left for the action rule)
     const a = actorRef.current;
@@ -934,6 +1043,11 @@ function House(props: HomeSceneProps & {
   const onFloor = (e: ThreeEvent<MouseEvent>) => {
     if (!isTap(e)) return;
     e.stopPropagation();
+    if (props.editableFurniture && props.selectedFurnitureId) {
+      const item = L.furniture.find((f) => f.id === props.selectedFurnitureId);
+      if (item) props.onMoveFurniture?.(item.id, e.point.x + cx, e.point.z + cz);
+      return;
+    }
     const a = actorRef.current;
     if (props.walkLock || a.mode === 'pose') {
       hint(e, props.walkLock || 'Busy right now');
@@ -964,6 +1078,7 @@ function House(props: HomeSceneProps & {
         <primitive object={ring} />
         <primitive object={marker} />
         <primitive object={actorObj} />
+        {props.remotePlayers?.length ? <RemoteHomeAvatars actors={props.remotePlayers} layout={L} cx={cx} cz={cz} onPick={props.onPickRemote} /> : null}
         <primitive object={tapMark} />
         {props.interactive !== false && <primitive object={floor} onClick={onFloor} />}
         {props.interactive !== false && <primitive

@@ -7,6 +7,7 @@ import { buildClutter, buildOutside, buildPools, hashStr, type Rect } from '../.
 import type { Mat } from '../../feel/atlas';
 import { HomeBuilder, type Layer } from './build';
 import { buildPiece, shadeHex } from './furniture';
+import { bicycle, drawCar, motorcycle, type LuxCar } from '../../place3d/engine/cars';
 
 export interface BuiltRoom {
   layers: Record<Layer, BufferGeometry | null>;
@@ -51,9 +52,64 @@ function tiles(b: HomeBuilder, x0: number, z0: number, x1: number, z1: number, a
     }
 }
 
-export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: number; outside?: boolean } = {}): BuiltRoom {
+const LUXURY_CARS: Record<string, LuxCar> = {
+  gwagon_g63: 'g63', gle63_coupe: 'gle63', lambo_urus: 'urus', tesla_cybertruck: 'cybertruck',
+  escalade: 'escalade', benz_c300: 'c300', camry_new: 'camry',
+};
+
+function buildDuplexYard(b: HomeBuilder, vehicleId: string | null | undefined) {
+  // A compact pool deck and one covered parking bay make the GRA plot feel lived in
+  // without adding a second renderer or a large per-frame cost.
+  b.box(4.0, 0.035, 2.9, 2.35, -0.005, 9.0, '#c9c2b5', { mat: 'concrete', noOcc: true });
+  b.box(3.45, 0.32, 2.36, 2.35, -0.19, 9.0, '#60767a', { mat: 'tiles' });
+  b.box(3.25, 0.025, 2.16, 2.35, -0.025, 9.0, '#54a9bd', { layer: 'glass', noOcc: true });
+  for (let i = -1; i <= 1; i++) b.box(0.72, 0.008, 0.025, 2.35 + i * 0.92, -0.008, 9.0 + (i % 2) * 0.34, '#d4f1ee', { layer: 'glass', noOcc: true });
+  // Two understated loungers, with the path from the south door left open.
+  for (const x of [0.9, 3.8]) {
+    b.box(0.66, 0.1, 1.5, x, 0.04, 8.35, '#eee8dc', { mat: 'plain' });
+    b.box(0.66, 0.36, 0.1, x, 0.23, 7.66, '#eee8dc', { mat: 'plain', rx: -0.18 });
+    for (const dx of [-0.25, 0.25]) b.box(0.04, 0.23, 0.04, x + dx, -0.05, 7.8, '#6b6256');
+  }
+  // Paved single-car bay; the entrance path at z=5.6 stays unobstructed.
+  b.box(4.2, 0.035, 4.9, 12.35, -0.005, 8.05, '#aaa69c', { mat: 'concrete', noOcc: true });
+  b.box(0.055, 0.012, 4.45, 10.48, 0.018, 8.05, '#efe9da', { noOcc: true });
+  b.box(0.055, 0.012, 4.45, 14.22, 0.018, 8.05, '#efe9da', { noOcc: true });
+  // Open pergola roof and warm post lights: it frames the vehicle without hiding it.
+  for (const x of [10.48, 14.22]) for (const z of [5.75, 10.35]) {
+    b.box(0.1, 2.35, 0.1, x, 0, z, '#687078', { mat: 'metal' });
+    b.box(0.2, 0.11, 0.2, x, 2.34, z, '#ffdf9c', { layer: 'glow' });
+  }
+  b.box(3.84, 0.12, 0.12, 12.35, 2.35, 5.75, '#687078', { mat: 'metal' });
+  b.box(3.84, 0.12, 0.12, 12.35, 2.35, 10.35, '#687078', { mat: 'metal' });
+  for (const x of [10.8, 11.6, 12.4, 13.2, 14.0]) b.box(0.06, 0.08, 4.5, x, 2.35, 8.05, '#89919a', { mat: 'metal' });
+
+  if (vehicleId && LUXURY_CARS[vehicleId]) {
+    drawCar(b, LUXURY_CARS[vehicleId], 12.35, 8.05, 0, 0.72);
+    b.resetFrame();
+  } else if (vehicleId === 'bajaj_boxer') {
+    b.setFrame(12.35, 0, 8.05, Math.PI / 2);
+    motorcycle(b, 0.72);
+    b.resetFrame();
+  } else if (vehicleId === 'bicycle') {
+    b.setFrame(12.35, 0, 8.05, Math.PI / 2);
+    bicycle(b, 0.88);
+    b.resetFrame();
+  } else {
+    // An empty bay still reads as a usable parking space.
+    b.box(1.8, 0.012, 0.045, 12.35, 0.02, 8.05, '#d7d1c5', { noOcc: true });
+  }
+  // Small tropical planting softens the paved edges of the estate yard.
+  for (const [x, z] of [[-0.45, 8.2], [-0.45, 9.7], [4.7, 8.5], [4.7, 9.8]] as const) {
+    b.box(0.5, 0.23, 0.5, x, 0.05, z, '#a99a83', { mat: 'concrete' });
+    b.cyl(0.34, 0.2, 0.72, x, 0.28, z, '#4d8a45', { seg: 7, mat: 'grass' });
+  }
+}
+
+export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: number; outside?: boolean; vehicleId?: string | null; origin?: 'lapo' | 'nepo' } = {}): BuiltRoom {
   const doll = Boolean(opts.dollhouse);
-  const rich = RICH_LAYOUTS.has(L.id);
+  // A NEPO player keeps the brighter painted/tiled finish even in a modest self-contain.
+  // The house tier still upgrades any player's home independently of origin.
+  const rich = opts.origin === 'nepo' || RICH_LAYOUTS.has(L.id);
   const b = new HomeBuilder();
   const [lx0, lz0, lx1, lz1] = L.lot;
   const cx = (lx0 + lx1) / 2;
@@ -70,6 +126,7 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
     buildOutside(b, { x0: lx0, z0: lz0, x1: lx1, z1: lz1, seed, style: rich ? 'estate' : 'compound', density: opts.density });
   }
   b.box(lx1 - lx0 + 0.5, 0.02, lz1 - lz0 + 0.5, cx, -0.03, cz, L.yard?.colour ?? '#b98a5e', { mat: rich ? 'concrete' : 'ground' });
+  if (L.id === 'duplex' && !doll) buildDuplexYard(b, opts.vehicleId);
   if (L.yard?.fence) {
     // low block fence round the compound, open where the house is
     b.box(lx1 - lx0 + 0.5, 0.5, 0.12, cx, -0.01, lz0 - 0.25, '#c9c2b6', { mat: 'block', uv: 1.2 });
@@ -128,6 +185,7 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
       b.box(0.03, hh + 0.25, 0.22, 0.06, y0 - 0.1, a0 - 0.08, '#d9a441');
       b.box(0.03, hh + 0.25, 0.22, 0.06, y0 - 0.1, a1 + 0.08, '#d9a441');
     }
+    nepoCurtains(b, side, a0, a1, y0, hh);
   }
   b.mat = null;
   // POP ceiling cornice round the top of the walls (Nepo)
@@ -191,6 +249,8 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
       for (const [fx, fz] of [[0.3, 0.3], [0.7, 0.3], [0.3, 0.72], [0.7, 0.72]] as const) pools.push([L.w * fx, L.d * fz]);
     } else {
       b.box(0.012, 0.35, 0.012, bulb[0], bulb[1] + 0.1, bulb[2], '#222');
+      // Exposed surface wiring gives the single-bulb LAPO room a specific, lived-in ceiling detail.
+      b.box(0.012, 0.012, Math.max(0.1, bulb[2] - 0.12), bulb[0], H2 - 0.025, bulb[2] / 2, '#302a24', { mat: 'metal', noOcc: true });
       b.cyl(0.05, 0.035, 0.1, bulb[0], bulb[1], bulb[2], '#fff3c4', { layer: 'glow', seg: 8 });
       pools.push([bulb[0], bulb[2]]);
     }
@@ -241,4 +301,24 @@ function louvres(b: HomeBuilder, side: 'n' | 'w', a0: number, a1: number, y0: nu
   // faded curtain bunched at one side
   if (side === 'n') b.box(0.24, hh + 0.2, 0.04, a0 - 0.06, y0 - 0.1, 0.07, '#b5503c', { mat: 'fabric' });
   else b.box(0.04, hh + 0.2, 0.24, 0.07, y0 - 0.1, a0 - 0.06, '#b5503c', { mat: 'fabric' });
+}
+
+/** Floor-length fabric panels and a slim rail give NEPO windows a softer, more finished silhouette. */
+function nepoCurtains(b: HomeBuilder, side: 'n' | 'w', a0: number, a1: number, y0: number, hh: number) {
+  const m = (a0 + a1) / 2;
+  const panel = Math.min(0.34, (a1 - a0) * 0.22);
+  const top = y0 + hh + 0.08;
+  if (side === 'n') {
+    b.box(a1 - a0 + 0.28, 0.035, 0.035, m, top, 0.095, '#887b69', { mat: 'metal' });
+    for (const x of [a0 - 0.015, a1 + 0.015]) {
+      b.box(panel, hh + 0.18, 0.055, x, y0 - 0.04, 0.085, '#c7b69e', { mat: 'fabric' });
+      for (let i = -1; i <= 1; i++) b.box(0.018, hh + 0.12, 0.06, x + i * panel * 0.22, y0 - 0.01, 0.12, '#ad9b83', { mat: 'fabric' });
+    }
+  } else {
+    b.box(0.035, 0.035, a1 - a0 + 0.28, 0.095, top, m, '#887b69', { mat: 'metal' });
+    for (const z of [a0 - 0.015, a1 + 0.015]) {
+      b.box(0.055, hh + 0.18, panel, 0.085, y0 - 0.04, z, '#c7b69e', { mat: 'fabric' });
+      for (let i = -1; i <= 1; i++) b.box(0.06, hh + 0.12, 0.018, 0.12, y0 - 0.01, z + i * panel * 0.22, '#ad9b83', { mat: 'fabric' });
+    }
+  }
 }
