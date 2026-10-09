@@ -56,6 +56,8 @@ export interface HomeApi {
 
 export interface HomeSceneProps {
   layoutId: HomeLayoutId;
+  /** Stable player identity gives each visitor a distinct arrival point in the shared room. */
+  playerId?: string;
   /** Birth tier controls the home finish details as well as the starter inventory. */
   origin?: 'lapo' | 'nepo';
   /** The layout with the player's own furniture (furnishLayout); keep it memoised. Default: LAYOUTS[layoutId]. */
@@ -75,7 +77,7 @@ export interface HomeSceneProps {
   /** M2: a walk the player asked for (floor tap) ended. */
   onWalkDone?: () => void;
   /** Position and action snapshots are broadcast only to the homeowner and admitted guests. */
-  onActorState?: (state: Omit<HouseActorState, 'id' | 'username' | 'avatar'>) => void;
+  onActorState?: (state: Omit<HouseActorState, 'id' | 'username' | 'avatar' | 'updatedAt'>) => void;
   remotePlayers?: HouseActorState[];
   onPickRemote?: (userId: string) => void;
   /** M2: walk tuning from config (sim.walk_speed, sim.robe_speed_mult, sim.tired_slowdown). */
@@ -142,11 +144,18 @@ const PREWALK_MAX_S = 7;
 const BLEND_S = 0.42;
 /** Tap marker fade, seconds. */
 const MARK_S = 0.7;
-/** Where the Sim was when the canvas last unmounted (so a short suspend doesn't replay the arrival). */
-let memory: { layout: string; pos: P2; yaw: number; at: number } | null = null;
+/** Where this Sim was when the canvas last unmounted (so a short suspend doesn't replay the arrival). */
+let memory: { playerId: string; layout: string; pos: P2; yaw: number; at: number } | null = null;
 const _v = new Vector3();
 const _r = new Vector3();
 const _u = new Vector3();
+
+function seededRandom(seedText: string) {
+  let seed = 2166136261;
+  for (let i = 0; i < seedText.length; i++) seed = Math.imul(seed ^ seedText.charCodeAt(i), 16777619);
+  seed = ((seed >>> 0) % 2147483646) + 1;
+  return () => ((seed = (seed * 48271) % 2147483647) - 1) / 2147483646;
+}
 
 interface Actor {
   w: Walker;
@@ -534,7 +543,8 @@ function House(props: HomeSceneProps & {
   // only unmounted for a moment, e.g. while the Sim sheet turntable was open)
   useEffect(() => {
     const a = actorRef.current;
-    const mem = memory && memory.layout === L.id && performance.now() - memory.at < 10 * 60_000 ? memory : null;
+    const playerId = props.playerId ?? 'preview';
+    const mem = memory && memory.playerId === playerId && memory.layout === L.id && performance.now() - memory.at < 10 * 60_000 ? memory : null;
     a.item = null;
     a.idleSince = nowS();
     if (mem) {
@@ -546,7 +556,8 @@ function House(props: HomeSceneProps & {
     }
     const d = L.doors[0];
     const doorPt: P2 = d ? (d[0] === 'e' ? [L.w + 0.7, (d[1] + d[2]) / 2] : [(d[1] + d[2]) / 2, L.d + 0.7]) : [L.home[0], L.home[1]];
-    const plan = planPath(grid, doorPt, [L.home[0], L.home[1]], { round: 0.22 });
+    const arrivalSpot = randomFree(grid, seededRandom(`${playerId}:${L.id}`), [0.4, 0.4, L.w - 0.4, L.d - 0.4]) ?? [L.home[0], L.home[1]];
+    const plan = planPath(grid, doorPt, arrivalSpot, { round: 0.22 });
     const first = plan.points[1] ?? plan.end;
     place(a.w, doorPt, Math.atan2(first[0] - doorPt[0], first[1] - doorPt[1]));
     walkPath(a.w, plan.points, L.home[2]);
@@ -554,7 +565,7 @@ function House(props: HomeSceneProps & {
     a.then = 'idle';
     a.nextWander = performance.now() + 20000;
     invalidate();
-  }, [L, grid, actorRef, invalidate]);
+  }, [L, grid, actorRef, invalidate, props.playerId]);
   useEffect(() => {
     const born = performance.now();
     const holder = actorRef; // a mutable state holder, not a DOM node: read it at unmount on purpose
@@ -562,9 +573,9 @@ function House(props: HomeSceneProps & {
       const a = holder.current;
       // ignore StrictMode's instant remount in dev
       if (performance.now() - born < 1500) return;
-      memory = { layout: L.id, pos: a.mode === 'pose' && a.item ? spotOf(a.item).p : a.w.pos, yaw: a.w.yaw, at: performance.now() };
+      memory = { playerId: props.playerId ?? 'preview', layout: L.id, pos: a.mode === 'pose' && a.item ? spotOf(a.item).p : a.w.pos, yaw: a.w.yaw, at: performance.now() };
     };
-  }, [L, actorRef]);
+  }, [L, actorRef, props.playerId]);
 
   /** Walk to a point in layout space (client-side only). Returns where the walk ends. */
   const walkTo = (to: P2, opts: { snap?: boolean; faceTo?: number | null; then?: 'idle' | 'pose' | 'task'; manual?: boolean } = {}) => {

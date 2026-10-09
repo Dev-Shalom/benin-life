@@ -197,6 +197,8 @@ Keep the product name **Benin Life**. The opening story is integrated into the g
 ## V1 quality and differentiation work order (user, 2026-10-08)
 The goal is a dependable Benin City life sim with a distinct local identity and a reason to return; don't promise it is objectively better than Lagos Life before player feedback.
 
+**Reference audit update (2026-10-09):** 126 images in `docs/references/lagos-life/` were reviewed, including 64 new phone screenshots on GitHub `main` at `4067a6f`. The complete comparison and staged roadmap are in [`docs/LAGOS_LIFE_REFERENCE_PLAN.md`](LAGOS_LIFE_REFERENCE_PLAN.md). The user has approved proceeding. **Immediate Phase 0 is a repair:** the code for house visits, live avatars and house chat is present, but the user reports that admitted guests are not actually visible to each other and house chat does not work. Fix and verify the two-account flow before visual expansion. Next: multi-avatar animated home and mobile review → full furniture buy/place mode → persistent dream/story loop. Treat betting and real-election screens as references, not commitments; relationship/family features remain optional, consent-based and private.
+
 1. **First-session proof:** run a fresh-account journey from sign-up through origin/dream selection, home selection, the welcome guide and its map handoff. Test phone, tablet and desktop layouts. Decide whether guide completion should move from browser storage to the server so it follows a player across devices.
 2. **Persistent life goal:** implement server-tracked milestones for the creator's lifetime dream using existing job, skill, saving and social systems; show truthful progress and grant a modest reward once, with server-side duplicate-claim protection.
 3. **Connected Benin story:** expand the weekly WAT story into a short authored chapter arc, with later scenes responding to earlier choices and appropriate origin/life-path context. Ground seasonal/legal details in current authoritative sources; keep stories optional and choices bounded.
@@ -212,6 +214,12 @@ The goal is a dependable Benin City life sim with a distinct local identity and 
 - **Still to finish before calling those phases complete:** E1's larger economy/career progression, deeper stories, real police investigation/caught-crime gameplay; VQ review of remaining scenes and low-end phone performance. The downtown footprint import is not a complete exact city map.
 - **Implemented social systems:** accepted-friend requests, private text/voice messages and private house visits; see `docs/SOCIAL.md`.
 - **Later/paused:** gangs/robbery and turf; airport/private planes; unfinished P3 hype aura. See `docs/V1_PLAN.md`, `docs/GANGS_PLAN.md`, and `docs/STORY_PLAN.md`.
+
+## Approved reference roadmap status (2026-10-09)
+- **Phase 0 — RUNNING:** repair accepted house visits so host/guests share the same home scene, see each other's interpolated 3D movement, use house chat, and can leave safely. A local patch adds guest-state detection, distinct stable arrival points, a Realtime join snapshot and a Leave house action/RPC. Build and rollback-only SQL suites pass; lint exits 0 with warnings. Browser control is blocked by a saved permission setting, so two-account live verification is still outstanding; the patch is not pushed/deployed.
+- **Phase 1 — NEXT:** multi-rigged 3D home characters with visible walking and permitted activities, plus scene consistency and phone/tablet/desktop review.
+- **Phase 2 — PLANNED:** complete home furniture catalogue, purchase, placement, rotation, removal, persistence and visitor read-only interaction.
+- **Later:** persistent origin/life-path story and goals; wardrobe; career then business; player-centered co-op/community; evidence-backed fictional police/court. Full scope and done criteria: `docs/LAGOS_LIFE_REFERENCE_PLAN.md`.
 
 ## LATER: private jets and planes (user)
 A place to buy private jets and planes, tied to the airport feature (fly to Lagos, Abuja or PH). Not started.

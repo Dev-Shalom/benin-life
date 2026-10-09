@@ -90,6 +90,7 @@ export const socialRespondHouseInvite = (id: number, accept: boolean) =>
 export const socialCancelHouseInvite = (id: number) => rpc<Result>('social_cancel_house_invite', { p_invite_id: id });
 export const socialHomeAdmit = (id: number, admit = true) =>
   rpc<{ id: number; status: string; message: string }>('social_home_admit', { p_invite_id: id, p_admit: admit });
+export const socialLeaveHouse = () => rpc<Result>('social_leave_house');
 export const socialHouseInfo = () => rpc<HouseInfo>('social_house_info');
 export const socialHomePlaceFurniture = (key: string, x: number, z: number, rotation: number) =>
   rpc<HouseFurniturePlacement>('social_home_place_furniture', { p_furniture_key: key, p_x: x, p_z: z, p_rotation: rotation });

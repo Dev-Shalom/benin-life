@@ -181,7 +181,8 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
   const pendingKnocks = useMemo(() => (invites ?? []).filter((i) => i.role === 'host' && i.status === 'knocking'), [invites]);
   const pendingRequests = useMemo(() => (requests ?? []).filter((r) => r.direction === 'incoming'), [requests]);
   const sentRequests = useMemo(() => (requests ?? []).filter((r) => r.direction === 'outgoing'), [requests]);
-  const homeNow = state.profile.location_id === state.profile.home_location_id && !state.travel;
+  const homeNow = !state.travel && state.profile.location_id === state.location.id
+    && (state.profile.location_id === state.profile.home_location_id || Boolean(state.profile.home_visit_host_id));
   useEffect(() => { if (!homeNow) setHouseChat(false); }, [homeNow]);
 
   const search = async (event: FormEvent) => {
