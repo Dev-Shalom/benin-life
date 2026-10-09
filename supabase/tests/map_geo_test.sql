@@ -57,7 +57,7 @@ begin
     perform pg_temp.assert(exists (select 1 from locations l where l.id = r.id and l.x = r.x and l.y = r.y),
       format('%s should be at (%s,%s)', r.id, r.x, r.y));
   end loop;
-  select count(*) into n from locations;
+  select count(*) into n from locations where private_home_owner_id is null;
   -- the 40 MAP_GEO pins above + the L2 landmarks (20261006001300_places.sql), all checked for spacing in 3.
   perform pg_temp.assert(n = 40 + (select count(*) from locations where id in ('emotan_statue','kada_plaza','benin_city_mall','mama_ebo',
     'protea_hotel','golden_tulip','ogba_zoo','ogbemudia_stadium','club_360','club_de_medici','rome_club','cube_nightlife','versus_lounge',
@@ -80,7 +80,8 @@ begin
 
   -- 3. pins stay at least ~35 units apart so they never overlap on the map
   select count(*) into n from locations a join locations b on a.id < b.id
-   where sqrt((a.x - b.x)^2 + (a.y - b.y)^2) < 34;
+   where a.private_home_owner_id is null and b.private_home_owner_id is null  -- private homes share their template's spot
+     and sqrt((a.x - b.x)^2 + (a.y - b.y)^2) < 34;
   perform pg_temp.assert(n = 0, format('%s pin pairs closer than 34 units', n));
   raise notice 'ok 3: no overlapping pins';
 

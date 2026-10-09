@@ -60,7 +60,7 @@ end $$;
 -- put the Sim somewhere, free, with set needs and money (no decay pending)
 create or replace function pg_temp.s_at(p_uid uuid, p_loc text, p_cash bigint, p_bank bigint) returns void
 language sql as $$
-  update profiles set location_id = p_loc, travel_to = null, busy_until = null, busy_label = null,
+  update profiles set location_id = case when p_loc in (select location_id from start_homes) then home_location_id else p_loc end, travel_to = null, busy_until = null, busy_label = null,
                       cash = p_cash, bank = p_bank,
                       hunger = 50, energy = 50, hygiene = 10, fun = 50, social = 50, stress = 20, health = 90,
                       bladder = 80, needs_updated_at = bl_now()

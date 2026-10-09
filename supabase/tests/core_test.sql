@@ -68,7 +68,7 @@ begin
     'baba_shrine','upper_sakponba','santana_market','sapele_pos','bronze_lounge','police_hq','bronze_bank','gra_duplex','kingdom_lounge',
     'benin_airport','siluko_rd','ekenwan_room','iguobazuwa_farm','uniben_hostel','uselu_selfcon','bronze_tech_hub')) = 40,
     'expected the 40 core locations, got ' || (select count(*) from locations));
-  perform set_config('bl.test_loc_count', (select count(*) from locations)::text, true);
+  perform set_config('bl.test_loc_count', (select count(*) from locations where private_home_owner_id is null and coalesce(active, true))::text, true);  -- public map (private homes + hidden places are not readable)
   perform pg_temp.assert((select night_risk_mult from locations where id = 'upper_sakponba') = 3.0, 'upper_sakponba night x3');
   perform pg_temp.assert((select night_risk_mult from locations where id = 'third_east') = 3.0, 'third_east night x3');
   perform pg_temp.assert((select count(*) from locations where coalesce(blurb, '') = '') = 0, 'every location has blurb');
@@ -182,7 +182,7 @@ begin
   select count(*) into n from profiles;
   if n <> 1 then raise exception 'TEST FAILED: authenticated sees % profiles (want only own)', n; end if;
   select count(*) into n from locations;
-  if n <> current_setting('bl.test_loc_count')::int then raise exception 'TEST FAILED: locations not readable'; end if;
+  if n < current_setting('bl.test_loc_count')::int or n > current_setting('bl.test_loc_count')::int + 1 then raise exception 'TEST FAILED: locations not readable'; end if;  -- + own private home
   ok := false;
   begin update profiles set cash = 999999; exception when insufficient_privilege then ok := true; end;
   if not ok then raise exception 'TEST FAILED: client could update profiles'; end if;
@@ -286,7 +286,8 @@ declare r record; v_rpc text;
 begin
   -- every bl_ helper is internal
   for r in select p.oid::regprocedure as sig from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where n.nspname = 'public' and p.proname like 'bl\_%' loop
+           where n.nspname = 'public' and p.proname like 'bl\_%'
+             and p.proname not like 'bl\_social\_can\_%' and p.proname <> 'bl_social_active_house_topic' loop  -- RLS policy helpers
     perform pg_temp.assert(not has_function_privilege('authenticated', r.sig, 'execute')
                            and not has_function_privilege('anon', r.sig, 'execute'), 'helper exposed: ' || r.sig::text);
   end loop;

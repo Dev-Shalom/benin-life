@@ -112,7 +112,8 @@ begin
     perform pg_temp.assert((select relrowsecurity from pg_class where oid = ('public.' || k)::regclass), 'RLS on ' || k);
   end loop;
   for r in select p.oid::regprocedure as sig from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where n.nspname = 'public' and p.proname like 'bl\_%' loop
+           where n.nspname = 'public' and p.proname like 'bl\_%'
+             and p.proname not like 'bl\_social\_can\_%' and p.proname <> 'bl_social_active_house_topic' loop  -- RLS policy helpers
     perform pg_temp.assert(not has_function_privilege('authenticated', r.sig, 'execute')
                            and not has_function_privilege('anon', r.sig, 'execute'), 'helper exposed: ' || r.sig::text);
   end loop;
@@ -267,7 +268,8 @@ begin
   p := s->'profile';
   perform pg_temp.assert(s->>'message' ilike '%Ekenwan%', 'move-in message');
   perform pg_temp.assert((p->>'home_chosen')::boolean and p->>'start_home' = 'ekenwan_face_me', 'home chosen');
-  perform pg_temp.assert(p->>'location_id' = 'ekenwan_room' and p->>'home_location_id' = 'ekenwan_room', 'moved to Ekenwan');
+  perform pg_temp.assert(p->>'location_id' = p->>'home_location_id' and (select scene from locations where id = p->>'home_location_id') = 'home_face_me'
+                         and (select private_home_owner_id from locations where id = p->>'home_location_id') = auth.uid(), 'moved into own private Ekenwan room');
   perform pg_temp.assert(p->>'housing_id' = 'face_me_ekenwan', 'housing id');
   perform pg_temp.assert((p->>'cash')::bigint = 8000 and (p->>'bank')::bigint = 0, 'LAPO Ekenwan cash 8000, got ' || (p->>'cash'));
   perform pg_temp.assert(not exists (select 1 from inventory where user_id = v), 'LAPO bag empty');
@@ -313,7 +315,7 @@ begin
                          'duplex open for Nepo: ' || h::text);
   s := choose_start_home('gra_duplex');
   p := s->'profile';
-  perform pg_temp.assert(p->>'location_id' = 'gra_duplex' and p->>'housing_id' = 'duplex_gra', 'Nepo in the duplex');
+  perform pg_temp.assert((select scene from locations where id = p->>'location_id') = 'home_duplex' and p->>'housing_id' = 'duplex_gra', 'Nepo in the duplex');
   perform pg_temp.assert((p->>'cash')::bigint = 50000 and (p->>'bank')::bigint = 500000, 'Nepo money');
   perform pg_temp.assert((select qty from inventory where user_id = v and item_id = 'tokunbo_car') = 1
                          and (select qty from inventory where user_id = v and item_id = 'laptop') = 1, 'Nepo items');
@@ -331,7 +333,7 @@ begin
   s := create_profile('V1_Force', 'female', '{}');
   perform set_config('bl.test_rand', '', true);
   perform pg_temp.assert(s->'profile'->>'origin' = 'nepo' and (s->'profile'->>'home_chosen')::boolean
-                         and s->'profile'->>'location_id' = 'gra_duplex', 'v1 honours force_next, all-in-one');
+                         and (select scene from locations where id = s->'profile'->>'location_id') = 'home_duplex', 'v1 honours force_next, all-in-one');
   perform pg_temp.assert(bl_cfg_text('origin.force_next') = '', 'v1 resets force_next');
   -- force_next 'lapo' beats a Nepo roll
   s := pg_temp.make_v2('Force_Lapo', 'lapo', '0.01');
@@ -374,7 +376,7 @@ begin
   perform pg_temp.assert((select cash from profiles where id = v) = 80000 and (select bank from profiles where id = v) = 500000, 'topped up');
   perform pg_temp.assert((select count(*) from inventory where user_id = v and qty = 1) = 2, 'items given');
   perform pg_temp.assert(exists (select 1 from ledger where user_id = v and reason = 'admin_origin' and account = 'bank' and delta = 500000), 'admin_origin ledger');
-  perform pg_temp.assert((select home_location_id from profiles where id = v) = 'ekenwan_room', 'home unchanged');
+  perform pg_temp.assert((select l.scene from profiles p join locations l on l.id = p.home_location_id where p.id = v) = 'home_face_me', 'home unchanged');
   select * into a from admin_audit where target_user = v order by id desc limit 1;
   perform pg_temp.assert((a.data->>'apply_perks')::boolean and (a.data->>'cash')::bigint = 72000, 'perk audit');
   -- again: nothing more to top up, items not duplicated

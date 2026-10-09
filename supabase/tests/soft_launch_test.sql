@@ -62,7 +62,7 @@ begin
   perform pg_temp.assert(not exists (select 1 from locations where active and id in
     ('club_de_medici', 'rome_club', 'cube_nightlife', 'versus_lounge', 'owambe_republic')), 'other L2 clubs hidden');
   perform pg_temp.assert((select value = 'true'::jsonb from game_config where key = 'places.soft_launch_seeded'), 'one-shot flag set');
-  perform pg_temp.assert((select count(*) from locations where not active and scene <> 'club') = 0, 'only clubs were hidden');
+  perform pg_temp.assert((select count(*) from locations where not active and scene <> 'club' and scene not like 'home%') = 0, 'only clubs were hidden (homes are private)');
   raise notice 'ok 1: soft launch seed';
 end $$;
 

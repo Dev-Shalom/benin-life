@@ -168,7 +168,7 @@ begin
   j := place_interior('club_360');
   perform pg_temp.assert(j ? 'zones' and j ? 'moods' and j ? 'open' and j->'location'->>'scene' = 'club' and (j->>'here')::boolean = false, 'interior shape');
   perform pg_temp.assert((select count(*) from jsonb_array_elements(j->'zones') z where z->>'key' in ('bar', 'dance', 'dj', 'vip')) = 4, 'club zones bar/dance/dj/vip');
-  perform pg_temp.assert(place_interior()->'location'->>'id' = 'ekenwan_room', 'default = where I am');
+  perform pg_temp.assert(place_interior()->'location'->>'id' = (select location_id from profiles where id = auth.uid()), 'default = where I am');
   raise notice 'ok 3: place_interior';
 end $$;
 
