@@ -34,7 +34,7 @@ import { useTaskRunner } from './game/TaskRunner';
 import { useTasks } from '../state/tasks';
 import { PlaceCard, usePlaceInterior, usePlacePeople, usePlayersAt } from './game/PlaceCard';
 import { placeClosedEject } from '../api/places';
-import { socialHouseInfo, socialHomeOffer, socialHomePlaceFurniture, type HouseFurniturePlacement, type HouseInfo } from '../api/social';
+import { socialHouseInfo, socialHomeOffer, socialHomePlaceFurniture, socialLeaveHouse, type HouseFurniturePlacement, type HouseInfo } from '../api/social';
 import { supabase } from '../lib/supabase';
 import { useHouseRoom } from '../state/houseRoom';
 import { HypeBanner, HypeTicker } from './game/Hype';
@@ -138,6 +138,7 @@ export default function Game() {
   const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
   const [selectedHousePlayer, setSelectedHousePlayer] = useState<string | null>(null);
   const [houseOfferBusy, setHouseOfferBusy] = useState<string | null>(null);
+  const [leavingHouse, setLeavingHouse] = useState(false);
   const ownedVehicleId = useMemo(
     () => state?.inventory?.filter((item) => item.category === 'vehicle').sort((a, b) => b.price - a.price)[0]?.id ?? null,
     [state?.inventory],
@@ -152,7 +153,8 @@ export default function Game() {
     void loadFurniture(homeOwnerId, force);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [furnKey, homeOwnerId, loadFurniture]);
-  const atHome = Boolean(p && !state?.travel && p.location_id === p.home_location_id);
+  const atHome = Boolean(p && state && !state.travel && p.location_id === state.location.id
+    && (p.location_id === p.home_location_id || p.home_visit_host_id));
   const showHome = atHome && !mapOpen;
   const houseRoomId = atHome && state ? state.location.id : null;
   const { members: houseMembers, publish: publishHouseMove } = useHouseRoom(houseRoomId, p ?? null);
@@ -442,6 +444,22 @@ export default function Game() {
     } finally { setHouseOfferBusy(null); }
   }, []);
 
+  const leaveHouse = useCallback(async () => {
+    if (!p?.home_visit_host_id || leavingHouse) return;
+    setLeavingHouse(true);
+    try {
+      const result = await socialLeaveHouse();
+      closeAll();
+      setMapOpen(false);
+      await useGame.getState().refresh();
+      toast(result.message, 'good');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Could not leave this home. Try again.', 'bad');
+    } finally {
+      setLeavingHouse(false);
+    }
+  }, [p?.home_visit_host_id, leavingHouse, closeAll, setMapOpen]);
+
   if (!state || !p) return <LoadingScreen />;
 
   const status = deriveStatus(state, now);
@@ -512,6 +530,7 @@ export default function Game() {
           <HomeView
             layoutId={layout}
             layout={furnished}
+            playerId={p.id}
             origin={(houseInfo?.origin ?? p.origin) === 'nepo' ? 'nepo' : 'lapo'}
             vehicleId={ownedVehicleId}
             walk={walk}
@@ -651,6 +670,9 @@ export default function Game() {
               <button type="button" className="home-chip-chat" onClick={() => select(here.id, 'chat')}>
                 <Icon name="chat" size={15} /> House chat
               </button>
+              {p.home_visit_host_id && <button type="button" className="home-chip-chat home-chip-leave" onClick={() => void leaveHouse()} disabled={leavingHouse}>
+                <Icon name="back" size={15} /> {leavingHouse ? 'Leaving…' : 'Leave house'}
+              </button>}
             </div>
           )}
         </div>

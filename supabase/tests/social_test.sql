@@ -3,7 +3,8 @@
 --   bash scripts/sql-test.sh supabase/migrations/20261008000200_chat_new_sims_can_send.sql \
 --     supabase/tests/fixtures/social_legacy_home.sql \
 --     supabase/migrations/20261008000300_friends_messages_visits.sql \
---     supabase/migrations/20261008000400_shared_house_and_voice_chat.sql -- supabase/tests/social_test.sql
+--     supabase/migrations/20261008000400_shared_house_and_voice_chat.sql \
+--     supabase/migrations/20261009000100_social_leave_house.sql -- supabase/tests/social_test.sql
 
 create or replace function pg_temp.s_make(p_name text, p_home text default 'ekenwan_face_me') returns uuid
 language plpgsql as $$
@@ -155,8 +156,16 @@ begin
   r := public.chat_recent(a_home, 30);
   perform pg_temp.assert(exists (select 1 from jsonb_array_elements(r) m where m->>'audio_path' = house_audio_path),
                          'house chat supports voice messages');
+  r := public.chat_send('Thanks for having me over.');
+  perform pg_temp.login(a);
+  r := public.chat_recent(a_home, 30);
+  perform pg_temp.assert(exists (select 1 from jsonb_array_elements(r) m
+                                  where m->>'body' = 'Thanks for having me over.'
+                                    and m->>'user_id' = b::text),
+                         'guest house chat reaches the host');
   perform pg_temp.assert((public.bl_furniture_for(b, 'sleep')->>'owned')::boolean,
                          'guest home activities use the host furniture permissions');
+  perform pg_temp.login(b);
   perform pg_temp.s_hint('select social_home_place_furniture(''own_party_sofa_test'', 1.5, 1.5, 0::smallint)', 'not_homeowner');
   perform pg_temp.login(a);
   item_id := 'pure_water';
@@ -201,9 +210,13 @@ select pg_temp.assert(exists (select 1 from public.player_house_furniture where 
 reset role;
 
 do $$
+declare r jsonb;
 begin
-  update public.profiles set location_id = 'oba_market' where id = pg_temp.s_u('SocialBen');
-  perform pg_temp.assert((select location_id = 'oba_market' and housing_id = 'self_contain_uselu'
+  perform pg_temp.login(pg_temp.s_u('SocialBen'));
+  r := public.social_leave_house();
+  perform pg_temp.assert(r->>'status' = 'left', 'guest can leave the host home with the leave-house action');
+  perform pg_temp.assert((select location_id = 'home_' || replace(pg_temp.s_u('SocialBen')::text, '-', '')
+                            and housing_id = 'self_contain_uselu'
                             and home_location_id = 'home_' || replace(pg_temp.s_u('SocialBen')::text, '-', '')
                             and home_visit_host_id is null and home_visit_original_housing_id is null
                             and home_visit_original_home_location_id is null
@@ -232,3 +245,7 @@ select pg_temp.assert(has_function_privilege('authenticated', 'public.social_hom
                       'host admission RPC is available to players');
 select pg_temp.assert(not has_function_privilege('anon', 'public.social_home_admit(bigint,boolean)', 'execute'),
                       'anonymous clients cannot admit guests');
+select pg_temp.assert(has_function_privilege('authenticated', 'public.social_leave_house()', 'execute'),
+                      'authenticated guests can leave a visit');
+select pg_temp.assert(not has_function_privilege('anon', 'public.social_leave_house()', 'execute'),
+                      'anonymous clients cannot leave or alter a player visit');

@@ -12,15 +12,16 @@ export interface HouseActorState {
   yaw: number;
   moving: boolean;
   activity: string | null;
+  updatedAt: number;
 }
 
 interface HouseMove {
-  id: string;
   x: number;
   z: number;
   yaw: number;
   moving: boolean;
   activity: string | null;
+  updatedAt: number;
 }
 
 /** A private, invite-only home room for low-latency avatar movement updates. */
@@ -28,7 +29,9 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
   const [members, setMembers] = useState<HouseActorState[]>([]);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const selfRef = useRef<string | null>(null);
+  const subscribedRef = useRef(false);
   const lastPublishRef = useRef(0);
+  const selfMoveRef = useRef<HouseMove>({ x: 0, z: 0, yaw: 0, moving: false, activity: null, updatedAt: 0 });
   const latestRef = useRef(new Map<string, HouseActorState>());
 
   useEffect(() => {
@@ -40,6 +43,7 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
     let alive = true;
     let channel: RealtimeChannel | null = null;
     selfRef.current = profile.id;
+    subscribedRef.current = false;
     const publishList = () => setMembers([...latestRef.current.values()].filter((m) => m.id !== profile.id));
     const start = async () => {
       try {
@@ -58,23 +62,29 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
           for (const metas of Object.values(current)) {
             for (const meta of metas) if (meta.id && meta.id !== profile.id) next.set(meta.id, meta);
           }
-          // Preserve the most recent movement target received after the initial presence sync.
-          for (const [id, prior] of latestRef.current) if (next.has(id)) next.set(id, { ...next.get(id)!, ...prior });
+          // Preserve a newer movement broadcast, while accepting a fresher presence snapshot if a
+          // player rejoined the room with a new position.
+          for (const [id, prior] of latestRef.current) {
+            const tracked = next.get(id);
+            if (tracked && prior.updatedAt > tracked.updatedAt) next.set(id, { ...tracked, ...prior });
+          }
           latestRef.current = next;
           publishList();
         }).on('broadcast', { event: 'move' }, ({ payload }) => {
-          const move = payload as HouseMove;
+          const move = payload as HouseMove & { id: string };
           if (!move?.id || move.id === profile.id) return;
           const prior = latestRef.current.get(move.id);
           if (!prior) return;
           latestRef.current.set(move.id, { ...prior, ...move });
           publishList();
         }).subscribe(async (status) => {
-          if (!alive || status !== 'SUBSCRIBED' || !channel) return;
-          await channel.track({
-            id: profile.id, username: profile.username, avatar: profile.avatar,
-            x: 0, z: 0, yaw: 0, moving: false, activity: null,
-          });
+          subscribedRef.current = alive && status === 'SUBSCRIBED';
+          if (!subscribedRef.current || !channel) return;
+          const snapshot = { ...selfMoveRef.current, updatedAt: Date.now() };
+          selfMoveRef.current = snapshot;
+          await channel.track({ id: profile.id, username: profile.username, avatar: profile.avatar, ...snapshot });
+          lastPublishRef.current = performance.now();
+          await channel.send({ type: 'broadcast', event: 'move', payload: { ...snapshot, id: profile.id } });
         });
       } catch {
         // The local home remains playable if Realtime is unavailable; visitors simply do not appear live.
@@ -83,6 +93,7 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
     void start();
     return () => {
       alive = false;
+      subscribedRef.current = false;
       latestRef.current.clear();
       setMembers([]);
       if (channelRef.current === channel) channelRef.current = null;
@@ -90,13 +101,15 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
     };
   }, [locationId, profile?.id, profile?.username, JSON.stringify(profile?.avatar), profile?.location_id]);
 
-  const publish = useCallback((move: Omit<HouseMove, 'id'>) => {
+  const publish = useCallback((move: Omit<HouseMove, 'updatedAt'>) => {
+    const snapshot = { ...move, updatedAt: Date.now() };
+    selfMoveRef.current = snapshot;
     const channel = channelRef.current;
     const id = selfRef.current;
     const now = performance.now();
-    if (!channel || !id || now - lastPublishRef.current < (move.moving ? 100 : 280)) return;
+    if (!channel || !id || !subscribedRef.current || now - lastPublishRef.current < (move.moving ? 100 : 280)) return;
     lastPublishRef.current = now;
-    void channel.send({ type: 'broadcast', event: 'move', payload: { ...move, id } });
+    void channel.send({ type: 'broadcast', event: 'move', payload: { ...snapshot, id } });
   }, []);
 
   return { members, publish };

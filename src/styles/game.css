@@ -807,6 +807,8 @@ div.wish-chip {
   box-shadow: var(--e2); font: 700 12px/1 var(--font-display); cursor: pointer;
 }
 .home-chip-chat:active { transform: scale(.97); }
+.home-chip-leave { color: var(--ink-2, #596579); background: var(--surface, #fff); }
+.home-chip-leave:disabled { opacity: .6; cursor: wait; }
 .home-chip:active {
   transform: scale(0.97);
 }
