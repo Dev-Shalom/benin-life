@@ -2,7 +2,23 @@
 
 This file is kept current after every step. The detailed live status is the STATUS LOG at the bottom of `docs/HANDOFF.md`.
 
-## Where the project is (2026-10-09, local session)
+## Where the project is (2026-10-09, cloud session: latest)
+- **User-approved next steps, in order:**
+  1. **Phase 0 house visits:** verified locally with two accounts (friend, invite, knock, admit; both in the same private home; each sees the other in the room; house chat; Leave house). Fixed: a host leaving home now ends the visit and sends guests home with an alert.
+  2. **Daily reward + daily gem hunt** (retention; docs/SHIP_TODAY.md "D1").
+  3. **Wardrobe** (outfits per situation; docs/LAGOS_LIFE_REFERENCE_PLAN.md Phase 4).
+  4. **P3 full-screen hype** (unfinished, on branch `wip/p3-hype-aura-v2`, migration renumbered 20261007000300).
+- **Polish of the ChatGPT/Codex social release (migration 20261009000200_social_polish):**
+  - The English map error is back (the social migration had restored the Pidgin text).
+  - Tests updated for private player homes and the RLS helper grants (bl_social_can_*, bl_social_active_house_topic).
+  - All SQL suites pass on a FRESH database. social_test needs its fixture command (see its header).
+  - New test supabase/tests/social_polish_test.sql.
+- **Rules reminder:**
+  - Never edit an applied migration (20261006001300_places.sql was edited; harmless this time).
+  - Don't merge unverified work to main.
+  - Run ALL SQL suites, not just the ones for the feature.
+
+## Where the project is (2026-10-09, local session, earlier)
 - **Current directive (approved by the user):** start Phase 0 in `docs/LAGOS_LIFE_REFERENCE_PLAN.md`. The feature code exists, but the user reports that after accepting/admitting a house invite the visiting player is not visibly in the same home, players cannot see each other's movement, and house chat is not working. Reproduce and repair those end-to-end failures; do not treat earlier build/SQL checks as proof of a working two-player experience. A detailed status and acceptance checklist is in the latest entry at the bottom of `docs/HANDOFF.md` and in `docs/SOCIAL.md`.
 - **Local Phase 0 work in progress:** home detection now recognizes the admitted-guest marker; each account gets a stable, separate arrival point; the room publishes its current position after a successful Realtime join; and guests now have a server-backed one-tap Leave house action. A new migration and social SQL coverage are included on `codex/visual-quality`. `npm run build`, rollback-only social/chat SQL suites, and `git diff --check` pass. `npm run lint` exits 0 with warnings. Live two-account verification is blocked because browser access is rejected by a saved user permission setting. Do not push this patch to `main` or claim deployment until that flow is verified; Phase 0 remains open.
 - **New reference audit (2026-10-09):** GitHub `main` at `4067a6f` contains the user's 64 new Lagos Life screenshots; the full folder has 126 images plus `NOTES.md`. I reviewed the images from GitHub because the local checkout still has only the prior 62 images and a full Git fetch stalled. Comparing `d4e2276` to `4067a6f` shows only those 64 reference image files changed. The detailed gap analysis and roadmap are in `docs/LAGOS_LIFE_REFERENCE_PLAN.md`. It is a local, unpushed plan; the first recommended action is the two-account live home-visit check, followed by visual review and the full furniture buy/place loop.

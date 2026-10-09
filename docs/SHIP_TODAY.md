@@ -221,6 +221,16 @@ The goal is a dependable Benin City life sim with a distinct local identity and 
 - **Phase 2 — PLANNED:** complete home furniture catalogue, purchase, placement, rotation, removal, persistence and visitor read-only interaction.
 - **Later:** persistent origin/life-path story and goals; wardrobe; career then business; player-centered co-op/community; evidence-backed fictional police/court. Full scope and done criteria: `docs/LAGOS_LIFE_REFERENCE_PLAN.md`.
 
+## D1. Daily reward + daily gem hunt (user-approved, 2026-10-09): [next]
+- **Daily reward:** a 7-day ladder of game naira, a small cosmetic or item, and an energy drink. Claim once per WAT day, on the server.
+  - A missed day resets to day 1 gently. No harsh streak punishment.
+  - The amounts are editable in admin.
+- **Daily gem hunt:** a few gems are hidden at real places each WAT day, picked by a server seed so every player has the same hunt. Visit the place and find the gem inside (a tap target in the interior).
+  - Small prize per gem plus a bonus for finding all of them. "X found today" counter.
+  - Prizes are editable in admin.
+- **HUD:** both chips sit on the left with the needs, as in the reference ("Daily reward ready · day 1", "Daily gem hunt · 4438 found").
+- Next after D1: **W1 wardrobe** (LAGOS_LIFE_REFERENCE_PLAN Phase 4), then **P3** (branch wip/p3-hype-aura-v2).
+
 ## LATER: private jets and planes (user)
 A place to buy private jets and planes, tied to the airport feature (fly to Lagos, Abuja or PH). Not started.
 

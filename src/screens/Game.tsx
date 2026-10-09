@@ -158,6 +158,7 @@ export default function Game() {
   const showHome = atHome && !mapOpen;
   const houseRoomId = atHome && state ? state.location.id : null;
   const { members: houseMembers, publish: publishHouseMove } = useHouseRoom(houseRoomId, p ?? null);
+  if (import.meta.env.DEV) (window as unknown as { __house?: unknown }).__house = { room: houseRoomId, members: houseMembers };
 
   useEffect(() => {
     let alive = true;
