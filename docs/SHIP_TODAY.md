@@ -260,6 +260,8 @@ References: docs/references/lagos-life/messages-list.jpg, messages-chat-1.jpg, m
   - Composer: emoji button, input, mic/send.
   - Keep the M3 features: reply quotes, delete for me/everyone, 14-day history.
 
+**M4 notes (agent, 2026-10-10, not committed; status marker left for the lead):** Messages rebuilt to the references. List: "Messages" + back + bell (alerts badge → Alerts), Chats (unread badge) / Groups (house chat or the current place chat), pinned 📣 **Benin Life team** card (admin keys `news.latest_title` / `news.latest_body`, sheet to read), ✏️ Message someone @username (friend → opens DM, else search with Add friend), All / Unread (n) / Read + ⋯ Mark all read, Message requests row (friend requests + knocks / invites, accept/decline), Search your chats, rows with portrait, preview (Voice note / deleted / "sent you ₦…"), red date + count. Conversation: big @name + ⋯ (unfriend/block), 🔒 private line, streak card (🔥 Start a streak / N-day streak + What counts? sheet), 🏠 Invite / 🚪 Visit / 💸 Send money (amount sheet → `bank_transfer`, 24 h new-account wait and errors respected, posts "💸 Sent you ₦X"), day separators, red New messages divider, blue mine / grey theirs with time inside and ✓ / ✓✓ / blue ✓✓, quick-reply chips, emoji popover, green mic/send; M3 reply/menu/delete/paging kept. Server: `20261010000500_messages_v2.sql` (streak table + triggers on messages and admitted visits, `social_streak(p_user)`, `social_friends` preview flags, news keys); tests `messages_v2_test.sql`. Details: docs/CHAT.md "M4".
+
 ## LATER: private jets and planes (user)
 A place to buy private jets and planes, tied to the airport feature (fly to Lagos, Abuja or PH). Not started.
 

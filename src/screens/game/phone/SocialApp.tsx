@@ -1,131 +1,88 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { FormEvent, RefObject } from 'react';
-import type { RealtimeChannel } from '@supabase/supabase-js';
+// M4 Phone → Messages (docs/CHAT.md "M4", docs/SOCIAL.md). List screen: header with the alerts bell, Chats / Groups
+// tabs, the pinned "Benin Life team" news card, "Message someone: @username", All / Unread / Read filters,
+// Message requests, chat search and conversation rows. A row opens DmConversation; Groups opens the place / house chat.
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { AvatarPortrait } from '../../../art/avatar3d';
-import { chatBlock, chatDeleteForEveryone, chatDeleteForMe } from '../../../api/chat';
 import {
-  discardVoiceUpload, socialCancelFriendRequest, socialCancelHouseInvite,
-  socialFriendRequests, socialFriends, socialHomeAdmit, socialHouseInvites, socialMessageHistory,
-  socialMarkRead, socialOpenConversation, socialRemoveFriend, socialRespondFriend,
-  socialRespondHouseInvite, socialSearchPlayers, socialSendHouseInvite, socialSendMessage,
-  uploadVoiceMessage,
-  type DirectMessage, type FriendRequest, type HouseInvite, type SocialFriend, type SocialPlayer,
+  socialCancelFriendRequest, socialCancelHouseInvite, socialFriendRequests, socialFriends, socialHomeAdmit,
+  socialHouseInvites, socialMarkRead, socialOpenConversation, socialRespondFriend, socialRespondHouseInvite, socialSearchPlayers,
+  type FriendRequest, type HouseInvite, type SocialFriend, type SocialPlayer,
 } from '../../../api/social';
 import { errorMessage } from '../../../lib/api';
 import { useConfig } from '../../../lib/config';
-import { supabase } from '../../../lib/supabase';
 import type { GameState } from '../../../lib/types';
 import { useGame } from '../../../state/game';
-import { Button, EmptyState, Icon, Spinner, toast } from '../../../ui';
-import { useEscape } from '../../../ui/presence';
+import { Button, Icon, Spinner, toast } from '../../../ui';
 import { SocialPlayerButton } from '../SocialPlayerButton';
 import ChatPanel from '../../../panels/ChatPanel';
-import {
-  canDeleteForEveryone, DaySep, flashMessage, MessageMenu, MessageRow, previewOf, ReplyBar, resolveReply,
-  useThreadScroll, useViewportVars, type MenuAction, type ThreadMessage,
-} from '../../../panels/chatKit';
-
-const PAGE_SIZE = 50;
-
-function durationLabel(seconds: number) {
-  const mins = Math.floor(seconds / 60);
-  return `${mins}:${String(seconds % 60).padStart(2, '0')}`;
-}
-
-function toThread(m: DirectMessage): ThreadMessage {
-  return {
-    id: m.id, mine: m.mine, name: m.sender_username, createdAt: m.created_at, body: m.body, audioPath: m.audio_path,
-    deletedAt: m.deleted_at ?? null, replyTo: m.reply_to ?? null, reply: m.reply ?? null,
-  };
-}
-
-/** The conversation thread; hooks live here so they run only while a conversation is open. */
-function DmThread({ messages, listRef, hasOlder, loadingOlder, loadOlder, initialLoading, friendName, onReply, onMenu }: {
-  messages: DirectMessage[]; listRef: RefObject<HTMLDivElement | null>; hasOlder: boolean; loadingOlder: boolean;
-  loadOlder: () => Promise<boolean>; initialLoading: boolean; friendName: string;
-  onReply: (m: ThreadMessage) => void; onMenu: (m: ThreadMessage) => void;
-}) {
-  useViewportVars();
-  const thread = useMemo(() => messages.map(toThread), [messages]);
-  const byId = useMemo(() => new Map(thread.map((m) => [m.id, m])), [thread]);
-  const { onScroll } = useThreadScroll(listRef, {
-    firstId: messages[0]?.id ?? null, lastId: messages[messages.length - 1]?.id ?? null,
-    hasOlder, loadingOlder, loadOlder: () => void loadOlder(),
-  });
-  const jumpTo = async (id: number) => {
-    for (let i = 0; i < 6; i++) {
-      if (flashMessage(listRef.current, id)) return;
-      if (!(await loadOlder())) break;
-      await new Promise((r) => requestAnimationFrame(r));
-    }
-    toast('That message is no longer available.', 'info');
-  };
-  return (
-    <div className="social-message-list" ref={listRef} role="log" aria-live="polite" aria-label={`Messages with ${friendName}`} onScroll={onScroll}>
-      {loadingOlder && <div className="msg-older"><Spinner size={16} /></div>}
-      {!hasOlder && !initialLoading && messages.length > 0 && <div className="msg-older msg-older--end">Messages from the last 14 days</div>}
-      {initialLoading && messages.length === 0 ? <div className="social-loading"><Spinner size={20} /></div>
-        : messages.length === 0 ? <EmptyState icon="chat" title="Say hello" body={`Your private conversation with @${friendName} starts here.`} />
-          : thread.map((m, i) => (
-            <Fragment key={m.id}>
-              <DaySep iso={m.createdAt} prevIso={thread[i - 1]?.createdAt ?? null} />
-              <MessageRow m={m} reply={resolveReply(m, byId)} onReply={onReply} onMenu={onMenu} onQuote={(id) => void jumpTo(id)} />
-            </Fragment>
-          ))}
-    </div>
-  );
-}
+import { DmConversation, MiniSheet, MONEY_PREFIX } from './DmConversation';
 
 interface SocialAppProps {
   state: GameState;
   onGoHome: () => void;
+  /** M4: the app draws its own header (back to the phone home, bell to Alerts). */
+  onBack?: () => void;
+  onOpenAlerts?: () => void;
+  alertsUnread?: number;
 }
 
-export default function SocialApp({ state, onGoHome }: SocialAppProps) {
+type Filter = 'all' | 'unread' | 'read';
+
+/** "14:05" today, "Yesterday", else "6 Oct". */
+function rowDate(iso: string | null) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === y.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function preview(f: SocialFriend, meId: string) {
+  if (!f.conversation_id || !f.last_message_at) return f.at_home ? 'At home · say hi' : 'Around Benin · say hi';
+  const mine = f.last_sender_id === meId;
+  if (f.last_deleted) return 'This message was deleted';
+  if (f.last_voice) return mine ? 'You: Voice note' : 'Voice note';
+  const body = f.last_message ?? '';
+  if (body.startsWith(MONEY_PREFIX)) {
+    const rest = body.slice(MONEY_PREFIX.length);
+    return mine ? `You sent ${rest}` : `${f.username} sent you ${rest}`;
+  }
+  return mine ? `You: ${body}` : body;
+}
+
+function Badge({ n }: { n: number }) {
+  if (n <= 0) return null;
+  return <span className="msgs-badge">{n > 9 ? '9+' : n}</span>;
+}
+
+export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alertsUnread = 0 }: SocialAppProps) {
+  const me = state.profile;
   const [friends, setFriends] = useState<SocialFriend[] | null>(null);
   const [requests, setRequests] = useState<FriendRequest[] | null>(null);
   const [invites, setInvites] = useState<HouseInvite[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
+  const [tab, setTab] = useState<'chats' | 'groups'>('chats');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [chatSearch, setChatSearch] = useState('');
+  const [who, setWho] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SocialPlayer[] | null>(null);
-  const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [conversation, setConversation] = useState<{ id: number; friend: SocialFriend } | null>(null);
-  const [messages, setMessages] = useState<DirectMessage[]>([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [hasOlder, setHasOlder] = useState(false);
-  const [loadingOlder, setLoadingOlder] = useState(false);
-  const [replyTo, setReplyTo] = useState<ThreadMessage | null>(null);
-  useEscape(Boolean(replyTo), () => setReplyTo(null));
-  const [menu, setMenu] = useState<ThreadMessage | null>(null);
-  const [headMenu, setHeadMenu] = useState(false);
-  const replyRef = useRef<ThreadMessage | null>(null);
-  const draftRef = useRef<HTMLTextAreaElement>(null);
-  const messagesRef = useRef<DirectMessage[]>([]);
-  const { cfg } = useConfig();
-  const deleteHours = cfg('chat.delete_everyone_hours', 48);
-  const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [audioBusy, setAudioBusy] = useState(false);
-  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [view, setView] = useState<'list' | 'requests' | 'group'>('list');
+  const [sheet, setSheet] = useState<'news' | 'more' | null>(null);
+  const [conversation, setConversation] = useState<{ id: number; friendId: string; friend: SocialFriend } | null>(null);
   const eventsRevision = useGame((s) => s.events[0]?.id ?? 0);
   const refreshGame = useGame((s) => s.refresh);
-  const [houseChat, setHouseChat] = useState(false);
-  const listRef = useRef<HTMLDivElement>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const recordingStartedRef = useRef(0);
-  const discardOnStopRef = useRef(false);
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  const { cfg } = useConfig();
+  const newsTitle = cfg('news.latest_title', '').trim();
+  const newsBody = cfg('news.latest_body', '').trim();
 
   const reload = useCallback(async () => {
     try {
-      const [nextFriends, nextRequests, nextInvites] = await Promise.all([
-        socialFriends(), socialFriendRequests(), socialHouseInvites(),
-      ]);
+      const [nextFriends, nextRequests, nextInvites] = await Promise.all([socialFriends(), socialFriendRequests(), socialHouseInvites()]);
       setFriends(nextFriends ?? []);
       setRequests(nextRequests ?? []);
       setInvites(nextInvites ?? []);
@@ -140,100 +97,42 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
     const timer = window.setInterval(() => void reload(), 20_000);
     return () => window.clearInterval(timer);
   }, [reload]);
-
-  // Friend requests and door knocks arrive through the existing per-player events channel.
+  // Friend requests, knocks and new DMs arrive through the existing per-player events channel.
   useEffect(() => { if (eventsRevision) void reload(); }, [eventsRevision, reload]);
 
-  useEffect(() => {
-    if (!recording) return;
-    const timer = window.setInterval(() => setRecordSeconds(Math.floor((Date.now() - recordingStartedRef.current) / 1000)), 1000);
-    return () => window.clearInterval(timer);
-  }, [recording]);
+  const homeNow = !state.travel && me.location_id === state.location.id
+    && (me.location_id === me.home_location_id || Boolean(me.home_visit_host_id));
+  useEffect(() => { if (view === 'group' && state.travel) setView('list'); }, [view, state.travel]);
 
-  const appendMessage = useCallback((message: DirectMessage) => {
-    setMessages((old) => old.some((m) => m.id === message.id) ? old : [...old, message].sort((a, b) => a.id - b.id));
-  }, []);
-  useEffect(() => { replyRef.current = replyTo; }, [replyTo]);
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  const incoming = useMemo(() => (requests ?? []).filter((r) => r.direction === 'incoming'), [requests]);
+  const outgoing = useMemo(() => (requests ?? []).filter((r) => r.direction === 'outgoing'), [requests]);
+  const doorItems = useMemo(() => (invites ?? []).filter((i) => (i.role === 'host' && i.status === 'knocking') || (i.role === 'guest' && i.status === 'invited')), [invites]);
+  const unreadChats = (friends ?? []).filter((f) => f.unread > 0).length;
+  const requestCount = incoming.length + doorItems.length;
 
-  /** Realtime UPDATE (read receipts, delete-for-everyone tombstones). */
-  const patchMessage = useCallback((row: Partial<DirectMessage> & { id: number }) => {
-    setMessages((old) => old.map((m) => {
-      if (m.id === row.id) {
-        return { ...m, body: row.body ?? null, audio_path: row.audio_path ?? null, audio_mime: row.audio_mime ?? null,
-          read_at: row.read_at ?? m.read_at, deleted_at: row.deleted_at ?? m.deleted_at ?? null };
-      }
-      if (row.deleted_at && m.reply_to === row.id && m.reply) return { ...m, reply: { ...m.reply, deleted: true, snippet: null, voice: false } };
-      return m;
-    }));
-  }, []);
+  const rows = useMemo(() => {
+    const q = chatSearch.trim().toLowerCase().replace(/^@/, '');
+    return (friends ?? []).filter((f) => (filter === 'all' || (filter === 'unread' ? f.unread > 0 : f.unread === 0))
+      && (!q || f.username.toLowerCase().includes(q) || (f.last_message ?? '').toLowerCase().includes(q)));
+  }, [friends, filter, chatSearch]);
 
-  useEffect(() => {
-    if (!conversation) return;
-    let alive = true;
-    setMessages([]);
-    setHasOlder(false);
-    setReplyTo(null);
-    setMenu(null);
-    setHeadMenu(false);
-    setMessagesLoading(true);
-    const conversationId = conversation.id;
-    const loadLatest = async () => {
-      try {
-        const rows = await socialMessageHistory(conversationId, null, PAGE_SIZE);
-        if (!alive) return;
-        setMessages(rows ?? []);
-        setHasOlder((rows ?? []).length === PAGE_SIZE);
-        await socialMarkRead(conversationId);
-        if (alive) void reload();
-      } catch (e) {
-        if (alive) toast(errorMessage(e), 'bad');
-      } finally {
-        if (alive) setMessagesLoading(false);
-      }
-    };
-    const channel = supabase
-      .channel(`dm-${conversationId}-${state.profile.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'player_messages', filter: `conversation_id=eq.${conversationId}`,
-      }, (payload) => {
-        const raw = payload.new as Omit<DirectMessage, 'sender_username' | 'mine'>;
-        const mine = raw.sender_id === state.profile.id;
-        appendMessage({ ...raw, sender_username: mine ? state.profile.username : conversation.friend.username, mine });
-        if (!mine) void socialMarkRead(conversationId).then(() => reload()).catch(() => undefined);
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: 'player_messages', filter: `conversation_id=eq.${conversationId}`,
-      }, (payload) => patchMessage(payload.new as DirectMessage))
-      .subscribe((status) => { if (status === 'SUBSCRIBED') void loadLatest(); });
-    channelRef.current = channel;
-    return () => {
-      alive = false;
-      if (channelRef.current === channel) channelRef.current = null;
-      void supabase.removeChannel(channel);
-    };
-  }, [conversation, state.profile.id, state.profile.username, appendMessage, patchMessage, reload]);
+  const openConversation = async (friend: SocialFriend) => {
+    setBusy(`message:${friend.id}`);
+    try {
+      const opened = await socialOpenConversation(friend.id);
+      setConversation({ id: opened.id, friendId: friend.id, friend });
+    } catch (e) { toast(errorMessage(e), 'bad'); }
+    finally { setBusy(null); }
+  };
 
-  useEffect(() => () => {
-    discardOnStopRef.current = true;
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    if (channelRef.current) void supabase.removeChannel(channelRef.current);
-  }, []);
-
-  const pendingKnocks = useMemo(() => (invites ?? []).filter((i) => i.role === 'host' && i.status === 'knocking'), [invites]);
-  const pendingRequests = useMemo(() => (requests ?? []).filter((r) => r.direction === 'incoming'), [requests]);
-  const sentRequests = useMemo(() => (requests ?? []).filter((r) => r.direction === 'outgoing'), [requests]);
-  const homeNow = !state.travel && state.profile.location_id === state.location.id
-    && (state.profile.location_id === state.profile.home_location_id || Boolean(state.profile.home_visit_host_id));
-  useEffect(() => { if (!homeNow) setHouseChat(false); }, [homeNow]);
-
-  const search = async (event: FormEvent) => {
+  const findPlayer = async (event: FormEvent) => {
     event.preventDefault();
-    const value = query.trim();
-    if (value.length < 3) { setResults([]); return; }
+    const value = who.trim().replace(/^@+/, '');
+    if (value.length < 3) { toast('Type at least 3 letters of their @username.', 'info'); return; }
+    const friend = (friends ?? []).find((f) => f.username.toLowerCase() === value.toLowerCase());
+    if (friend) { setWho(''); setResults(null); void openConversation(friend); return; }
     setSearching(true);
-    try { setResults(await socialSearchPlayers(value)); }
+    try { setResults((await socialSearchPlayers(value)).filter((p) => p.id !== me.id)); }
     catch (e) { toast(errorMessage(e), 'bad'); }
     finally { setSearching(false); }
   };
@@ -241,9 +140,7 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
   const requestAction = async (r: FriendRequest, accept: boolean) => {
     setBusy(`request:${r.id}`);
     try {
-      const result = r.direction === 'incoming'
-        ? await socialRespondFriend(r.id, accept)
-        : await socialCancelFriendRequest(r.id);
+      const result = r.direction === 'incoming' ? await socialRespondFriend(r.id, accept) : await socialCancelFriendRequest(r.id);
       toast(result.message, accept ? 'good' : 'info');
       await reload();
     } catch (e) { toast(errorMessage(e), 'bad'); }
@@ -265,376 +162,231 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
     finally { setBusy(null); }
   };
 
-  const inviteSelected = async () => {
-    if (!selected.length) return;
-    setBusy('bulk-invite');
-    const results = await Promise.allSettled(selected.map((id) => socialSendHouseInvite(id)));
-    const sent = results.filter((r) => r.status === 'fulfilled').length;
-    const failed = results.length - sent;
-    if (sent) toast(`${sent} house invite${sent === 1 ? '' : 's'} sent.`, 'good');
-    if (failed) toast(`${failed} invite${failed === 1 ? '' : 's'} could not be sent.`, 'bad');
-    setSelected([]);
+  const markAllRead = async () => {
+    setSheet(null);
+    const open = (friends ?? []).filter((f) => f.unread > 0 && f.conversation_id);
+    await Promise.allSettled(open.map((f) => socialMarkRead(f.conversation_id!)));
     await reload();
-    setBusy(null);
-  };
-
-  const openConversation = async (friend: SocialFriend) => {
-    setBusy(`message:${friend.id}`);
-    try {
-      const opened = await socialOpenConversation(friend.id);
-      setConversation({ id: opened.id, friend });
-    } catch (e) { toast(errorMessage(e), 'bad'); }
-    finally { setBusy(null); }
-  };
-
-  const closeConversation = () => {
-    if (recorderRef.current?.state === 'recording') {
-      discardOnStopRef.current = true;
-      recorderRef.current.stop();
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      recorderRef.current = null;
-      setRecording(false);
-    }
-    setConversation(null);
-    setMessages([]);
-    setDraft('');
-    setReplyTo(null);
-  };
-
-  const sendText = async () => {
-    const body = draft.trim();
-    if (!conversation || !body || sending || recording || audioBusy) return;
-    setSending(true);
-    try {
-      appendMessage(await socialSendMessage(conversation.id, body, null, null, replyTo?.id ?? null));
-      setDraft('');
-      setReplyTo(null);
-      const el = listRef.current;
-      if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
-      void reload();
-    } catch (e) { toast(errorMessage(e), 'bad'); }
-    finally { setSending(false); }
-  };
-
-  const stopRecording = () => {
-    if (recorderRef.current?.state === 'recording') {
-      setAudioBusy(true);
-      recorderRef.current.stop();
-    }
-  };
-
-  const startRecording = async () => {
-    if (!conversation || audioBusy || recording) return;
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      toast('Voice recording is not supported by this browser.', 'bad');
-      return;
-    }
-    setAudioBusy(true);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const preferred = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus'];
-      const mimeType = preferred.find((type) => MediaRecorder.isTypeSupported(type));
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      chunksRef.current = [];
-      discardOnStopRef.current = false;
-      recorderRef.current = recorder;
-      recorder.ondataavailable = (event) => { if (event.data.size > 0) chunksRef.current.push(event.data); };
-      recorder.onerror = () => {
-        toast('The voice note stopped unexpectedly. Please try again.', 'bad');
-        stream.getTracks().forEach((track) => track.stop());
-        setRecording(false);
-        setAudioBusy(false);
-      };
-      recorder.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop());
-        if (recorderRef.current === recorder) recorderRef.current = null;
-        setRecording(false);
-        if (discardOnStopRef.current) { chunksRef.current = []; setAudioBusy(false); return; }
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-        chunksRef.current = [];
-        const activeConversation = conversation;
-        void (async () => {
-          if (!activeConversation || blob.size === 0) throw new Error('No audio was recorded.');
-          const uploaded = await uploadVoiceMessage(activeConversation.id, state.profile.id, blob, blob.type);
-          try {
-            appendMessage(await socialSendMessage(activeConversation.id, null, uploaded.path, uploaded.mime, replyRef.current?.id ?? null));
-            setReplyTo(null);
-            void reload();
-          } catch (e) {
-            await discardVoiceUpload(uploaded.path).catch(() => undefined);
-            throw e;
-          }
-        })().catch((e) => toast(errorMessage(e), 'bad')).finally(() => setAudioBusy(false));
-      };
-      recorder.start(1000);
-      recordingStartedRef.current = Date.now();
-      setRecordSeconds(0);
-      setRecording(true);
-      setAudioBusy(false);
-    } catch {
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-      setAudioBusy(false);
-      toast('Microphone access was not allowed. Enable it in your browser settings and try again.', 'bad');
-    }
-  };
-
-  const removeFriend = async () => {
-    if (!conversation) return;
-    setBusy('remove-friend');
-    try {
-      const result = await socialRemoveFriend(conversation.friend.id);
-      toast(result.message, 'info');
-      closeConversation();
-      await reload();
-    } catch (e) { toast(errorMessage(e), 'bad'); }
-    finally { setBusy(null); }
-  };
-
-  const blockFriend = async () => {
-    if (!conversation) return;
-    setBusy('block-friend');
-    try {
-      const result = await chatBlock(conversation.friend.id);
-      toast(result.message, 'info');
-      closeConversation();
-      await reload();
-    } catch (e) { toast(errorMessage(e), 'bad'); }
-    finally { setBusy(null); }
-  };
-
-  /** Load the next older page; resolves true when rows were added. */
-  const loadOlder = async () => {
-    const current = messagesRef.current;
-    if (!conversation || !current.length || messagesLoading || loadingOlder || !hasOlder) return false;
-    setLoadingOlder(true);
-    try {
-      const older = (await socialMessageHistory(conversation.id, current[0].id, PAGE_SIZE)) ?? [];
-      setMessages((rows) => [...older.filter((o) => !rows.some((r) => r.id === o.id)), ...rows]);
-      setHasOlder(older.length === PAGE_SIZE);
-      await new Promise((r) => requestAnimationFrame(r));
-      return older.length > 0;
-    } catch (e) { toast(errorMessage(e), 'bad'); return false; }
-    finally { setLoadingOlder(false); }
-  };
-
-  const startReply = (m: ThreadMessage) => {
-    setMenu(null);
-    setReplyTo(m);
-    draftRef.current?.focus({ preventScroll: true });
-  };
-
-  const deleteForMe = async (m: ThreadMessage) => {
-    setMenu(null);
-    try {
-      await chatDeleteForMe('dm', m.id);
-      setMessages((rows) => rows.filter((r) => r.id !== m.id));
-      if (replyTo?.id === m.id) setReplyTo(null);
-    } catch (e) { toast(errorMessage(e), 'bad'); }
-  };
-
-  const deleteForEveryone = async (m: ThreadMessage) => {
-    setMenu(null);
-    try {
-      const r = await chatDeleteForEveryone('dm', m.id);
-      patchMessage({ id: m.id, body: null, audio_path: null, audio_mime: null, deleted_at: r.deleted_at });
-      if (r.audio_path) void discardVoiceUpload(r.audio_path).catch(() => undefined);
-      if (replyTo?.id === m.id) setReplyTo(null);
-      void reload();
-    } catch (e) { toast(errorMessage(e), 'bad'); }
-  };
-
-  const menuActions = (m: ThreadMessage): MenuAction[] => {
-    const acts: MenuAction[] = [];
-    if (!m.deletedAt) acts.push({ label: 'Reply', icon: 'reply', onSelect: () => startReply(m) });
-    if (m.body) acts.push({ label: 'Copy text', icon: 'copy', onSelect: () => { void navigator.clipboard?.writeText(m.body ?? '').then(() => toast('Copied.', 'good')).catch(() => undefined); setMenu(null); } });
-    acts.push({ label: 'Delete for me', icon: 'trash', onSelect: () => void deleteForMe(m) });
-    if (canDeleteForEveryone(m, deleteHours)) acts.push({ label: 'Delete for everyone', icon: 'trash', tone: 'danger', onSelect: () => void deleteForEveryone(m) });
-    return acts;
+    toast(open.length ? 'All chats marked as read.' : 'You have no unread chats.', 'info');
   };
 
   if (conversation) {
-    const hasText = Boolean(draft.trim());
+    const fresh = friends?.find((f) => f.id === conversation.friendId) ?? conversation.friend;
     return (
-      <div className="phone-app__body social-app social-app--conversation">
-        <div className="social-conversation-head">
-          <button type="button" className="social-conversation-head__back" onClick={closeConversation} aria-label="Back to people">
-            <Icon name="back" size={18} stroke={2.6} />
+      <DmConversation key={conversation.id} state={state} friend={fresh} conversationId={conversation.id} invites={invites ?? []}
+        homeNow={homeNow} reload={reload} onGoHome={onGoHome} onClose={() => { setConversation(null); void reload(); }} />
+    );
+  }
+
+  if (view === 'group' && !state.travel) {
+    return (
+      <div className="phone-app__body social-app social-app--house-chat msgs">
+        <header className="dm-head">
+          <button type="button" className="msgs-iconbtn msgs-iconbtn--bare" onClick={() => setView('list')} aria-label="Back to messages">
+            <Icon name="back" size={22} stroke={2.6} />
           </button>
-          <span className="social-conversation-head__who">
-            <span className="social-avatar">{conversation.friend.avatar && <AvatarPortrait config={conversation.friend.avatar} size={34} />}</span>
-            <b>@{conversation.friend.username}</b>
-          </span>
-          <button type="button" className="social-conversation-head__more" aria-label="Conversation options" aria-expanded={headMenu}
-            onClick={() => setHeadMenu((v) => !v)}><Icon name="more" size={20} stroke={3} /></button>
-          {headMenu && (
-            <div className="social-conversation-head__menu" role="menu">
-              <Button size="sm" variant="ghost" loading={busy === 'remove-friend'} onClick={() => void removeFriend()}>Unfriend</Button>
-              <Button size="sm" variant="danger" loading={busy === 'block-friend'} onClick={() => void blockFriend()}>Block</Button>
-            </div>
-          )}
-        </div>
-        <div className="social-thread">
-          <DmThread messages={messages} listRef={listRef} hasOlder={hasOlder} loadingOlder={loadingOlder} loadOlder={loadOlder}
-            initialLoading={messagesLoading} friendName={conversation.friend.username} onReply={startReply} onMenu={setMenu} />
-          {menu && <MessageMenu m={menu} actions={menuActions(menu)} onClose={() => setMenu(null)} />}
-        </div>
-        {recording && <div className="social-recording" role="status"><span className="social-recording__dot" /> Recording voice note · {durationLabel(recordSeconds)}</div>}
-        <div className="social-composer">
-          {replyTo && <ReplyBar reply={previewOf(replyTo)} onClear={() => setReplyTo(null)} />}
-          <form className="social-compose" onSubmit={(e) => { e.preventDefault(); void sendText(); }}>
-            <textarea ref={draftRef} value={draft} rows={1} placeholder="Message" aria-label="Private message" enterKeyHint="send"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendText(); }
-                }}
-              disabled={sending || recording || audioBusy} onChange={(e) => setDraft(e.target.value)} />
-            <div className="social-compose__actions">
-              <Button type={hasText ? 'submit' : 'button'} className={`social-compose__primary${recording ? ' is-recording' : ''}`} variant="green"
-                aria-label={recording ? `Send voice note, ${durationLabel(recordSeconds)}` : hasText ? 'Send message' : 'Record voice message'}
-                title={recording ? `Send voice note · ${durationLabel(recordSeconds)}` : hasText ? 'Send message' : 'Record voice message'}
-                disabled={audioBusy || sending} loading={sending || (audioBusy && !recording)}
-                onClick={() => { if (recording) stopRecording(); else if (!hasText) void startRecording(); }}>
-                <Icon name={recording || hasText ? 'send' : 'mic'} size={18} />
-              </Button>
-            </div>
-          </form>
-          <span className="social-compose__hint">Enter to send · Shift+Enter for a new line</span>
-        </div>
+          <h2 className="dm-head__name dm-head__name--sm">{homeNow ? 'House chat' : state.location.name}</h2>
+        </header>
+        <ChatPanel state={state} location={state.location} refresh={refreshGame} close={() => setView('list')} />
       </div>
     );
   }
 
-  if (houseChat && homeNow) {
+  if (view === 'requests') {
     return (
-      <div className="phone-app__body social-app social-app--house-chat">
-        <div className="social-conversation-head">
-          <Button size="sm" variant="ghost" onClick={() => setHouseChat(false)}>‹ Messages</Button>
-          <b className="grow">House chat · everyone inside</b>
-        </div>
-        <ChatPanel state={state} location={state.location} refresh={refreshGame} close={() => setHouseChat(false)} />
+      <div className="phone-app__body social-app msgs">
+        <header className="msgs-head">
+          <button type="button" className="msgs-iconbtn msgs-iconbtn--bare" onClick={() => setView('list')} aria-label="Back to messages">
+            <Icon name="back" size={22} stroke={2.6} />
+          </button>
+          <h2 className="msgs-head__title msgs-head__title--sm">Message requests</h2>
+        </header>
+        <p className="msgs-muted">People who want to be your friend. Only friends can message you, visit and start a streak.</p>
+        {requests === null ? <div className="social-loading"><Spinner size={18} /></div>
+          : incoming.length === 0 ? <p className="msgs-empty">No friend requests right now.</p>
+            : incoming.map((r) => (
+              <div className="msgs-req" key={r.id}>
+                <span className="msgs-face msgs-face--sm">{r.avatar && <AvatarPortrait config={r.avatar} size={44} />}</span>
+                <b className="grow">@{r.username}</b>
+                <Button size="sm" variant="ghost" disabled={busy === `request:${r.id}`} onClick={() => void requestAction(r, false)}>Decline</Button>
+                <Button size="sm" variant="green" loading={busy === `request:${r.id}`} onClick={() => void requestAction(r, true)}>Accept</Button>
+              </div>
+            ))}
+        {doorItems.length > 0 && <h3 className="msgs-sub">At the door</h3>}
+        {doorItems.map((invite) => {
+          const knock = invite.role === 'host';
+          return (
+            <div className="msgs-req" key={`i${invite.id}`}>
+              <span className="msgs-req__icon" aria-hidden>{knock ? '🚪' : '🏠'}</span>
+              <span className="grow msgs-req__copy">
+                <b>{knock ? `@${invite.guest_username} is at your door` : `@${invite.host_username} invited you home`}</b>
+                <small>{knock ? homeNow ? 'You are home. Open the door?' : 'Go home to let them in.' : 'Accept to knock on their door.'}</small>
+              </span>
+              {knock ? <>
+                <Button size="sm" variant="ghost" disabled={busy === `invite:${invite.id}`} onClick={() => void houseAction(invite, 'turn-away')}>Decline</Button>
+                {homeNow ? <Button size="sm" variant="green" loading={busy === `invite:${invite.id}`} onClick={() => void houseAction(invite, 'admit')}>Let in</Button>
+                  : <Button size="sm" variant="green" onClick={onGoHome}>Go home</Button>}
+              </> : <>
+                <Button size="sm" variant="ghost" disabled={busy === `invite:${invite.id}`} onClick={() => void houseAction(invite, 'decline')}>Decline</Button>
+                <Button size="sm" variant="green" loading={busy === `invite:${invite.id}`} onClick={() => void houseAction(invite, 'accept')}>Knock</Button>
+              </>}
+            </div>
+          );
+        })}
+        {(outgoing.length > 0 || (invites ?? []).some((i) => i.role === 'host' && i.status === 'invited') || (invites ?? []).some((i) => i.role === 'guest' && i.status === 'knocking')) && <h3 className="msgs-sub">Waiting on others</h3>}
+        {outgoing.map((r) => (
+          <div className="msgs-req" key={r.id}>
+            <span className="msgs-face msgs-face--sm">{r.avatar && <AvatarPortrait config={r.avatar} size={44} />}</span>
+            <span className="grow">Friend request to <b>@{r.username}</b></span>
+            <Button size="sm" variant="ghost" loading={busy === `request:${r.id}`} onClick={() => void requestAction(r, false)}>Cancel</Button>
+          </div>
+        ))}
+        {(invites ?? []).filter((i) => (i.role === 'host' && i.status === 'invited') || (i.role === 'guest' && i.status === 'knocking')).map((invite) => (
+          <div className="msgs-req" key={`w${invite.id}`}>
+            <span className="msgs-req__icon" aria-hidden>{invite.role === 'host' ? '✉️' : '🚪'}</span>
+            <span className="grow">{invite.role === 'host' ? <>House invite to <b>@{invite.guest_username}</b></> : <>Knocking at <b>@{invite.host_username}</b>'s door</>}</span>
+            <Button size="sm" variant="ghost" loading={busy === `invite:${invite.id}`} onClick={() => void houseAction(invite, 'cancel')}>Cancel</Button>
+          </div>
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="phone-app__body social-app">
+    <div className="phone-app__body social-app msgs">
+      <header className="msgs-head">
+        {onBack && (
+          <button type="button" className="msgs-iconbtn msgs-iconbtn--bare" onClick={onBack} aria-label="Back to apps">
+            <Icon name="back" size={22} stroke={2.6} />
+          </button>
+        )}
+        <h2 className="msgs-head__title">Messages</h2>
+        {onOpenAlerts && (
+          <button type="button" className="msgs-iconbtn msgs-bell" onClick={onOpenAlerts} aria-label={`Alerts${alertsUnread ? `, ${alertsUnread} new` : ''}`}>
+            <Icon name="bell" size={21} />
+            {alertsUnread > 0 && <span className="msgs-badge msgs-bell__badge">{alertsUnread > 9 ? '9+' : alertsUnread}</span>}
+          </button>
+        )}
+      </header>
+
+      <div className="msgs-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === 'chats'} className={tab === 'chats' ? 'is-on' : ''} onClick={() => setTab('chats')}>
+          Chats <Badge n={unreadChats} />
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'groups'} className={tab === 'groups' ? 'is-on' : ''} onClick={() => setTab('groups')}>
+          Groups
+        </button>
+      </div>
+
       {loadError && <div className="social-error" role="alert">{loadError}<Button size="sm" variant="ghost" onClick={() => void reload()}>Retry</Button></div>}
 
-      {homeNow && (
-        <button type="button" className="social-house-chat" onClick={() => setHouseChat(true)}>
-          <span className="social-house-chat__icon"><Icon name="chat" size={19} /></span>
-          <span className="grow"><b>House chat</b><small>Talk with everyone currently inside</small></span>
-          <Icon name="chevronRight" size={17} />
-        </button>
-      )}
+      {tab === 'groups' ? (
+        <div className="msgs-groups">
+          {state.travel ? <p className="msgs-empty">You're on the move. Group chats open when you arrive.</p> : (
+            <button type="button" className="msgs-row" onClick={() => setView('group')}>
+              <span className="msgs-face msgs-face--group" aria-hidden>{homeNow ? '🏠' : '📍'}</span>
+              <span className="msgs-row__main">
+                <b>{homeNow ? 'House chat' : `Chat at ${state.location.name}`}</b>
+                <span>{homeNow ? 'Everyone inside the house right now' : 'Everyone at this place right now'}</span>
+              </span>
+              <Icon name="chevronRight" size={18} />
+            </button>
+          )}
+          <p className="msgs-muted">Group chats follow where you are: the house you're in, or the place you're visiting.</p>
+        </div>
+      ) : <>
+        {newsTitle && (
+          <button type="button" className="msgs-news" onClick={() => setSheet('news')}>
+            <span className="msgs-news__icon" aria-hidden>📣</span>
+            <span className="msgs-news__text"><b>Benin Life team</b><span>{newsTitle}</span></span>
+          </button>
+        )}
 
-      <section className="social-section">
-        <div className="social-section__title"><h3>Find a player</h3><span>Search by username</span></div>
-        <form className="social-search" onSubmit={(e) => void search(e)}>
-          <input value={query} minLength={3} maxLength={20} placeholder="Type at least 3 letters" aria-label="Player username"
-            onChange={(e) => { setQuery(e.target.value); setResults(null); }} />
-          <Button type="submit" size="sm" variant="green" disabled={query.trim().length < 3 || searching} loading={searching}>Find</Button>
+        <form className="msgs-input msgs-input--who" onSubmit={(e) => void findPlayer(e)}>
+          <span aria-hidden>✏️</span>
+          <input value={who} maxLength={21} placeholder="Message someone: @username" aria-label="Message someone by username"
+            autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="search"
+            onChange={(e) => { setWho(e.target.value); setResults(null); }} />
+          {who.trim().length > 0 && <Button type="submit" size="sm" variant="green" loading={searching}>Go</Button>}
         </form>
-        {results && <div className="social-list">
-          {results.length === 0 ? <p className="social-muted">No players found. Check the spelling and try again.</p>
-            : results.map((player) => (
-              <div className="social-player" key={player.id}>
-                <span className="social-avatar">{player.avatar && <AvatarPortrait config={player.avatar} size={36} />}</span>
-                <b className="grow">@{player.username}</b>
-                <SocialPlayerButton userId={player.id} onChanged={() => void reload()} />
-              </div>
-            ))}
-        </div>}
-      </section>
-
-      <section className="social-section">
-        <div className="social-section__title"><h3>Friend requests</h3><span>{pendingRequests.length} waiting for you</span></div>
-        {requests === null ? <div className="social-loading"><Spinner size={18} /></div>
-          : pendingRequests.length ? <div className="social-list">
-            {pendingRequests.map((r) => <div className="social-player" key={r.id}>
-              <span className="social-avatar">{r.avatar && <AvatarPortrait config={r.avatar} size={36} />}</span>
-              <b className="grow">@{r.username}</b>
-              <Button size="sm" variant="ghost" disabled={busy === `request:${r.id}`} onClick={() => void requestAction(r, false)}>Decline</Button>
-              <Button size="sm" variant="green" loading={busy === `request:${r.id}`} onClick={() => void requestAction(r, true)}>Accept</Button>
-            </div>)}
-          </div> : <p className="social-muted">No new friend requests.</p>}
-        {sentRequests.length > 0 && <div className="social-list social-list--sent">
-          {sentRequests.map((r) => <div className="social-player" key={r.id}>
-            <span className="social-avatar">{r.avatar && <AvatarPortrait config={r.avatar} size={32} />}</span>
-            <span className="grow">Waiting for <b>@{r.username}</b></span>
-            <Button size="sm" variant="ghost" loading={busy === `request:${r.id}`} onClick={() => void requestAction(r, false)}>Cancel</Button>
-          </div>)}
-        </div>}
-      </section>
-
-      <section className="social-section">
-        <div className="social-section__title"><h3>House visits</h3><span>Guests knock before they enter</span></div>
-        {invites === null ? <div className="social-loading"><Spinner size={18} /></div>
-          : invites.length === 0 ? <p className="social-muted">No pending house invites. Choose friends below to invite people over together.</p>
-            : <div className="social-list">
-              {invites.map((invite) => {
-                const waitingAtDoor = invite.role === 'host' && invite.status === 'knocking';
-                const incoming = invite.role === 'guest' && invite.status === 'invited';
-                const guestKnocking = invite.role === 'guest' && invite.status === 'knocking';
-                return <div className={`social-invite${waitingAtDoor ? ' is-knock' : ''}`} key={invite.id}>
-                  <div className="social-invite__copy">
-                    <b>{waitingAtDoor ? `@${invite.guest_username} is at your door` : incoming ? `@${invite.host_username} invited you home`
-                      : guestKnocking ? `Waiting outside @${invite.host_username}'s home` : `Invite sent to @${invite.guest_username}`}</b>
-                    <span>{invite.home_name} · {waitingAtDoor ? homeNow ? 'You are home; answer the door.' : 'Go home to let your guest in.'
-                      : incoming ? 'Accept to knock and wait for them to answer.' : guestKnocking ? 'The host must let you in.' : 'Waiting for your friend to accept.'}</span>
+        {results && (
+          <div className="msgs-results">
+            {results.length === 0 ? <p className="msgs-muted">No players found. Check the spelling and try again.</p>
+              : results.map((p) => {
+                const friend = (friends ?? []).find((f) => f.id === p.id);
+                return (
+                  <div className="msgs-req" key={p.id}>
+                    <span className="msgs-face msgs-face--sm">{p.avatar && <AvatarPortrait config={p.avatar} size={44} />}</span>
+                    <span className="grow msgs-req__copy"><b>@{p.username}</b>{!friend && <small>Add them as a friend to chat</small>}</span>
+                    {friend
+                      ? <Button size="sm" variant="green" loading={busy === `message:${p.id}`} onClick={() => { setResults(null); setWho(''); void openConversation(friend); }}>Message</Button>
+                      : <SocialPlayerButton userId={p.id} onChanged={() => void reload()} />}
                   </div>
-                  {incoming && <>
-                    <Button size="sm" variant="ghost" loading={busy === `invite:${invite.id}`} onClick={() => void houseAction(invite, 'decline')}>Decline</Button>
-                    <Button size="sm" variant="green" loading={busy === `invite:${invite.id}`} onClick={() => void houseAction(invite, 'accept')}>Accept &amp; knock</Button>
-                  </>}
-                  {waitingAtDoor && <>
-                    {homeNow
-                      ? <Button size="sm" variant="green" loading={busy === `invite:${invite.id}`} onClick={() => void houseAction(invite, 'admit')}>Let in</Button>
-                      : <Button size="sm" variant="green" onClick={onGoHome}>Go home</Button>}
-                    <Button size="sm" variant="ghost" loading={busy === `invite:${invite.id}`} onClick={() => void houseAction(invite, 'turn-away')}>Decline</Button>
-                  </>}
-                  {(guestKnocking || (invite.role === 'host' && invite.status === 'invited')) &&
-                    <Button size="sm" variant="ghost" loading={busy === `invite:${invite.id}`} onClick={() => void houseAction(invite, 'cancel')}>Cancel</Button>}
-                </div>;
+                );
               })}
-            </div>}
-        {pendingKnocks.length > 0 && !homeNow && <p className="social-door-note"><Icon name="home" size={15} /> Your guests are waiting. You must be at your home to let them in.</p>}
-      </section>
+          </div>
+        )}
 
-      <section className="social-section">
-        <div className="social-section__title"><h3>Your friends</h3><span>{friends?.length ?? 0}</span></div>
-        {friends === null ? <div className="social-loading"><Spinner size={18} /></div>
-          : friends.length === 0 ? <EmptyState icon="people" title="Build your circle" body="Find a player above or add someone you meet around Benin." />
-            : <div className="social-list">
-              {friends.map((friend) => {
-                const activeInvite = invites?.find((i) => i.role === 'host' && i.guest_id === friend.id);
-                return <div className="social-friend" key={friend.id}>
-                  <label className="social-friend__pick" title={`Select ${friend.username} for a group house invite`}>
-                    <input type="checkbox" checked={selected.includes(friend.id)} disabled={Boolean(activeInvite)}
-                      onChange={(e) => setSelected((old) => e.target.checked ? [...old, friend.id] : old.filter((id) => id !== friend.id))} />
-                  </label>
-                  <span className="social-avatar">{friend.avatar && <AvatarPortrait config={friend.avatar} size={40} />}</span>
-                  <div className="social-friend__main">
-                    <b>@{friend.username}</b>
-                    <span>{friend.unread > 0 ? `${friend.unread} unread message${friend.unread === 1 ? '' : 's'}`
-                      : friend.last_message ? `${friend.last_sender_id === state.profile.id ? 'You: ' : ''}${friend.last_message}`
-                      : friend.at_home ? 'At home' : 'Around Benin'}</span>
-                  </div>
-                  <Button size="sm" variant="ghost" loading={busy === `message:${friend.id}`} onClick={() => void openConversation(friend)}>
-                    {friend.unread > 0 ? 'Open' : 'Message'}
-                  </Button>
-                  {activeInvite && <span className="social-invite-tag">{activeInvite.status === 'knocking' ? 'At door' : 'Invited'}</span>}
-                </div>;
-              })}
-              <div className="social-group-invite">
-                <Button variant="green" block disabled={!selected.length || busy === 'bulk-invite'} loading={busy === 'bulk-invite'} onClick={() => void inviteSelected()}>
-                  Invite {selected.length || ''} friend{selected.length === 1 ? '' : 's'} to my home
-                </Button>
-                {!homeNow && <small>You can send invites from anywhere. You must be home before guests can enter.</small>}
-              </div>
-            </div>}
-      </section>
+        <div className="msgs-filters" role="group" aria-label="Filter chats">
+          {(['all', 'unread', 'read'] as const).map((f) => (
+            <button key={f} type="button" className={`msgs-pill${filter === f ? ' is-on' : ''}`} aria-pressed={filter === f} onClick={() => setFilter(f)}>
+              {f === 'all' ? 'All' : f === 'unread' ? <>Unread <Badge n={unreadChats} /></> : 'Read'}
+            </button>
+          ))}
+          <button type="button" className="msgs-iconbtn msgs-iconbtn--bare msgs-filters__more" aria-label="More options" onClick={() => setSheet('more')}>
+            <Icon name="more" size={20} stroke={3} />
+          </button>
+        </div>
+
+        <button type="button" className="msgs-requests" onClick={() => setView('requests')}>
+          <span className="msgs-requests__icon" aria-hidden><Icon name="mail" size={26} /></span>
+          <span className="msgs-requests__text">
+            <b>Message requests {requestCount > 0 && <Badge n={requestCount} />}</b>
+            <span>{incoming.length > 0
+              ? `${incoming.length} ${incoming.length === 1 ? 'person' : 'people'} you haven't chatted with want to connect`
+              : doorItems.length > 0 ? 'Someone is at the door or invited you over' : "People you haven't chatted with yet"}</span>
+          </span>
+          <span className="msgs-requests__see">See</span>
+        </button>
+
+        <label className="msgs-input">
+          <input value={chatSearch} placeholder="Search your chats" aria-label="Search your chats" onChange={(e) => setChatSearch(e.target.value)} />
+        </label>
+
+        <div className="msgs-list">
+          {friends === null ? <div className="social-loading"><Spinner size={18} /></div>
+            : friends.length === 0 ? <p className="msgs-empty">No chats yet. Type a @username above to find someone, or add people you meet around Benin.</p>
+              : rows.length === 0 ? <p className="msgs-empty">{filter === 'unread' ? "You're all caught up." : 'No chats match.'}</p>
+                : rows.map((f) => (
+                  <button key={f.id} type="button" className={`msgs-row${f.unread > 0 ? ' is-unread' : ''}`} disabled={busy === `message:${f.id}`}
+                    onClick={() => void openConversation(f)}>
+                    <span className="msgs-face">{f.avatar && <AvatarPortrait config={f.avatar} size={56} />}</span>
+                    <span className="msgs-row__main">
+                      <b>@{f.username}</b>
+                      <span>{preview(f, me.id)}</span>
+                    </span>
+                    <span className="msgs-row__side">
+                      <time>{rowDate(f.last_message_at)}</time>
+                      {f.unread > 0 && <span className="msgs-badge">{f.unread > 99 ? '99+' : f.unread}</span>}
+                    </span>
+                  </button>
+                ))}
+        </div>
+      </>}
+
+      {sheet === 'news' && (
+        <MiniSheet title="Benin Life team" onClose={() => setSheet(null)}>
+          <div className="dm-sheet__body">
+            <p className="msgs-news__title"><span aria-hidden>📣</span> {newsTitle}</p>
+            {newsBody && <p className="dm-sheet__lead msgs-news__body">{newsBody}</p>}
+          </div>
+        </MiniSheet>
+      )}
+      {sheet === 'more' && (
+        <MiniSheet title="Chats" onClose={() => setSheet(null)}>
+          <button type="button" className="msg-menu__item" onClick={() => void markAllRead()}><Icon name="check" size={18} /> Mark all read</button>
+        </MiniSheet>
+      )}
     </div>
   );
 }

@@ -17,7 +17,19 @@ export interface SocialFriend extends SocialPlayer {
   last_message: string | null;
   last_message_at: string | null;
   last_sender_id: string | null;
+  /** M4: the last message is a voice note / was deleted for everyone. */
+  last_voice?: boolean;
+  last_deleted?: boolean;
   unread: number;
+}
+
+/** M4 streak: consecutive WAT days where both players were active together, ending today or yesterday. */
+export interface SocialStreak {
+  streak: number;
+  today_me: boolean;
+  today_them: boolean;
+  last_day: string | null;
+  today: string;
 }
 
 export interface FriendRequest extends SocialPlayer {
@@ -88,6 +100,7 @@ export const socialMessageHistory = (conversation: number, before: number | null
 export const socialMarkRead = (conversation: number) => rpc<{ read: number }>('social_mark_messages_read', { p_conversation_id: conversation });
 export const socialSendMessage = (conversation: number, body: string | null, path: string | null = null, mime: string | null = null, replyTo: number | null = null) =>
   rpc<DirectMessage>('social_send_message', { p_conversation_id: conversation, p_body: body, p_audio_path: path, p_audio_mime: mime, p_reply_to: replyTo });
+export const socialStreak = (user: string) => rpc<SocialStreak>('social_streak', { p_user: user });
 export const socialSendHouseInvite = (user: string) => rpc<{ id: number; status: string; message: string }>('social_send_house_invite', { p_user: user });
 export const socialHouseInvites = () => rpc<HouseInvite[]>('social_house_invites');
 export const socialRespondHouseInvite = (id: number, accept: boolean) =>

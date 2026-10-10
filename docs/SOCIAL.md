@@ -20,6 +20,7 @@ The current Phase 0 patch recognizes admitted visitors as being in the shared ho
 - A House chat shortcut opens a room shared by the people at that private home. It supports text and recorded voice notes. Selecting another player in the house offers the available food and drink items from the player's bag; accepted offers transfer one item to the recipient.
 - Private homes have separate location records. They are omitted from the public map and normal travel destinations; only their owner and a guest admitted by that owner can see the location record. An invitation alone does not grant entry.
 - **M3 (2026-10-10):** DMs share the place-chat bubbles (`src/panels/chatKit.tsx`): swipe right or use Reply to quote a message (`reply_to`), long-press or ⋯ for Delete for me / Delete for everyone (yours, within `chat.delete_everyone_hours`, default 48), scroll up for older messages (paged, at most 14 days back). Tombstones and read receipts arrive live through a Realtime UPDATE subscription on `player_messages`. Unfriend and Block moved into the conversation's ⋯ menu. `social_send_message` gained `p_reply_to`; the old 4-argument signature remains as a wrapper. RPCs and tests: docs/CHAT.md "M3", `supabase/tests/chat_upgrade_test.sql`.
+- **M4 (2026-10-10):** Messages redesign (docs/CHAT.md "M4"): list with Chats / Groups, team news card, Message someone, filters, Message requests (friend requests plus door knocks / house invites live here now), conversation rows; each conversation has a **streak** (`social_streak`, consecutive WAT days where both of you messaged each other or one visited the other's home), Invite / Visit / Send money chips, blue bubbles with ✓ / ✓✓ receipts, quick replies and an emoji picker. The old multi-select "invite several friends" list was replaced by the per-conversation Invite chip. Migration `20261010000500_messages_v2.sql`, tests `supabase/tests/messages_v2_test.sql`.
 - Players can block or unfriend a contact from the conversation (⋯ menu). Existing public chat's block controls also prevent private messaging and visits.
 
 ## Server and client
@@ -27,7 +28,7 @@ The current Phase 0 patch recognizes admitted visitors as being in the shared ho
 - Migrations: `supabase/migrations/20261008000300_friends_messages_visits.sql`, `supabase/migrations/20261008000400_shared_house_and_voice_chat.sql`, `supabase/migrations/20261009000100_social_leave_house.sql`, `supabase/migrations/20261010000300_chat_upgrade.sql` (M3)
 - Database coverage: `supabase/tests/social_test.sql`
 - RPC and private voice storage wrappers: `src/api/social.ts`
-- Friends, requests, house invites, conversations, and recording UI: `src/screens/game/phone/SocialApp.tsx`
+- Friends, requests, house invites and the Messages list: `src/screens/game/phone/SocialApp.tsx`; one conversation (streak, chips, thread, composer, recording): `src/screens/game/phone/DmConversation.tsx`
 - Shared home presence, movement, editable furniture, offers, and home chat: `src/state/houseRoom.ts`, `src/screens/Game.tsx`, `src/art/home3d/engine/HomeScene.tsx`, `src/panels/ChatPanel.tsx`
 - Custom private voice player: `src/ui/VoicePlayer.tsx`
 - Add-friend actions in live People lists: `src/screens/game/SocialPlayerButton.tsx`

@@ -30,6 +30,11 @@ export function timeOf(iso: string) {
   try { return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch { return ''; }
 }
 
+/** 24-hour "19:05" stamp used inside DM bubbles. */
+export function stampOf(iso: string) {
+  try { return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
+}
+
 /** "Today" / "Yesterday" / "Wed 7 Oct" for the day separators. */
 export function dayLabel(iso: string) {
   const d = new Date(iso);
@@ -37,7 +42,7 @@ export function dayLabel(iso: string) {
   const y = new Date(today); y.setDate(today.getDate() - 1);
   if (d.toDateString() === today.toDateString()) return 'Today';
   if (d.toDateString() === y.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 /** Day separator before `iso` when it starts a new day after `prevIso`. */
@@ -86,17 +91,34 @@ const SWIPE_TRIGGER = 56;
 const SWIPE_MAX = 76;
 const LONG_PRESS_MS = 450;
 
+/** M4 DM receipt: ✓ sent, ✓✓ delivered (grey), ✓✓ read (blue). */
+export type Receipt = 'sent' | 'delivered' | 'read';
+
+export function Ticks({ state }: { state: Receipt }) {
+  const label = state === 'read' ? 'Read' : state === 'delivered' ? 'Delivered' : 'Sent';
+  return (
+    <svg className={`msg-ticks is-${state}`} width={state === 'sent' ? 12 : 17} height="11" viewBox={state === 'sent' ? '0 0 12 11' : '0 0 17 11'}
+      fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={label}>
+      <path d="M1.5 6.2 4.6 9.2 10.5 1.8" />
+      {state !== 'sent' && <path d="M8.2 8.4 9 9.2 15 1.8" />}
+    </svg>
+  );
+}
+
 interface RowProps {
   m: ThreadMessage;
   reply: ReplyPreview | null;
   showFace?: boolean;
+  /** M4 DM look: no name line, time (and receipt on mine) inside the bubble at the bottom right. */
+  dm?: boolean;
+  receipt?: Receipt | null;
   onReply: (m: ThreadMessage) => void;
   onMenu: (m: ThreadMessage) => void;
   onQuote: (id: number) => void;
 }
 
 /** One message: bubble with name + time, optional quote, body / voice / tombstone, swipe + long-press. */
-export function MessageRow({ m, reply, showFace, onReply, onMenu, onQuote }: RowProps) {
+export function MessageRow({ m, reply, showFace, dm, receipt, onReply, onMenu, onQuote }: RowProps) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLSpanElement>(null);
   const g = useRef<{ x: number; y: number; dx: number; lock: 'x' | 'y' | null; id: number; timer: number; long: boolean } | null>(null);
@@ -125,7 +147,7 @@ export function MessageRow({ m, reply, showFace, onReply, onMenu, onQuote }: Row
   };
 
   return (
-    <div className={`msg-row${m.mine ? ' is-mine' : ''}${m.deletedAt ? ' is-deleted' : ''}`} data-mid={m.id}>
+    <div className={`msg-row${m.mine ? ' is-mine' : ''}${m.deletedAt ? ' is-deleted' : ''}${dm ? ' is-dm' : ''}`} data-mid={m.id}>
       {showFace && (
         <span className="msg-row__face" aria-hidden>
           {m.avatar ? <AvatarPortrait config={m.avatar} size={30} /> : <span className="msg-row__initial">{m.name.slice(0, 1).toUpperCase()}</span>}
@@ -175,10 +197,12 @@ export function MessageRow({ m, reply, showFace, onReply, onMenu, onQuote }: Row
           onPointerUp={() => end(true)}
           onPointerCancel={() => end(false)}
           onClick={() => { if (suppressClick.current) { suppressClick.current = false; } }}>
-          <span className="msg-bubble__meta">
-            <b>{m.mine ? 'You' : m.name}</b>
-            <time dateTime={m.createdAt}>{timeOf(m.createdAt)}</time>
-          </span>
+          {!dm && (
+            <span className="msg-bubble__meta">
+              <b>{m.mine ? 'You' : m.name}</b>
+              <time dateTime={m.createdAt}>{timeOf(m.createdAt)}</time>
+            </span>
+          )}
           {reply && !m.deletedAt && (
             <button type="button" className={`msg-quote${reply.deleted || reply.unavailable ? ' is-muted' : ''}`}
               onClick={(e) => { e.stopPropagation(); onQuote(reply.id); }}
@@ -191,6 +215,12 @@ export function MessageRow({ m, reply, showFace, onReply, onMenu, onQuote }: Row
           {m.deletedAt ? <span className="msg-bubble__deleted"><Icon name="ban" size={14} /> This message was deleted</span>
             : m.body !== null ? <span className="msg-bubble__body">{m.body}</span>
               : m.audioPath ? <VoiceNote path={m.audioPath} mine={m.mine} /> : null}
+          {dm && (
+            <span className="msg-bubble__stamp">
+              <time dateTime={m.createdAt}>{stampOf(m.createdAt)}</time>
+              {m.mine && receipt && !m.deletedAt && <Ticks state={receipt} />}
+            </span>
+          )}
         </div>
         </div>
         <span className="msg-row__tools">

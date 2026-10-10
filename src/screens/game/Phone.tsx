@@ -214,15 +214,15 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
             </div>
           )}
           {app && (
-            <div className="phone-app">
-              <div className="phone-app__bar">
+            <div className={`phone-app${app.id === 'messages' ? ' phone-app--messages' : ''}`}>
+              {app.id !== 'messages' && <div className="phone-app__bar">
                 <button type="button" className="phone-app__back" onClick={() => setScreen('home')} aria-label="Back to apps">
                   <Icon name="back" size={20} stroke={2.6} />
                 </button>
                 <span className="phone-app__title"><span aria-hidden>{app.emoji}</span> {app.name}</span>
-              </div>
+              </div>}
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
-                : app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp state={state} onGoHome={goHome} /></Suspense>
+                : app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp state={state} onGoHome={goHome} onBack={() => setScreen('home')} onOpenAlerts={() => setScreen('alerts')} alertsUnread={unread} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
                   : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
