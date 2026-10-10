@@ -14,6 +14,7 @@ import type { GameState } from '../../lib/types';
 import { useGame } from '../../state/game';
 import { activityIcon, useTasks, type TaskKind } from '../../state/tasks';
 import { toast } from '../../ui';
+import { afterPurchase } from '../../state/garage';
 
 /** Walks to a task longer than this (real ms) give up and start anyway (e.g. the canvas went away). */
 const WALK_TIMEOUT_MS = 20_000;
@@ -105,7 +106,7 @@ export function useTaskRunner(state: GameState | null, homeLive: boolean, placeL
       if (!c || c.uid !== uid) return;
       useTasks.getState().patchCurrent({ phase: 'starting' });
       try {
-        type Res = { message?: string; busy_until?: string; used?: string[]; rent_penalty?: boolean; robbed?: { amount?: number } | null };
+        type Res = { car?: boolean; item?: string; message?: string; busy_until?: string; used?: string[]; rent_penalty?: boolean; robbed?: { amount?: number } | null };
         const kind = c.kind ?? 'activity';
         const res =
           kind === 'shift'
@@ -116,7 +117,7 @@ export function useTaskRunner(state: GameState | null, homeLive: boolean, placeL
         if (useTasks.getState().current?.uid === uid) useTasks.getState().patchCurrent({ phase: 'running', busyUntil: res?.busy_until });
         // the pill already says it started; toast only when the server has more to say (items used,
         // the landlord knocking, a purchase, a pickpocket), so toasts don't cover the left column for every task
-        if (kind === 'buy') toast(res?.message ?? 'Bought!', 'good');
+        if (kind === 'buy') { toast(res?.message ?? 'Bought!', 'good'); afterPurchase(res); }
         else if (res?.robbed) toast(res?.message ?? 'Omo! Somebody dipped hand for your pocket.', 'bad');
         else if ((res?.used?.length ?? 0) > 0 || res?.rent_penalty) toast(res?.message ?? 'Done!', 'good');
       } catch (e) {

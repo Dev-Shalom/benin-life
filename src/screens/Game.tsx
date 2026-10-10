@@ -46,6 +46,9 @@ import { EventBanner, useEventBadges } from './game/Events';
 import JourneyGuide from './game/JourneyGuide';
 import { DailySync, usePlaceGem } from './game/Daily';
 import { useShownAvatar, useWardrobe } from '../state/wardrobe';
+import { GarageSheet } from './game/GarageSheet';
+import { useGarage } from '../state/garage';
+import { garageHome, type GarageHome } from '../api/garage';
 
 const Boutique = lazy(() => import('./game/Boutique'));
 
@@ -145,10 +148,10 @@ export default function Game() {
   const [selectedHousePlayer, setSelectedHousePlayer] = useState<string | null>(null);
   const [houseOfferBusy, setHouseOfferBusy] = useState<string | null>(null);
   const [leavingHouse, setLeavingHouse] = useState(false);
-  const ownedVehicleId = useMemo(
-    () => state?.inventory?.filter((item) => item.category === 'vehicle').sort((a, b) => b.price - a.price)[0]?.id ?? null,
-    [state?.inventory],
-  );
+  // G1: the home owner's garage + cars (the host's when visiting), reloaded after a car purchase or a build.
+  const garageVersion = useGarage((s) => s.version);
+  const vehicleKey = (state?.inventory ?? []).filter((item) => item.category === 'vehicle').map((item) => item.id).join(',');
+  const [garage, setGarage] = useState<GarageHome | null>(null);
   // the player's own furniture (starter set by origin + home); reloads when the home changes
   const furnKey = p && homeOwnerId ? `${homeOwnerId}:${p.home_location_id}:${p.housing_id ?? ''}` : null;
   const lastFurnKey = useRef<string | null>(null);
@@ -162,6 +165,15 @@ export default function Game() {
   const atHome = Boolean(p && state && !state.travel && p.location_id === state.location.id
     && (p.location_id === p.home_location_id || p.home_visit_host_id));
   const showHome = atHome && !mapOpen;
+  useEffect(() => {
+    if (!atHome || !homeOwnerId) { setGarage(null); return; }
+    let alive = true;
+    garageHome(homeOwnerId).then((g) => { if (alive) setGarage(g); }).catch(() => { if (alive) setGarage(null); });
+    return () => { alive = false; };
+  }, [atHome, homeOwnerId, garageVersion, vehicleKey]);
+  const parking = useMemo(() => garage && (garage.cars.length || garage.garage)
+    ? { cars: garage.cars.map((c) => c.id), garage: garage.garage ? { style: garage.garage.style, capacity: garage.garage.capacity } : null }
+    : null, [garage]);
   const houseRoomId = atHome && state ? state.location.id : null;
   // W1: the 3D Sim wears the outfit for the context (sleep / home / work / party / gym / everyday).
   const atOwnHomeNow = Boolean(p && state && !state.travel && !p.home_visit_host_id && p.location_id === p.home_location_id
@@ -562,7 +574,7 @@ export default function Game() {
             layout={furnished}
             playerId={p.id}
             origin={(houseInfo?.origin ?? p.origin) === 'nepo' ? 'nepo' : 'lapo'}
-            vehicleId={ownedVehicleId}
+            parking={parking}
             walk={walk}
             avatar={shownAvatar ?? p.avatar}
             busy={busyGroup}
@@ -723,6 +735,7 @@ export default function Game() {
       <SimSheet state={state} />
       <LookSheet state={state} />
       <BuySheet />
+      <GarageSheet />
       <ShortcutsSheet />
       <Phone state={state} clock={clock} />
       {overlay === 'boutique' && <Suspense fallback={null}><Boutique state={state} /></Suspense>}

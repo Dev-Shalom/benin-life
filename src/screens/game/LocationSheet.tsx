@@ -21,6 +21,7 @@ import { placeEmoji } from '../../art/city3d';
 import { useConfig } from '../../lib/config';
 import { useGameClock } from '../../lib/clock';
 import { toast } from '../../ui';
+import { useGarage } from '../../state/garage';
 
 export function LocationSheet({ state, status, night }: { state: GameState; status: PlayerStatus; night: boolean }) {
   const selectedId = useUi((s) => s.selectedId);
@@ -103,6 +104,7 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
     <div className="loc-body">
       {!atHome && <GoInside />}
       {!atHome && <OnToday locId={loc.id} title="On today here" />}
+      {atHome && !state.profile.home_visit_host_id && <GarageRow />}
       <PeopleHere loc={loc} meId={state.profile.id} />
       {status.blockedReason && (
         <p className="travel-blocked"><Icon name="info" size={16} /> {status.blockedReason}</p>
@@ -119,6 +121,20 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
         <p className="muted" style={{ padding: 16, textAlign: 'center' }}>{P.panelMissing}</p>
       )}
     </div>
+  );
+}
+
+/** G1: "Build a garage" at home (docs/GARAGE.md). */
+function GarageRow() {
+  const open = useGarage((s) => s.open);
+  const { cfg } = useConfig();
+  if (!cfg<boolean>('garage.enabled', true)) return null;
+  return (
+    <button type="button" className="home-garage-row" onClick={() => open('home')}>
+      <span aria-hidden style={{ fontSize: 22 }}>🚗</span>
+      <span className="grow"><b>Build a garage</b><small>Carport, standard or luxury garage. Your cars park at home.</small></span>
+      <Icon name="chevronRight" size={16} />
+    </button>
   );
 }
 

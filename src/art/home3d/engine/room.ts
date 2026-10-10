@@ -16,6 +16,8 @@ export interface BuiltRoom {
   radius: number;
   /** F1: Nepo-style home (tiles, paint, POP downlights) vs LAPO (cement, plaster, one bulb). */
   rich: boolean;
+  /** G1: what the camera frames [x0, z0, x1, z1]: the lot plus the parking. */
+  frame: [number, number, number, number];
   /** F1: where the ceiling fan / bulb hang (layout space), null = none. */
   fan: [number, number, number] | null;
   bulb: [number, number, number];
@@ -52,14 +54,31 @@ function tiles(b: HomeBuilder, x0: number, z0: number, x1: number, z1: number, a
     }
 }
 
-const LUXURY_CARS: Record<string, LuxCar> = {
-  gwagon_g63: 'g63', gle63_coupe: 'gle63', lambo_urus: 'urus', tesla_cybertruck: 'cybertruck',
-  escalade: 'escalade', benz_c300: 'c300', camry_new: 'camry',
-};
+/** G1: what parks at the home (docs/GARAGE.md): owned vehicles (item ids, most expensive first) and the garage. */
+export interface Parking {
+  cars: string[];
+  garage: { style: 'carport' | 'garage'; capacity: number } | null;
+}
 
-function buildDuplexYard(b: HomeBuilder, vehicleId: string | null | undefined) {
-  // A compact pool deck and one covered parking bay make the GRA plot feel lived in
-  // without adding a second renderer or a large per-frame cost.
+/** Vehicle item id -> procedural model (+ paint). Unknown cars fall back on a silver saloon. */
+const CAR_MODELS: Record<string, [LuxCar, string?]> = {
+  gwagon_g63: ['g63'], gle63_coupe: ['gle63'], lambo_urus: ['urus'], tesla_cybertruck: ['cybertruck'],
+  escalade: ['escalade'], benz_c300: ['c300'], camry_new: ['camry'],
+  tokunbo_car: ['camry', '#b9bdc2'], kia_rio_used: ['camry', '#2f5d8a'], camry_muscle: ['camry', '#d6cfbf'],
+  lexus_rx350: ['gle63', '#3b3e44'], hilux_new: ['g63', '#ecebe6'],
+};
+const CAR_S = 0.72;
+
+function drawVehicle(b: HomeBuilder, id: string, x: number, z: number, ry: number) {
+  if (id === 'bajaj_boxer') { b.setFrame(x, 0, z, ry); motorcycle(b, CAR_S); }
+  else if (id === 'bicycle') { b.setFrame(x, 0, z, ry); bicycle(b, 0.88); }
+  else { const [kind, paint] = CAR_MODELS[id] ?? ['camry', '#c4c7cc']; drawCar(b, kind, x, z, ry, CAR_S, paint); }
+  b.resetFrame();
+}
+
+function buildDuplexYard(b: HomeBuilder) {
+  // A compact pool deck makes the GRA plot feel lived in without adding a second renderer or a large
+  // per-frame cost. The parking bay (east, by the gate) is drawn by buildParking.
   b.box(4.0, 0.035, 2.9, 2.35, -0.005, 9.0, '#c9c2b5', { mat: 'concrete', noOcc: true });
   b.box(3.45, 0.32, 2.36, 2.35, -0.19, 9.0, '#60767a', { mat: 'tiles' });
   b.box(3.25, 0.025, 2.16, 2.35, -0.025, 9.0, '#54a9bd', { layer: 'glass', noOcc: true });
@@ -70,34 +89,6 @@ function buildDuplexYard(b: HomeBuilder, vehicleId: string | null | undefined) {
     b.box(0.66, 0.36, 0.1, x, 0.23, 7.66, '#eee8dc', { mat: 'plain', rx: -0.18 });
     for (const dx of [-0.25, 0.25]) b.box(0.04, 0.23, 0.04, x + dx, -0.05, 7.8, '#6b6256');
   }
-  // Paved single-car bay; the entrance path at z=5.6 stays unobstructed.
-  b.box(4.2, 0.035, 4.9, 12.35, -0.005, 8.05, '#aaa69c', { mat: 'concrete', noOcc: true });
-  b.box(0.055, 0.012, 4.45, 10.48, 0.018, 8.05, '#efe9da', { noOcc: true });
-  b.box(0.055, 0.012, 4.45, 14.22, 0.018, 8.05, '#efe9da', { noOcc: true });
-  // Open pergola roof and warm post lights: it frames the vehicle without hiding it.
-  for (const x of [10.48, 14.22]) for (const z of [5.75, 10.35]) {
-    b.box(0.1, 2.35, 0.1, x, 0, z, '#687078', { mat: 'metal' });
-    b.box(0.2, 0.11, 0.2, x, 2.34, z, '#ffdf9c', { layer: 'glow' });
-  }
-  b.box(3.84, 0.12, 0.12, 12.35, 2.35, 5.75, '#687078', { mat: 'metal' });
-  b.box(3.84, 0.12, 0.12, 12.35, 2.35, 10.35, '#687078', { mat: 'metal' });
-  for (const x of [10.8, 11.6, 12.4, 13.2, 14.0]) b.box(0.06, 0.08, 4.5, x, 2.35, 8.05, '#89919a', { mat: 'metal' });
-
-  if (vehicleId && LUXURY_CARS[vehicleId]) {
-    drawCar(b, LUXURY_CARS[vehicleId], 12.35, 8.05, 0, 0.72);
-    b.resetFrame();
-  } else if (vehicleId === 'bajaj_boxer') {
-    b.setFrame(12.35, 0, 8.05, Math.PI / 2);
-    motorcycle(b, 0.72);
-    b.resetFrame();
-  } else if (vehicleId === 'bicycle') {
-    b.setFrame(12.35, 0, 8.05, Math.PI / 2);
-    bicycle(b, 0.88);
-    b.resetFrame();
-  } else {
-    // An empty bay still reads as a usable parking space.
-    b.box(1.8, 0.012, 0.045, 12.35, 0.02, 8.05, '#d7d1c5', { noOcc: true });
-  }
   // Small tropical planting softens the paved edges of the estate yard.
   for (const [x, z] of [[-0.45, 8.2], [-0.45, 9.7], [4.7, 8.5], [4.7, 9.8]] as const) {
     b.box(0.5, 0.23, 0.5, x, 0.05, z, '#a99a83', { mat: 'concrete' });
@@ -105,7 +96,76 @@ function buildDuplexYard(b: HomeBuilder, vehicleId: string | null | undefined) {
   }
 }
 
-export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: number; outside?: boolean; vehicleId?: string | null; origin?: 'lapo' | 'nepo' } = {}): BuiltRoom {
+const BAY = 2.9; // one parking bay (m)
+const BAY_D = 4.6;
+
+/** G1: where the parking pad / garage goes: the duplex keeps its bay by the gate (inside the lot); smaller homes
+ * park just east of the compound, nose to the street. Returns [x0, zBack, zFront]. */
+function parkingSpot(L: HomeLayout): [number, number, number] {
+  if (L.id === 'duplex') return [10.4, 5.75, 10.35];
+  const zf = L.lot[3] + 0.3;
+  return [L.lot[2] + 0.7, zf - BAY_D, zf];
+}
+
+/** G1: the pad, the carport / garage structure (cut-away like the house: no roof slab over the car) and the
+ * parked vehicles. Returns the footprint [x0, z0, x1, z1] so the camera frames it with the lot. */
+function buildParking(b: HomeBuilder, L: HomeLayout, P: Parking, rich: boolean, density: number): [number, number, number, number] {
+  const g = P.garage;
+  const cap = g ? Math.max(1, g.capacity) : 0;
+  const bays = Math.max(1, cap);
+  const [x0, zb, zf] = parkingSpot(L);
+  const W = bays * BAY;
+  const x1 = x0 + W;
+  const zm = (zb + zf) / 2;
+  const lux = g?.style === 'garage' && cap >= 2;
+  // pad: paved (estate / any garage) or trodden laterite (a compound car parked outside)
+  if (g || rich) b.box(W + 0.3, 0.035, BAY_D + 0.2, (x0 + x1) / 2, -0.005, zm, lux ? '#d8d2c6' : '#aaa69c', { mat: lux ? 'tiles' : 'concrete', noOcc: true, uv: lux ? 2 : undefined });
+  else b.box(W, 0.02, BAY_D - 0.4, (x0 + x1) / 2, -0.03, zm, '#9c7350', { mat: 'ground', noOcc: true });
+  if (g?.style === 'carport') {
+    // steel posts, beams and a red long-span aluminium roof in strips (the camera still sees the car)
+    const H = 2.3;
+    for (const x of [x0 + 0.1, x1 - 0.1]) for (const z of [zb + 0.15, zf - 0.15]) {
+      b.box(0.09, H, 0.09, x, 0, z, '#5d646b', { mat: 'metal' });
+    }
+    for (const z of [zb + 0.15, zf - 0.15]) b.box(W, 0.1, 0.1, (x0 + x1) / 2, H, z, '#5d646b', { mat: 'metal' });
+    for (const x of [x0 + 0.1, x1 - 0.1]) b.box(0.1, 0.1, BAY_D - 0.3, x, H, zm, '#5d646b', { mat: 'metal' });
+    const strips = density < 1 ? 4 : 6;
+    for (let i = 0; i < strips; i++) {
+      const z = zb + 0.35 + (i * (BAY_D - 0.7)) / (strips - 1);
+      b.box(W + 0.3, 0.035, 0.42, (x0 + x1) / 2, H + 0.1 + (zf - z) * 0.05, z, '#9b3a2e', { mat: 'zinc', noOcc: true });
+    }
+  } else if (g) {
+    // blockwork garage: full back + west walls, low east wall, open front with the roller door rolled up
+    const H = 2.4;
+    const wall = lux ? '#f1ece2' : '#cfc7b8';
+    const m = lux ? 'paint' : 'plaster';
+    b.box(W + 0.24, H, 0.2, (x0 + x1) / 2, 0, zb, wall, { mat: m });
+    b.box(0.2, H, BAY_D, x0, 0, zm, shadeHex(wall, 0.94), { mat: m });
+    b.box(0.2, 0.55, BAY_D, x1, 0, zm, shadeHex(wall, 1.04), { mat: m });
+    b.box(0.2, H, 0.24, x1, 0, zf - 0.12, shadeHex(wall, 1.04), { mat: m });
+    // caps, lintel + rolled door drum, a light
+    b.box(W + 0.3, 0.06, 0.26, (x0 + x1) / 2, H, zb, '#8a8378', { mat: 'concrete' });
+    b.box(0.26, 0.06, BAY_D, x0, H, zm, '#8a8378', { mat: 'concrete' });
+    b.box(W, 0.32, 0.22, (x0 + x1) / 2, H - 0.32, zf - 0.11, wall, { mat: m });
+    b.cyl(0.16, 0.16, W - 0.3, (x0 + x1) / 2 + (W - 0.3) / 2, H - 0.5, zf - 0.32, lux ? '#8f949a' : '#6e7377', { rz: Math.PI / 2, seg: 10, mat: 'metal' });
+    if (lux) {
+      b.box(W - 0.6, 0.05, 0.05, (x0 + x1) / 2, H - 0.25, zb + 0.14, '#fff4d6', { layer: 'glow' });
+      b.box(0.12, 0.5, BAY_D - 0.4, x0 + 0.1, 0.02, zm, '#c9a24a', { mat: 'metal' }); // trim
+      if (cap >= 2) b.box(0.24, H, 0.24, (x0 + x1) / 2, 0, zf - 0.12, wall, { mat: m }); // centre pier
+    } else {
+      b.cyl(0.05, 0.035, 0.1, (x0 + x1) / 2, H - 0.35, zb + 0.2, '#fff3c4', { layer: 'glow', seg: 8 });
+    }
+  }
+  // the cars: inside up to the capacity (no garage: one on the pad), then one more on the street if there is one
+  const inside = P.cars.slice(0, Math.max(1, cap));
+  inside.forEach((id, i) => drawVehicle(b, id, x0 + BAY * (i + 0.5), zm + 0.1, 0));
+  const extra = P.cars[inside.length];
+  if (extra && density >= 1) drawVehicle(b, extra, x0 + W / 2, L.lot[3] + 3.95, Math.PI / 2);
+  else if (!P.cars.length) b.box(1.8, 0.012, 0.045, (x0 + x1) / 2, 0.02, zm, '#d7d1c5', { noOcc: true });
+  return [x0 - 0.2, zb - 0.2, x1 + 0.2, zf + 0.1];
+}
+
+export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: number; outside?: boolean; parking?: Parking | null; origin?: 'lapo' | 'nepo' } = {}): BuiltRoom {
   const doll = Boolean(opts.dollhouse);
   // A NEPO player keeps the brighter painted/tiled finish even in a modest self-contain.
   // The house tier still upgrades any player's home independently of origin.
@@ -123,10 +183,16 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
     b.cyl(radius + 0.25, radius + 0.4, 0.22, cx, -0.6, cz, '#b5552b', { seg: 40, mat: 'ground' });
   } else {
     // F1: the world outside (street in front, neighbours behind, ground into the fog)
-    buildOutside(b, { x0: lx0, z0: lz0, x1: lx1, z1: lz1, seed, style: rich ? 'estate' : 'compound', density: opts.density });
+    buildOutside(b, { x0: lx0, z0: lz0, x1: lx1, z1: lz1, seed, style: rich ? 'estate' : 'compound', density: opts.density, eastClear: Boolean(opts.parking) && L.id !== 'duplex' });
   }
   b.box(lx1 - lx0 + 0.5, 0.02, lz1 - lz0 + 0.5, cx, -0.03, cz, L.yard?.colour ?? '#b98a5e', { mat: rich ? 'concrete' : 'ground' });
-  if (L.id === 'duplex' && !doll) buildDuplexYard(b, opts.vehicleId);
+  if (L.id === 'duplex' && !doll) buildDuplexYard(b);
+  let frame: [number, number, number, number] = [lx0, lz0, lx1, lz1];
+  if (!doll && (opts.parking || L.id === 'duplex')) {
+    // the duplex always shows its paved bay; other homes only once there is a car or a garage
+    const [px0, pz0, px1, pz1] = buildParking(b, L, opts.parking ?? { cars: [], garage: null }, rich, opts.density ?? 1);
+    frame = [Math.min(lx0, px0), Math.min(lz0, pz0), Math.max(lx1, px1), Math.max(lz1, pz1)];
+  }
   if (L.yard?.fence) {
     // low block fence round the compound, open where the house is
     b.box(lx1 - lx0 + 0.5, 0.5, 0.12, cx, -0.01, lz0 - 0.25, '#c9c2b6', { mat: 'block', uv: 1.2 });
@@ -270,7 +336,7 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
     buildPools(b, { W: L.w, D: L.d, H: L.wallH, kind: rich ? 'home_nepo' : 'home_lapo', seed, spots: pools, rich });
   }
   const layers = b.finish();
-  return { layers, tris: b.tris, radius, rich, fan, bulb };
+  return { layers, tris: b.tris, radius, rich, fan, bulb, frame };
 }
 
 function mixCol(a: string, c: string): string {

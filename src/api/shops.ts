@@ -1,11 +1,17 @@
 // V1-4: typed wrappers for the shop, Bag, Chowdeck and rent RPCs (server: 20261005000800_shops.sql).
 import { rpc } from '../lib/api';
+import { afterPurchase } from '../state/garage';
 import type { FoodMenu, GameState, InventoryItem, ShopList } from '../lib/types';
 
 type Msg = { message: string };
 
 export const shopList = (location?: string) => rpc<ShopList>('shop_list', location ? { p_location: location } : {});
-export const shopBuy = (item: string, qty = 1) => rpc<Msg & { owned: number; spent: number }>('shop_buy', { p_item: item, p_qty: qty });
+/** G1: a car purchase (res.car) opens the "Build a garage?" sheet. */
+export const shopBuy = async (item: string, qty = 1) => {
+  const r = await rpc<Msg & { owned: number; spent: number; car?: boolean; item?: string }>('shop_buy', { p_item: item, p_qty: qty });
+  afterPurchase(r);
+  return r;
+};
 export const itemUse = (item: string) => rpc<Msg & { left: number }>('item_use', { p_item: item });
 export const itemSell = (item: string, qty = 1) => rpc<Msg & { earned: number; left: number }>('item_sell', { p_item: item, p_qty: qty });
 export const foodMenu = () => rpc<FoodMenu>('food_menu');

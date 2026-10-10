@@ -40,6 +40,8 @@ export interface OutsideOpts {
   street?: boolean;
   /** Clutter density 0..1 (Low tier halves it). */
   density?: number;
+  /** G1: a garage / parked car stands just east of the lot: move the generator out of its way. */
+  eastClear?: boolean;
 }
 
 const HOUSE_COLS = ['#d9c9a8', '#c9d3c0', '#e2cfbd', '#b9c4cc', '#e6d7a6', '#cfb8a3'];
@@ -97,7 +99,7 @@ export function buildOutside(b: HomeBuilder, o: OutsideOpts) {
     b.box(0.26, 0.08, o.z1 - o.z0 + 5, o.x0 - 2.2, fh - 0.05, cz + 1.5, '#9a8f80', { mat: 'concrete' });
   } else if (o.style === 'compound') {
     // A compact standby generator sits by the compound wall, grounded in the same Benin street scene.
-    const gx = o.x1 + 2.1, gz = o.z1 - 0.9;
+    const gx = o.eastClear ? o.x0 + 1.2 : o.x1 + 2.1, gz = o.eastClear ? o.z1 + 0.9 : o.z1 - 0.9;
     b.box(0.9, 0.58, 0.54, gx, -0.04, gz, '#59616b', { mat: 'metal' });
     b.box(0.72, 0.38, 0.025, gx, 0.04, gz + 0.29, '#34383d', { mat: 'metal' });
     for (let i = -2; i <= 2; i++) b.box(0.018, 0.28, 0.03, gx + i * 0.12, 0.09, gz + 0.31, '#9aa3ab', { mat: 'metal' });

@@ -336,6 +336,21 @@ const DEFS: TableDef[] = [
     fields: [],
   },
   {
+    id: 'garages', table: 'garage_types', title: 'Garage types', emoji: '🚗', blurb: 'G1 garages (docs/GARAGE.md): offered after a car purchase and from Home → Build a garage. Prices are real Benin City build costs (2025-2026 estimates, sources in the doc). Capacity = cars parked inside. Allowed housing = home kinds that can build it: hostel, face_me, self_contain, mini_flat, duplex. Style carport or garage (how it is drawn). Upgrading replaces the old garage at the full new price. Switch: Settings → Garage → garage.enabled.',
+    pk: ['id'], insert: true, inline: ['price'],
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => String(r.name),
+    subOf: (r) => `${naira(Number(r.price))} · fits ${r.capacity} · ${(r.allowed_housing as string[] | null)?.join(', ') ?? ''}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'name', label: 'Name', type: 'text' }, { key: 'description', label: 'Description', type: 'long' },
+      { key: 'price', label: 'Price', type: 'money' }, { key: 'capacity', label: 'Capacity (cars)', type: 'int', help: '1 to 4' },
+      { key: 'allowed_housing', label: 'Allowed housing', type: 'list', help: 'Comma-separated: hostel, face_me, self_contain, mini_flat, duplex' },
+      { key: 'style', label: 'Style', type: 'text', help: 'carport or garage' },
+      { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { name: 'New garage', description: '', price: 1000000, capacity: 1, allowed_housing: ['duplex'], style: 'garage', sort: 100, active: false },
+  },
+  {
     id: 'wbrands', table: 'wardrobe_brands', title: 'Wardrobe brands', emoji: '🏷️', blurb: 'W1 Benin Boutique brands (docs/WARDROBE.md). Text names and an accent colour only: no logos. House brands (Benin Basics, Benin Owambe, Ring Road Atelier) are ours. Real brand names are used by the owner\'s choice for sponsorship: get each brand\'s permission before marketing. Switch the brand pills off: Settings → Wardrobe → wardrobe.brands_enabled.',
     pk: ['id'], insert: true,
     toggle: { key: 'active', label: 'On' },

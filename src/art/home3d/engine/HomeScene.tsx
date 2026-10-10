@@ -35,7 +35,7 @@ import { angleTo, DEFAULT_GAIT, makeWalker, place, stepWalker, stopWalk, walkPat
 import { homeLight } from './light';
 import { looksNight, mixHex } from '../../../lib/daylight';
 import { poseCook, poseLie, poseScrub, poseSit, sitRootY } from './poses';
-import { buildRoom } from './room';
+import { buildRoom, type Parking } from './room';
 import { LAYERS } from './build';
 import { feelQuality, useTier } from '../../feel/quality';
 import { rigFor } from '../../feel/rigs';
@@ -63,8 +63,8 @@ export interface HomeSceneProps {
   /** The layout with the player's own furniture (furnishLayout); keep it memoised. Default: LAYOUTS[layoutId]. */
   layout?: HomeLayout;
   avatar: AvatarConfig;
-  /** Highest-value owned vehicle (inventory item id), shown in the GRA duplex carport. */
-  vehicleId?: string | null;
+  /** G1: the home owner's cars (most expensive first) and garage, parked in the yard / garage (docs/GARAGE.md). */
+  parking?: Parking | null;
   /** The home activity running now on the server (key changes with each new run), or null. M2: the Sim
    * normally already stands at the piece (it walked there before the action started); if not, it walks. */
   busy: { group: HomeGroup; key: string; activity?: string; seconds?: number } | null;
@@ -299,7 +299,9 @@ function House(props: HomeSceneProps & {
   // ---- static room (rebuilt only when the layout changes)
   const doll = Boolean(props.dollhouse);
   const q = feelQuality(useTier());
-  const room = useMemo(() => buildRoom(L, { dollhouse: doll, density: q.clutter, vehicleId: props.vehicleId, origin: props.origin }), [L, doll, q.clutter, props.vehicleId, props.origin]);
+  const parkKey = props.parking ? JSON.stringify(props.parking) : '';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const room = useMemo(() => buildRoom(L, { dollhouse: doll, density: q.clutter, parking: props.parking, origin: props.origin }), [L, doll, q.clutter, parkKey, props.origin]);
   const rig = rigFor(room.rich ? 'home_nepo' : 'home_lapo', false);
   const grid = useMemo(() => buildGrid(L), [L]);
   const feel = useMemo(() => makeFeelMats(q), [q.atlas]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -742,8 +744,8 @@ function House(props: HomeSceneProps & {
     cam.position.set(Math.sin(v.yaw) * d, d * CAM_ELEV, Math.cos(v.yaw) * d);
     cam.lookAt(0, 0, 0);
     cam.updateMatrixWorld();
-    // fit the lot (house + yard, walls included) between the HUD insets
-    const [x0, z0, x1, z1] = L.lot;
+    // fit the lot (house + yard, walls included) and the G1 parking between the HUD insets
+    const [x0, z0, x1, z1] = room.frame;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const x of [x0, x1]) for (const z of [z0, z1]) for (const y of [0, L.wallH]) {
       _v.set(x - cx, y, z - cz).applyMatrix4(cam.matrixWorldInverse);
