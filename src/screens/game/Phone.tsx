@@ -43,7 +43,7 @@ const APPS: App[] = [
   { id: 'jobs', name: 'Jobs', emoji: '💼', bg: 'linear-gradient(160deg,#34c77f,#0e874e)', pitch: 'Find work across Benin City: shop hands, PoS agents, nurses, tech interns and more.' },
   { id: 'messages', name: 'Messages', emoji: '💬', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Add friends, message them, and invite them over.' },
   { id: 'stories', name: 'Stories', emoji: '📖', bg: 'linear-gradient(160deg,#f0a45a,#d66830)', pitch: 'Weekly stories shaped by everyday Benin City life.' },
-  { id: 'boutique', name: 'Boutique', emoji: '👗', bg: 'linear-gradient(160deg,#f29bc0,#b8407a)', pitch: '' },
+  { id: 'boutique', name: 'Boutique', emoji: '🛒', bg: 'linear-gradient(160deg,#3a7bd5,#1e3c72)', pitch: '' },
   { id: 'bank', name: 'Bank', emoji: '🏦', bg: 'linear-gradient(160deg,#9b8cff,#5b4fd6)', pitch: '' },
   { id: 'ranks', name: 'Ranks', emoji: '🏆', bg: 'linear-gradient(160deg,#ffd76a,#c9851a)', pitch: '' },
   { id: 'ride', name: 'Ride', emoji: '🛺', bg: 'linear-gradient(160deg,#ffd45c,#f0a316)', pitch: '' },
