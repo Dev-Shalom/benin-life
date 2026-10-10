@@ -1,7 +1,7 @@
 // W1 wardrobe: pure outfit logic (no React, no three.js). docs/WARDROBE.md
 //
 //   outfitFor(base, outfits, slot)  -> the look the Sim shows in that context
-//   outfitContext({...})            -> which slot applies right now (sleep / work / party / gym / home / everyday)
+//   outfitContext({...})            -> which slot applies right now (sleep / work / gym / date / home / party / everyday)
 //   itemPatch / lookPatch / applyPatch mirror bl_wardrobe_item_patch / bl_wardrobe_apply on the server.
 import { normalizeAvatar } from '../art/avatar3d/catalog';
 import type { AvatarConfig } from './types';
@@ -140,6 +140,7 @@ export interface OutfitContextInput {
 }
 
 const SLEEP_ACTS = new Set(['sleep', 'nap']);
+const DATE_ACTS = new Set(['date_dinner', 'movie_date']);
 const GYM_RE = /gym|jog|workout|exercise|training|sports/i;
 
 export function outfitContext(c: OutfitContextInput): OutfitSlot {
@@ -147,6 +148,7 @@ export function outfitContext(c: OutfitContextInput): OutfitSlot {
     if ((c.activityId && SLEEP_ACTS.has(c.activityId)) || (!c.activityId && /\b(sleep|nap)\b/i.test(c.busyLabel ?? ''))) return 'sleep';
     if (/^working\b/i.test(c.busyLabel ?? '')) return 'work';
     if (GYM_RE.test(c.activityId ?? '') || GYM_RE.test(c.busyLabel ?? '')) return 'gym';
+    if ((c.activityId && DATE_ACTS.has(c.activityId)) || /\bdate\b/i.test(c.busyLabel ?? '')) return 'date';
   }
   if (c.atOwnHome) return 'home';
   if (c.placeScene === 'club' || c.partyHere) return 'party';

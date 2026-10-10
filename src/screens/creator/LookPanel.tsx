@@ -135,10 +135,13 @@ export interface LookPanelProps {
   /** Server or validation error for the name, shown under the field. */
   nameError?: string | null;
   nameRef?: React.RefObject<HTMLInputElement | null>;
+  /** In-game Edit look: identity only (hair, face, body). Clothes come from the Benin Boutique. */
+  identityOnly?: boolean;
 }
 
-export default function LookPanel({ avatar, onAvatar, username = '', onUsername, nameError = null, nameRef }: LookPanelProps) {
-  const [group, setGroup] = useState<Group>('outfit');
+export default function LookPanel({ avatar, onAvatar, username = '', onUsername, nameError = null, nameRef, identityOnly = false }: LookPanelProps) {
+  const [group, setGroup] = useState<Group>(identityOnly ? 'hair' : 'outfit');
+  const groups = identityOnly ? GROUPS.filter((g) => g.id === 'hair' || g.id === 'face' || g.id === 'body') : GROUPS;
   const [touched, setTouched] = useState(false);
   const gender = avatar.gender;
   const presetEdited = !!avatar.preset && !matchesPreset(avatar, avatar.preset);
@@ -189,7 +192,7 @@ export default function LookPanel({ avatar, onAvatar, username = '', onUsername,
           options={[{ id: 'female', label: 'Woman' }, { id: 'male', label: 'Man' }]} />
       </div>
 
-      <Tabs value={group} onChange={(g) => setGroup(g as Group)} tabs={GROUPS} />
+      <Tabs value={group} onChange={(g) => setGroup(g as Group)} tabs={groups} />
       <div className="look__body" key={group}>
         {group === 'outfit' && (
           <div className="look-row">
@@ -212,7 +215,7 @@ export default function LookPanel({ avatar, onAvatar, username = '', onUsername,
             </div>
           </div>
         )}
-        {ROWS[group].map((row) => (
+        {ROWS[group].filter((row) => !identityOnly || (row.slot !== 'hat' && row.slot !== 'accent')).map((row) => (
           <OptionRow key={row.label} row={row} avatar={avatar} onPick={onAvatar} />
         ))}
       </div>

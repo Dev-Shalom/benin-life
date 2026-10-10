@@ -78,3 +78,9 @@ Real brand names (Go Crazy, Nike, Adidas) are used by the owner's choice, for fu
 - Card art is an emoji on a colour tint, not a rendered garment thumbnail (rendering ~50 portraits would cost a lot on low-end phones).
 - "Edit look" (Sim sheet) still lets players change clothes freely, as before W1.
 - No wigs: hairstyles stay part of identity (creator / Edit look).
+
+## Follow-ups (2026-10-10)
+- **Edit look is identity-only:** the Sim sheet editor shows Hair (minus headwear), Face and Skin & body. `update_avatar` keeps the current top, bottom, shoes, hat, accent, accessories and preset (migration 20261010000200_look_and_dates), so clothes only come from the boutique.
+- **Date night:** the new activities "Date night dinner" (hotel lounge) and "Movie date" (cinema/mall) switch the Sim to the Date night outfit while they run.
+- **Go Crazy:** still on placeholder prices. Real items and prices are needed from the brand (Instagram/website link from the owner).
+

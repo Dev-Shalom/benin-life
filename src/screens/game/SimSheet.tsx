@@ -505,7 +505,7 @@ export function LookSheet({ state }: { state: GameState }) {
   };
 
   return (
-    <Sheet open={open} onClose={back} size="tall" className="look-sheet" title="Edit look" subtitle="Change anything. Save when you like it."
+    <Sheet open={open} onClose={back} size="tall" className="look-sheet" title="Edit look" subtitle="Hair, face and body. Clothes are in the Benin Boutique."
       footer={
         <div className="row" style={{ gap: 8 }}>
           <Button variant="ghost" onClick={back}>Cancel</Button>
@@ -519,7 +519,7 @@ export function LookSheet({ state }: { state: GameState }) {
           <div className="look-sheet__stage">
             <AvatarStage config={draft} className="look-sheet__canvas" />
           </div>
-          <LookPanel avatar={draft} onAvatar={setDraft} />
+          <LookPanel avatar={draft} onAvatar={setDraft} identityOnly />
         </div>
       )}
     </Sheet>
