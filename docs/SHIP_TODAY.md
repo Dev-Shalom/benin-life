@@ -239,6 +239,27 @@ The goal is a dependable Benin City life sim with a distinct local identity and 
 
 **M3 notes (agent, 2026-10-10, not committed; status marker left for the lead):** place chat, house chat and DMs share `src/panels/chatKit.tsx`. Bubbles: mine right, others left, name + time, day pills. Composer: sticky in the location sheet, above the phone's home bar, and lifted over the on-screen keyboard via `visualViewport` (`--vvh`/`--kb`). Scroll up for older pages (14 days max). Swipe right / hover ↩ / menu → Reply with a quoted preview + ×; sent rows store `reply_to`; tapping a quote jumps to and flashes the original. Long-press / right-click / ⋯ → Reply, Copy, Delete for me (`chat_hidden_messages`), Delete for everyone (author only, `chat.delete_everyone_hours` = 48, tombstone via Realtime UPDATE, voice file removed through Storage), Report/Block. Retention `chat.retention_hours` 48 → 336 (only if still 48); Terms/Privacy say 14 days. New keys `chat.delete_everyone_hours`, `chat.history_days`. Migration `20261010000300_chat_upgrade.sql` (old send signatures kept as wrappers), tests `chat_upgrade_test.sql`. Docs: CHAT.md "M3", SOCIAL.md, ADMIN.md.
 
+## M4. Messages app redesign to match the reference (user, 2026-10-10): [next after G1]
+References: docs/references/lagos-life/messages-list.jpg, messages-chat-1.jpg, messages-chat-2.jpg. Original Benin Life branding only.
+- **List screen:**
+  - Title "Messages" with a bell (alerts badge). Tabs **Chats** (unread badge) / **Groups**; Groups = the house chat and place chats you're part of.
+  - A pinned **"Benin Life team"** announcement card (latest admin news).
+  - **"Message someone: @username"** input.
+  - Filter pills **All / Unread / Read** plus ⋯.
+  - A **Message requests** row (friend requests / people you haven't chatted with), with See.
+  - **Search your chats.**
+  - Rows: portrait, @name, last-message preview, date (red when unread) and an unread count badge.
+- **Conversation:**
+  - Header: back, @name, ⋯.
+  - "🔒 Private · only you and @name can see this".
+  - A **streak card**: "🔥 Start a streak: both of you do something together on the same day, every day", with "What counts?". Count consecutive WAT days where both players messaged or did something together.
+  - Action chips: **Invite** (house invite), **Visit** (knock), **Send money** (bank transfer).
+  - Day separators and a **"New messages"** divider.
+  - Bubbles: theirs light grey on the left; mine **blue** on the right. The time sits inside the bubble, with **double ticks** (✓✓ blue when read).
+  - **Quick-reply chips** above the composer, rotating Naija lines ("How far? 👋", "I dey o 😄", "Wetin dey happen?", "Where you dey?", "Come my house 🏠", "LOL 😂").
+  - Composer: emoji button, input, mic/send.
+  - Keep the M3 features: reply quotes, delete for me/everyone, 14-day history.
+
 ## LATER: private jets and planes (user)
 A place to buy private jets and planes, tied to the airport feature (fly to Lagos, Abuja or PH). Not started.
 
