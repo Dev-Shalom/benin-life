@@ -1,6 +1,6 @@
 import { rpc, GameError } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import type { AvatarConfig } from '../lib/types';
+import type { AvatarConfig, ReplyPreview } from '../lib/types';
 
 export type FriendStatus = 'none' | 'incoming' | 'outgoing' | 'friend' | 'blocked' | 'self';
 
@@ -49,6 +49,11 @@ export interface DirectMessage {
   created_at: string;
   read_at: string | null;
   mine: boolean;
+  /** M3: id of the message this one replies to, and the server's quote preview of it. */
+  reply_to?: number | null;
+  reply?: ReplyPreview | null;
+  /** M3: set when the author deleted it for everyone (body and audio are cleared). */
+  deleted_at?: string | null;
 }
 
 export interface HouseInfo {
@@ -81,8 +86,8 @@ export const socialOpenConversation = (user: string) => rpc<{ id: number; friend
 export const socialMessageHistory = (conversation: number, before: number | null = null, limit = 50) =>
   rpc<DirectMessage[]>('social_message_history', { p_conversation_id: conversation, p_before: before, p_limit: limit });
 export const socialMarkRead = (conversation: number) => rpc<{ read: number }>('social_mark_messages_read', { p_conversation_id: conversation });
-export const socialSendMessage = (conversation: number, body: string | null, path: string | null = null, mime: string | null = null) =>
-  rpc<DirectMessage>('social_send_message', { p_conversation_id: conversation, p_body: body, p_audio_path: path, p_audio_mime: mime });
+export const socialSendMessage = (conversation: number, body: string | null, path: string | null = null, mime: string | null = null, replyTo: number | null = null) =>
+  rpc<DirectMessage>('social_send_message', { p_conversation_id: conversation, p_body: body, p_audio_path: path, p_audio_mime: mime, p_reply_to: replyTo });
 export const socialSendHouseInvite = (user: string) => rpc<{ id: number; status: string; message: string }>('social_send_house_invite', { p_user: user });
 export const socialHouseInvites = () => rpc<HouseInvite[]>('social_house_invites');
 export const socialRespondHouseInvite = (id: number, accept: boolean) =>

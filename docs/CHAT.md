@@ -2,12 +2,13 @@
 
 Each location has its own chat room. There is no global chat: Lagos Life's global chat ran out of bandwidth at about 50k players online. Accepted friends can also use private direct messages and voice notes in the phone's Messages app. Admitted visitors and the owner share the private home's room chat. See [SOCIAL.md](SOCIAL.md) for friend requests, private homes, knocks, live visits, and shared furniture.
 
-- **Server:** `supabase/migrations/20261005001000_chat.sql`
-- **Tests:** `supabase/tests/chat_test.sql`
+- **Server:** `supabase/migrations/20261005001000_chat.sql`; M3 reply / delete / history: `20261010000300_chat_upgrade.sql`
+- **Tests:** `supabase/tests/chat_test.sql`, `supabase/tests/chat_upgrade_test.sql`
 - **Client:**
   - `src/api/chat.ts` (RPC wrappers)
   - `src/state/chat.ts` (live state and subscription)
-  - `src/panels/ChatPanel.tsx` (the Chat tab)
+  - `src/panels/ChatPanel.tsx` (the Chat tab, also house chat)
+  - `src/panels/chatKit.tsx` (M3: bubble, swipe to reply, quote, menu, reply bar, paging and keyboard helpers shared with DMs)
   - the HUD chat chip in `src/screens/Game.tsx`
   - the Friends and Messages app in `src/screens/game/phone/SocialApp.tsx`
   - the blocked list in `src/screens/game/SimSheet.tsx` (People tab)
@@ -44,7 +45,7 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
   - A block is one-way, and a player can block at most `chat.max_blocks` people.
   - Blocked players' messages are filtered on the server (RLS and `chat_recent`), so realtime never delivers them.
   - The Sim sheet's People tab lists blocked players with an Unblock button.
-- **Retention:** each `chat_send` deletes up to 200 messages older than `chat.retention_hours` (48). Reports cascade. No cron job is needed.
+- **Retention:** each `chat_send` deletes up to 200 messages older than `chat.retention_hours` (336 = 14 days since M3; it was 48 and the migration only moves it when it was still 48). Reports, replies' `reply_to` (set null) and delete-for-me rows cascade. No cron job is needed. DMs are not deleted by this; their history view stops at 14 days.
 - **Admin:**
   - `admin_chat_hide(id, hidden default true)` is guarded by `bl_is_admin()` and logged in `admin_audit` (`chat_hide`/`chat_unhide`).
   - The V1-7 admin page can also mute (`chat_muted_until`) and edit `chat_banned_words`.
@@ -59,15 +60,20 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
 | chat.min_account_real_minutes | 0 |
 | chat.recent_limit | 30 |
 | chat.report_hide_count | 3 |
-| chat.retention_hours | 48 |
+| chat.retention_hours | 336 (14 days; was 48) |
 | chat.max_blocks | 200 |
+| chat.delete_everyone_hours | 48 (M3: window for "Delete for everyone", 0–720) |
+| chat.history_days | 14 (M3: how far scrolling up goes, 1–14, hard cap 14) |
 
 ## RPCs
 | RPC | Args | Returns |
 |---|---|---|
-| `chat_send` | p_body | message row + `{message, masked}` (hints: chat_off, muted, traveling, too_new, empty, too_fast, duplicate, banned, no_home) |
-| `chat_send_voice` | p_audio_path, p_audio_mime | location or private-home voice message row; guarded by chat, travel, mute, rate, and room access rules |
+| `chat_send` | p_body, p_reply_to | message row + `{message, masked}` (hints: chat_off, muted, traveling, too_new, empty, too_fast, duplicate, banned, no_home) |
+| `chat_send_voice` | p_audio_path, p_audio_mime, p_reply_to | location or private-home voice message row; guarded by chat, travel, mute, rate, and room access rules |
 | `chat_recent` | p_location, p_limit | last `min(p_limit, chat.recent_limit)` visible rows at your current place, oldest first, with `avatar` and `mine` (hint not_here) |
+| `chat_history` | p_location, p_before, p_limit | M3: rows older than `p_before` (null = newest), oldest first, max 60, at most `chat.history_days` back; drops hidden, blocked and deleted-for-me rows (hint not_here). The client uses this instead of `chat_recent` |
+| `chat_delete_for_me` | p_kind ('place' or 'dm'), p_message_id | `{message, id}`; adds a row to `chat_hidden_messages` |
+| `chat_delete_for_everyone` | p_kind, p_message_id | `{message, id, deleted_at, audio_path}`; author only (hint not_author), within `chat.delete_everyone_hours` (hint too_late) |
 | `chat_report` | p_message_id, p_reason | `{message, reports, hidden}` |
 | `chat_block` / `chat_unblock` | p_user | `{message, id, username?}` |
 | `chat_blocked` | – | `[{id, username, avatar, created_at}]` |
@@ -76,7 +82,8 @@ Each location has its own chat room. There is no global chat: Lagos Life's globa
 The chat guard `bl_chat_me()` locks the caller's profile row with `FOR UPDATE` but **writes nothing**. If it wrote, every message would set off a profile realtime event and a `get_my_state` refresh for the sender. It also skips the needs decay and the rent charge.
 
 ## Tables
-- `chat_messages` (id, location_id, user_id, username snapshot, body, created_at, hidden)
+- `chat_messages` (id, location_id, user_id, username snapshot, body, audio_path, audio_mime, created_at, hidden, reply_to, deleted_at)
+- `chat_hidden_messages` (M3 delete for me: user_id + chat_message_id or player_message_id; clients read only their own rows)
 - `chat_reports` (message_id, reporter_id, reason; unique per pair)
 - `chat_blocks` (blocker_id, blocked_id)
 - `chat_banned_words` (word, active)
@@ -97,7 +104,8 @@ Clients get select only on `chat_messages` and on their own `chat_blocks` rows. 
   - On opening, the client loads `chat_recent` once (30 rows), after the channel is subscribed so nothing falls in the gap.
   - The list in memory is capped at 60.
   - Avatars: `chat_recent` rows include them. A realtime row from someone new triggers one `get_public_profile` call per sender, and the result is cached.
-- **Hidden messages:** UPDATE events aren't subscribed to. A message hidden by reports or an admin disappears for others the next time they open the chat (`chat_recent`).
+- **Hidden messages:** a message hidden by reports or an admin stops passing RLS, so no event reaches others; it disappears the next time they open the chat.
+- **M3 tombstones:** the client also subscribes to UPDATE on the same filter. "Delete for everyone" clears body and audio and sets `deleted_at`; that UPDATE reaches everyone in the room, who see "This message was deleted" at once. Updates are rare (only deletes), so the cost stays small.
 - **Scaling later:** if one place ever gets very busy, RLS checks per subscriber grow with the crowd. Two options:
   - switch to Realtime Broadcast from the database (`realtime.broadcast_changes` on a `chat:<location>` topic, private channels);
   - shard a busy place into rooms.
@@ -117,3 +125,11 @@ Clients get select only on `chat_messages` and on their own `chat_blocks` rows. 
   - the Messages app icon on the phone.
 - **Phone → Messages:** a "Chat at <place>" button ("Chat with your neighbours" at home). This opens the same live, place-based chat; private one-to-one messages are not part of this feature.
 - **NPC conversations (2026-10-08, pushed in `247d1b4`):** tapping a named NPC in the 3D place or People list opens short scripted reply choices. This is separate from location chat and does not persist a relationship. Private player-to-player chat is in Phone → Messages; see `docs/SOCIAL.md`.
+
+## M3 messaging upgrade (2026-10-10)
+Applies to place chat, house chat and DMs (same `chatKit` UI).
+- **Layout:** mine on the right (green), others on the left with their face; every bubble shows the name and time, and a day pill separates days. In the location sheet the composer is sticky at the bottom of the sheet with the safe-area padding. In the phone it sits above the phone's home bar. `useViewportVars()` publishes `--vvh` / `--kb` from `visualViewport` while a chat is open; sheets and the phone shrink and lift with the on-screen keyboard (100dvh does not).
+- **History:** scrolling near the top loads the next 30 (place) / 50 (DM) older rows and keeps the reading position; it stops at `chat.history_days` (14). The list in memory is capped at 400.
+- **Reply:** swipe a bubble right (touch, about 56 px, light haptic), press **r**, use the hover ↩ (desktop), or choose Reply in the menu. The composer shows "Replying to …" with ×, and Escape clears it. The row stores `reply_to`. Server rows carry `reply` = {id, username, snippet, voice, deleted, unavailable}. Live rows are matched against the loaded list. Tapping the quote scrolls to the original and flashes it, loading older pages if needed.
+- **Menu:** long-press (touch), right-click, Enter on a focused bubble, or the hover ⋯ open a sheet over the thread with Reply, Copy text, Delete for me, Delete for everyone (own messages within `chat.delete_everyone_hours`), Report… and Block (place chat, others' messages).
+- **Delete for everyone:** server tombstone (body and audio cleared, `deleted_at`). The client then removes the voice file through Storage, because the orphan-cleanup policy allows it once nothing references the path; direct deletes on `storage.objects` are blocked. You can't reply to a deleted message, and quotes of it read "This message was deleted". Admin hide and mute are unchanged.

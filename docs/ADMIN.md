@@ -42,6 +42,9 @@ Phones get a bottom tab bar and full-screen detail panes; desktops get a sidebar
 | `career.pay_mult` / `career.max_shifts_per_game_day` | Pay multiplier for every job / shifts per game day. Per-level pay is in Content → Careers. |
 | `pos.fee_pct`, `bank.transfer_fee`, `bank.transfer_daily_limit` | PoS charge and phone transfer fee / daily limit. |
 | `chat.enabled` | Location chat on/off for everyone. |
+| `chat.retention_hours` | Place and house chat messages older than this are deleted (M3 default 336 = 14 days; was 48). |
+| `chat.delete_everyone_hours` | (M3) How long after sending a player may still "Delete for everyone" (default 48, 0–720). Applies to place, house and private chat. |
+| `chat.history_days` | (M3) How far back scrolling up loads messages (default 14, 1–14; the server caps it at 14). |
 | `admin.bootstrap_emails` | Emails allowed to press "claim admin". Hidden from players. |
 | `life.welcome_enabled` | Welcome-back screen (house, Sim, money, Continue / New life / Log out) on/off. Category "Welcome back & new life". |
 | `life.welcome_after_minutes` | In the same tab, the welcome-back screen shows again after this many real minutes away (default 30). A new tab always shows it once. |

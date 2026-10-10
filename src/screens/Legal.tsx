@@ -1,5 +1,5 @@
 // Terms of Service (/terms) and Privacy Policy (/privacy) — public pages, plain English, NDPR-aware.
-// Same light look as the auth pages. Keep the contact email and the 48 h chat retention in sync with docs/CHAT.md.
+// Same light look as the auth pages. Keep the contact email and the 14-day chat retention in sync with docs/CHAT.md.
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -111,7 +111,7 @@ export function Privacy() {
         <li><b>Your Sim:</b> username, look, origin, money, home, job, items and the rest of your game progress.</li>
         <li><b>Activity:</b> when you were last online and a log of in-game actions and money movements (for the game and to stop cheating).</li>
         <li><b>Chat messages:</b> what you post in place chats. Messages (and any reports about them) are <b>deleted after
-          48 hours</b>.</li>
+          14 days</b>.</li>
         <li><b>Technical data:</b> our hosting providers keep standard server logs (such as IP address and browser type) for security.</li>
       </ul>
       <p>We don't collect your real name, phone number, location or payment details.</p>
@@ -124,7 +124,7 @@ export function Privacy() {
       </ul>
 
       <h2>3. How long we keep it</h2>
-      <p>Account and game data are kept while your account exists. Chat messages are deleted after 48 hours.
+      <p>Account and game data are kept while your account exists. Chat messages are deleted after 14 days.
         When you delete your account, your account and game data are removed within 30 days, except small records we must keep
         for security or by law.</p>
 

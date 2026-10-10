@@ -58,6 +58,11 @@ const PATHS: Record<string, string> = {
   play: 'M7 4v16l13-8-13-8Z',
   pause: 'M8 5v14 M16 5v14',
   rotate: 'M20 11a8 8 0 1 0 2 5 M20 4v7h-7',
+  reply: 'M10 7 4 12l6 5 M4 12h10a6 6 0 0 1 6 6v1',
+  trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v6 M14 11v6',
+  copy: 'M9 9h11v11H9V9Z M5 15H4V4h11v1',
+  more: 'M5 12h.01 M12 12h.01 M19 12h.01',
+  ban: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M5.6 5.6l12.8 12.8',
 };
 
 export type IconName = keyof typeof PATHS;

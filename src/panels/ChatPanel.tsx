@@ -1,39 +1,32 @@
 // "Chat" tab in the location sheet (V1-6, docs/CHAT.md). Every place has its own room; you only see the
 // room of the place you are at. Messages arrive live (src/state/chat.ts keeps the subscription), the list
 // is capped, and sending goes through chat_send (rate limit, profanity filter, spam checks on the server).
-// Tap someone's message (or its ⋯ button) to report or block them.
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { AvatarPortrait } from '../art/avatar3d';
-import { chatBlock, chatReport, chatSend, chatSendVoice } from '../api/chat';
-import { discardVoiceUpload, socialVoiceUrl, uploadHouseVoiceMessage } from '../api/social';
+// M3 (chatKit): swipe right / hover Reply to quote a message; long-press, right-click or ⋯ opens the menu
+// (Reply, Copy, Delete for me, Delete for everyone on your own recent messages, Report, Block). Scrolling up
+// loads older pages (14 days max).
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { chatBlock, chatDeleteForEveryone, chatDeleteForMe, chatReport, chatSend, chatSendVoice } from '../api/chat';
+import { discardVoiceUpload, uploadHouseVoiceMessage } from '../api/social';
 import { errorMessage, GameError } from '../lib/api';
 import { useConfig } from '../lib/config';
 import type { ChatMessage, PanelProps } from '../lib/types';
 import { useChat } from '../state/chat';
 import { useHype, type Announcement } from '../state/hype';
 import { Button, EmptyState, Icon, Spinner, toast } from '../ui';
-import { VoicePlayer } from '../ui/VoicePlayer';
+import { useEscape } from '../ui/presence';
+import {
+  canDeleteForEveryone, DaySep, flashMessage, MessageMenu, MessageRow, previewOf, ReplyBar, resolveReply, timeOf,
+  useThreadScroll, useViewportVars, type MenuAction, type ThreadMessage,
+} from './chatKit';
 
 const REASONS = ['Insults', 'Spam', 'Scam', 'Sexual', 'Other'];
 
-function timeOf(iso: string) {
-  try {
-    return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  } catch {
-    return '';
-  }
-}
-
-function VoiceNote({ path, mine }: { path: string; mine: boolean }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    socialVoiceUrl(path).then((value) => alive && setUrl(value)).catch(() => alive && setFailed(true));
-    return () => { alive = false; };
-  }, [path]);
-  if (failed) return <span className="social-voice-error">Voice message unavailable</span>;
-  return url ? <VoicePlayer src={url} mine={mine} /> : <span className="social-voice-loading"><Spinner size={14} /> Loading voice…</span>;
+function toThread(m: ChatMessage): ThreadMessage {
+  return {
+    id: m.id, mine: Boolean(m.mine), name: m.username, createdAt: m.created_at, body: m.body,
+    audioPath: m.audio_path ?? null, deletedAt: m.deleted_at ?? null, replyTo: m.reply_to ?? null,
+    reply: m.reply ?? null, avatar: m.avatar,
+  };
 }
 
 function mergeHype(msgs: ChatMessage[], hype: Announcement[]): (ChatMessage | Announcement)[] {
@@ -45,6 +38,8 @@ export default function ChatPanel({ state, location }: PanelProps) {
   const { cfg } = useConfig();
   const rateSec = cfg('chat.rate_seconds', 3);
   const enabled = cfg('chat.enabled', true);
+  const deleteHours = cfg('chat.delete_everyone_hours', 48);
+  useViewportVars();
   const messages = useChat((s) => s.messages);
   // P2: the hype man's announcements in this club show in the chat as hype lines
   const hypeLoc = useHype((s) => s.locationId);
@@ -57,22 +52,40 @@ export default function ChatPanel({ state, location }: PanelProps) {
   const reload = useChat((s) => s.reload);
   const dropUser = useChat((s) => s.dropUser);
   const dropMessage = useChat((s) => s.dropMessage);
+  const patch = useChat((s) => s.patch);
+  const hasOlder = useChat((s) => s.hasOlder);
+  const loadingOlder = useChat((s) => s.loadingOlder);
+  const loadOlder = useChat((s) => s.loadOlder);
+  const [replyTo, setReplyTo] = useState<ThreadMessage | null>(null);
+  useEscape(Boolean(replyTo), () => setReplyTo(null));
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [waitUntil, setWaitUntil] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [note, setNote] = useState<string | null>(null);
-  const [menu, setMenu] = useState<number | null>(null);
+  const [menu, setMenu] = useState<ThreadMessage | null>(null);
   const [reporting, setReporting] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingBusy, setRecordingBusy] = useState(false);
   const discardOnStop = useRef(false);
+  const replyRef = useRef<ThreadMessage | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
-  const stick = useRef(true);
   const here = state.location.id === location.id && !state.travel;
+  const thread = useMemo(() => messages.map(toThread), [messages]);
+  const byId = useMemo(() => new Map(thread.map((m) => [m.id, m])), [thread]);
+  const { onScroll, stickToBottom } = useThreadScroll(listRef, {
+    firstId: messages[0]?.id ?? null, lastId: (messages[messages.length - 1]?.id ?? 0) + hypeRows.length,
+    hasOlder, loadingOlder, loadOlder: () => void loadOlder(),
+  });
+  // In a scrolling sheet, bring the composer into view when the tab opens.
+  useEffect(() => { rootRef.current?.scrollIntoView({ block: 'end' }); }, []);
+
+  useEffect(() => { replyRef.current = replyTo; }, [replyTo]);
 
   useEffect(() => () => {
     discardOnStop.current = true;
@@ -96,12 +109,6 @@ export default function ChatPanel({ state, location }: PanelProps) {
     return () => window.clearInterval(id);
   }, [waitUntil]);
 
-  // Follow new messages when the list is scrolled to the bottom.
-  useLayoutEffect(() => {
-    const el = listRef.current;
-    if (el && stick.current) el.scrollTop = el.scrollHeight;
-  }, [messages.length, hypeRows.length]);
-
   if (!here || chatLoc !== location.id) {
     return <EmptyState icon="chat" title="Chat is for people here" body="Go to this place to chat with the people around." />;
   }
@@ -114,10 +121,11 @@ export default function ChatPanel({ state, location }: PanelProps) {
     setSending(true);
     setNote(null);
     try {
-      const r = await chatSend(trimmed);
+      const r = await chatSend(trimmed, replyTo?.id ?? null);
       add(r);
       setText('');
-      stick.current = true;
+      setReplyTo(null);
+      stickToBottom();
       if (r.masked) setNote('Some words were hidden. Keep it clean.');
       const t = Date.now() + rateSec * 1000;
       setWaitUntil(t);
@@ -177,9 +185,10 @@ export default function ChatPanel({ state, location }: PanelProps) {
           if (!blob.size) throw new Error('No audio was recorded.');
           const uploaded = await uploadHouseVoiceMessage(location.id, state.profile.id, blob, blob.type);
           try {
-            const result = await chatSendVoice(uploaded.path, uploaded.mime);
+            const result = await chatSendVoice(uploaded.path, uploaded.mime, replyRef.current?.id ?? null);
             add(result);
-            stick.current = true;
+            setReplyTo(null);
+            stickToBottom();
             setWaitUntil(Date.now() + rateSec * 1000);
             setNow(Date.now());
           } catch (error) {
@@ -199,7 +208,7 @@ export default function ChatPanel({ state, location }: PanelProps) {
     }
   };
 
-  const report = async (msg: ChatMessage, reason: string) => {
+  const report = async (msg: ThreadMessage, reason: string) => {
     try {
       const r = await chatReport(msg.id, reason);
       toast(r.message, 'good');
@@ -211,102 +220,134 @@ export default function ChatPanel({ state, location }: PanelProps) {
     setReporting(false);
   };
 
-  const block = async (msg: ChatMessage) => {
+  const block = async (msg: ThreadMessage) => {
+    const userId = messages.find((x) => x.id === msg.id)?.user_id;
+    if (!userId) return;
     try {
-      const r = await chatBlock(msg.user_id);
+      const r = await chatBlock(userId);
       toast(r.message, 'good');
-      dropUser(msg.user_id);
+      dropUser(userId);
     } catch (e) {
       toast(errorMessage(e), 'bad');
     }
     setMenu(null);
   };
 
-  const openMenu = (m: ChatMessage) => {
-    if (m.mine) return;
-    setReporting(false);
-    setMenu(menu === m.id ? null : m.id);
+  const deleteForMe = async (msg: ThreadMessage) => {
+    setMenu(null);
+    try {
+      await chatDeleteForMe('place', msg.id);
+      dropMessage(msg.id);
+      if (replyTo?.id === msg.id) setReplyTo(null);
+    } catch (e) { toast(errorMessage(e), 'bad'); }
   };
 
+  const deleteForEveryone = async (msg: ThreadMessage) => {
+    setMenu(null);
+    try {
+      const r = await chatDeleteForEveryone('place', msg.id);
+      patch({ id: msg.id, body: null, audio_path: null, audio_mime: null, deleted_at: r.deleted_at });
+      if (r.audio_path) void discardVoiceUpload(r.audio_path).catch(() => undefined);
+      if (replyTo?.id === msg.id) setReplyTo(null);
+    } catch (e) { toast(errorMessage(e), 'bad'); }
+  };
+
+  const startReply = (m: ThreadMessage) => {
+    setMenu(null);
+    setReplyTo(m);
+    inputRef.current?.focus({ preventScroll: true });
+  };
+
+  const jumpTo = async (id: number) => {
+    for (let i = 0; i < 6; i++) {
+      if (flashMessage(listRef.current, id)) return;
+      const s = useChat.getState();
+      if (!s.hasOlder) break;
+      await s.loadOlder();
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    toast('That message is no longer available.', 'info');
+  };
+
+  const menuActions = (m: ThreadMessage): MenuAction[] => {
+    const acts: MenuAction[] = [];
+    if (!m.deletedAt) acts.push({ label: 'Reply', icon: 'reply', onSelect: () => startReply(m) });
+    if (m.body) acts.push({ label: 'Copy text', icon: 'copy', onSelect: () => { void navigator.clipboard?.writeText(m.body ?? '').then(() => toast('Copied.', 'good')).catch(() => undefined); setMenu(null); } });
+    acts.push({ label: 'Delete for me', icon: 'trash', onSelect: () => void deleteForMe(m) });
+    if (canDeleteForEveryone(m, deleteHours)) acts.push({ label: 'Delete for everyone', icon: 'trash', tone: 'danger', onSelect: () => void deleteForEveryone(m) });
+    if (!m.mine && !m.deletedAt) acts.push({ label: 'Report…', icon: 'warning', onSelect: () => setReporting(true) });
+    if (!m.mine) acts.push({ label: `Block @${m.name}`, icon: 'eyeOff', tone: 'danger', onSelect: () => void block(m) });
+    return acts;
+  };
+  const closeMenu = () => { setMenu(null); setReporting(false); };
+
   return (
-    <div className="chat">
-      <p className="chat__rules"><Icon name="shield" size={14} /> Be respectful — 18+ only. Tap a message to report or block.</p>
-      <div className="chat__list" ref={listRef} role="log" aria-live="polite" aria-label={`Chat at ${location.name}`}
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-        }}>
-        {status === 'loading' && messages.length === 0 && <div className="chat__empty"><Spinner size={20} /></div>}
-        {status === 'error' && messages.length === 0 && (
-          <div className="chat__empty">
-            <p>{error ?? 'Chat is not loading.'}</p>
-            <Button size="sm" variant="ghost" icon="refresh" onClick={() => void reload()}>Try again</Button>
-          </div>
-        )}
-        {status === 'ready' && messages.length === 0 && (
-          <div className="chat__empty"><p>It's quiet here. Say hello to the people around!</p></div>
-        )}
-        {mergeHype(messages, hypeLoc === location.id ? hypeRows : []).map((m) => 'kind' in m ? (
-          <div key={`h${m.id}`} className="chat-hype" role="note">
-            <span className="chat-hype__who">🎤 Hype man · {timeOf(m.created_at)}</span>
-            {m.text}
-          </div>
-        ) : (
-          <div key={m.id} className={`chat-msg${m.mine ? ' is-mine' : ''}${menu === m.id ? ' is-open' : ''}`}>
-            <span className="chat-msg__face" aria-hidden>
-              {m.avatar ? <AvatarPortrait config={m.avatar} size={32} /> : <span className="chat-msg__initial">{m.username.slice(0, 1).toUpperCase()}</span>}
-            </span>
-            <div className="chat-msg__main">
-              <div className="chat-msg__bubble" onClick={() => openMenu(m)} role={m.mine ? undefined : 'button'} tabIndex={m.mine ? undefined : 0}
-                onKeyDown={(event) => { if (!m.mine && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openMenu(m); } }}>
-                <span className="chat-msg__meta">
-                  <b>{m.mine ? 'You' : m.username}</b>
-                  <span>{timeOf(m.created_at)}</span>
-                </span>
-                {m.body !== null && <span className="chat-msg__body">{m.body}</span>}
-                {m.audio_path && <VoiceNote path={m.audio_path} mine={Boolean(m.mine)} />}
-              </div>
-              {menu === m.id && (
-                <div className="chat-msg__menu">
-                  {!reporting ? (
-                    <>
-                      <Button size="sm" variant="ghost" icon="warning" onClick={() => setReporting(true)}>Report</Button>
-                      <Button size="sm" variant="danger" icon="eyeOff" onClick={() => void block(m)}>Block @{m.username}</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setMenu(null)}>Cancel</Button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="chat-msg__why">Why?</span>
-                      {REASONS.map((r) => (
-                        <button key={r} type="button" className="chip" onClick={() => void report(m, r)}>{r}</button>
-                      ))}
-                    </>
-                  )}
-                </div>
-              )}
+    <div className="chat" ref={rootRef}>
+      <p className="chat__rules"><Icon name="shield" size={14} /> Be respectful — 18+ only. Swipe a message to reply, hold it for more.</p>
+      <div className="chat__thread">
+        <div className="chat__list" ref={listRef} role="log" aria-live="polite" aria-label={`Chat at ${location.name}`} onScroll={onScroll}>
+          {loadingOlder && <div className="msg-older"><Spinner size={16} /></div>}
+          {!hasOlder && status === 'ready' && messages.length > 0 && <div className="msg-older msg-older--end">Messages from the last 14 days</div>}
+          {status === 'loading' && messages.length === 0 && <div className="chat__empty"><Spinner size={20} /></div>}
+          {status === 'error' && messages.length === 0 && (
+            <div className="chat__empty">
+              <p>{error ?? 'Chat is not loading.'}</p>
+              <Button size="sm" variant="ghost" icon="refresh" onClick={() => void reload()}>Try again</Button>
             </div>
-            {!m.mine && (
-              <button type="button" className="chat-msg__more" aria-label={`More for ${m.username}'s message`} onClick={() => openMenu(m)}>⋯</button>
-            )}
-          </div>
-        ))}
+          )}
+          {status === 'ready' && messages.length === 0 && (
+            <div className="chat__empty"><p>It's quiet here. Say hello to the people around!</p></div>
+          )}
+          {mergeHype(messages, hypeLoc === location.id ? hypeRows : []).map((m, i, all) => 'kind' in m ? (
+            <div key={`h${m.id}`} className="chat-hype" role="note">
+              <span className="chat-hype__who">🎤 Hype man · {timeOf(m.created_at)}</span>
+              {m.text}
+            </div>
+          ) : (() => {
+            const t = byId.get(m.id)!;
+            return (
+              <Fragment key={m.id}>
+                <DaySep iso={t.createdAt} prevIso={all[i - 1]?.created_at ?? null} />
+                <MessageRow m={t} reply={resolveReply(t, byId)} showFace onReply={startReply}
+                  onMenu={(x) => { setReporting(false); setMenu(x); }} onQuote={(id) => void jumpTo(id)} />
+              </Fragment>
+            );
+          })())}
+        </div>
+        {menu && (
+          <MessageMenu m={menu} actions={menuActions(menu)} onClose={closeMenu}>
+            {reporting ? (
+              <div className="msg-menu__reasons">
+                <span className="chat-msg__why">Why are you reporting this?</span>
+                {REASONS.map((r) => (
+                  <button key={r} type="button" className="chip" onClick={() => void report(menu, r)}>{r}</button>
+                ))}
+              </div>
+            ) : undefined}
+          </MessageMenu>
+        )}
       </div>
       {note && <p className="chat__note" role="status">{note}</p>}
       {recording && <div className="chat__recording" role="status"><span className="social-recording__dot" /> Recording voice message</div>}
-      <form className="chat__form" onSubmit={(e) => { e.preventDefault(); void send(); }}>
-        <textarea className="chat__input" value={text} rows={1} enterKeyHint="send" autoComplete="off"
-          placeholder={enabled ? `Message people at ${location.name}…` : 'Chat is switched off for now'}
-          disabled={!enabled || recording || recordingBusy || sending} aria-label="Message"
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
-          onChange={(e) => { setText(e.target.value); if (note) setNote(null); }} />
-        <Button type={trimmed ? 'submit' : 'button'} size="sm" variant="green" className={`chat__send${recording ? ' is-recording' : ''}`}
-          aria-label={recording ? 'Send voice message' : trimmed ? 'Send message' : 'Record voice message'}
-          title={recording ? 'Send voice message' : trimmed ? 'Send message' : 'Record voice message'}
-          loading={sending || (recordingBusy && !recording)} disabled={!enabled || sending || recordingBusy || (!trimmed && !recording && wait > 0)}
-          onClick={() => { if (recording) stopRecording(); else if (!trimmed) void startRecording(); }}>
-          {wait > 0 && !recording ? `${wait}s` : <Icon name={trimmed || recording ? 'send' : 'mic'} size={18} />}
-        </Button>
-      </form>
+      <div className="chat__composer">
+        {replyTo && <ReplyBar reply={previewOf(replyTo)} onClear={() => setReplyTo(null)} />}
+        <form className="chat__form" onSubmit={(e) => { e.preventDefault(); void send(); }}>
+          <textarea ref={inputRef} className="chat__input" value={text} rows={1} enterKeyHint="send" autoComplete="off"
+            placeholder={enabled ? `Message people at ${location.name}…` : 'Chat is switched off for now'}
+            disabled={!enabled || recording || recordingBusy || sending} aria-label="Message"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
+            }}
+            onChange={(e) => { setText(e.target.value); if (note) setNote(null); }} />
+          <Button type={trimmed ? 'submit' : 'button'} size="sm" variant="green" className={`chat__send${recording ? ' is-recording' : ''}`}
+            aria-label={recording ? 'Send voice message' : trimmed ? 'Send message' : 'Record voice message'}
+            title={recording ? 'Send voice message' : trimmed ? 'Send message' : 'Record voice message'}
+            loading={sending || (recordingBusy && !recording)} disabled={!enabled || sending || recordingBusy || (!trimmed && !recording && wait > 0)}
+            onClick={() => { if (recording) stopRecording(); else if (!trimmed) void startRecording(); }}>
+            {wait > 0 && !recording ? `${wait}s` : <Icon name={trimmed || recording ? 'send' : 'mic'} size={18} />}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

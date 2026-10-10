@@ -673,6 +673,22 @@ export interface ChatMessage {
   created_at: string;
   avatar?: AvatarConfig | null;
   mine?: boolean;
+  /** M3: reply target id + the server's quote preview (absent on realtime rows). */
+  reply_to?: number | null;
+  reply?: ReplyPreview | null;
+  /** M3: deleted for everyone (tombstone). */
+  deleted_at?: string | null;
+  hidden?: boolean;
+}
+
+/** M3: quote preview of the message a chat row / DM replies to. */
+export interface ReplyPreview {
+  id: number;
+  username: string | null;
+  snippet: string | null;
+  voice: boolean;
+  deleted: boolean;
+  unavailable?: boolean;
 }
 
 /** `chat_send()` result. */

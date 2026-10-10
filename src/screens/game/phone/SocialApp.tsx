@@ -1,60 +1,78 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FormEvent, RefObject } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { AvatarPortrait } from '../../../art/avatar3d';
-import { chatBlock } from '../../../api/chat';
+import { chatBlock, chatDeleteForEveryone, chatDeleteForMe } from '../../../api/chat';
 import {
   discardVoiceUpload, socialCancelFriendRequest, socialCancelHouseInvite,
   socialFriendRequests, socialFriends, socialHomeAdmit, socialHouseInvites, socialMessageHistory,
   socialMarkRead, socialOpenConversation, socialRemoveFriend, socialRespondFriend,
   socialRespondHouseInvite, socialSearchPlayers, socialSendHouseInvite, socialSendMessage,
-  socialVoiceUrl, uploadVoiceMessage,
+  uploadVoiceMessage,
   type DirectMessage, type FriendRequest, type HouseInvite, type SocialFriend, type SocialPlayer,
 } from '../../../api/social';
 import { errorMessage } from '../../../lib/api';
+import { useConfig } from '../../../lib/config';
 import { supabase } from '../../../lib/supabase';
 import type { GameState } from '../../../lib/types';
 import { useGame } from '../../../state/game';
 import { Button, EmptyState, Icon, Spinner, toast } from '../../../ui';
+import { useEscape } from '../../../ui/presence';
 import { SocialPlayerButton } from '../SocialPlayerButton';
-import { VoicePlayer } from '../../../ui/VoicePlayer';
 import ChatPanel from '../../../panels/ChatPanel';
+import {
+  canDeleteForEveryone, DaySep, flashMessage, MessageMenu, MessageRow, previewOf, ReplyBar, resolveReply,
+  useThreadScroll, useViewportVars, type MenuAction, type ThreadMessage,
+} from '../../../panels/chatKit';
 
 const PAGE_SIZE = 50;
-
-function timeLabel(iso: string) {
-  try { return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
-  catch { return ''; }
-}
 
 function durationLabel(seconds: number) {
   const mins = Math.floor(seconds / 60);
   return `${mins}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-function VoiceNote({ path, mine }: { path: string; mine: boolean }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [error, setError] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    socialVoiceUrl(path).then((u) => alive && setUrl(u)).catch(() => alive && setError(true));
-    return () => { alive = false; };
-  }, [path]);
-  if (error) return <span className="social-voice-error">Voice note unavailable</span>;
-  if (!url) return <span className="social-voice-loading"><Spinner size={14} /> Loading voice…</span>;
-  return <VoicePlayer src={url} mine={mine} />;
+function toThread(m: DirectMessage): ThreadMessage {
+  return {
+    id: m.id, mine: m.mine, name: m.sender_username, createdAt: m.created_at, body: m.body, audioPath: m.audio_path,
+    deletedAt: m.deleted_at ?? null, replyTo: m.reply_to ?? null, reply: m.reply ?? null,
+  };
 }
 
-function MessageBubble({ message }: { message: DirectMessage }) {
+/** The conversation thread; hooks live here so they run only while a conversation is open. */
+function DmThread({ messages, listRef, hasOlder, loadingOlder, loadOlder, initialLoading, friendName, onReply, onMenu }: {
+  messages: DirectMessage[]; listRef: RefObject<HTMLDivElement | null>; hasOlder: boolean; loadingOlder: boolean;
+  loadOlder: () => Promise<boolean>; initialLoading: boolean; friendName: string;
+  onReply: (m: ThreadMessage) => void; onMenu: (m: ThreadMessage) => void;
+}) {
+  useViewportVars();
+  const thread = useMemo(() => messages.map(toThread), [messages]);
+  const byId = useMemo(() => new Map(thread.map((m) => [m.id, m])), [thread]);
+  const { onScroll } = useThreadScroll(listRef, {
+    firstId: messages[0]?.id ?? null, lastId: messages[messages.length - 1]?.id ?? null,
+    hasOlder, loadingOlder, loadOlder: () => void loadOlder(),
+  });
+  const jumpTo = async (id: number) => {
+    for (let i = 0; i < 6; i++) {
+      if (flashMessage(listRef.current, id)) return;
+      if (!(await loadOlder())) break;
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    toast('That message is no longer available.', 'info');
+  };
   return (
-    <article className={`social-message${message.mine ? ' is-mine' : ''}`}>
-      <div className="social-message__bubble">
-        {!message.mine && <b className="social-message__name">@{message.sender_username}</b>}
-        {message.body !== null ? <p>{message.body}</p>
-          : message.audio_path ? <VoiceNote path={message.audio_path} mine={message.mine} /> : null}
-        <time>{timeLabel(message.created_at)}</time>
-      </div>
-    </article>
+    <div className="social-message-list" ref={listRef} role="log" aria-live="polite" aria-label={`Messages with ${friendName}`} onScroll={onScroll}>
+      {loadingOlder && <div className="msg-older"><Spinner size={16} /></div>}
+      {!hasOlder && !initialLoading && messages.length > 0 && <div className="msg-older msg-older--end">Messages from the last 14 days</div>}
+      {initialLoading && messages.length === 0 ? <div className="social-loading"><Spinner size={20} /></div>
+        : messages.length === 0 ? <EmptyState icon="chat" title="Say hello" body={`Your private conversation with @${friendName} starts here.`} />
+          : thread.map((m, i) => (
+            <Fragment key={m.id}>
+              <DaySep iso={m.createdAt} prevIso={thread[i - 1]?.createdAt ?? null} />
+              <MessageRow m={m} reply={resolveReply(m, byId)} onReply={onReply} onMenu={onMenu} onQuote={(id) => void jumpTo(id)} />
+            </Fragment>
+          ))}
+    </div>
   );
 }
 
@@ -77,6 +95,16 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [replyTo, setReplyTo] = useState<ThreadMessage | null>(null);
+  useEscape(Boolean(replyTo), () => setReplyTo(null));
+  const [menu, setMenu] = useState<ThreadMessage | null>(null);
+  const [headMenu, setHeadMenu] = useState(false);
+  const replyRef = useRef<ThreadMessage | null>(null);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
+  const messagesRef = useRef<DirectMessage[]>([]);
+  const { cfg } = useConfig();
+  const deleteHours = cfg('chat.delete_everyone_hours', 48);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -125,12 +153,29 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
   const appendMessage = useCallback((message: DirectMessage) => {
     setMessages((old) => old.some((m) => m.id === message.id) ? old : [...old, message].sort((a, b) => a.id - b.id));
   }, []);
+  useEffect(() => { replyRef.current = replyTo; }, [replyTo]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  /** Realtime UPDATE (read receipts, delete-for-everyone tombstones). */
+  const patchMessage = useCallback((row: Partial<DirectMessage> & { id: number }) => {
+    setMessages((old) => old.map((m) => {
+      if (m.id === row.id) {
+        return { ...m, body: row.body ?? null, audio_path: row.audio_path ?? null, audio_mime: row.audio_mime ?? null,
+          read_at: row.read_at ?? m.read_at, deleted_at: row.deleted_at ?? m.deleted_at ?? null };
+      }
+      if (row.deleted_at && m.reply_to === row.id && m.reply) return { ...m, reply: { ...m.reply, deleted: true, snippet: null, voice: false } };
+      return m;
+    }));
+  }, []);
 
   useEffect(() => {
     if (!conversation) return;
     let alive = true;
     setMessages([]);
     setHasOlder(false);
+    setReplyTo(null);
+    setMenu(null);
+    setHeadMenu(false);
     setMessagesLoading(true);
     const conversationId = conversation.id;
     const loadLatest = async () => {
@@ -157,6 +202,9 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
         appendMessage({ ...raw, sender_username: mine ? state.profile.username : conversation.friend.username, mine });
         if (!mine) void socialMarkRead(conversationId).then(() => reload()).catch(() => undefined);
       })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'player_messages', filter: `conversation_id=eq.${conversationId}`,
+      }, (payload) => patchMessage(payload.new as DirectMessage))
       .subscribe((status) => { if (status === 'SUBSCRIBED') void loadLatest(); });
     channelRef.current = channel;
     return () => {
@@ -164,7 +212,7 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
       if (channelRef.current === channel) channelRef.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [conversation, state.profile.id, state.profile.username, appendMessage, reload]);
+  }, [conversation, state.profile.id, state.profile.username, appendMessage, patchMessage, reload]);
 
   useEffect(() => () => {
     discardOnStopRef.current = true;
@@ -172,11 +220,6 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     if (channelRef.current) void supabase.removeChannel(channelRef.current);
   }, []);
-
-  useEffect(() => {
-    const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length, conversation]);
 
   const pendingKnocks = useMemo(() => (invites ?? []).filter((i) => i.role === 'host' && i.status === 'knocking'), [invites]);
   const pendingRequests = useMemo(() => (requests ?? []).filter((r) => r.direction === 'incoming'), [requests]);
@@ -255,6 +298,7 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
     setConversation(null);
     setMessages([]);
     setDraft('');
+    setReplyTo(null);
   };
 
   const sendText = async () => {
@@ -262,8 +306,11 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
     if (!conversation || !body || sending || recording || audioBusy) return;
     setSending(true);
     try {
-      appendMessage(await socialSendMessage(conversation.id, body));
+      appendMessage(await socialSendMessage(conversation.id, body, null, null, replyTo?.id ?? null));
       setDraft('');
+      setReplyTo(null);
+      const el = listRef.current;
+      if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
       void reload();
     } catch (e) { toast(errorMessage(e), 'bad'); }
     finally { setSending(false); }
@@ -311,7 +358,8 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
           if (!activeConversation || blob.size === 0) throw new Error('No audio was recorded.');
           const uploaded = await uploadVoiceMessage(activeConversation.id, state.profile.id, blob, blob.type);
           try {
-            appendMessage(await socialSendMessage(activeConversation.id, null, uploaded.path, uploaded.mime));
+            appendMessage(await socialSendMessage(activeConversation.id, null, uploaded.path, uploaded.mime, replyRef.current?.id ?? null));
+            setReplyTo(null);
             void reload();
           } catch (e) {
             await discardVoiceUpload(uploaded.path).catch(() => undefined);
@@ -356,51 +404,103 @@ export default function SocialApp({ state, onGoHome }: SocialAppProps) {
     finally { setBusy(null); }
   };
 
+  /** Load the next older page; resolves true when rows were added. */
   const loadOlder = async () => {
-    if (!conversation || !messages.length || messagesLoading) return;
-    setMessagesLoading(true);
+    const current = messagesRef.current;
+    if (!conversation || !current.length || messagesLoading || loadingOlder || !hasOlder) return false;
+    setLoadingOlder(true);
     try {
-      const older = await socialMessageHistory(conversation.id, messages[0].id, PAGE_SIZE);
-      setMessages((rows) => [...older, ...rows]);
+      const older = (await socialMessageHistory(conversation.id, current[0].id, PAGE_SIZE)) ?? [];
+      setMessages((rows) => [...older.filter((o) => !rows.some((r) => r.id === o.id)), ...rows]);
       setHasOlder(older.length === PAGE_SIZE);
+      await new Promise((r) => requestAnimationFrame(r));
+      return older.length > 0;
+    } catch (e) { toast(errorMessage(e), 'bad'); return false; }
+    finally { setLoadingOlder(false); }
+  };
+
+  const startReply = (m: ThreadMessage) => {
+    setMenu(null);
+    setReplyTo(m);
+    draftRef.current?.focus({ preventScroll: true });
+  };
+
+  const deleteForMe = async (m: ThreadMessage) => {
+    setMenu(null);
+    try {
+      await chatDeleteForMe('dm', m.id);
+      setMessages((rows) => rows.filter((r) => r.id !== m.id));
+      if (replyTo?.id === m.id) setReplyTo(null);
     } catch (e) { toast(errorMessage(e), 'bad'); }
-    finally { setMessagesLoading(false); }
+  };
+
+  const deleteForEveryone = async (m: ThreadMessage) => {
+    setMenu(null);
+    try {
+      const r = await chatDeleteForEveryone('dm', m.id);
+      patchMessage({ id: m.id, body: null, audio_path: null, audio_mime: null, deleted_at: r.deleted_at });
+      if (r.audio_path) void discardVoiceUpload(r.audio_path).catch(() => undefined);
+      if (replyTo?.id === m.id) setReplyTo(null);
+      void reload();
+    } catch (e) { toast(errorMessage(e), 'bad'); }
+  };
+
+  const menuActions = (m: ThreadMessage): MenuAction[] => {
+    const acts: MenuAction[] = [];
+    if (!m.deletedAt) acts.push({ label: 'Reply', icon: 'reply', onSelect: () => startReply(m) });
+    if (m.body) acts.push({ label: 'Copy text', icon: 'copy', onSelect: () => { void navigator.clipboard?.writeText(m.body ?? '').then(() => toast('Copied.', 'good')).catch(() => undefined); setMenu(null); } });
+    acts.push({ label: 'Delete for me', icon: 'trash', onSelect: () => void deleteForMe(m) });
+    if (canDeleteForEveryone(m, deleteHours)) acts.push({ label: 'Delete for everyone', icon: 'trash', tone: 'danger', onSelect: () => void deleteForEveryone(m) });
+    return acts;
   };
 
   if (conversation) {
+    const hasText = Boolean(draft.trim());
     return (
       <div className="phone-app__body social-app social-app--conversation">
         <div className="social-conversation-head">
-          <Button size="sm" variant="ghost" onClick={closeConversation}>‹ People</Button>
+          <button type="button" className="social-conversation-head__back" onClick={closeConversation} aria-label="Back to people">
+            <Icon name="back" size={18} stroke={2.6} />
+          </button>
           <span className="social-conversation-head__who">
             <span className="social-avatar">{conversation.friend.avatar && <AvatarPortrait config={conversation.friend.avatar} size={34} />}</span>
             <b>@{conversation.friend.username}</b>
           </span>
-          <Button size="sm" variant="ghost" loading={busy === 'remove-friend'} onClick={() => void removeFriend()}>Unfriend</Button>
-          <Button size="sm" variant="danger" loading={busy === 'block-friend'} onClick={() => void blockFriend()}>Block</Button>
+          <button type="button" className="social-conversation-head__more" aria-label="Conversation options" aria-expanded={headMenu}
+            onClick={() => setHeadMenu((v) => !v)}><Icon name="more" size={20} stroke={3} /></button>
+          {headMenu && (
+            <div className="social-conversation-head__menu" role="menu">
+              <Button size="sm" variant="ghost" loading={busy === 'remove-friend'} onClick={() => void removeFriend()}>Unfriend</Button>
+              <Button size="sm" variant="danger" loading={busy === 'block-friend'} onClick={() => void blockFriend()}>Block</Button>
+            </div>
+          )}
         </div>
-        {hasOlder && <Button size="sm" variant="ghost" disabled={messagesLoading} onClick={() => void loadOlder()}>Load older messages</Button>}
-        <div className="social-message-list" ref={listRef} role="log" aria-live="polite" aria-label={`Messages with ${conversation.friend.username}`}>
-          {messagesLoading && messages.length === 0 ? <div className="social-loading"><Spinner size={20} /></div>
-            : messages.length === 0 ? <EmptyState icon="chat" title="Say hello" body={`Your private conversation with @${conversation.friend.username} starts here.`} />
-              : messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+        <div className="social-thread">
+          <DmThread messages={messages} listRef={listRef} hasOlder={hasOlder} loadingOlder={loadingOlder} loadOlder={loadOlder}
+            initialLoading={messagesLoading} friendName={conversation.friend.username} onReply={startReply} onMenu={setMenu} />
+          {menu && <MessageMenu m={menu} actions={menuActions(menu)} onClose={() => setMenu(null)} />}
         </div>
         {recording && <div className="social-recording" role="status"><span className="social-recording__dot" /> Recording voice note · {durationLabel(recordSeconds)}</div>}
-        <form className="social-compose" onSubmit={(e) => { e.preventDefault(); void sendText(); }}>
-          <textarea value={draft} rows={1} placeholder="Message" aria-label="Private message"
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendText(); } }}
-            disabled={sending || recording || audioBusy} onChange={(e) => setDraft(e.target.value)} />
-          <div className="social-compose__actions">
-            <Button type={draft.trim() ? 'submit' : 'button'} className={`social-compose__primary${recording ? ' is-recording' : ''}`} variant="green"
-              aria-label={recording ? `Send voice note, ${durationLabel(recordSeconds)}` : draft.trim() ? 'Send message' : 'Record voice message'}
-              title={recording ? `Send voice note · ${durationLabel(recordSeconds)}` : draft.trim() ? 'Send message' : 'Record voice message'}
-              disabled={audioBusy || sending} loading={sending || (audioBusy && !recording)}
-              onClick={() => { if (recording) stopRecording(); else if (!draft.trim()) void startRecording(); }}>
-              <Icon name={recording || draft.trim() ? 'send' : 'mic'} size={18} />
-            </Button>
-          </div>
-        </form>
-        <span className="social-compose__hint">Enter to send · Shift+Enter for a new line</span>
+        <div className="social-composer">
+          {replyTo && <ReplyBar reply={previewOf(replyTo)} onClear={() => setReplyTo(null)} />}
+          <form className="social-compose" onSubmit={(e) => { e.preventDefault(); void sendText(); }}>
+            <textarea ref={draftRef} value={draft} rows={1} placeholder="Message" aria-label="Private message" enterKeyHint="send"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendText(); }
+                }}
+              disabled={sending || recording || audioBusy} onChange={(e) => setDraft(e.target.value)} />
+            <div className="social-compose__actions">
+              <Button type={hasText ? 'submit' : 'button'} className={`social-compose__primary${recording ? ' is-recording' : ''}`} variant="green"
+                aria-label={recording ? `Send voice note, ${durationLabel(recordSeconds)}` : hasText ? 'Send message' : 'Record voice message'}
+                title={recording ? `Send voice note · ${durationLabel(recordSeconds)}` : hasText ? 'Send message' : 'Record voice message'}
+                disabled={audioBusy || sending} loading={sending || (audioBusy && !recording)}
+                onClick={() => { if (recording) stopRecording(); else if (!hasText) void startRecording(); }}>
+                <Icon name={recording || hasText ? 'send' : 'mic'} size={18} />
+              </Button>
+            </div>
+          </form>
+          <span className="social-compose__hint">Enter to send · Shift+Enter for a new line</span>
+        </div>
       </div>
     );
   }
