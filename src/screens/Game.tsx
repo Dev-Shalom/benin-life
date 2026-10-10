@@ -1,7 +1,7 @@
 // Game screen (R4/R5): the 3D home when the player is at home, otherwise the 3D city map
 // (the 2D map only as the lite fallback, see src/art/city3d/CityView.tsx).
 // HUD: top pill, left rail, needs card, dock (Home · Buy · Map · Phone), status banners, toasts.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HomeView, LAYOUTS, activityGroup, applyHomePositions, furnishLayout, homeLayoutFor, itemGroup, type FurnitureItem, type SavedHomePosition } from '../art/home3d';
 import { CityView } from '../art/city3d';
 import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
@@ -45,6 +45,9 @@ import { useEventsLive } from '../state/events';
 import { EventBanner, useEventBadges } from './game/Events';
 import JourneyGuide from './game/JourneyGuide';
 import { DailySync, usePlaceGem } from './game/Daily';
+import { useShownAvatar, useWardrobe } from '../state/wardrobe';
+
+const Boutique = lazy(() => import('./game/Boutique'));
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
@@ -160,7 +163,14 @@ export default function Game() {
     && (p.location_id === p.home_location_id || p.home_visit_host_id));
   const showHome = atHome && !mapOpen;
   const houseRoomId = atHome && state ? state.location.id : null;
-  const { members: houseMembers, publish: publishHouseMove } = useHouseRoom(houseRoomId, p ?? null);
+  // W1: the 3D Sim wears the outfit for the context (sleep / home / work / party / gym / everyday).
+  const atOwnHomeNow = Boolean(p && state && !state.travel && !p.home_visit_host_id && p.location_id === p.home_location_id
+    && state.location.id === p.home_location_id);
+  const { avatar: shownAvatar } = useShownAvatar(state, now, atOwnHomeNow, Boolean(p && state && !state.travel && !atHome));
+  const wardrobeUid = p?.id ?? null;
+  useEffect(() => { if (wardrobeUid) void useWardrobe.getState().load(wardrobeUid); }, [wardrobeUid]);
+  const houseProfile = useMemo(() => (p && shownAvatar && shownAvatar !== p.avatar ? { ...p, avatar: shownAvatar } : p ?? null), [p, shownAvatar]);
+  const { members: houseMembers, publish: publishHouseMove } = useHouseRoom(houseRoomId, houseProfile);
   if (import.meta.env.DEV) (window as unknown as { __house?: unknown }).__house = { room: houseRoomId, members: houseMembers };
   // Top-ups that stayed pending (verify failed at checkout) are re-checked once per session.
   const payRecovered = useRef(false);
@@ -308,7 +318,7 @@ export default function Game() {
   );
 
   // M2: the action queue. Tasks walk first (3D home on screen), then start; see game/TaskRunner.ts.
-  const suspendHomeNow = (overlay === 'sim' && simTab === 'profile') || overlay === 'look';
+  const suspendHomeNow = (overlay === 'sim' && simTab === 'profile') || overlay === 'look' || overlay === 'boutique';
   const homeLive = showHome && Boolean(p) && furnitureOf === homeOwnerId && !suspendHomeNow;
   const placeLive = showPlace && !suspendHomeNow && state ? state.location.id : null;
   const runner = useTaskRunner(state, homeLive, placeLive);
@@ -487,7 +497,7 @@ export default function Game() {
     ? { from: p.location_id || state.location.id, to: state.travel.to, progress: status.travelProgress, mode: state.travel.mode }
     : null;
   // Another live 3D view is open (Sim sheet turntable / look editor): the home canvas steps aside.
-  const suspendHome = (overlay === 'sim' && simTab === 'profile') || overlay === 'look';
+  const suspendHome = (overlay === 'sim' && simTab === 'profile') || overlay === 'look' || overlay === 'boutique';
   const coveredHome = Boolean(selectedId || panel || homePick || (overlay && !suspendHome));
   // The city stays live under the location sheet (it sits over the lower half) but pauses under
   // full-screen panels and overlays.
@@ -513,7 +523,7 @@ export default function Game() {
             placeName={interior.data.location.name}
             scene={interior.data.location.scene}
             zones={interior.data.zones}
-            avatar={p.avatar}
+            avatar={shownAvatar ?? p.avatar}
             hour={hourF}
             closed={!interior.data.open}
             crowd={crowdPlan.shown}
@@ -554,7 +564,7 @@ export default function Game() {
             origin={(houseInfo?.origin ?? p.origin) === 'nepo' ? 'nepo' : 'lapo'}
             vehicleId={ownedVehicleId}
             walk={walk}
-            avatar={p.avatar}
+            avatar={shownAvatar ?? p.avatar}
             busy={busyGroup}
             task={runner.homeTask}
             onTaskArrive={runner.onTaskArrive}
@@ -715,6 +725,7 @@ export default function Game() {
       <BuySheet />
       <ShortcutsSheet />
       <Phone state={state} clock={clock} />
+      {overlay === 'boutique' && <Suspense fallback={null}><Boutique state={state} /></Suspense>}
       <JourneyGuide state={state} onFinish={(explore) => { if (explore) setMapOpen(true); }} />
     </div>
   );

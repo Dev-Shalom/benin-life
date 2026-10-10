@@ -11,7 +11,7 @@ export interface OpenPanel {
 }
 
 /** Full-screen overlays (one at a time). 'settings' is kept as an alias for the Sim sheet's Settings tab. */
-export type Overlay = 'alerts' | 'settings' | 'phone' | 'sim' | 'buy' | 'shortcuts' | 'look' | null;
+export type Overlay = 'alerts' | 'settings' | 'phone' | 'sim' | 'buy' | 'shortcuts' | 'look' | 'boutique' | null;
 
 export type SimTab = 'profile' | 'needs' | 'goals' | 'skills' | 'people' | 'career' | 'settings';
 

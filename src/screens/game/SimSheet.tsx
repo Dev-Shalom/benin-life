@@ -110,7 +110,7 @@ function TraitList({ ids }: { ids: string[] }) {
   );
 }
 
-function ProfileTab({ state, onEditLook }: { state: GameState; onEditLook: () => void }) {
+function ProfileTab({ state, onEditLook, onWardrobe }: { state: GameState; onEditLook: () => void; onWardrobe: () => void }) {
   const p = state.profile;
   const catalog = useCatalog((s) => s.catalog);
   const byId = useGame((s) => s.locationsById);
@@ -130,7 +130,10 @@ function ProfileTab({ state, onEditLook }: { state: GameState; onEditLook: () =>
         <span className="sim-field__val">@{p.username}</span>
         <span className="sim-field__label">Username</span>
       </div>
-      <Button variant="ghost" block icon="user" onClick={onEditLook}>Edit look</Button>
+      <div className="row" style={{ gap: 8 }}>
+        <Button variant="ghost" className="grow" icon="user" onClick={onEditLook}>Edit look</Button>
+        <Button variant="ghost" className="grow" onClick={onWardrobe}><span aria-hidden>👗</span> Wardrobe</Button>
+      </div>
       <section className="sim-card">
         <h4 className="sim-card__title">Home</h4>
         <div className="sim-home">
@@ -460,7 +463,7 @@ export function SimSheet({ state }: { state: GameState }) {
           <Tabs value={tab} onChange={(t) => openSim(t as SimTab)} tabs={TABS} className="sim-tabs" />
         </div>
       }>
-      {tab === 'profile' && <ProfileTab state={state} onEditLook={() => setOverlay('look')} />}
+      {tab === 'profile' && <ProfileTab state={state} onEditLook={() => setOverlay('look')} onWardrobe={() => setOverlay('boutique')} />}
       {tab === 'needs' && <NeedsTab state={state} />}
       {tab === 'goals' && <GoalsTab state={state} />}
       {tab === 'skills' && <SkillsTab />}

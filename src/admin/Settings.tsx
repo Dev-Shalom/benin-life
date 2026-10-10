@@ -28,6 +28,7 @@ const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: strin
   life: { title: 'Welcome back & new life', emoji: '🔁', blurb: 'The welcome-back screen and whether players may give up their Sim and start over.' },
   payments: { title: 'Payments (Paystack)', emoji: '💳', blurb: 'Real-money top-ups. Packs: Content → Top-up packs. Purchases: Payments. Setup: docs/PAYMENTS.md.' },
   daily: { title: 'Daily reward & gem hunt', emoji: '🎁', blurb: 'D1: the 7-day daily reward and the daily gem hunt. Reward amounts: Content → Daily reward. Finds: Content → Gem finds. docs/DAILY.md.' },
+  wardrobe: { title: 'Wardrobe (Benin Boutique)', emoji: '👗', blurb: 'W1: the boutique and outfit slots. Items and brands: Content → Wardrobe items / Wardrobe brands. docs/WARDROBE.md.' },
   leaderboard: { title: 'Leaderboards', emoji: '🏆', blurb: 'The phone Ranks app: Rich list and VIP list tiers.' },
   vip: { title: 'VIP perks', emoji: '👑', blurb: 'Arrival announcements for the top VIPs.' },
   admin: { title: 'Admin', emoji: '🛡️', blurb: 'Admin access. Hidden from players.' },
