@@ -27,6 +27,10 @@ begin
   r := daily_reward_status();
   perform pg_temp.assert((r->>'ready')::boolean and (r->>'day')::int = 1 and jsonb_array_length(r->'steps') = 7, 'ready, day 1: ' || r::text);
   perform pg_temp.assert(r->'steps'->0->>'state' = 'today' and r->'steps'->1->>'state' = 'upcoming', 'step states');
+  perform pg_temp.assert(r->'steps'->6->>'item_id' = 'energy_drink' and r->'steps'->6->>'item_name' is not null, 'day 7 energy drink');
+  perform pg_temp.assert(not has_function_privilege('anon', 'public.daily_reward_claim()', 'execute')
+                         and not has_function_privilege('authenticated', 'public.bl_gem_places(date)', 'execute')
+                         and not has_table_privilege('authenticated', 'public.daily_reward_state', 'insert'), 'grants');
   select cash into c0 from profiles where id = u;
   r := daily_reward_claim();
   select cash into c1 from profiles where id = u;

@@ -35,16 +35,27 @@ create table if not exists public.daily_reward_steps (
   label   text not null default ''
 );
 
+-- Reward-only items (not sold anywhere): the day-4 snack and the day-7 energy drink.
+insert into public.items (id, name, category, price, description, effects, sold_at, sellable, resale_pct, icon, sort) values
+  ('energy_drink', 'Energy drink (daily reward)', 'drink', 800,
+   'A cold can of energy drink from your daily reward. Big energy boost, small crash.',
+   '{"energy": 25, "fun": 2, "bladder": -10}', '{}', false, 0, '⚡', 135)
+on conflict (id) do nothing;
+
 insert into public.daily_reward_steps (day, cash, item_id, label) values
-  (1,  1000, null, 'Small chop money'),
-  (2,  1500, null, 'Transport fare'),
-  (3,  2000, null, 'Lunch at the buka'),
-  (4,  3000, null, 'Data and airtime'),
-  (5,  4000, null, 'Weekend fund'),
-  (6,  5000, null, 'Something nice'),
-  (7, 10000, (select id from public.items where id in ('energy_drink', 'power_horse', 'monster_energy', 'red_bull')
-               or name ilike '%energy drink%' order by id limit 1), 'Big day 7 prize')
+  (1,  1000, null,           'Small chop money'),
+  (2,  1500, null,           'Transport fare'),
+  (3,  2000, null,           'Lunch at the buka'),
+  (4,  2500, 'kada_chicken', 'Kada chicken on us'),
+  (5,  4000, null,           'Weekend fund'),
+  (6,  5000, null,           'Something nice'),
+  (7, 10000, 'energy_drink', 'Big day 7 prize')
 on conflict (day) do nothing;
+-- Backfill for DBs that ran an earlier draft of this file (only rows still on the draft defaults).
+update public.daily_reward_steps set item_id = 'energy_drink'
+ where day = 7 and item_id is null and label = 'Big day 7 prize' and exists (select 1 from public.items where id = 'energy_drink');
+update public.daily_reward_steps set cash = 2500, item_id = 'kada_chicken', label = 'Kada chicken on us'
+ where day = 4 and item_id is null and cash = 3000 and label = 'Data and airtime' and exists (select 1 from public.items where id = 'kada_chicken');
 
 create table if not exists public.daily_reward_state (
   user_id         uuid primary key references public.profiles(id) on delete cascade,
@@ -76,10 +87,9 @@ create policy daily_reward_state_own on public.daily_reward_state for select to 
 drop policy if exists gem_finds_own on public.gem_finds;
 create policy gem_finds_own on public.gem_finds for select to authenticated using (user_id = auth.uid());
 
-revoke insert, update, delete, truncate on public.daily_reward_steps from anon, authenticated;
-revoke insert, update, delete, truncate on public.daily_reward_state from anon, authenticated;
-revoke insert, update, delete, truncate on public.gem_finds          from anon, authenticated;
-revoke all on public.daily_reward_state, public.gem_finds from anon;
+-- Read-only for players (RLS above narrows the rows); all writes go through the security-definer RPCs.
+revoke all on public.daily_reward_steps, public.daily_reward_state, public.gem_finds from anon, authenticated;
+grant select on public.daily_reward_steps, public.daily_reward_state, public.gem_finds to authenticated;
 
 -- ---------------------------------------------------------------------
 -- 3. Daily reward

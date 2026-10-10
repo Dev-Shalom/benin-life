@@ -260,7 +260,7 @@
   .place-gem__stone, .place-gem::after, .daily-step, .daily-confetti i { animation: none; }
 }
 
-/* the two chips share one row on phones (short labels) so the rail stays short */
+/* phones: the two chips stack as one-line chips (title only) so the rail stays short and readable */
 .daily-row {
   display: flex;
   flex-direction: column;
@@ -276,7 +276,6 @@
 }
 @media (max-width: 599px) {
   .daily-row {
-    flex-direction: row;
     gap: 6px;
   }
   .daily-row .wish-chip {
