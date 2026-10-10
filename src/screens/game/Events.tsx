@@ -131,6 +131,17 @@ export function EventBanner({ top, hereId, onOpen }: { top: number; hereId: stri
     const id = window.setInterval(() => setI((n) => n + 1), 6000);
     return () => window.clearInterval(id);
   }, [items.length]);
+  // Phones: the banner shares space with the left rail chips, so each event shows for 8 s, then hides
+  // (dismissed for this occurrence; the map pins and place sheet still list it).
+  const shown = items.length ? items[i % items.length] : null;
+  const shownKey = shown ? occKey(shown) : null;
+  useEffect(() => {
+    if (!shown || !enabled || ticker || hypeBanner) return;
+    if (typeof window === 'undefined' || window.innerWidth >= 600) return;
+    const id = window.setTimeout(() => dismissEvent(shown), 8000);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownKey, enabled, ticker, hypeBanner]);
   if (!enabled || ticker || hypeBanner || !items.length) return null;
   const e = items[i % items.length];
   const place = e.location_name.replace(/\s*\(.*\)\s*$/, '');

@@ -221,7 +221,7 @@ The goal is a dependable Benin City life sim with a distinct local identity and 
 - **Phase 2 — PLANNED:** complete home furniture catalogue, purchase, placement, rotation, removal, persistence and visitor read-only interaction.
 - **Later:** persistent origin/life-path story and goals; wardrobe; career then business; player-centered co-op/community; evidence-backed fictional police/court. Full scope and done criteria: `docs/LAGOS_LIFE_REFERENCE_PLAN.md`.
 
-## D1. Daily reward + daily gem hunt (user-approved, 2026-10-09): [next]
+## D1. Daily reward + daily gem hunt (user-approved, 2026-10-09): [done]
 - **Daily reward:** a 7-day ladder of game naira, a small cosmetic or item, and an energy drink. Claim once per WAT day, on the server.
   - A missed day resets to day 1 gently. No harsh streak punishment.
   - The amounts are editable in admin.
@@ -229,6 +229,7 @@ The goal is a dependable Benin City life sim with a distinct local identity and 
   - Small prize per gem plus a bonus for finding all of them. "X found today" counter.
   - Prizes are editable in admin.
 - **HUD:** both chips sit on the left with the needs, as in the reference ("Daily reward ready · day 1", "Daily gem hunt · 4438 found").
+- **D1 notes (agent, 2026-10-10, not committed; status marker left for the lead):** migration `20261009000300_daily.sql` (applied locally, re-applied twice with psql: idempotent), tests `daily_test.sql` (all suites pass except the two known local-only ones: social_test needs its fixture, hype_test has leftover P3 rows). Tables `daily_reward_steps` (admin Content → Daily reward), `daily_reward_state`, `gem_finds` (admin Content → Gem finds, read-only); RPCs `daily_reward_status/claim`, `gem_hunt_status`, `gem_find(p_location)`; keys `daily.reward_enabled`, `daily.gems_enabled`, `daily.gems_per_day` 3, `daily.gem_prize` ₦3,000, `daily.gem_all_bonus` ₦5,000. WAT day via `bl_now()`/`bl_clock_tz()`, money via `bl_add_money`. Ladder ₦1k/1.5k/2k/2.5k + Kada chicken/4k/5k/10k + a new reward-only Energy drink item. Gems only at active, always-open public places (never hidden places, private homes, start homes, police, hospital). Phone HUD: the two chips stack as one-line chips under the tips. Details: docs/DAILY.md.
 - Next after D1: **W1 wardrobe** (LAGOS_LIFE_REFERENCE_PLAN Phase 4), then **P3** (branch wip/p3-hype-aura-v2).
 
 ## LATER: private jets and planes (user)

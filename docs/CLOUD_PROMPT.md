@@ -5,7 +5,7 @@ This file is kept current after every step. The detailed live status is the STAT
 ## Where the project is (2026-10-09, cloud session: latest)
 - **User-approved next steps, in order:**
   1. **Phase 0 house visits:** verified locally with two accounts (friend, invite, knock, admit; both in the same private home; each sees the other in the room; house chat; Leave house). Fixed: a host leaving home now ends the visit and sends guests home with an alert.
-  2. **Daily reward + daily gem hunt** (retention; docs/SHIP_TODAY.md "D1").
+  2. **Daily reward + daily gem hunt:** DONE and on main (docs/DAILY.md). The payments fix is also on main: pending re-check and daily secret sync.
   3. **Wardrobe** (outfits per situation; docs/LAGOS_LIFE_REFERENCE_PLAN.md Phase 4).
   4. **P3 full-screen hype** (unfinished, on branch `wip/p3-hype-aura-v2`, migration renumbered 20261007000300).
 - **Polish of the ChatGPT/Codex social release (migration 20261009000200_social_polish):**

@@ -67,7 +67,7 @@ export function DailyChips({ onPick }: { onPick?: () => void }) {
           aria-label={`Daily gem hunt: ${gems.found} of ${gems.total} found, next prize ${naira(gems.next_prize)}. Show hints`}>
           <span className="wish-chip__icon" aria-hidden>💎</span>
           <span className="wish-chip__text">
-            <span className="wish-chip__title"><span className="daily-long">Daily gem hunt · {gems.found}/{gems.total}</span><span className="daily-short">Gem hunt · {gems.found}/{gems.total}{gems.next_prize > 0 ? ` · next ${nairaShort(gems.next_prize)}` : ' · all found'}</span></span>
+            <span className="wish-chip__title"><span className="daily-long">Daily gem hunt · {gems.found}/{gems.total}</span><span className="daily-short">Gems {gems.found}/{gems.total}{gems.next_prize > 0 ? ` · next ${nairaShort(gems.next_prize)}` : ' · all found'}</span></span>
             <span className="wish-chip__sub">{gems.found_all_players.toLocaleString('en-NG')} found · next prize {nairaShort(gems.next_prize)}</span>
           </span>
         </button>
