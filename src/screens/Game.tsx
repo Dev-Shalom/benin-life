@@ -34,6 +34,8 @@ import { useTaskRunner } from './game/TaskRunner';
 import { useTasks } from '../state/tasks';
 import { PlaceCard, usePlaceInterior, usePlacePeople, usePlayersAt } from './game/PlaceCard';
 import { placeClosedEject } from '../api/places';
+import { recoverPendingPayments } from '../lib/payments';
+import { naira } from '../lib/format';
 import { socialHouseInfo, socialHomeOffer, socialHomePlaceFurniture, socialLeaveHouse, type HouseFurniturePlacement, type HouseInfo } from '../api/social';
 import { supabase } from '../lib/supabase';
 import { useHouseRoom } from '../state/houseRoom';
@@ -160,6 +162,19 @@ export default function Game() {
   const houseRoomId = atHome && state ? state.location.id : null;
   const { members: houseMembers, publish: publishHouseMove } = useHouseRoom(houseRoomId, p ?? null);
   if (import.meta.env.DEV) (window as unknown as { __house?: unknown }).__house = { room: houseRoomId, members: houseMembers };
+  // Top-ups that stayed pending (verify failed at checkout) are re-checked once per session.
+  const payRecovered = useRef(false);
+  const payUid = p?.id ?? null;
+  useEffect(() => {
+    if (!payUid || payRecovered.current) return;
+    payRecovered.current = true;
+    void recoverPendingPayments().then((n) => {
+      if (n > 0) {
+        toast(`Your top-up came through: ${naira(n)} is now in your bank.`, 'good');
+        void useGame.getState().refresh();
+      }
+    }).catch(() => {});
+  }, [payUid]);
 
   useEffect(() => {
     let alive = true;

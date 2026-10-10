@@ -9,6 +9,9 @@ on:
     branches: [main]
     paths: ['supabase/functions/**', 'supabase/config.toml', '.github/workflows/supabase-functions.yml']
   workflow_dispatch:
+  # Re-sync PAYSTACK_SECRET_KEY daily, so a key changed in GitHub (test -> live) reaches Supabase without a code push.
+  schedule:
+    - cron: '23 4 * * *'
 
 concurrency:
   group: supabase-functions

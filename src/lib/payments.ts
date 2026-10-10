@@ -96,6 +96,28 @@ async function verifyOnServer(reference: string): Promise<{ ok: boolean; credite
   return { ok: false, error: 'unconfirmed' };
 }
 
+/**
+ * Re-check this player's own pending top-ups (last 14 days) with the server once. A payment can stay
+ * pending when the verify call failed at checkout time (network drop, closed tab, or a Paystack key
+ * mismatch on the server). The server checks Paystack again and credits ONCE. Returns naira credited.
+ */
+export async function recoverPendingPayments(): Promise<number> {
+  const since = new Date(Date.now() - 14 * 86_400_000).toISOString();
+  const { data, error } = await supabase.from('payments')
+    .select('reference, game_naira')
+    .eq('status', 'pending').gte('created_at', since)
+    .order('created_at', { ascending: false }).limit(10);
+  if (error || !data?.length) return 0;
+  let credited = 0;
+  for (const p of data as { reference: string; game_naira: number }[]) {
+    try {
+      const { data: r } = await supabase.functions.invoke('paystack-verify', { body: { reference: p.reference } });
+      if (r?.ok && r.credited) credited += Number(p.game_naira) || 0;
+    } catch { /* still pending: try again next session */ }
+  }
+  return credited;
+}
+
 function paystackProvider(): PaymentProvider {
   const key = String(import.meta.env.PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '').trim();
   return {
