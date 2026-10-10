@@ -97,6 +97,8 @@ export interface PlaceSceneProps {
   insetBottom?: number;
   onReady?: (api: PlaceApi) => void;
   onLost?: () => void;
+  /** D1: today's daily gem hides here: a glowing tap target over one zone (picked from the place id). */
+  gem?: { onFind: () => void } | null;
   /** L3: how many of the nearest people get the full avatar rig (players first, then headliners, then nearest). */
   rigCount?: number;
   /** L3: average seconds between background people saying a line (0 = never). */
@@ -307,6 +309,7 @@ function Interior(props: PlaceSceneProps & {
   onHint: (text: string, x: number, y: number) => void;
   pillRefs: React.MutableRefObject<Map<string, HTMLSpanElement>>;
   bubbleRefs: React.MutableRefObject<Map<string, HTMLSpanElement>>;
+  gemRef: React.MutableRefObject<HTMLButtonElement | null>;
   onTapPerson: (id: string) => void;
 }) {
   const { zones, scene: sceneType, hour, view, actorRef, insetTop = 0, insetBottom = 0 } = props;
@@ -316,6 +319,24 @@ function Interior(props: PlaceSceneProps & {
   const cz = room.D / 2;
   const grid = useMemo(() => buildPlaceGrid(room, zones), [room, zones]);
   const zoneByKey = useMemo(() => new Map(zones.map((z) => [z.key, z])), [zones]);
+  // D1: the zone the daily gem sits on (stable per place)
+  const gemZone = useMemo(() => {
+    // one of the two zones nearest the middle of the room (stays in view), picked by the place id
+    if (!zones.length) return null;
+    const mx = zones.reduce((t, z) => t + z.x, 0) / zones.length;
+    const mz = zones.reduce((t, z) => t + z.z, 0) / zones.length;
+    const near = [...zones].sort((a, b) => Math.hypot(a.x - mx, a.z - mz) - Math.hypot(b.x - mx, b.z - mz)).slice(0, 2);
+    let h = 7;
+    for (const ch of props.placeId) h = (h * 31 + ch.charCodeAt(0)) | 0;
+    return near[Math.abs(h) % near.length];
+  }, [zones, props.placeId]);
+  const hasGem = Boolean(props.gem);
+  useEffect(() => {
+    if (!hasGem) return;
+    invalidate();
+    const t = window.setTimeout(() => invalidate(), 120);
+    return () => window.clearTimeout(t);
+  }, [hasGem, invalidate]);
 
   // ---- static room + props: 4 merged meshes
   const q = feelQuality(useTier());
@@ -1151,6 +1172,18 @@ function Interior(props: PlaceSceneProps & {
         el.style.transform = `translate3d(${sx}px, ${sy}px, 0) translate(-50%, -100%)`;
       }
     }
+    // D1: the daily gem floats over its zone's prop
+    const gemEl = props.gemRef.current;
+    if (gemEl) {
+      if (gemZone) _v.set(gemZone.x - cx, propMeta(gemZone.prop).h + 0.45, gemZone.z - cz).project(camera);
+      else _v.set(0, 0.9, 0).project(camera);
+      const gx = ((_v.x + 1) / 2) * size.width;
+      // keep it clear of the top HUD / banner and the place card
+      const gy = Math.max(insetTop + 96, Math.min(size.height - insetBottom - 30, ((1 - _v.y) / 2) * size.height));
+      gemEl.style.transform = `translate3d(${gx}px, ${gy}px, 0) translate(-50%, -50%)`;
+      gemEl.style.opacity = '1';
+    }
+
     // L3 speech bubbles: over a person's head (or the Sim's, 'me')
     const bubbles = props.bubbleRefs.current;
     if (bubbles.size) {
@@ -1334,6 +1367,8 @@ export default function PlaceScene(props: PlaceSceneProps) {
   const pillRefs = useRef(new Map<string, HTMLSpanElement>());
   // ---- L3 speech bubbles (NPC lines on tap / now and then, location chat over the speaker)
   const bubbleRefs = useRef(new Map<string, HTMLSpanElement>());
+  const gemRef = useRef<HTMLButtonElement | null>(null);
+  const [gemTaken, setGemTaken] = useState(false);
   const [bubbles, setBubbles] = useState<{ who: string; text: string; kind: 'npc' | 'player' | 'me' | 'hype'; n: number }[]>([]);
   const bubbleTimers = useRef(new Map<string, number>());
   const bubbleN = useRef(0);
@@ -1532,7 +1567,7 @@ export default function PlaceScene(props: PlaceSceneProps) {
           });
         }}
       >
-        <Interior {...props} view={view} actorRef={actor} gesture={gesture} onHint={onHint} pillRefs={pillRefs} bubbleRefs={bubbleRefs} onTapPerson={onTapPerson} />
+        <Interior {...props} view={view} actorRef={actor} gesture={gesture} onHint={onHint} pillRefs={pillRefs} bubbleRefs={bubbleRefs} gemRef={gemRef} onTapPerson={onTapPerson} />
       </Canvas>
       <div className={`feel-overlay${looksNight(props.hour) || kitDark ? ' is-dark' : ''}${gfx.tier === 'low' ? ' is-low' : ''}`} aria-hidden />
       <div className="place3d__pills" aria-hidden>
@@ -1550,6 +1585,13 @@ export default function PlaceScene(props: PlaceSceneProps) {
           </span>
         ))}
       </div>
+      {props.gem && (
+        <button type="button" ref={gemRef} className={`place-gem${gemTaken ? ' is-found' : ''}`} aria-label="Pick up today's hidden gem"
+          title="Today's gem! Tap to pick it up"
+          onClick={() => { if (gemTaken) return; setGemTaken(true); props.gem?.onFind(); window.setTimeout(() => setGemTaken(false), 1500); }}>
+          <span className="place-gem__stone" aria-hidden>💎</span>
+        </button>
+      )}
       {(props.moreCount ?? 0) > 0 && (
         <span className="place3d__more" style={{ top: (props.insetTop ?? 0) + 8 }}>+{props.moreCount} more here</span>
       )}

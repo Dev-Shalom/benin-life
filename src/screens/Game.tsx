@@ -42,6 +42,7 @@ import { useHypeLive } from '../state/hype';
 import { useEventsLive } from '../state/events';
 import { EventBanner, useEventBadges } from './game/Events';
 import JourneyGuide from './game/JourneyGuide';
+import { DailySync, usePlaceGem } from './game/Daily';
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
@@ -344,6 +345,8 @@ export default function Game() {
   // L4: today's / LIVE events (map badges, place sheet "On today", top banner)
   useEventsLive(p?.id ?? null);
   const eventBadges = useEventBadges();
+  const dailyHere = p && state && !state.travel ? p.location_id : null;
+  const placeGem = usePlaceGem(showPlace ? dailyHere : null);
   // L4: a shared place link (/play?place=<id>) opens that place's sheet on the map, once
   const deepLinked = useRef(false);
   useEffect(() => {
@@ -512,6 +515,7 @@ export default function Game() {
             busyZone={placeBusyZone}
             walkLock={busyActive ? `${busyLabel ?? 'Busy'} first, then you can walk` : taskPhase === 'starting' ? 'Starting, one moment' : null}
             walk={walk}
+            gem={placeGem}
             mood={simPosture(p)}
             suspended={suspendHome}
             paused={Boolean(panel || selectedId || (overlay && !suspendHome))}
@@ -628,6 +632,7 @@ export default function Game() {
         <EventBanner top={showHome || showPlace ? (insets.narrow ? 160 : 72) : (insets.narrow ? 156 : 122)} hereId={state.travel ? null : state.location.id}
           onOpen={(id) => { if (id !== state.location.id || state.travel) setMapOpen(true); select(id); }} />
       )}
+      <DailySync here={dailyHere} />
       <LeftRail state={state} status={status} atHome={atHome} compact={!showHome && (!showPlace || insets.narrow)} />
 
       <div className="game__bottom" ref={bottomRef}>

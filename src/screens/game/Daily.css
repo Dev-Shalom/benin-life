@@ -1,0 +1,292 @@
+/* D1: daily reward + gem hunt (docs/DAILY.md) */
+.wish-chip--daily,
+.wish-chip--gem {
+  position: relative;
+}
+.wish-chip--daily .wish-chip__icon {
+  background: var(--amber-50);
+}
+.wish-chip--gem .wish-chip__icon {
+  background: #eef0ff;
+}
+.daily-dot {
+  position: absolute;
+  top: 5px;
+  left: 33px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--red-500);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+@media (max-width: 599px) {
+  .daily-dot { left: 26px; top: 3px; }
+}
+
+/* 7-day sheet */
+.daily-reward {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  padding-bottom: 4px;
+}
+.daily-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.daily-step {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 10px 4px 9px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  text-align: center;
+  animation: daily-in 260ms var(--ease-out) both;
+}
+.daily-step.is-big {
+  grid-column: span 2;
+  background: linear-gradient(160deg, #fff6df, #ffe9b8);
+}
+.daily-step__day {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.daily-step__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-family: var(--font-emoji);
+  font-size: 20px;
+}
+.daily-step__cash {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.daily-step__item {
+  font-size: 11px;
+  color: var(--ink-2);
+  line-height: 1.2;
+}
+.daily-step.is-claimed {
+  background: var(--green-50);
+  box-shadow: inset 0 0 0 1px var(--green-100);
+}
+.daily-step.is-claimed .daily-step__icon {
+  background: var(--green-500);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 800;
+}
+.daily-step.is-claimed .daily-step__cash {
+  color: var(--green-700);
+}
+.daily-step.is-today {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--amber-500), 0 6px 16px -8px rgba(238, 164, 26, 0.7);
+}
+.daily-step.is-today .daily-step__day {
+  color: var(--amber-800);
+}
+.daily-step.is-upcoming {
+  opacity: 0.72;
+}
+@keyframes daily-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+}
+
+/* a quick confetti burst on claim (rare, celebratory) */
+.daily-confetti {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 0;
+  pointer-events: none;
+}
+.daily-confetti i {
+  position: absolute;
+  left: 50%;
+  top: 60px;
+  width: 7px;
+  height: 11px;
+  border-radius: 2px;
+  background: hsl(calc(var(--i) * 47deg) 85% 58%);
+  animation: daily-pop 900ms var(--ease-out) forwards;
+  --a: calc(var(--i) * 25.7deg);
+}
+@keyframes daily-pop {
+  0% { opacity: 1; transform: translate(-50%, 0) rotate(0deg); }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + cos(var(--a)) * 140px), calc(sin(var(--a)) * 90px - 40px)) rotate(calc(var(--i) * 70deg));
+  }
+}
+
+/* gem hunt sheet */
+.gem-hunt {
+  display: grid;
+  gap: 14px;
+}
+.gem-hunt__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.gem-hunt__stats b {
+  font-family: var(--font-display);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.gem-hints {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gem-hint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.gem-hint__gem {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #eef0ff;
+  font-family: var(--font-emoji);
+  font-size: 18px;
+  filter: grayscale(0.2);
+}
+.gem-hint.is-found .gem-hint__gem {
+  background: var(--green-50);
+}
+.gem-hint__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gem-hint__text b {
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+.gem-hint__text small {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.gem-hint.is-found .gem-hint__text small {
+  color: var(--green-700);
+}
+.gem-hunt__prize {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* the gem inside a place (positioned each frame by PlaceScene) */
+.place-gem {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(170, 160, 255, 0.55) 0%, rgba(120, 200, 255, 0.25) 45%, transparent 70%);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out);
+}
+.place-gem__stone {
+  font-family: var(--font-emoji);
+  font-size: 26px;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px rgba(140, 170, 255, 0.95)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+  animation: place-gem-bob 1.8s var(--ease-in-out) infinite alternate;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.place-gem:active .place-gem__stone {
+  transform: scale(0.92);
+}
+.place-gem::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(160, 180, 255, 0.7);
+  animation: place-gem-ring 1.8s var(--ease-out) infinite;
+}
+.place-gem.is-found .place-gem__stone {
+  animation: place-gem-found 600ms var(--ease-out) forwards;
+}
+@keyframes place-gem-bob {
+  from { transform: translateY(2px); }
+  to { transform: translateY(-4px); }
+}
+@keyframes place-gem-ring {
+  from { opacity: 0.9; transform: scale(0.8); }
+  to { opacity: 0; transform: scale(1.35); }
+}
+@keyframes place-gem-found {
+  to { opacity: 0; transform: translateY(-30px) scale(1.4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .place-gem__stone, .place-gem::after, .daily-step, .daily-confetti i { animation: none; }
+}
+
+/* the two chips share one row on phones (short labels) so the rail stays short */
+.daily-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+.daily-row > * {
+  pointer-events: auto;
+}
+.daily-short {
+  display: none;
+}
+@media (max-width: 599px) {
+  .daily-row {
+    flex-direction: row;
+    gap: 6px;
+  }
+  .daily-row .wish-chip {
+    padding-right: 10px;
+  }
+  .daily-row .wish-chip__sub,
+  .daily-long {
+    display: none;
+  }
+  .daily-short {
+    display: inline;
+  }
+}

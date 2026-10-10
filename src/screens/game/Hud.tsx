@@ -23,6 +23,7 @@ import type { PlayerStatus } from './status';
 import { nearestWorkplace } from '../../api/careers';
 import { bestFood } from '../../api/shops';
 import { TaskPill } from './TaskPill';
+import { DailyChips, DailySheets, useDailyChipIcons } from './Daily';
 
 /** Players online: the live Realtime Presence count (S1, no polling); while presence is not synced
  *  (Realtime down or still joining) falls back to `players_online()` (last_seen) every 60 s. */
@@ -204,7 +205,8 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   const job = state.career?.job ?? null;
   const workAt = job && status.free && !job.pending && job.shifts_today < job.max_shifts_per_day ? nearestWorkplace(state, byId) : null;
   const bankAt = useBankTip(state, status.free);
-  const count = tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0) + (bankAt ? 1 : 0);
+  const dailyIcons = useDailyChipIcons();
+  const count = tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0) + (bankAt ? 1 : 0) + dailyIcons.length;
   const folded = compact && !open && !clean;
 
   // Leaving the map (or switching to clean screen) folds the list again.
@@ -234,7 +236,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   };
 
   if (folded && count > 0) {
-    const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...(protectedNow ? ['🛡️'] : [])];
+    const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...dailyIcons, ...(protectedNow ? ['🛡️'] : [])];
     return (
       <div className="left-rail is-compact">
         <TaskPill state={state} status={status} />
@@ -245,6 +247,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
           </span>
           <Icon name="chevronDown" size={14} stroke={2.6} />
         </button>
+        <DailySheets />
       </div>
     );
   }
@@ -300,6 +303,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
               </span>
             </button>
           )}
+          <DailyChips onPick={() => setOpen(false)} />
           {protectedNow && (
             <div className="wish-chip wish-chip--protect" title="New player protection: nobody can rob you yet">
               <span className="wish-chip__icon" aria-hidden>🛡️</span>
@@ -318,6 +322,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
         </button>
         {!clean && <span className="beta-badge beta-badge--hud" title="Benin Life is in beta: new features land often">Beta</span>}
       </div>
+      <DailySheets />
     </div>
   );
 }

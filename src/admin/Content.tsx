@@ -319,6 +319,23 @@ const DEFS: TableDef[] = [
     newRow: { location_id: 'oba_market', title: 'New event', kind: 'promo', icon: '🎉', recurrence: 'weekly', weekday: 5, start_time: 18, end_time: 22, starts_at: null, ends_at: null, ticket_price: 0, capacity: null, perks: {}, description: '', variants: '', sort: 100, active: true },
   },
   {
+    id: 'daily', table: 'daily_reward_steps', title: 'Daily reward', emoji: '🎁', blurb: 'The 7-day daily reward ladder (D1, docs/DAILY.md). One claim per Benin calendar day; a missed day starts again at day 1; after day 7 it goes back to day 1. Cash goes to the player\'s cash (ledger "Daily reward (day N)"). Optional item id (Content → Items) is put in the Bag. Switch: Settings → Daily → daily.reward_enabled.',
+    pk: ['day'], insert: false, inline: ['cash'],
+    titleOf: (r) => `Day ${r.day} · ${naira(Number(r.cash))}${r.item_id ? ` + ${r.item_id}` : ''}`, subOf: (r) => String(r.label || ''),
+    fields: [
+      { key: 'cash', label: 'Cash', type: 'money' },
+      { key: 'item_id', label: 'Item id (optional)', type: 'textnull', help: 'An id from Content → Items, e.g. malt_drink. Empty = none.' },
+      { key: 'label', label: 'Label', type: 'text' },
+    ],
+  },
+  {
+    id: 'gemfinds', table: 'gem_finds', title: 'Gem finds', emoji: '💎', blurb: 'Read-only log of daily gem hunt finds (D1, docs/DAILY.md), newest day first. Gems are picked by the server each Benin day from active, always-open public places. Prizes: Settings → Daily (daily.gem_prize, daily.gem_all_bonus, daily.gems_per_day).',
+    pk: ['user_id', 'hunt_date', 'location_id'], insert: false,
+    titleOf: (r) => `${r.hunt_date} · ${r.location_id}`,
+    subOf: (r) => `${naira(Number(r.prize))}${Number(r.bonus) ? ` + ${naira(Number(r.bonus))} bonus` : ''} · ${watTime(r.found_at)} WAT · player ${String(r.user_id).slice(0, 8)}`,
+    fields: [],
+  },
+  {
     id: 'origins', table: 'origin_tiers', title: 'Origins', emoji: '👶', blurb: 'LAPO / Nepo copy and perks. Chances and start money live in Settings → Origin.',
     pk: ['id'], insert: false, titleOf: (r) => String(r.name), subOf: (r) => String(r.tagline),
     fields: [
