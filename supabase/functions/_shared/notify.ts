@@ -14,7 +14,7 @@ export function pushKeys(): PushKeys | null {
   return {
     privateKey,
     publicKey: env('VAPID_PUBLIC_KEY') || DEFAULT_VAPID_PUBLIC_KEY,
-    subject: env('VAPID_SUBJECT') || 'mailto:dev.shalom1@gmail.com',
+    subject: env('VAPID_SUBJECT') || 'mailto:code.devshalom@gmail.com',
   };
 }
 

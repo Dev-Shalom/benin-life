@@ -110,7 +110,7 @@ The board's position (`x`, `y` in map space), its turn (`yaw`, keep within ±0.3
 
 ### Owner setup (one time)
 1. **GitHub secret `VAPID_PRIVATE_KEY`** (repo → Settings → Secrets and variables → Actions): paste the private key the developer gave you. It is one line of 43 characters. **Never put it in the code or in Vercel.**
-2. **GitHub secret `VAPID_SUBJECT`**: `mailto:dev.shalom1@gmail.com`, or any email you read. Push services use it to contact you about problems.
+2. **GitHub secret `VAPID_SUBJECT`**: `mailto:code.devshalom@gmail.com`, or any email you read. Push services use it to contact you about problems.
 3. Run **Actions → Supabase Edge Functions → Run workflow**. It also runs on every push to `main` that touches `supabase/functions/**`. It copies both secrets into Supabase and deploys `paystack-verify`, `paystack-webhook`, `admin-push` and `billboard-refund`.
 4. The **public** key is already in the app (`src/lib/push.ts`, and `DEFAULT_VAPID_PUBLIC_KEY` in `_shared/push.ts`):
    `BLdPAJnlb5_3P_wOrtqveyTRo4flZj3qRxN13ga9KNSUNn4rAVMR5EpxANvF--aYhgIedHRrfYSd7EvfU02qssc`.
