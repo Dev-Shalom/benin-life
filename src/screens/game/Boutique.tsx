@@ -1,4 +1,5 @@
-// W1: Benin Boutique / Wardrobe (docs/WARDROBE.md). Lazy-loaded full-screen overlay with ONE live turntable.
+// W1: Benin Boutique / Wardrobe (docs/WARDROBE.md). Lazy-loaded overlay with ONE live turntable: full-height on
+// phones, a centred panel over a dimmed backdrop from 768 px (UI1), with the standard sheet header and × close.
 // Brands -> categories -> items. Tap to try on, pick a colour, buy with a confirm, save per "Wear for" slot.
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -10,7 +11,7 @@ import type { GameState } from '../../lib/types';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { useWardrobe, wardrobeBuy, wardrobeClearSlot, wardrobeSetOutfit, type WardrobeItem } from '../../state/wardrobe';
-import { Button, Icon, Modal, toast } from '../../ui';
+import { Button, IconButton, Modal, toast } from '../../ui';
 import { useEscape } from '../../ui/presence';
 import './Boutique.css';
 
@@ -174,13 +175,16 @@ export default function Boutique({ state }: { state: GameState }) {
       : { label: dirty ? `Wear for ${meta.label}` : `Wearing for ${meta.label}`, run: () => void save(), disabled: !dirty, busy: busy === 'save' };
 
   return createPortal(
-    <div className="btq" role="dialog" aria-modal="true" aria-label="Benin Boutique">
+    <div className="btq-root">
+    <div className="btq-backdrop" onClick={close} />
+    <div className="btq" role="dialog" aria-modal="true" aria-labelledby="btq-title">
+      <header className="btq__head">
+        <h3 className="bl-sheet__title" id="btq-title">Benin Boutique</h3>
+        <IconButton icon="close" label="Close" variant="plain" size={38} className="btq__close" onClick={close} />
+      </header>
+      <div className="btq__body">
       <section className="btq__stage">
         <AvatarStage config={preview} className="btq__canvas" />
-        <header className="btq__top">
-          <span className="btq__pill btq__title">Benin Boutique</span>
-          <button type="button" className="btq__close" onClick={close} aria-label="Close the boutique"><Icon name="close" size={20} stroke={2.4} /></button>
-        </header>
         <span className="btq__pill btq__look">{meta.emoji} {slot === 'everyday' ? 'Your look today' : `${meta.label} look`}{dirty ? ' · trying on' : ''}</span>
       </section>
 
@@ -288,6 +292,7 @@ export default function Boutique({ state }: { state: GameState }) {
           </div>
         )}
       </section>
+      </div>
 
       <Modal open={Boolean(confirm)} onClose={() => setConfirm(null)} title={confirm ? `Buy the ${confirm.name}?` : ''}
         art={<span className="btq__confirm-art" aria-hidden>{confirm?.icon}</span>}
@@ -306,6 +311,7 @@ export default function Boutique({ state }: { state: GameState }) {
           </p>
         )}
       </Modal>
+    </div>
     </div>,
     document.body,
   );

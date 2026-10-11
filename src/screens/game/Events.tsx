@@ -1,6 +1,6 @@
 // L4 events UI (docs/EVENTS.md): the "On today" cards (map place sheet + people sheet) and the slim top banner
 // for LIVE / upcoming events. Data: src/state/events.ts (events_on_today, server-computed in WAT).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { buyTicket, type PlaceEvent } from '../../api/events';
 import { errorMessage } from '../../lib/api';
 import { useConfig } from '../../lib/config';
@@ -108,8 +108,10 @@ function EventCard({ e }: { e: PlaceEvent }) {
  * The slim top banner: "LIVE: Bendel Insurance vs Enyimba at Ogbemudia Stadium" / "Amapiano Night at
  * 360 Signature starts in 2h". Rotates every 6 s when several, × closes one for this session, tap opens the
  * place's sheet. The P2 hype ticker has the same slot and wins: the banner hides while a ticker shows.
+ * UI1: it sits just under the top bar (CSS, `--hud-bottom`), centred. When it would overlap the left column
+ * (phones, iPad portrait) it publishes its height as `--ev-h` and the column steps down below it.
  */
-export function EventBanner({ top, hereId, onOpen }: { top: number; hereId: string | null; onOpen: (locId: string) => void }) {
+export function EventBanner({ hereId, onOpen }: { hereId: string | null; onOpen: (locId: string) => void }) {
   const { cfg } = useConfig();
   const enabled = cfg<boolean>('events.banner_enabled', true as boolean) !== false;
   const lead = Math.max(0, Number(cfg('events.banner_lead_hours', 3)) || 0);
@@ -142,11 +144,33 @@ export function EventBanner({ top, hereId, onOpen }: { top: number; hereId: stri
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shownKey, enabled, ticker, hypeBanner]);
-  if (!enabled || ticker || hypeBanner || !items.length) return null;
+  const visible = enabled && !ticker && !hypeBanner && items.length > 0;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const el = wrapRef.current?.firstElementChild as HTMLElement | null | undefined;
+    if (!visible || !el) { root.style.removeProperty('--ev-h'); return; }
+    const sync = () => {
+      const rail = document.querySelector('.left-rail');
+      const b = el.getBoundingClientRect();
+      const r = rail?.getBoundingClientRect();
+      const overlaps = Boolean(r && r.width > 0 && b.left < r.right + 12);
+      if (overlaps) root.style.setProperty('--ev-h', `${Math.round(b.height + 8)}px`);
+      else root.style.removeProperty('--ev-h');
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    const rail = document.querySelector('.left-rail');
+    if (rail) ro.observe(rail);
+    window.addEventListener('resize', sync);
+    return () => { ro.disconnect(); window.removeEventListener('resize', sync); root.style.removeProperty('--ev-h'); };
+  }, [visible, shownKey]);
+  if (!visible) return null;
   const e = items[i % items.length];
   const place = e.location_name.replace(/\s*\(.*\)\s*$/, '');
   return (
-    <div className="ev-banner-wrap" style={{ top }}>
+    <div className="ev-banner-wrap" ref={wrapRef}>
       <div className={`ev-banner${e.live ? ' is-live' : ''}`} key={occKey(e)}>
         <button type="button" className="ev-banner__main" onClick={() => onOpen(e.location_id)}
           aria-label={`${e.live ? 'Live now' : 'Coming up'}: ${e.title} at ${place}. Open the place`}>

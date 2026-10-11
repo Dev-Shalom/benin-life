@@ -1,4 +1,20 @@
-/* W1 Benin Boutique (docs/WARDROBE.md). Phone: stage on top, panel below. Desktop: stage left, panel right. */
+/* W1 Benin Boutique (docs/WARDROBE.md). Phone: full height, header, stage on top, panel below.
+   UI1: from 768 px a centred panel over a dimmed backdrop (same header, radius and × as the sheets);
+   from 900 px the stage sits left and the shop right. */
+.btq-root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btq-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay);
+  animation: bl-fade-in var(--t-med) ease-out;
+}
 .btq {
   --btq-ease: cubic-bezier(0.23, 1, 0.32, 1);
   --btq-ink: #1d1620;
@@ -6,11 +22,12 @@
   --btq-line: rgba(64, 32, 56, 0.1);
   --btq-pink: #c2417f;
   --btq-pink-soft: #fbe7f0;
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
+  position: relative;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background: #fbf6f3;
   color: var(--btq-ink);
   font-family: var(--font-body);
@@ -18,28 +35,42 @@
 }
 @keyframes btq-in { from { opacity: 0; transform: translateY(12px); } }
 
+/* ---- header (matches .bl-sheet__head + .bl-sheet__close) ---- */
+.btq__head {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-height: 62px;
+  padding: calc(var(--sat) + 12px) 60px 10px 20px;
+  background: var(--surface);
+  color: var(--text);
+  border-bottom: 1px solid var(--line);
+}
+.btq__head .bl-sheet__title { margin: 0; }
+.btq__close {
+  position: absolute !important;
+  top: calc(var(--sat) + 12px);
+  right: 12px;
+}
+.btq__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ---- stage ---- */
 .btq__stage {
   position: relative;
   flex: 0 0 auto;
-  height: min(46dvh, 440px);
+  height: min(40dvh, 400px);
   background:
     radial-gradient(70% 60% at 50% 42%, #fff 0%, rgba(255, 255, 255, 0) 70%),
     linear-gradient(170deg, #f9dfe9 0%, #f3e6f7 55%, #fbefe4 100%);
   overflow: hidden;
 }
 .btq__canvas { position: absolute; inset: 0; }
-.btq__top {
-  position: absolute;
-  top: max(12px, env(safe-area-inset-top));
-  left: 16px;
-  right: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  pointer-events: none;
-}
-.btq__top > * { pointer-events: auto; }
 .btq__pill {
   display: inline-flex;
   align-items: center;
@@ -52,23 +83,8 @@
   font-size: 14px;
   white-space: nowrap;
 }
-.btq__title { font-family: var(--font-display); font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
-.btq__close {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--btq-ink);
-  box-shadow: 0 6px 18px -8px rgba(80, 30, 60, 0.35);
-  cursor: pointer;
-  transition: transform 160ms var(--btq-ease);
-}
-.btq__close:active { transform: scale(0.94); }
-.btq__look { position: absolute; left: 16px; bottom: 14px; }
-.btq .avatar-stage__hint { right: 16px; left: auto; bottom: 20px; transform: none; padding: 6px 12px; background: rgba(40, 24, 36, 0.55); color: #fff; font-weight: 600; }
+.btq__look { position: absolute; left: 16px; bottom: 26px; }
+.btq .avatar-stage__hint { right: 16px; left: auto; bottom: 32px; transform: none; padding: 6px 12px; background: rgba(40, 24, 36, 0.55); color: #fff; font-weight: 600; }
 
 /* ---- panel ---- */
 .btq__panel {
@@ -235,19 +251,32 @@
 @media (min-width: 560px) {
   .btq__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+@media (min-width: 768px) {
+  .btq-root { padding: max(24px, var(--sat)) max(24px, var(--sar)) max(24px, var(--sab)) max(24px, var(--sal)); }
+  .btq {
+    width: min(640px, 100%);
+    height: min(940px, 100%);
+    border-radius: var(--r-xl);
+    box-shadow: var(--e3);
+  }
+  .btq__head { padding-top: 14px; padding-bottom: 12px; }
+  .btq__close { top: 12px; }
+  .btq__bar { padding-bottom: 14px; }
+}
 @media (min-width: 900px) {
-  .btq { flex-direction: row; }
-  .btq__stage { flex: 1 1 auto; height: auto; }
-  .btq__panel { flex: 0 0 min(560px, 48vw); margin-top: 0; border-radius: 0; box-shadow: -10px 0 30px -18px rgba(80, 30, 60, 0.35); }
+  .btq { width: min(1120px, 100%); height: min(800px, 100%); }
+  .btq__body { flex-direction: row; }
+  .btq__stage { flex: 1 1 0; min-width: 0; height: auto; }
+  .btq__panel { flex: none; width: min(560px, 52%); min-width: 0; max-width: min(560px, 52%); overflow: hidden; margin-top: 0; border-radius: 0; box-shadow: -10px 0 30px -18px rgba(80, 30, 60, 0.35); }
   .btq__scroll { padding: 22px 24px 14px; }
   .btq__brands, .btq__slots, .btq__cats { margin: 0 -24px; padding: 2px 24px; }
   .btq__brands { margin-right: 0; }
   .btq__slots { margin-top: 16px; }
   .btq__cats { margin-top: 18px; }
   .btq__bar { padding: 12px 24px 16px; }
-  .btq__top { top: 20px; left: 24px; right: 24px; }
   .btq__look { left: 24px; bottom: 22px; }
+  .btq .avatar-stage__hint { bottom: 28px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .btq { animation: none; }
+  .btq, .btq-backdrop { animation: none; }
 }

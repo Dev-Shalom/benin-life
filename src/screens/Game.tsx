@@ -705,7 +705,7 @@ export default function Game() {
       <HypeBanner mcName={inClub ? people?.npcs.find((n) => n.motion === 'hype')?.name ?? 'The hype man' : 'VIP alert'} top={inClub ? (clean ? 70 : insets.top) + 6 : clean ? 70 : insets.narrow ? 200 : insets.top + 6} />
       <HypeTicker top={insets.narrow ? 14 : 72} />
       {!clean && (
-        <EventBanner top={showHome || showPlace ? (insets.narrow ? 160 : 72) : (insets.narrow ? 156 : 122)} hereId={state.travel ? null : state.location.id}
+        <EventBanner hereId={state.travel ? null : state.location.id}
           onOpen={(id) => { if (id !== state.location.id || state.travel) setMapOpen(true); select(id); }} />
       )}
       <DailySync here={dailyHere} />

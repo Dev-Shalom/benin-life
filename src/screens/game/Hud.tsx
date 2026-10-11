@@ -1,6 +1,7 @@
 // R4 HUD (Lagos Life-style layout, Benin content):
 //   top     one white pill: day + weekday + time, mood, players online, mute, cash with a green "+"
-//   left    wish chips (tips from low needs, work, bank your cash at night), Dad's allowance, protection, "Clean screen"
+//   left    task pill + queue, then one "Today" pill (tips, Dad's allowance, daily reward/gems, protection) that
+//           opens into a list (UI1), then a small "Clean screen · Beta" row
 //   b-left  round cached portrait + 6 tiny need bars -> Sim sheet
 //   bottom  dock: Home · Buy · Map · Phone (badge = unread alerts)
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -178,9 +179,14 @@ function useBankTip(state: GameState, free: boolean): { id: string; name: string
   return best && { id: best.id, name: best.name, tab: best.tab };
 }
 
+/** UI1: the "Today" list starts open on roomy screens (desktop) and folded on phones, tablets and the map. */
+const todayRoomy = () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px) and (min-height: 760px)').matches;
+
 /**
- * Left rail. On the map (`compact`) the chips fold into one small summary chip so they do not cover
- * the city on phones; tapping it opens the full list (and "Clean screen") until a chip is used.
+ * Left rail (UI1). Task pill + queue on top (never folds), then ONE compact "Today" pill that sums up the
+ * tips and daily chips as small icons (red dot when something is ready to collect). Tapping it opens the
+ * list; tapping outside folds it again. Desktop starts open; phones, tablets and the map (`compact`)
+ * start folded. "Clean screen" + "Beta" sit in a small row under it.
  */
 export function LeftRail({ state, status, atHome, compact = false }: { state: GameState; status: PlayerStatus; atHome: boolean; compact?: boolean }) {
   const p = state.profile;
@@ -195,7 +201,10 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   const clean = usePrefs((s) => s.clean);
   const setPrefs = usePrefs((s) => s.set);
   const [claiming, setClaiming] = useState(false);
-  const [open, setOpen] = useState(false);
+  // 'auto' follows the screen (open on roomy desktops outside the map); a tap pins it open or shut.
+  const [mode, setMode] = useState<'auto' | 'open' | 'shut'>('auto');
+  const [roomy, setRoomy] = useState(todayRoomy);
+  const todayRef = useRef<HTMLDivElement>(null);
   const tips = lowNeeds(p, 2);
   const food = bestFood(state);
   // "Eat something": food in the Bag first, then the home kitchen, else Chowdeck (V1-4).
@@ -207,10 +216,34 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   const bankAt = useBankTip(state, status.free);
   const dailyIcons = useDailyChipIcons();
   const count = tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0) + (bankAt ? 1 : 0) + dailyIcons.length;
-  const folded = compact && !open && !clean;
+  const ready = dadReady || dailyIcons.includes('🎁');
+  const open = !clean && count > 0 && (mode === 'open' || (mode === 'auto' && roomy && !compact));
 
-  // Leaving the map (or switching to clean screen) folds the list again.
-  if (open && (!compact || clean)) setOpen(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1280px) and (min-height: 760px)');
+    const on = () => setRoomy(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  // Switching between home / place / map goes back to the screen's default.
+  useEffect(() => setMode('auto'), [compact]);
+  // Tap outside folds a list the player opened (a desktop list that is open by default stays put).
+  useEffect(() => {
+    if (mode !== 'open') return;
+    const onDown = (e: PointerEvent) => {
+      const el = todayRef.current;
+      if (!el || el.contains(e.target as Node)) return;
+      if ((e.target as HTMLElement).closest?.('.bl-sheet-root, .bl-modal-root')) return;
+      setMode('auto');
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMode('auto'); };
+    window.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey); };
+  }, [mode]);
+
+  const fold = () => { if (mode === 'open') setMode('auto'); };
+  const toggle = () => setMode(open ? 'shut' : 'open');
 
   const claimDad = async () => {
     if (claiming) return;
@@ -227,7 +260,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   };
 
   const onTip = (k: NeedKey) => {
-    setOpen(false);
+    fold();
     if (k === 'hunger' && food) return openPanel('inventory');
     if (k === 'hunger' && !atHome) return openPhone('food');
     const g = NEED_GROUP[k];
@@ -235,93 +268,90 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
     else select(p.location_id);
   };
 
-  if (folded && count > 0) {
-    const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...dailyIcons, ...(protectedNow ? ['🛡️'] : [])];
-    return (
-      <div className="left-rail is-compact">
-        <TaskPill state={state} status={status} />
-        <button type="button" className={`rail-summary${dadReady ? ' has-dad' : ''}`} onClick={() => setOpen(true)} aria-expanded={false}
-          aria-label={`Tips and status (${count}). Show`}>
-          <span className="rail-summary__icons" aria-hidden>
-            {icons.map((e, i) => <span key={i} className="rail-summary__icon">{e}</span>)}
-          </span>
-          <Icon name="chevronDown" size={14} stroke={2.6} />
-        </button>
-        <DailySheets />
-      </div>
-    );
-  }
+  const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...dailyIcons, ...(protectedNow ? ['🛡️'] : [])];
+  const shown = icons.slice(0, 4);
 
   return (
     <div className={`left-rail${clean ? ' is-clean' : ''}${compact ? ' is-compact' : ''}`}>
       <TaskPill state={state} status={status} />
-      {compact && open && !clean && (
-        <button type="button" className="rail-summary is-open" onClick={() => setOpen(false)} aria-expanded aria-label="Hide tips and status">
-          <span className="rail-summary__label">Hide</span>
-          <Icon name="chevronUp" size={14} stroke={2.6} />
-        </button>
-      )}
-      {!clean && (
-        <>
-          {tips.map((t) => (
-            <button key={t.key} type="button" className="wish-chip" onClick={() => onTip(t.key)}>
-              <span className="wish-chip__icon" style={{ background: `${NEED_META[t.key].color}22` }} aria-hidden>{t.emoji}</span>
-              <span className="wish-chip__text">
-                <span className="wish-chip__title">{t.text}</span>
-                {t.key === 'hunger' && eatSub && <span className="wish-chip__sub">{eatSub}</span>}
-                <span className="wish-chip__bar"><span style={{ width: `${t.value}%`, background: NEED_META[t.key].color }} /></span>
-              </span>
-            </button>
-          ))}
-          {workAt && job && (
-            <button type="button" className="wish-chip wish-chip--work"
-              onClick={() => { setOpen(false); if (workAt !== p.location_id) setMapOpen(true); select(workAt, 'jobs'); }}>
-              <span className="wish-chip__icon" aria-hidden>{job.emoji}</span>
-              <span className="wish-chip__text">
-                <span className="wish-chip__title">Go to work</span>
-                <span className="wish-chip__sub" title={naira(job.pay_per_shift)}>{job.title} · {nairaShort(job.pay_per_shift)}</span>
-              </span>
-            </button>
-          )}
-          {bankAt && (
-            <button type="button" className="wish-chip wish-chip--bank"
-              onClick={() => { setOpen(false); if (bankAt.id !== p.location_id) setMapOpen(true); select(bankAt.id, bankAt.tab); }}>
-              <span className="wish-chip__icon" aria-hidden>🏦</span>
-              <span className="wish-chip__text">
-                <span className="wish-chip__title">Bank your cash</span>
-                <span className="wish-chip__sub" title={naira(p.cash)}>{nairaShort(p.cash)} on you at night · {bankAt.name}</span>
-              </span>
-            </button>
-          )}
-          {dadReady && origin && (
-            <button type="button" className="wish-chip wish-chip--dad" onClick={() => void claimDad()} disabled={claiming}
-              aria-label={`${ORIGIN_UI.collectDad} (${nairaShort(origin.allowance_daily)})`}>
-              <span className="wish-chip__icon" aria-hidden>💸</span>
-              <span className="wish-chip__text">
-                <span className="wish-chip__title">{ORIGIN_UI.collectDad}</span>
-                <span className="wish-chip__sub" title={naira(origin.allowance_daily)}>{nairaShort(origin.allowance_daily)} from {ORIGIN_UI.dadChip}</span>
-              </span>
-            </button>
-          )}
-          <DailyChips onPick={() => setOpen(false)} />
-          {protectedNow && (
-            <div className="wish-chip wish-chip--protect" title="New player protection: nobody can rob you yet">
-              <span className="wish-chip__icon" aria-hidden>🛡️</span>
-              <span className="wish-chip__text">
-                <span className="wish-chip__title">Protected</span>
-                <span className="wish-chip__sub">{countdown(status.protLeft)} left</span>
-              </span>
+      {!clean && count > 0 && (
+        <div className={`today${open ? ' is-open' : ''}`} ref={todayRef}>
+          <button type="button" className={`today-pill${ready ? ' is-ready' : ''}`} onClick={toggle} aria-expanded={open}
+            aria-controls="today-list" aria-label={`Today: ${count} tip${count === 1 ? '' : 's'}${ready ? ', something to collect' : ''}. ${open ? 'Hide' : 'Show'}`}>
+            <span className="today-pill__label">Today</span>
+            <span className="today-pill__icons" aria-hidden>
+              {shown.map((e, i) => <span key={i} className="today-pill__icon">{e}</span>)}
+              {icons.length > shown.length && <span className="today-pill__more">+{icons.length - shown.length}</span>}
+            </span>
+            {ready && <span className="today-pill__dot" aria-hidden />}
+            <Icon name="chevronDown" size={14} stroke={2.6} className="today-pill__chev" />
+          </button>
+          {open && (
+            <div className="today-list" id="today-list">
+              {tips.map((t) => (
+                <button key={t.key} type="button" className="wish-chip" onClick={() => onTip(t.key)}>
+                  <span className="wish-chip__icon" style={{ background: `${NEED_META[t.key].color}22` }} aria-hidden>{t.emoji}</span>
+                  <span className="wish-chip__text">
+                    <span className="wish-chip__title">{t.text}</span>
+                    {t.key === 'hunger' && eatSub && <span className="wish-chip__sub">{eatSub}</span>}
+                    <span className="wish-chip__bar"><span style={{ width: `${t.value}%`, background: NEED_META[t.key].color }} /></span>
+                  </span>
+                </button>
+              ))}
+              {workAt && job && (
+                <button type="button" className="wish-chip wish-chip--work"
+                  onClick={() => { fold(); if (workAt !== p.location_id) setMapOpen(true); select(workAt, 'jobs'); }}>
+                  <span className="wish-chip__icon" aria-hidden>{job.emoji}</span>
+                  <span className="wish-chip__text">
+                    <span className="wish-chip__title">Go to work</span>
+                    <span className="wish-chip__sub" title={naira(job.pay_per_shift)}>{job.title} · {nairaShort(job.pay_per_shift)}</span>
+                  </span>
+                </button>
+              )}
+              {bankAt && (
+                <button type="button" className="wish-chip wish-chip--bank"
+                  onClick={() => { fold(); if (bankAt.id !== p.location_id) setMapOpen(true); select(bankAt.id, bankAt.tab); }}>
+                  <span className="wish-chip__icon" aria-hidden>🏦</span>
+                  <span className="wish-chip__text">
+                    <span className="wish-chip__title">Bank your cash</span>
+                    <span className="wish-chip__sub" title={naira(p.cash)}>{nairaShort(p.cash)} on you at night · {bankAt.name}</span>
+                  </span>
+                </button>
+              )}
+              {dadReady && origin && (
+                <button type="button" className="wish-chip wish-chip--dad" onClick={() => void claimDad()} disabled={claiming}
+                  aria-label={`${ORIGIN_UI.collectDad} (${nairaShort(origin.allowance_daily)})`}>
+                  <span className="wish-chip__icon" aria-hidden>💸</span>
+                  <span className="wish-chip__text">
+                    <span className="wish-chip__title">{ORIGIN_UI.collectDad}</span>
+                    <span className="wish-chip__sub" title={naira(origin.allowance_daily)}>{nairaShort(origin.allowance_daily)} from {ORIGIN_UI.dadChip}</span>
+                  </span>
+                  <span className="daily-dot" aria-hidden />
+                </button>
+              )}
+              <DailyChips onPick={fold} />
+              {protectedNow && (
+                <div className="wish-chip wish-chip--protect" title="New player protection: nobody can rob you yet">
+                  <span className="wish-chip__icon" aria-hidden>🛡️</span>
+                  <span className="wish-chip__text">
+                    <span className="wish-chip__title">Protected</span>
+                    <span className="wish-chip__sub">{countdown(status.protLeft)} left</span>
+                  </span>
+                </div>
+              )}
             </div>
           )}
-        </>
+        </div>
       )}
-      <div className="rail-foot">
-        <button type="button" className="clean-toggle" onClick={() => setPrefs({ clean: !clean })} aria-pressed={clean}>
-          <Icon name={clean ? 'chevronDown' : 'chevronUp'} size={14} stroke={2.6} />
-          {clean ? 'Show HUD' : 'Clean screen'}
-        </button>
-        {!clean && <span className="beta-badge beta-badge--hud" title="Benin Life is in beta: new features land often">Beta</span>}
-      </div>
+      {(!compact || open || clean) && (
+        <div className="rail-foot">
+          <button type="button" className="clean-toggle" onClick={() => setPrefs({ clean: !clean })} aria-pressed={clean}>
+            <Icon name={clean ? 'chevronDown' : 'chevronUp'} size={13} stroke={2.6} />
+            {clean ? 'Show HUD' : 'Clean screen'}
+          </button>
+          {!clean && <span className="beta-badge beta-badge--hud" title="Benin Life is in beta: new features land often">Beta</span>}
+        </div>
+      )}
       <DailySheets />
     </div>
   );

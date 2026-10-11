@@ -173,7 +173,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   return createPortal(
     <div className={`phone-root${closing ? ' is-closing' : ''}`} role="dialog" aria-modal="true" aria-label="Phone">
       <div className="phone-backdrop" onClick={close} />
-      <button type="button" className="phone-close" onClick={close}><Icon name="close" size={18} stroke={2.6} /> Close</button>
+      <button type="button" className="phone-close" onClick={close} aria-label="Close the phone" title="Close"><Icon name="close" size={20} stroke={2.4} /></button>
       <div className="phone">
         <div className={`phone__screen phone__screen--${screen === 'lock' ? 'lock' : screen === 'home' ? 'home' : 'app'}`}>
           <StatusBar clock={clock} />

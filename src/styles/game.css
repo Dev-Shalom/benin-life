@@ -236,12 +236,13 @@
 .left-rail {
   position: absolute;
   z-index: var(--z-hud);
-  top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 10px);
+  top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 10px + var(--ev-h, 0px));
   left: calc(var(--sal) + 10px);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+  transition: top 240ms var(--ease-out);
   max-width: min(280px, calc(100vw - 20px));
   pointer-events: none;
 }
@@ -718,6 +719,133 @@ div.wish-chip {
   margin-left: -7px;
 }
 
+/* UI1: one "Today" pill (icons + red dot) that opens into a tidy list of the tips and daily chips */
+.today {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 100%;
+}
+.today-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 4px 10px 4px 14px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  color: var(--ink);
+  font: 600 13px/1 var(--font-display);
+  box-shadow: var(--e2), inset 0 0 0 1px var(--line);
+  cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.today-pill:active {
+  transform: scale(0.97);
+}
+.today-pill__icons {
+  display: flex;
+  align-items: center;
+}
+.today-pill__icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  box-shadow: 0 0 0 2px var(--surface);
+  font-family: var(--font-emoji);
+  font-size: 14px;
+}
+.today-pill__icon + .today-pill__icon {
+  margin-left: -6px;
+}
+.today-pill__more {
+  margin-left: 4px;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.today-pill__dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--red-500);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.today-pill__chev {
+  color: var(--ink-3);
+  transition: transform 200ms var(--ease-out);
+}
+.today.is-open .today-pill__chev {
+  transform: rotate(180deg);
+}
+.today-list {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: max-content;
+  min-width: 220px;
+  max-width: min(300px, calc(100vw - var(--sal) - var(--sar) - 20px));
+  max-height: max(160px, calc(var(--vvh, 100dvh) - var(--hud-bottom, 70px) - var(--ev-h, 0px) - 300px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border-radius: 22px;
+  background: var(--glass-strong);
+  box-shadow: var(--e2), inset 0 0 0 1px var(--line);
+  transform-origin: top left;
+  animation: today-in 180ms var(--ease-out);
+}
+@keyframes today-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+}
+.today-list .wish-chip {
+  position: relative;
+  width: 100%;
+  padding: 5px 12px 5px 5px;
+  border-radius: 16px;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+.today-list .wish-chip + .wish-chip,
+.today-list .daily-row {
+  box-shadow: none;
+}
+.today-list .daily-row {
+  align-items: stretch;
+  gap: 2px;
+}
+.today-list .wish-chip--dad .daily-dot {
+  left: 31px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .today-pill:hover {
+    background: var(--surface);
+  }
+  .today-list button.wish-chip:hover {
+    background: var(--surface-2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .today-list {
+    animation: none;
+  }
+}
+
 /* phones: compact chips so the rail does not cover the house (reference: small white chips) */
 @media (max-width: 599px) {
   .left-rail {
@@ -750,6 +878,29 @@ div.wish-chip {
   .clean-toggle {
     padding: 5px 12px 5px 8px;
     font-size: 12px;
+  }
+  .today-pill {
+    min-height: 34px;
+    gap: 6px;
+    padding: 3px 8px 3px 12px;
+    font-size: 12.5px;
+  }
+  .today-pill__icon {
+    width: 24px;
+    height: 24px;
+    font-size: 13px;
+  }
+  .today-list {
+    min-width: 200px;
+    max-width: min(260px, calc(100vw - var(--sal) - var(--sar) - 20px));
+    padding: 4px;
+    border-radius: 20px;
+  }
+  .today-list .wish-chip {
+    padding: 4px 10px 4px 4px;
+  }
+  .today-list .wish-chip--dad .daily-dot {
+    left: 26px;
   }
 }
 
@@ -2434,19 +2585,22 @@ kbd {
   z-index: 2;
   top: calc(var(--sat) + 14px);
   right: calc(var(--sar) + 14px);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 16px 9px 12px;
+  /* UI1: the same round × as the sheets (white: it sits on the dark phone backdrop) */
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: 50%;
   background: #fff;
   color: var(--ink);
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 15px;
   box-shadow: var(--e2);
   cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.phone-close:active {
+  transform: scale(0.94);
 }
 .phone {
   position: relative;
@@ -3045,7 +3199,7 @@ kbd {
   transform: scale(0.96);
 }
 .game:has(.lite-badge) .left-rail:not(.is-clean) {
-  top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 52px);
+  top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 52px + var(--ev-h, 0px));
 }
 .game:has(.lite-badge) .left-rail.is-clean {
   top: calc(var(--sat) + 56px);
@@ -4209,7 +4363,7 @@ kbd {
 .voice-player.is-mine .voice-player__play { background: #086b43; }
 
 .house-arrange {
-  position: absolute; z-index: var(--z-hud); top: calc(var(--sat) + 88px); right: calc(var(--sar) + 12px);
+  position: absolute; z-index: var(--z-hud); top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 10px + var(--ev-h, 0px)); right: calc(var(--sar) + 12px); transition: top 240ms var(--ease-out);
   display: flex; justify-content: flex-end; max-width: min(420px, calc(100vw - 24px)); pointer-events: none;
 }
 .house-arrange__toggle, .house-arrange__tools {
@@ -4223,7 +4377,7 @@ kbd {
 .house-arrange__tools .house-arrange__done { color: #fff; background: var(--green-700, #087246); }
 
 @media (max-width: 600px) {
-  .house-arrange { top: calc(var(--sat) + 136px); right: calc(var(--sar) + 8px); }
+  .house-arrange { top: calc(var(--sat) + 136px + var(--ev-h, 0px)); right: calc(var(--sar) + 8px); }
   .house-arrange__tools { gap: 5px; padding: 5px 7px; }
   .house-arrange__tools span { max-width: 125px; }
 }
@@ -4291,6 +4445,11 @@ kbd {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.rail-foot .clean-toggle {
+  padding: 5px 11px 5px 8px;
+  font-size: 12px;
+  box-shadow: var(--e1), inset 0 0 0 1px var(--line);
 }
 .beta-badge--hud {
   opacity: 0.85;
@@ -5652,11 +5811,13 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 }
 .pc-act__event.is-on { color: #e23b2e; }
 
-/* Top banner (same slot as the P2 hype ticker, which wins) */
+/* Top banner (same slot as the P2 hype ticker, which wins). UI1: always just under the top bar, centred;
+   when it would overlap the left column, EventBanner publishes --ev-h and the column steps down. */
 .ev-banner-wrap {
   position: absolute;
-  left: 0;
-  right: 0;
+  top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 8px);
+  left: var(--sal);
+  right: var(--sar);
   z-index: 59;
   display: flex;
   justify-content: center;
@@ -5705,6 +5866,9 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
   background: none;
   color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
+}
+.game:has(.lite-badge) .ev-banner-wrap {
+  top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 50px);
 }
 @keyframes ev-banner-in {
   from { opacity: 0; transform: translateY(-8px); }
