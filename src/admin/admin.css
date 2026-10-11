@@ -38,7 +38,8 @@
 }
 .adm-tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
-  display: grid; grid-template-columns: repeat(8, 1fr);
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(64px, 1fr);
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
   padding: 6px 4px calc(6px + var(--sab));
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
@@ -49,6 +50,8 @@
   color: var(--muted); text-decoration: none; font-size: 0.6875rem; font-weight: 600; border-radius: 12px;
   transition: color var(--t-fast) var(--ease-out);
 }
+.adm-tabbar::-webkit-scrollbar { display: none; }
+.adm-tabbar__item > span:not(.adm-tabbar__badge) { max-width: 100%; padding: 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .adm-tabbar__item.is-active { color: var(--primary); }
 .adm-tabbar__item:active { transform: scale(0.96); }
 
