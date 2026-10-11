@@ -8,6 +8,8 @@ import { naira, nairaShort } from '../../lib/format';
 import { useGame } from '../../state/game';
 import { useGarage } from '../../state/garage';
 import { Button, Sheet, toast } from '../../ui';
+import { Thumb } from '../../art/thumbs/Thumb';
+import { SellCarButton } from './SellCar';
 
 const KIND_LABEL: Record<string, string> = {
   hostel: 'hostel room', face_me: 'face-me-I-face-you room', self_contain: 'self-contain', mini_flat: 'mini flat', duplex: 'GRA duplex',
@@ -103,6 +105,21 @@ export function GarageSheet() {
               </button>
             );
           })}
+          {!afterCar && data.cars.length > 0 && (
+            <div className="garage-cars">
+              <h4 className="garage-cars__title">Your cars</h4>
+              {data.cars.map((c) => (
+                <div key={c.id} className="cars-mine__row">
+                  <Thumb spec={{ type: 'car', id: c.id }} fallback="🚗" className="cars-mine__thumb" />
+                  <span className="grow">
+                    <span className="cars-mine__name">{c.name}</span>
+                    <span className="cars-mine__sub">List price {nairaShort(c.price)}</span>
+                  </span>
+                  <SellCarButton car={c} />
+                </div>
+              ))}
+            </div>
+          )}
           <p className="garage-note">
             Your home: {KIND_LABEL[data.kind] ?? data.kind}. Bank first, then cash. A garage stays with this home: if you move, you build again.
           </p>

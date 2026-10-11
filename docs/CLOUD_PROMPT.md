@@ -7,7 +7,7 @@ This file is kept current after every step. The detailed live status is the STAT
   1. **Phase 0 house visits:** verified locally with two accounts (friend, invite, knock, admit; both in the same private home; each sees the other in the room; house chat; Leave house). Fixed: a host leaving home now ends the visit and sends guests home with an alert.
   2. **Daily reward + daily gem hunt:** DONE and on main (docs/DAILY.md). The payments fix is also on main: pending re-check and daily secret sync.
   3. **Wardrobe:** DONE and on main (Benin Boutique with brands; docs/WARDROBE.md).
-  4. **P3 full-screen hype:** DONE and on main. Also done since: M3/M4 messaging, G1 garage, V2 house visits and interactions, UI1 layout pass (see HANDOFF STATUS LOG). Q1 quick fixes DONE (dance sound, shorter seconds, slower needs, leave ends shared actions, walk-in, chat 2+, Go Crazy off). B1 Buy mode + arrange DONE (103 items, D-pad arrange in Buy). H1 move house + bigger homes DONE. Next: H2 → H3 → L1 (see SHIP_TODAY).
+  4. **P3 full-screen hype:** DONE and on main. Also done since: M3/M4 messaging, G1 garage, V2 house visits and interactions, UI1 layout pass (see HANDOFF STATUS LOG). Q1 quick fixes DONE (dance sound, shorter seconds, slower needs, leave ends shared actions, walk-in, chat 2+, Go Crazy off). B1 Buy mode + arrange DONE (103 items, D-pad arrange in Buy). H1 move house + bigger homes DONE. H2 selling + receipts DONE. Next: H3 → L1 (see SHIP_TODAY).
 - **Polish of the ChatGPT/Codex social release (migration 20261009000200_social_polish):**
   - The English map error is back (the social migration had restored the Pidgin text).
   - Tests updated for private player homes and the RLS helper grants (bl_social_can_*, bl_social_active_house_topic).

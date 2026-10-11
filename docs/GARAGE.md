@@ -58,3 +58,41 @@ No source gave a naira price for a finished garage, so the two garage prices are
   - **Luxury double garage:** a painted, two-bay version with a tiled pad, a centre pier, a gold trim and an LED strip.
 - **Cars:** most expensive first, up to the capacity inside. Without a garage, one car stands on a pad outside. One more car parks **on the street** in front (High tier only). The models come from `place3d/engine/cars.ts`, and tokunbo or used cars reuse the saloon, GLE and G-Class bodies with their own paint (`CAR_MODELS` in `room.ts`).
 - **Perf:** everything merges into the home's few per-layer meshes through `HomeBuilder`, so cars add triangles but no draw calls. The Low tier draws fewer roof strips and no street car.
+
+## H2: selling cars and dealer price tiers
+
+Migration `20261012000400_sell_receipts.sql`, test `sell_receipts_test.sql`.
+
+### Selling a car
+- **Phone → Cars → My cars** and the home's garage sheet (**Your cars**) have **Sell** on every owned vehicle. The
+  confirm dialog shows the list price, the buy-back % and the payout.
+- `car_sell(item)` pays **cars.resale_pct** of the base (list) price (default **60 %**, i.e. 40 % depreciation, rounded
+  down to ₦1,000) **into the bank**; ledger "Sold car: <name>". Refused on the road or while busy (`bl_assert_free`),
+  for a car you don't own (`not_owned`) and when `cars.sell_enabled` is off. The garage stays; the 3D home drops the car.
+- The market no longer buys cars through the Bag (`item_sell` refuses vehicles with `use_car_sell`), so there is one price.
+- Buying at a budget lot and selling back always loses money (0.88 × list in, 0.60 × list out).
+
+### Dealer tiers (Admin → Content → Car dealers)
+`car_dealers`: location_id, tier (`budget` | `mid` | `premium`), multiplier (0.5–2), label, blurb, sort, active.
+The server prices every vehicle with `bl_dealer_price(item, location)` = base × multiplier, rounded to ₦10,000
+(₦1,000 under ₦1M); `shop_list`, `shop_buy` and the place cards (`place_interior`) all use it. The Cars app shows
+a tier badge per dealer, the dealer's blurb, "₦X below/above list" and the price at the other dealers that stock the car.
+
+| Dealer | Tier | Multiplier | Stock |
+|---|---|---|---|
+| Sapele Rd Tokunbo Lot | budget ("Tokunbo lot") | 0.88 | used only: bicycle, Boxer, Kia Rio, tokunbo saloon, Camry "Muscle", Lexus RX 350 |
+| Ighodalo Car Deals | mid ("Car dealer") | 1.00 | the used cars plus new Camry and C300 |
+| SDD Motors | premium ("Official showroom") | 1.20 | everything, and the **only** seller of the G-Wagon, GLE 63, Urus, Cybertruck, Escalade and new Hilux |
+
+Stock is the items' `sold_at` (Content → Items). The migration only changed rows still holding the seeded value.
+The Tokunbo Lot's 3D "Luxury corner" still shows luxury cars as display pieces; they have no buy card there.
+
+Why these numbers (searched 2026-10-11): Nigerian listings show the same model far cheaper at roadside tokunbo lots
+than as brand-new from official dealers (Nairametrics' January 2026 tokunbo roundup lists a 2007–09 Camry at
+₦8.5–10M; 2026 guides put a brand-new Camry at ₦25–30M+ and official dealers above that). Within the same car, a lot vs
+a franchise showroom differs by roughly 10–30 % (papers, warranty, plates, margins), hence 0.88 / 1.00 / 1.20.
+Sources: https://nairametrics.com/2026/01/11/see-10-tokunbo-cars-you-can-buy-in-nigeria-for-n10-million-or-less/ ·
+https://nigerianqueries.com/prices-of-toyota-camry-cars-in-nigeria/ · https://awajis.com/tokunbo-cars-nigeria/
+(low-authority listing sites; treat as a guide). The multipliers and base prices are admin-editable.
+
+Receipts: every car, garage and house move from ₦500,000 gives a receipt (docs/RECEIPTS.md).

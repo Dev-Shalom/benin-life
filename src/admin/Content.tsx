@@ -351,6 +351,21 @@ const DEFS: TableDef[] = [
     newRow: { name: 'New garage', description: '', price: 1000000, capacity: 1, allowed_housing: ['duplex'], style: 'garage', sort: 100, active: false },
   },
   {
+    id: 'cardealers', table: 'car_dealers', title: 'Car dealers', emoji: '🏷️', blurb: 'H2 dealer price tiers (docs/GARAGE.md): every car costs its base price (Content → Items) × the dealer multiplier, rounded to ₦10,000. Tier budget = Tokunbo lot (cheaper, used stock), mid = normal dealer, premium = official showroom (dearer; the only place with the luxury cars — set which cars each dealer stocks in Items → sold_at). Location id must be a car_dealer place.',
+    pk: ['location_id'], insert: true, inline: ['multiplier'],
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => `${r.location_id} · ${r.label || r.tier}`,
+    subOf: (r) => `${String(r.tier)} · ×${Number(r.multiplier).toFixed(2)}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'tier', label: 'Tier', type: 'text', help: 'budget, mid or premium' },
+      { key: 'multiplier', label: 'Price multiplier', type: 'num', help: '0.5 to 2. 0.88 = 12% below list, 1.2 = 20% above' },
+      { key: 'label', label: 'Badge label', type: 'text', help: 'e.g. Tokunbo lot, Official showroom' },
+      { key: 'blurb', label: 'Blurb', type: 'long' },
+      { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { location_id: 'new_dealer', tier: 'mid', multiplier: 1, label: 'Car dealer', blurb: '', sort: 100, active: false },
+  },
+  {
     id: 'interactions', table: 'interaction_types', title: 'House interactions', emoji: '🤝', blurb: 'V2 things two players can do together in a house (docs/SOCIAL.md): tap a person, they accept, both get the effects and a busy timer. Requires = home activities the host\'s furniture must offer (any one): cook_home, watch_tv, sit_rest, relax_sofa; empty = none. Cost is paid by the one who asks. Poses come from the kind (cook_meal, movie, gist, play_game, dance, greet); a new kind just stands together. Cooldown: Settings → social.interact_cooldown_s.',
     pk: ['kind'], insert: true, inline: ['seconds'],
     toggle: { key: 'active', label: 'On' },

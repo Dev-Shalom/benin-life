@@ -4,6 +4,7 @@ import { naira } from '../../lib/format';
 import { NEED_KEYS, NEED_META, type NeedKey } from '../../lib/pidgin';
 import type { ItemBase, ItemEffects } from '../../lib/types';
 import { Button, Icon } from '../../ui';
+import { Thumb } from '../../art/thumbs/Thumb';
 
 const BOOST_LABEL: Record<string, string> = { bathe: 'Better bath at home' };
 
@@ -34,7 +35,11 @@ export function ItemEffectChips({ effects, kind }: { effects: ItemEffects; kind?
   );
 }
 
-export function ItemIcon({ item }: { item: Pick<ItemBase, 'icon' | 'category'> }) {
+export function ItemIcon({ item }: { item: Pick<ItemBase, 'icon' | 'category'> & { id?: string } }) {
+  // H2: vehicles show their 3D model (one shared offscreen renderer, emoji fallback)
+  if (item.category === 'vehicle' && item.id) {
+    return <Thumb spec={{ type: 'car', id: item.id }} fallback={item.icon || '🚗'} className={`item__icon item__icon--${item.category}`} />;
+  }
   return <span className={`item__icon item__icon--${item.category}`} aria-hidden>{item.icon || '📦'}</span>;
 }
 

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { noteReceipt } from '../state/receipts';
 
 /** Error thrown by game RPCs. `message` is already player-facing Pidgin. */
 export class GameError extends Error {
@@ -20,6 +21,7 @@ export async function rpc<T = Record<string, unknown>>(fn: string, args: Record<
     const msg = error.code === 'P0001' ? error.message : friendly(error.message);
     throw new GameError(msg, error.code, error.code === 'P0001' ? error.hint || undefined : undefined);
   }
+  noteReceipt(data); // H2: big purchases open the receipt sheet
   return data as T;
 }
 

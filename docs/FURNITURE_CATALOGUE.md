@@ -19,6 +19,17 @@ Admin → Content → Furniture.
     chairs and plants may go in either.
   - Curtains, ACs, art and clocks must touch the back (north) or left (west) wall.
   - Solid pieces may not overlap fixtures, partitions, a door's clear zone or each other.
+- **Selling (H2):** Buy → Arrange → My items has **Sell** on every piece you bought, placed or in storage. A
+  confirm dialog shows the payout: **furniture.resale_pct** of the catalogue price (default 45 %, rounded down to
+  ₦100), paid in cash by `furniture_sell(key)`; ledger "Sold furniture: <name>". The copy disappears (the last copy
+  takes the sold key, so keys stay `own_x`, `own_x-2`, ...). The free piece that came with the house (copy 1 of a
+  starter row) can't be sold ("came with the house"; a bought extra copy can), and built-ins (`fixed`) are part of the
+  house, not your furniture. Not while busy. Switch: `furniture.sell_enabled`. Furniture of ₦500,000 or more gives a
+  receipt (docs/RECEIPTS.md).
+- **3D thumbnails (H2):** the Buy cards, My items and the sell dialog show the real model, rendered by ONE shared
+  offscreen WebGL renderer (`src/art/thumbs/render.ts`, loaded lazily) only for cards that scroll into view, a few
+  per tick, cached in memory and sessionStorage (`bl.thumb.v1.*`). The renderer is disposed after 15 s idle. The emoji
+  stays in Lite mode, on data-saver/2G, without WebGL or if the context fails (`src/art/thumbs/Thumb.tsx`).
 - **Copies:** some pieces can be owned several times (up to `max_qty`, e.g. 6 plastic chairs). The keys
   are `own_<id>`, `own_<id>-2`, and so on.
 - **Moving house** (H1, `house_move`): every piece that stood in the old home is placed again in the new one: its

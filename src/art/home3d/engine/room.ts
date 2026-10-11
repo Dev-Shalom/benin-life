@@ -74,7 +74,8 @@ const CAR_MODELS: Record<string, [LuxCar, string?]> = {
 };
 const CAR_S = 0.72;
 
-function drawVehicle(b: HomeBuilder, id: string, x: number, z: number, ry: number) {
+/** Draw an owned vehicle (item id) at (x, z) facing ry; also used by the H2 shop thumbnails (src/art/thumbs). */
+export function drawVehicle(b: HomeBuilder, id: string, x: number, z: number, ry: number) {
   if (id === 'bajaj_boxer') { b.setFrame(x, 0, z, ry); motorcycle(b, CAR_S); }
   else if (id === 'bicycle') { b.setFrame(x, 0, z, ry); bicycle(b, 0.88); }
   else { const [kind, paint] = CAR_MODELS[id] ?? ['camry', '#c4c7cc']; drawCar(b, kind, x, z, ry, CAR_S, paint); }

@@ -6,11 +6,15 @@ import { errorMessage } from '../../../lib/api';
 import { naira, timeAgo } from '../../../lib/format';
 import type { BankRecipient, GameState, LedgerRow } from '../../../lib/types';
 import { useGame } from '../../../state/game';
+import { myReceipts } from '../../../api/receipts';
+import { getCfg } from '../../../lib/config';
+import { useReceipts, type Receipt } from '../../../state/receipts';
+import { receiptDate, receiptKindEmoji } from '../ReceiptSheet';
 import { Button, toast } from '../../../ui';
 import { AmountBox } from '../../../panels/bank/BankUI';
 import { realWait, useBankInfo, useGoTo } from '../../../panels/bank/bankHooks';
 
-type Tab = 'send' | 'history' | 'where';
+type Tab = 'send' | 'history' | 'receipts' | 'where';
 
 function History({ active }: { active: boolean }) {
   const [rows, setRows] = useState<LedgerRow[] | null>(null);
@@ -46,11 +50,56 @@ function History({ active }: { active: boolean }) {
   );
 }
 
+/** H2: receipts for big purchases (docs/RECEIPTS.md); tap one to see the paper. */
+function Receipts({ active }: { active: boolean }) {
+  const version = useReceipts((s) => s.version);
+  const show = useReceipts((s) => s.show);
+  const [rows, setRows] = useState<Receipt[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    let alive = true;
+    myReceipts(50)
+      .then((r) => alive && (setRows(r), setErr(null)))
+      .catch((e) => alive && setErr(errorMessage(e)));
+    return () => {
+      alive = false;
+    };
+  }, [active, version]);
+  if (err) return <p className="phone-app__lead">{err}</p>;
+  if (!rows) return <div className="panel-skel"><span /><span /></div>;
+  if (rows.length === 0) return <p className="phone-app__lead">No receipts yet. Big purchases (from {naira(Number(getCfg('receipts.min_amount', 500000)))}) give you one.</p>;
+  return (
+    <ul className="bank-hist receipts-list">
+      {rows.map((r) => (
+        <li key={r.id}>
+          <button type="button" className="bank-hist__row receipts-list__row" onClick={() => show(r)}>
+            <span className="bank-hist__icon" aria-hidden>{receiptKindEmoji(r.kind)}</span>
+            <span className="grow">
+              <span className="bank-hist__label">{r.item_name}</span>
+              <span className="bank-hist__sub">{r.seller} · {receiptDate(r.created_at)}</span>
+              <span className="receipts-list__ref">{r.ref}</span>
+            </span>
+            <b className="bank-hist__amt">{naira(r.amount)}</b>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function BankApp({ state }: { state: GameState }) {
   const refresh = useGame((s) => s.refresh);
   const { info, err, reload } = useBankInfo();
   const goTo = useGoTo();
-  const [tab, setTab] = useState<Tab>('send');
+  const [tab, setTab] = useState<Tab>(() => (useReceipts.getState().wantList ? 'receipts' : 'send'));
+  // H2: "All receipts" on the receipt sheet opens this tab
+  const wantList = useReceipts((s) => s.wantList);
+  useEffect(() => {
+    if (!wantList) return;
+    setTab('receipts');
+    useReceipts.getState().requestList(false);
+  }, [wantList]);
   const [user, setUser] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -104,7 +153,7 @@ export default function BankApp({ state }: { state: GameState }) {
       </div>
       <div className="bank-row"><span>Cash in pocket</span><b>{naira(p.cash)}</b></div>
       <div className="chop__tabs" role="tablist">
-        {([['send', '💸 Send'], ['history', '🧾 History'], ['where', '📍 Where']] as const).map(([id, label]) => (
+        {([['send', '💸 Send'], ['history', '📜 History'], ['receipts', '🧾 Receipts'], ['where', '📍 Where']] as const).map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} className={`chop__tab${tab === id ? ' is-on' : ''}`}
             onClick={() => setTab(id)}>{label}</button>
         ))}
@@ -150,6 +199,7 @@ export default function BankApp({ state }: { state: GameState }) {
       ))}
 
       {tab === 'history' && <History active={tab === 'history'} />}
+      {tab === 'receipts' && <Receipts active={tab === 'receipts'} />}
 
       {tab === 'where' && info && (
         <div className="stack">

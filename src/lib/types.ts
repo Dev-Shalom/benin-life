@@ -549,6 +549,18 @@ export interface ShopItem extends ItemBase {
   resale_price: number;
   owned: number;
   affordable: boolean;
+  /** H2: list price before the dealer's multiplier (price = what this place charges). */
+  base_price?: number;
+  /** H2: every place that sells it (vehicles: the dealers). */
+  sold_at?: string[];
+}
+
+/** H2: a car dealer's tier (car_dealers table; price = base x multiplier). */
+export interface DealerInfo {
+  tier: 'budget' | 'mid' | 'premium';
+  multiplier: number;
+  label: string;
+  blurb: string;
 }
 
 /** `shop_list(p_location)` */
@@ -556,6 +568,8 @@ export interface ShopList {
   location: { id: string; name: string; scene: SceneType };
   here: boolean;
   sell_here: boolean;
+  /** H2: set at car dealers. */
+  dealer?: DealerInfo | null;
   cash: number;
   items: ShopItem[];
 }

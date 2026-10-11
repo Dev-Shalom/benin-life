@@ -53,6 +53,7 @@ import { DailySync, usePlaceGem } from './game/Daily';
 import { useShownAvatar, useWardrobe } from '../state/wardrobe';
 import { GarageSheet } from './game/GarageSheet';
 import { MoveHouseSheet } from './game/MoveHouseSheet';
+import { ReceiptSheet } from './game/ReceiptSheet';
 import { useGarage } from '../state/garage';
 import { garageHome, type GarageHome } from '../api/garage';
 
@@ -880,10 +881,15 @@ export default function Game() {
           void reloadPositions();
           if (canArrange) { setOverlay(null); useArrange.getState().open(key); }
         }}
+        onSold={() => {
+          if (homeOwnerId) void useCatalog.getState().loadFurniture(homeOwnerId, true);
+          void reloadPositions();
+        }}
         onArrange={(key) => { setOverlay(null); useArrange.getState().open(key); }}
       />
       <GarageSheet />
       <MoveHouseSheet />
+      <ReceiptSheet />
       <ShortcutsSheet />
       <Phone state={state} clock={clock} />
       {overlay === 'boutique' && <Suspense fallback={null}><Boutique state={state} /></Suspense>}
