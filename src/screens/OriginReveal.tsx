@@ -39,7 +39,7 @@ function originPerks(state: GameState): Perk[] {
       text: ORIGIN_UI.allowance(naira(o.allowance_daily)),
     });
   if (o.career_head_start > 0) list.push({ emoji: '⭐', text: ORIGIN_UI.headStart(o.career_head_start) });
-  if (o.perks?.micro_loan_access === 'easy') list.push({ emoji: '🤝', text: ORIGIN_UI.easyLoan });
+  // L1: micro-loans are not in the game yet, so the LAPO 'easy loan' perk is not shown
   if (o.start_bank <= 0) list.push({ emoji: '🏦', text: ORIGIN_UI.noBank });
   if (!o.items?.length) list.push({ emoji: '🎒', text: ORIGIN_UI.emptyBag });
   list.push({ emoji: '🏠', text: ORIGIN_UI.cashByHome });

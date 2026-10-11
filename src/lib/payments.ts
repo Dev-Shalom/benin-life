@@ -53,7 +53,7 @@ export async function loadTopUpPacks(): Promise<TopUpPack[]> {
   return data.map((r) => ({ id: r.id, label: r.label, game_naira: Number(r.game_naira), price_kobo: Number(r.price_kobo), tag: r.bonus_tag }));
 }
 
-const COMING_SOON = 'Top-ups are coming soon. Hold on to your naira for now.';
+const COMING_SOON = 'Top-ups are paused right now. Check back later.';
 const INLINE_SRC = 'https://js.paystack.co/v2/inline.js';
 
 interface PaystackTx { reference?: string; status?: string; message?: string }

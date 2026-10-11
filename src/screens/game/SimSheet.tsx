@@ -1,6 +1,6 @@
-// Sim sheet (R4): Profile / Needs / Goals / Skills / People / Career / Settings.
-// Career is live since V1-3 (shared UI in src/panels/careers/CareerUI.tsx). Skills, people, wishes,
-// perks and feelings arrive later; their tabs preview the layout.
+// Sim sheet (R4): Profile / Needs / Goals / People / Career / Settings.
+// Career is live since V1-3 (shared UI in src/panels/careers/CareerUI.tsx). L1 launch pass: the
+// unfinished Skills tab, Perks and Feelings previews are hidden; Wishes are today's D1 daily goals.
 // The Profile turntable is the only live 3D view while this sheet is open: Game suspends the 3D home.
 import { useLiveProfile } from '../../lib/live';
 import { useEffect, useState } from 'react';
@@ -14,6 +14,7 @@ import { HUD_NEEDS, NEED_META, ORIGIN_UI, P, WEEKDAYS, originCopy, type NeedKey 
 import { usePrefs } from '../../lib/prefs';
 import type { AvatarConfig, BlockedPlayer, GameState } from '../../lib/types';
 import { useCatalog } from '../../state/catalog';
+import { useDaily } from '../../state/daily';
 import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
 import { useUi, type SimTab } from '../../state/ui';
@@ -25,29 +26,9 @@ const TABS: { id: SimTab; label: string }[] = [
   { id: 'profile', label: 'Profile' },
   { id: 'needs', label: 'Needs' },
   { id: 'goals', label: 'Goals' },
-  { id: 'skills', label: 'Skills' },
   { id: 'people', label: 'People' },
   { id: 'career', label: 'Career' },
   { id: 'settings', label: 'Settings' },
-];
-
-const SKILLS = [
-  { id: 'cooking', name: 'Cooking', emoji: '🍳' },
-  { id: 'charisma', name: 'Charisma', emoji: '😎' },
-  { id: 'fitness', name: 'Fitness', emoji: '💪' },
-  { id: 'coding', name: 'Coding', emoji: '💻' },
-  { id: 'music', name: 'Music', emoji: '🎶' },
-  { id: 'hustle', name: 'Hustle', emoji: '💼' },
-  { id: 'dance', name: 'Dance', emoji: '💃' },
-  { id: 'comedy', name: 'Comedy', emoji: '🎭' },
-  { id: 'bronze', name: 'Bronze casting', emoji: '🗿' },
-];
-
-const PERKS = [
-  { name: 'Big Belly', emoji: '🍲', text: 'Hunger drops 25% slower.' },
-  { name: 'Tank Bladder', emoji: '🚽', text: 'Bladder drops 30% slower.' },
-  { name: 'Morning Person', emoji: '🌅', text: 'Energy drops 25% slower.' },
-  { name: 'Life of the Party', emoji: '🎉', text: 'Fun drops 25% slower.' },
 ];
 
 const CAREERS = ['💻 Tech', '🏧 PoS & Fintech', '🛒 Trade', '🛺 Transport', '🩺 Health', '🎓 Education'];
@@ -198,13 +179,6 @@ function NeedsTab({ state }: { state: GameState }) {
           <NeedRow k="stress" v={needValue(p, 'stress')} />
         </div>
       </section>
-      <section className="soon-card">
-        <span className="soon-card__emoji" aria-hidden>💭</span>
-        <div>
-          <div className="soon-card__title">Feelings arrive soon</div>
-          <div className="soon-card__text">Good nights out, fine homes and bad days will leave feelings that lift or sink your mood.</div>
-        </div>
-      </section>
       <section className="sim-card">
         <h4 className="sim-card__title">Traits</h4>
         <TraitList ids={p.traits ?? []} />
@@ -227,11 +201,9 @@ function GoalsTab({ state }: { state: GameState }) {
           <span className="dream-hero__emoji" aria-hidden>{dream?.emoji ?? '🌟'}</span>
           <div>
             <div className="dream-hero__name">{dream?.name ?? 'No dream yet'}</div>
-            <div className="dream-hero__desc">{dream?.description ?? 'Older Sims can pick a lifetime dream in a coming update.'}</div>
+            <div className="dream-hero__desc">{dream?.description ?? 'No dream picked for this life.'}</div>
           </div>
         </div>
-        <div className="dream-hero__bar"><span style={{ width: '0%' }} /></div>
-        <div className="dream-hero__pct">Progress tracking starts soon · 0%</div>
       </section>
       {copy && (
         <section className="sim-card origin-card">
@@ -247,43 +219,50 @@ function GoalsTab({ state }: { state: GameState }) {
           </div>
         </section>
       )}
-      <section>
-        <div className="sim-section-head"><h4>Wishes</h4><span className="soon-pill">Coming soon</span></div>
-        <div className="ghost-list">
-          {[['🍲', 'Eat at a buka you have never tried'], ['⚽', 'Watch a match at the viewing centre'], ['🗿', 'Visit the bronze casters on Igun Street']].map(([e, t]) => (
-            <div key={t} className="ghost-row"><span aria-hidden>{e}</span><span className="grow">{t}</span><span className="ghost-row__pts">+3 ✨</span></div>
-          ))}
-        </div>
-      </section>
-      <section>
-        <div className="sim-section-head"><h4>Perks</h4><span className="soon-pill">Coming soon</span></div>
-        <div className="perk-grid">
-          {PERKS.map((k) => (
-            <div key={k.name} className="perk-card">
-              <span className="perk-card__emoji" aria-hidden>{k.emoji}</span>
-              <div className="perk-card__name">{k.name}</div>
-              <div className="perk-card__text">{k.text}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <Wishes />
     </div>
   );
 }
 
-function SkillsTab() {
+/** L1: Wishes = today's three daily goals from the D1 daily reward + gem hunt (server status). */
+function Wishes() {
+  const reward = useDaily((s) => s.reward);
+  const gems = useDaily((s) => s.gems);
+  const load = useDaily((s) => s.load);
+  const setSheet = useDaily((s) => s.setSheet);
+  const setOverlay = useUi((s) => s.setOverlay);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const rows: { key: string; emoji: string; text: string; done: boolean; prize: string; sheet: 'reward' | 'gems' }[] = [];
+  if (reward?.enabled) {
+    const today = reward.steps.find((x) => x.state === 'today') ?? reward.next;
+    rows.push({ key: 'reward', emoji: '🎁', text: reward.claimed ? "Today's daily reward collected" : "Collect today's daily reward",
+      done: reward.claimed, prize: today ? (today.cash ? naira(today.cash) : today.label) : '', sheet: 'reward' });
+  }
+  if (gems?.enabled && gems.total > 0) {
+    rows.push({ key: 'gem1', emoji: '💎', text: 'Find one hidden gem in the city', done: gems.found > 0, prize: naira(gems.prize), sheet: 'gems' });
+    rows.push({ key: 'gemall', emoji: '🏆', text: `Find all ${gems.total} gems today (${gems.found}/${gems.total})`, done: gems.found >= gems.total,
+      prize: naira(gems.all_bonus), sheet: 'gems' });
+  }
+  if (!rows.length) return null;
+  const open = (sheet: 'reward' | 'gems') => {
+    setOverlay(null);
+    setSheet(sheet);
+  };
   return (
-    <div className="sim-tab stack">
-      <p className="soon-banner"><span aria-hidden>📚</span> Skills start growing in the next update. Everyone begins at level 1.</p>
-      {SKILLS.map((s) => (
-        <div key={s.id} className="skill-row">
-          <div className="skill-row__top"><span><span aria-hidden>{s.emoji}</span> {s.name}</span><span className="skill-row__lvl">Level 1</span></div>
-          <div className="skill-row__segs" aria-label={`${s.name} level 1 of 10`}>
-            {Array.from({ length: 10 }, (_, i) => <span key={i} className={i < 1 ? 'is-on' : undefined} />)}
-          </div>
-        </div>
-      ))}
-    </div>
+    <section>
+      <div className="sim-section-head"><h4>Today's wishes</h4><span className="muted" style={{ fontSize: 12 }}>New ones every day</span></div>
+      <div className="ghost-list">
+        {rows.map((r) => (
+          <button key={r.key} type="button" className={`ghost-row wish-row${r.done ? ' is-done' : ''}`} onClick={() => open(r.sheet)}>
+            <span aria-hidden>{r.done ? '✅' : r.emoji}</span>
+            <span className="grow">{r.text}</span>
+            {r.prize && !r.done && <span className="ghost-row__pts">+{r.prize}</span>}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -291,7 +270,7 @@ function PeopleTab() {
   return (
     <div className="sim-tab stack">
       <EmptyState icon="people" title="Nobody in your circle yet"
-        body="Friends, neighbours, colleagues and rivals will show up here with how close you are. Relationships arrive in the next update." />
+        body="Your friends and chats live in the Messages app on your phone. Players you block in chat show below." />
       <BlockedList />
     </div>
   );
@@ -411,14 +390,6 @@ function SettingsTab({ state }: { state: GameState }) {
           </div>
         </div>
       </div>
-      <h4 className="settings-head">Notifications</h4>
-      <div className="settings-row is-disabled">
-        <div>
-          <div>Messages and alerts</div>
-          <div className="muted settings-row__hint">Phone notifications are coming soon.</div>
-        </div>
-        <span className="soon-pill">Soon</span>
-      </div>
       <h4 className="settings-head">Account</h4>
       <div className="settings-row">
         <div>
@@ -445,11 +416,13 @@ function SettingsTab({ state }: { state: GameState }) {
 
 export function SimSheet({ state }: { state: GameState }) {
   const overlay = useUi((s) => s.overlay);
-  const tab = useUi((s) => s.simTab);
+  const rawTab = useUi((s) => s.simTab);
   const openSim = useUi((s) => s.openSim);
   const setOverlay = useUi((s) => s.setOverlay);
   const loadCatalog = useCatalog((s) => s.loadCatalog);
   const open = overlay === 'sim';
+  // the Skills tab was removed at launch: an old 'skills' tab falls back to Profile
+  const tab = TABS.some((t) => t.id === rawTab) ? rawTab : 'profile';
 
   useEffect(() => {
     if (open) void loadCatalog();
@@ -466,7 +439,6 @@ export function SimSheet({ state }: { state: GameState }) {
       {tab === 'profile' && <ProfileTab state={state} onEditLook={() => setOverlay('look')} onWardrobe={() => setOverlay('boutique')} />}
       {tab === 'needs' && <NeedsTab state={state} />}
       {tab === 'goals' && <GoalsTab state={state} />}
-      {tab === 'skills' && <SkillsTab />}
       {tab === 'people' && <PeopleTab />}
       {tab === 'career' && <CareerTab state={state} />}
       {tab === 'settings' && <SettingsTab state={state} />}

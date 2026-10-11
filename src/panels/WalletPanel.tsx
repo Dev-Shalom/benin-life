@@ -71,10 +71,11 @@ export default function WalletPanel({ state, refresh }: PanelProps) {
         <h4 className="act__name">Top up naira</h4>
         {live
           ? <span className="chip good"><Icon name="check" size={12} /> Secure checkout</span>
-          : <span className="chip warn"><Icon name="clock" size={12} /> Coming soon</span>}
+          : <span className="chip warn"><Icon name="clock" size={12} /> Paused</span>}
       </div>
       <p className="act__desc">
         Naira lands in your bank. It is game money only: it has no real cash value and can't be withdrawn.
+        {!live && ' Top-ups are paused right now. Check back later.'}
       </p>
 
       <div className="topup-grid">
