@@ -1,5 +1,6 @@
 // V1-7 admin RPC wrappers. Every RPC is guarded server-side by bl_is_admin() (supabase/migrations/20261005001100_admin.sql).
-import { rpc } from '../lib/api';
+import { GameError, rpc } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
 export type ConfigKind = 'number' | 'percent' | 'naira' | 'minutes' | 'bool' | 'text' | 'json';
 
@@ -102,6 +103,18 @@ export const adminApi = {
   playerDetail: (id: string) => rpc<PlayerDetail>('admin_player_detail', { p_id: id }),
   grantMoney: (id: string, account: 'cash' | 'bank', delta: number, reason: string) =>
     rpc<Msg & { balance: number }>('admin_grant_money', { p_id: id, p_account: account, p_delta: delta, p_reason: reason }),
+  /** S1: edge function admin-delete-user (admin check + audit happen in the database first). */
+  deleteUser: async (id: string, confirm: string, reason: string): Promise<Msg> => {
+    const { data, error } = await supabase.functions.invoke('admin-delete-user', { body: { user_id: id, confirm, reason } });
+    if (!error && data?.ok) return { message: String(data.message ?? 'Account deleted.') };
+    let msg = 'Delete failed. Check your connection and try again.';
+    try {
+      const ctx = (error as { context?: Response } | null)?.context;
+      const body = ctx ? await ctx.json() : data;
+      if (body?.message) msg = String(body.message);
+    } catch { /* keep the generic text */ }
+    throw new GameError(msg);
+  },
   ban: (id: string, banned: boolean, reason = '') => rpc<Msg>('admin_ban', { p_id: id, p_banned: banned, p_reason: reason }),
   mute: (id: string, minutes: number) => rpc<Msg>('admin_mute', { p_id: id, p_minutes: minutes }),
   setAdmin: (id: string, isAdmin: boolean) => rpc<Msg>('admin_set_admin', { p_id: id, p_is_admin: isAdmin }),

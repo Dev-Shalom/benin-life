@@ -1,7 +1,7 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
 // Built: Bolt (S1 ride-hailing, renamed from Ride in H3: book keke/bus/drop/car with price, time and risk, lazy), Jobs (V1-3), Chowdeck + Houses (V1-4, lazy),
 // Billboards (H3: boards on the map + My ads),
-// Bank (V1-5), Ranks (PAY), Messages (friend requests, private text/voice chat and house visits), Wallet, Alerts and Settings.
+// Bank (V1-5), Ranks (PAY), Feedback (S1-D suggestion box), Messages (friend requests, private text/voice chat and house visits), Wallet, Alerts and Settings.
 // Apps without working features stay hidden.
 // Esc closes the phone.
 import { lazy, Suspense, useRef, useState } from 'react';
@@ -32,6 +32,7 @@ const CarsApp = lazy(() => import('./phone/CarsApp'));
 const StoriesApp = lazy(() => import('./phone/StoriesApp'));
 const PoliceApp = lazy(() => import('./phone/PoliceApp'));
 const BillboardsApp = lazy(() => import('./phone/BillboardsApp'));
+const FeedbackApp = lazy(() => import('./phone/FeedbackApp'));
 
 interface App {
   id: string;
@@ -56,6 +57,7 @@ const APPS: App[] = [
   { id: 'billboards', name: 'Billboards', emoji: '📺', bg: 'linear-gradient(160deg,#ff6b78,#d93646)', pitch: '' },
   { id: 'police', name: 'Police', emoji: '🚓', bg: 'linear-gradient(160deg,#4f6bd8,#26388f)', pitch: 'Report a robbery, check your case file and pay bail.' },
   { id: 'wallet', name: 'Wallet', emoji: '👛', bg: 'linear-gradient(160deg,#34c77f,#0a6f40)', pitch: '' },
+  { id: 'feedback', name: 'Feedback', emoji: '💡', bg: 'linear-gradient(160deg,#ffcf5a,#e8912a)', pitch: '' },
   { id: 'alerts', name: 'Alerts', emoji: '🔔', bg: 'linear-gradient(160deg,#ff9d5c,#e2552c)', pitch: '' },
   { id: 'settings', name: 'Settings', emoji: '⚙️', bg: 'linear-gradient(160deg,#a9b2bf,#6b7686)', pitch: '' },
 ];
@@ -238,9 +240,9 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp state={state} onGoHome={goHome} onBack={() => setScreen('home')} onOpenAlerts={() => setScreen('alerts')} alertsUnread={unread} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' ? (
+                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
-                        {app.id === 'ranks' ? <RanksApp /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
+                        {app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
                           : app.id === 'billboards' ? <BillboardsApp key={bbTab} initialTab={bbTab} onOpenBoard={openBoard} />
                           : app.id === 'cars' ? <CarsApp state={state} onGo={goToPlace} />
                             : app.id === 'police' ? <PoliceApp state={state} onGo={goToPlace} />

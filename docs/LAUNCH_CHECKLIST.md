@@ -14,6 +14,14 @@ Do these in order on the live site, https://benin-life.vercel.app. Each step tak
 10. **Set the balance values.** Admin → Settings / Content → Homes, using the table in docs/BALANCE.md (main one: lower `daily.gem_prize` to 1000 and `daily.gem_all_bonus` to 2000).
 11. **Check `origin.force_next`.** Admin → Settings: leave it empty unless you want the next account to be Nepo (it clears itself after one use). Keep `origin.nepo_pct` at 10.
 12. **One last look.** Admin → Overview → **App errors** should be empty or nearly empty after your own test play. Play 5 minutes on your phone: walk, eat, work a shift, open the phone apps.
-13. **Announce.** Share the link. Watch Admin → Overview (online now, new players, App errors) and Admin → Ads for the first hours. If something breaks: Vercel → Deployments → last good one → **Promote to Production** (docs/DEPLOY.md "Rolling back").
+13. **Get ready for a crowd (S1, docs/SCALING.md).** Supabase → Billing → **Pro**, then **turn the Spend cap OFF** (with the cap on, Realtime stops at 500 players online; Free stops at 200). Settings → Compute and Disk → **Small** (up to ~1,000 online) or **Medium** (up to ~3,000). Do it a few hours before announcing (short restart).
+14. **Password reset emails (S1, docs/DEPLOY.md "Password reset emails at scale").**
+    - Authentication → URL Configuration: **Site URL** = `https://benin-life.vercel.app`; **Redirect URLs** includes `https://benin-life.vercel.app/**`.
+    - Authentication → Emails → **SMTP Settings**: enable custom SMTP (Resend or Brevo free tier, steps in DEPLOY.md). The built-in sender only sends **2 emails per hour for the whole project**.
+    - Authentication → Rate Limits → raise "sending emails" to what the provider allows (e.g. 100/hour).
+    - Authentication → Emails → Templates → Reset Password: link stays `{{ .ConfirmationURL }}`; subject "Reset your Benin Life password".
+    - Test: log out → Forgot password → your email → open the link → set a new password → you land in the game → log out → log in with the new password.
+15. **Deploy the new edge function.** Actions → **Supabase Edge Functions** → Run workflow (deploys `admin-delete-user`). Then Admin → Players → a test account → **Delete account** (type the username + a reason) works. Admin → **Feedback** shows players' suggestions; you get a push alert for each one.
+16. **Announce.** Share the link. Watch Admin → Overview (online now, new players, App errors) and Admin → Ads for the first hours. If something breaks: Vercel → Deployments → last good one → **Promote to Production** (docs/DEPLOY.md "Rolling back").
 
-Optional soon after launch: turn on **Confirm email** and set up custom SMTP in Supabase Auth (docs/DEPLOY.md "Supabase Auth settings"), and move Vercel to Pro once you are selling top-ups and ads.
+Optional soon after launch: turn on **Confirm email** (needs the custom SMTP from step 14), and move Vercel to Pro once you are selling top-ups and ads.

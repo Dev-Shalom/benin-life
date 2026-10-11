@@ -94,7 +94,8 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
 
   useEffect(() => {
     void reload();
-    const timer = window.setInterval(() => void reload(), 20_000);
+    // S1 scaling: requests/knocks/DMs already arrive via the events channel; this is only a safety net
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void reload(); }, 60_000);
     return () => window.clearInterval(timer);
   }, [reload]);
   // Friend requests, knocks and new DMs arrive through the existing per-player events channel.

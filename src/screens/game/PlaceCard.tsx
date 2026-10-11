@@ -14,7 +14,7 @@ import { districtName, naira, nairaShort } from '../../lib/format';
 import { activitySeconds, useActionConfig } from '../../lib/live';
 import { NEED_META, type NeedKey } from '../../lib/pidgin';
 import type { AvatarConfig, GameState, PanelId, PublicPlayer } from '../../lib/types';
-import { usePresenceStore, usePresentAt } from '../../state/presence';
+import { usePresenceLiveAt, usePresentAt } from '../../state/presence';
 import { useTasks } from '../../state/tasks';
 import { useUi } from '../../state/ui';
 import { Icon, Sheet, toast } from '../../ui';
@@ -75,7 +75,7 @@ export function usePlacePeople(locationId: string | null, hourKey: number, overr
 /** Real players connected at a place (Realtime Presence ids -> players_here for names), me excluded. */
 export function usePlayersAt(locationId: string | null, meId: string): { id: string; username: string; avatar: PublicPlayer['avatar'] | null }[] {
   const ids = usePresentAt(locationId);
-  const live = usePresenceStore((s) => s.online !== null);
+  const live = usePresenceLiveAt(locationId);
   const [list, setList] = useState<PublicPlayer[]>([]);
   useEffect(() => {
     if (!locationId) return;

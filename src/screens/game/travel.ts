@@ -49,7 +49,7 @@ export function useTravel(dest: Location, cash: number, onStarted: () => void) {
   // Re-quote if the sheet stays open a while (traffic changes with the clock).
   useEffect(() => {
     if (!quote) return;
-    const id = window.setInterval(() => void load(), 45_000);
+    const id = window.setInterval(() => { if (document.visibilityState === 'visible') void load(); }, 60_000);
     return () => window.clearInterval(id);
   }, [quote?.dest]);
 

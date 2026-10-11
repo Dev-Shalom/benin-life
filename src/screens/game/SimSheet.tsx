@@ -367,6 +367,7 @@ function SettingsTab({ state }: { state: GameState }) {
   const session = useGame((s) => s.session);
   const signOut = useGame((s) => s.signOut);
   const setOverlay = useUi((s) => s.setOverlay);
+  const openPhone = useUi((s) => s.openPhone);
   const nav = useNavigate();
   return (
     <div className="sim-tab">
@@ -398,6 +399,7 @@ function SettingsTab({ state }: { state: GameState }) {
         </div>
       </div>
       <div className="stack" style={{ marginTop: 16 }}>
+        <Button variant="ghost" block onClick={() => openPhone('feedback')}>💡 Send feedback or report a bug</Button>
         {state.profile.is_admin && (
           <Button variant="gold" icon="crown" block onClick={() => nav('/admin')}>Open admin panel</Button>
         )}

@@ -9,7 +9,7 @@ import { hasPanel, PANEL_LABELS } from '../../panels/registry';
 import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
-import { usePresenceStore, usePresentAt } from '../../state/presence';
+import { useOthersAt, usePresenceLiveAt, usePresenceStore, usePresentAt } from '../../state/presence';
 import { Button, Icon, Sheet, Spinner, Tabs } from '../../ui';
 import { PanelHost } from './PanelHost';
 import type { PlayerStatus } from './status';
@@ -146,7 +146,7 @@ function PeopleHere({ loc, meId }: { loc: Location; meId: string }) {
   // S1: the list reloads the moment someone connects at / leaves this place (Realtime Presence),
   // with a slow poll as a safety net. While presence is live, only connected players are shown.
   const presentHere = usePresentAt(loc.id);
-  const presenceLive = usePresenceStore((s) => s.online !== null);
+  const presenceLive = usePresenceLiveAt(loc.id);
   const connected = usePresenceStore((s) => s.ids);
   useEffect(() => {
     let alive = true;
@@ -159,7 +159,8 @@ function PeopleHere({ loc, meId }: { loc: Location; meId: string }) {
       }
     };
     const t = window.setTimeout(load, 250); // debounce presence bursts
-    const id = window.setInterval(load, presenceLive ? 120_000 : 30_000);
+    // S1: slow safety-net poll, only while the tab is visible (live presence covers my own place)
+    const id = window.setInterval(() => { if (document.visibilityState === 'visible') void load(); }, presenceLive ? 180_000 : 60_000);
     return () => {
       alive = false;
       window.clearTimeout(t);
@@ -248,8 +249,7 @@ export const placeLink = (id: string) => `${location.origin}/play?place=${encode
 
 function PlaceFacts({ loc, meId }: { loc: Location; meId: string }) {
   const hours = useOpenNow(loc);
-  const ids = usePresentAt(loc.id);
-  const players = ids.filter((x) => x !== meId).length;
+  const players = useOthersAt(loc.id, meId);
   const [npcs, setNpcs] = useState<number | null>(null);
   useEffect(() => {
     let alive = true;

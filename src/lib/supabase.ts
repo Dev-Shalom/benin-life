@@ -12,5 +12,10 @@ export const supabaseConfigured = Boolean(url && anonKey);
 
 export const supabase = createClient(url ?? 'http://127.0.0.1:54321', anonKey ?? 'missing-anon-key', {
   auth: { persistSession: true, autoRefreshToken: true },
-  realtime: { params: { eventsPerSecond: 5 } },
+  realtime: {
+    params: { eventsPerSecond: 5 },
+    // S1 scaling: after a Realtime restart thousands of tabs reconnect at once. Full-jitter exponential
+    // backoff (1 s .. 30 s, randomised) spreads them out instead of the default fixed 1/2/5/10 s steps.
+    reconnectAfterMs: (tries: number) => Math.round(1000 + Math.random() * Math.min(30_000, 1000 * 2 ** Math.min(tries, 5))),
+  },
 });

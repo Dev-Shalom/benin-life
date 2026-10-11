@@ -753,3 +753,36 @@
     animation-duration: 1ms;
   }
 }
+
+/* S1: connection banner (state/net.ts) */
+.bl-netbanner {
+  position: fixed;
+  left: 50%;
+  /* under the HUD top pill in the game (--hud-bottom, set by Hud.tsx), near the top elsewhere */
+  top: calc(var(--hud-bottom, calc(8px + env(safe-area-inset-top, 0px))) + 64px);
+  transform: translateX(-50%);
+  z-index: 9999;
+  width: max-content;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(20, 20, 24, 0.92);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.3;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+.bl-netbanner-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: #f5a623;
+  animation: bl-netbanner-pulse 1.2s ease-in-out infinite;
+}
+@keyframes bl-netbanner-pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .bl-netbanner-dot { animation: none; } }

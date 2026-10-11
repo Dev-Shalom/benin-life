@@ -5,6 +5,7 @@ import { useGame } from './state/game';
 import { needsHome } from './api/creator';
 import { LoadingScreen, Toaster } from './ui';
 import { UpdateNotice } from './ui/UpdateNotice';
+import { NetBanner } from './ui/NetBanner';
 import { P } from './lib/pidgin';
 import { getCfg, useConfig } from './lib/config';
 import { lastSeen, markWelcomed, shouldWelcome, trackPresence } from './lib/welcome';
@@ -146,6 +147,7 @@ export default function App() {
       </Suspense>
       <Toaster />
       <UpdateNotice />
+      <NetBanner />
     </BrowserRouter>
   );
 }

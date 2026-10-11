@@ -70,18 +70,66 @@ The app reports crashes to the database so you can see them without player scree
 | Rate limits | Keep the defaults on (sign-ups / sign-ins per hour per IP). |
 | Password | Minimum length 6 matches the game's check; raise both together if you change it. |
 
-## Free-tier limits to watch (check the current numbers on supabase.com/pricing and vercel.com/pricing; they change)
-- **Supabase Free:** database size (around 500 MB), egress / bandwidth (a few GB a month), Realtime concurrent connections (around 200) and messages, monthly active users for Auth, and the project **pauses after about a week with no activity**. Watch them in Supabase → Settings → Usage / Reports.
-  - Biggest growth: `ledger` (one row per money move), `events`, `chat_messages` (auto-trimmed after 48 h), `config_audit`/`admin_audit`.
-  - Realtime: every open game tab holds one connection (profile, chat, config, S1 presence channel `online`). Presence messages are tiny (`{l: place}`) but each join/leave/move is broadcast to every online tab, so the message count grows with players². Concurrent players online is the number that hits the limit first.
-- **Vercel Hobby:** bandwidth and build minutes per month; Hobby is for non-commercial use. The game is a static site, so this goes far; the 3D chunk (`three`, ~190 kB gzip) is the largest download and is cached after the first visit.
+## Password reset emails at scale (S1)
+Tested end to end locally (2026-10-11, Playwright): /auth → **Forgot password?** → email → the email arrives
+("Reset your password") → its link goes through Supabase `/auth/v1/verify` → lands on `/auth?mode=reset` → **Choose a
+new password** → saved → signed in (`/play`, or `/create` for an account without a Sim) → log out → the old password is
+refused, the new one works. Code: `src/screens/Auth.tsx` (`resetPasswordForEmail` with
+`redirectTo: <origin>/auth?mode=reset`), `src/state/game.ts` (a `PASSWORD_RECOVERY` session lands on the reset form).
+Nothing in the app needed fixing. On the **live** project check these, in order:
+
+1. **Authentication → URL Configuration**
+   - **Site URL** = `https://benin-life.vercel.app` (exactly; if it is localhost, every email link points to localhost).
+   - **Redirect URLs** must include `https://benin-life.vercel.app/**`. Without it Supabase ignores the app's
+     `redirectTo` and sends players to the Site URL root instead of the reset form. (Optional:
+     `https://benin-life-*.vercel.app/**` for preview deploys.)
+2. **Custom SMTP (required before announcing).** The built-in sender allows only **2 emails per hour for the whole
+   project**, goes to spam often, and is meant for testing. With 1,000 players, "Forgot password" would fail for
+   nearly everyone. Set up a free sender:
+   - **Resend** (free: 3,000 emails/month, 100/day): resend.com → sign up → Domains → add your domain (a custom domain
+     is needed to send to anyone; add the DNS records it shows) → API Keys → create. In Supabase: **Authentication →
+     Emails → SMTP Settings → Enable custom SMTP**: Host `smtp.resend.com`, Port `465`, Username `resend`, Password =
+     the API key, Sender email `no-reply@<your-domain>`, Sender name `Benin Life`.
+   - **Brevo** (free: 300 emails/day, no domain needed to start, verify the sender email): brevo.com → SMTP & API →
+     SMTP → copy the login and create an SMTP key. Supabase SMTP: Host `smtp-relay.brevo.com`, Port `587`, Username =
+     the Brevo SMTP login, Password = the SMTP key, Sender email = the verified address, Sender name `Benin Life`.
+   - Then **Authentication → Rate Limits → "Rate limit for sending emails"**: raise it (it starts at about 30/hour with
+     custom SMTP) to what your provider allows, e.g. 100/hour for Resend free, 250/hour for Brevo free.
+   - Send yourself a reset from the live site and check it arrives (also check the spam folder).
+3. **Email template sanity: Authentication → Emails → Templates → Reset Password.** Keep `{{ .ConfirmationURL }}` as the
+   link (it carries the redirect to `/auth?mode=reset`). Suggested subject `Reset your Benin Life password`; body: "Tap
+   the button to choose a new password for Benin Life. If you didn't ask for this, ignore this email." The link expires
+   after 1 hour (Auth → Providers → Email → "Email OTP expiration"); an expired or reused link shows "This reset link
+   has expired or was already used" with a button for a new one.
+4. Keep **Rate limits** for sign-ups / sign-ins / token refresh at their defaults.
+
+Local testing note: the local stack has no Mailpit container right now (Docker Hub rate limit). The S1 test used a
+tiny stand-in on the same Docker network (`scratchpad/s1/mailsink/sink.js`, alias `supabase_inbucket_benin-life`,
+API on :54324) and Vite on port 5173 (the local Auth redirect allow-list; `supabase/config.toml` now also lists 5242
+and the live URL for the next `supabase start`).
+
+## Launch-crowd limits (S1) — read docs/SCALING.md
+Short version: **Free = about 200 players online at once, Pro with spend cap = 500, Pro without spend cap = thousands**
+(then database compute decides). Upgrade to Pro, turn the spend cap off, pick Small/Medium compute and set up custom
+SMTP before announcing. Every open game tab holds one Realtime connection (profile feed, config, global hype, the
+place's presence + chat). The old global presence channel (N² messages) is gone (S1).
+
+- **Vercel Hobby:** bandwidth and build minutes per month; Hobby is for non-commercial use. Hashed `/assets/*` are
+  cached for a year (`vercel.json`), so returning players download almost nothing.
 
 ## If many players join, upgrade in this order
-1. **Supabase Pro** (first): removes the pause, larger DB and egress, more Realtime connections, daily backups. Turn on **point-in-time recovery** add-on once money is involved.
-2. Custom SMTP for auth emails (see above).
-3. Bigger Supabase compute add-on if the dashboard shows high CPU (lots of RPCs per second).
+1. **Supabase Pro + spend cap off** (first): more Realtime connections (500 → 10,000 with the cap off), no pause, daily backups. Turn on **point-in-time recovery** once money is involved.
+2. Custom SMTP for auth emails (above).
+3. Compute add-on: Small (to ~1,000 online) or Medium (to ~3,000), or when Reports → Database CPU stays high.
 4. Vercel Pro only if bandwidth runs out or you start charging money (Hobby terms).
 5. Later: an archive job for old `ledger`/`events` rows, and a custom domain (add it in Vercel, then update Site URL + Redirect URLs in Supabase).
+
+## Edge functions
+`paystack-verify`, `paystack-webhook`, `admin-push`, `billboard-refund` and (S1) **`admin-delete-user`** deploy with
+Actions → **Supabase Edge Functions** (`.github/workflows/supabase-functions.yml`, runs on pushes touching
+`supabase/functions/**`). `admin-delete-user` needs no new secrets (it uses the built-in `SUPABASE_URL`,
+`SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`). Until it is deployed, Admin → Players → Delete account shows
+"Delete failed".
 
 ## Config that must stay set after deploy
 `origin.force_next` = "nepo" (one-shot; the next new account is Nepo), `origin.nepo_pct` = 10, `time.real_seconds_per_game_minute` = 0.75, `clock.epoch` = "2026-10-05T00:00:00Z", `rent.enabled` = true. All editable in Admin → Settings.

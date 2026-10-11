@@ -69,7 +69,7 @@ export function useEventsLive(uid: string | null) {
   useEffect(() => {
     if (!uid) return;
     void reloadEvents();
-    const id = window.setInterval(() => void reloadEvents(), 180_000);
+    const id = window.setInterval(() => { if (document.visibilityState === 'visible') void reloadEvents(); }, 300_000); // S1: visible tabs only
     const vis = () => document.visibilityState === 'visible' && void reloadEvents();
     document.addEventListener('visibilitychange', vis);
     return () => {

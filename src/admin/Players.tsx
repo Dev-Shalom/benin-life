@@ -198,6 +198,10 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
             </div>
           </section>
 
+          {!p.is_admin && p.id !== me && (
+            <DeleteAccount id={id} username={p.username} onDeleted={() => { onChanged(); onClose(); }} />
+          )}
+
           <section>
             <h3 className="adm-h3">Recent money</h3>
             <div className="adm-ledger">
@@ -282,5 +286,53 @@ export default function Players() {
         {sel && <Detail key={sel} id={sel} onClose={() => setSel(null)} onChanged={reload} />}
       </div>
     </div>
+  );
+}
+
+/** S1: permanently delete a player's account (edge function admin-delete-user). Type the username + a reason. */
+function DeleteAccount({ id, username, onDeleted }: { id: string; username: string; onDeleted: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState('');
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const ready = confirm.trim().toLowerCase() === username.toLowerCase() && reason.trim().length >= 3;
+  const go = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await adminApi.deleteUser(id, confirm.trim(), reason.trim());
+      toast(r.message, 'good');
+      onDeleted();
+    } catch (e) {
+      setErr(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="adm-box adm-danger-zone">
+      <h3 className="adm-h3">Delete account</h3>
+      {!open ? (
+        <>
+          <p className="adm-sub">Removes the login, the Sim, money, chats, DMs, furniture, ads and every other row for good. Payments stay in the books without a name. This cannot be undone.</p>
+          <Btn tone="danger" onClick={() => setOpen(true)}>Delete account…</Btn>
+        </>
+      ) : (
+        <div className="adm-stack">
+          <label className="adm-field"><span className="adm-field__label">Type <b>{username}</b> to confirm</span>
+            <input className="adm-input" autoComplete="off" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={username} />
+          </label>
+          <label className="adm-field"><span className="adm-field__label">Reason (kept in the audit log)</span>
+            <input className="adm-input" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Player asked to delete their account" />
+          </label>
+          {err && <p className="adm-error" role="alert">{err}</p>}
+          <div className="adm-btnrow">
+            <Btn tone="danger" disabled={!ready || busy} onClick={() => void go()}>{busy ? 'Deleting…' : `Delete @${username} forever`}</Btn>
+            <Btn disabled={busy} onClick={() => { setOpen(false); setConfirm(''); setReason(''); setErr(null); }}>Cancel</Btn>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

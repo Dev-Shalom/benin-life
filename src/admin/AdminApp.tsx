@@ -15,6 +15,7 @@ import Chat from './Chat';
 import Audit from './Audit';
 import Payments from './Payments';
 import Ads from './Ads';
+import Feedback from './Feedback';
 import './admin.css';
 
 const NAV = [
@@ -24,6 +25,7 @@ const NAV = [
   { to: '/admin/players', label: 'Players', icon: 'people' },
   { to: '/admin/payments', label: 'Payments', icon: 'cash' },
   { to: '/admin/ads', label: 'Ads', icon: 'bell' },
+  { to: '/admin/feedback', label: 'Feedback', icon: 'mail' },
   { to: '/admin/chat', label: 'Chat', icon: 'chat' },
   { to: '/admin/audit', label: 'Audit', icon: 'clock' },
 ];
@@ -53,7 +55,7 @@ function useAdminUnread(): number {
     };
     void poll();
     flushAdminPush();
-    const t = window.setInterval(() => void poll(), 30_000);
+    const t = window.setInterval(() => { if (document.visibilityState === 'visible') void poll(); }, 30_000);
     const onSeen = () => void poll();
     window.addEventListener('bl-admin-seen', onSeen);
     return () => {
@@ -112,6 +114,7 @@ export default function AdminApp() {
           <Route path="audit" element={<Audit />} />
           <Route path="payments" element={<Payments />} />
           <Route path="ads" element={<Ads />} />
+          <Route path="feedback" element={<Feedback />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>

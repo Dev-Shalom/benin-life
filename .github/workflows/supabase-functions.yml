@@ -59,4 +59,4 @@ jobs:
             echo "VAPID secrets set."
           fi
       - name: Deploy functions
-        run: supabase functions deploy paystack-verify paystack-webhook admin-push billboard-refund --project-ref "$PROJECT_REF" --use-api
+        run: supabase functions deploy paystack-verify paystack-webhook admin-push billboard-refund admin-delete-user --project-ref "$PROJECT_REF" --use-api

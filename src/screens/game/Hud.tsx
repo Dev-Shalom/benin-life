@@ -15,7 +15,7 @@ import { lowNeeds, moodOf, needValue } from '../../lib/mood';
 import { HUD_NEEDS, NEED_META, ORIGIN_UI, WEEKDAYS_SHORT, originCopy, type NeedKey } from '../../lib/pidgin';
 import { usePrefs } from '../../lib/prefs';
 import { devHourOverride, looksNight } from '../../lib/daylight';
-import type { ClaimAllowanceResult, GameClock, GameState, PlayersOnline } from '../../lib/types';
+import type { ClaimAllowanceResult, GameClock, GameState } from '../../lib/types';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { usePresenceStore } from '../../state/presence';
@@ -26,32 +26,9 @@ import { bestFood } from '../../api/shops';
 import { TaskPill } from './TaskPill';
 import { DailyChips, DailySheets, useDailyChipIcons } from './Daily';
 
-/** Players online: the live Realtime Presence count (S1, no polling); while presence is not synced
- *  (Realtime down or still joining) falls back to `players_online()` (last_seen) every 60 s. */
+/** Players online (S1 scaling): world_counts() polled once a minute by state/presence.ts; null hides the pill. */
 function usePlayersOnline(): number | null {
-  const live = usePresenceStore((s) => s.online);
-  const [n, setN] = useState<number | null>(null);
-  const fallback = live === null;
-  useEffect(() => {
-    if (!fallback) return;
-    let alive = true;
-    const load = async () => {
-      if (document.visibilityState !== 'visible') return;
-      try {
-        const r = await rpc<PlayersOnline>('players_online');
-        if (alive) setN(Number(r?.count ?? 0));
-      } catch {
-        if (alive) setN(null); // older server or offline: hide the count
-      }
-    };
-    void load();
-    const id = window.setInterval(load, 60_000);
-    return () => {
-      alive = false;
-      window.clearInterval(id);
-    };
-  }, [fallback]);
-  return live ?? n;
+  return usePresenceStore((s) => s.online);
 }
 
 export function TopPill({ state, clock }: { state: GameState; clock: GameClock }) {

@@ -5,8 +5,8 @@ import { supabase, supabaseConfigured } from '../lib/supabase';
 import { startPresence, stopPresence } from './presence';
 import { useTasks } from './tasks';
 import { playCue } from '../lib/sound';
-import { rpc, errorMessage, GameError } from '../lib/api';
-import { syncServerTime } from '../lib/clock';
+import { rpc, errorMessage, GameError, lastWriteAt } from '../lib/api';
+import { serverNow, syncServerTime } from '../lib/clock';
 import { ensureConfig } from '../lib/config';
 import { migrateAvatar } from '../art/avatar3d/catalog';
 import type { GameEvent, GameState, Location } from '../lib/types';
@@ -38,6 +38,8 @@ const HEARTBEAT_MS = 60_000;
 let live: { uid: string; channel: RealtimeChannel; heartbeat: number; onVis: () => void } | null = null;
 let inflight: Promise<void> | null = null;
 let refreshTimer: number | null = null;
+/** When the last get_my_state answer arrived (S1: skip the Realtime echo of its own last_seen bump). */
+let lastStateAt = 0;
 
 function readKey(uid: string) {
   return `bl.lastReadEvent.${uid}`;
@@ -91,6 +93,7 @@ export const useGame = create<GameStore>((set, get) => ({
       try {
         const data = await rpc<GameState | null>('get_my_state');
         const t1 = Date.now();
+        lastStateAt = t1;
         if (!data || !data.profile) {
           set({ status: 'noprofile', state: null });
           return;
@@ -192,9 +195,14 @@ function startLive(uid: string) {
   stopLive();
   const channel = supabase
     .channel(`me-${uid}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${uid}` }, () =>
-      scheduleRefresh(),
-    )
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${uid}` }, (payload) => {
+      // S1 scaling: get_my_state bumps last_seen, and that UPDATE comes straight back here. Without this check every
+      // heartbeat cost two get_my_state calls. A real change in that window is picked up by the next heartbeat, and
+      // anything another player does to you also inserts an event (handled below).
+      const seen = Date.parse(String((payload.new as { last_seen?: string } | null)?.last_seen ?? ''));
+      if (Date.now() - lastStateAt < 3000 && lastWriteAt() < lastStateAt - 1000 && Number.isFinite(seen) && Math.abs(seen - serverNow()) < 5000) return;
+      scheduleRefresh();
+    })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: `user_id=eq.${uid}` }, (payload) => {
       const ev = payload.new as GameEvent;
       playCue('alert');

@@ -98,18 +98,22 @@ export default function Game() {
   const unread = useGame((s) => s.unread);
   const gameEvents = useGame((s) => s.events);
   // S3: live player counts per place on the map (Realtime Presence, other players only)
+  // S1 scaling: counts come from world_counts() (polled) plus the live list at my own place
   const presentAt = usePresenceStore((s) => s.at);
+  const counts = usePresenceStore((s) => s.counts);
   const presenceLive = usePresenceStore((s) => s.online !== null);
   const meId = state?.profile.id;
   const crowd = useMemo(() => {
     if (!presenceLive) return undefined;
     const o: Record<string, number> = {};
+    for (const [loc, n] of Object.entries(counts)) if (n > 0) o[loc] = n;
     for (const [loc, ids] of Object.entries(presentAt)) {
       const n = ids.filter((id) => id !== meId).length;
       if (n > 0) o[loc] = n;
+      else delete o[loc];
     }
     return o;
-  }, [presentAt, presenceLive, meId]);
+  }, [presentAt, counts, presenceLive, meId]);
   const selectedId = useUi((s) => s.selectedId);
   const select = useUi((s) => s.select);
   const overlay = useUi((s) => s.overlay);
@@ -142,7 +146,7 @@ export default function Game() {
   useEffect(() => {
     if (!mapOpen || !boardsOn) return;
     void useBillboards.getState().load();
-    const t = window.setInterval(() => void useBillboards.getState().load(true), 180_000);
+    const t = window.setInterval(() => { if (document.visibilityState === 'visible') void useBillboards.getState().load(true); }, 300_000);
     return () => window.clearInterval(t);
   }, [mapOpen, boardsOn]);
   const cityBoards = useMemo<CityBoard[] | undefined>(() => {

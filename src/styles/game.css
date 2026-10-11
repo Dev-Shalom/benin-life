@@ -6365,3 +6365,31 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .wish-row:active {
   transform: scale(0.98);
 }
+
+/* S1-D Feedback app */
+.fb-app { display: flex; flex-direction: column; gap: 14px; }
+.fb-form { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: var(--e1); }
+.fb-kinds { display: flex; width: 100%; }
+.fb-kinds .seg__btn { flex: 1; padding: 6px 4px; white-space: nowrap; }
+.fb-rate { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 600; }
+.fb-stars { display: inline-flex; gap: 2px; color: var(--text-3, #b8bfca); font-size: 15px; line-height: 1; }
+.fb-stars .is-on { color: #f5a623; }
+.fb-stars.is-input button { border: 0; background: none; font-size: 28px; line-height: 1; padding: 2px; color: inherit; cursor: pointer; min-width: 36px; min-height: 36px; transition: transform 120ms ease-out; }
+.fb-stars.is-input button.is-on { color: #f5a623; }
+.fb-stars.is-input button:active { transform: scale(0.9); }
+.fb-text { position: relative; display: block; }
+.fb-text textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 110px; padding: 12px 12px 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2, #f3f4f6); color: inherit; font: inherit; font-size: 15px; line-height: 1.45; }
+.fb-count { position: absolute; right: 10px; bottom: 8px; font-size: 11px; color: var(--text-3, #8a93a0); }
+.fb-count.is-near { color: var(--red-600, #c62828); }
+.fb-left { margin: 0; text-align: center; }
+.fb-mine h3 { margin: 4px 0 8px; font-size: 16px; }
+.fb-item { padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 8px; }
+.fb-item header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.fb-item > p { margin: 6px 0; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fb-status { margin-left: auto; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--surface-2, #eef0f3); color: var(--text-2); }
+.fb-status + .fb-status { margin-left: 0; }
+.fb-status--planned { background: #e7f0ff; color: #2456b8; }
+.fb-status--done { background: #e3f6ec; color: #0e7a45; }
+.fb-status--replied { background: #fff3dc; color: #a36400; }
+.fb-reply { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: #eaf6ef; font-size: 13px; }
+.fb-reply p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
