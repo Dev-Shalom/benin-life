@@ -82,6 +82,10 @@ export interface HouseFurniturePlacement {
   x: number;
   z: number;
   rotation: number;
+  /** B1: in the inventory. */
+  stored?: boolean;
+  /** B1: the home layout the position belongs to. */
+  layout?: string | null;
 }
 
 type Result = { message: string; status?: string };

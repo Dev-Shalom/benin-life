@@ -2,7 +2,7 @@
 // (the 2D map only as the lite fallback, see src/art/city3d/CityView.tsx).
 // HUD: top pill, left rail, needs card, dock (Home · Buy · Map · Phone), status banners, toasts.
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { HomeView, LAYOUTS, activityGroup, applyHomePositions, furnishLayout, homeLayoutFor, itemGroup, type FurnitureItem, type SavedHomePosition } from '../art/home3d';
+import { HomeView, KINDS, LAYOUTS, activityGroup, findFreeSpot, furnishHome, furnitureIdOfKey, homeLayoutFor, itemGroup, placementIssue, type FurnitureItem, type FurnitureKind, type SavedHomePosition } from '../art/home3d';
 import { CityView } from '../art/city3d';
 import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
 import { serverNow, useGameClock } from '../lib/clock';
@@ -36,7 +36,10 @@ import { PlaceCard, usePlaceInterior, usePlacePeople, usePlayersAt } from './gam
 import { placeClosedEject } from '../api/places';
 import { recoverPendingPayments } from '../lib/payments';
 import { naira } from '../lib/format';
-import { socialHouseInfo, socialHomePlaceFurniture, socialLeaveHouse, type HouseFurniturePlacement, type HouseInfo } from '../api/social';
+import { socialHouseInfo, socialLeaveHouse, type HouseFurniturePlacement, type HouseInfo } from '../api/social';
+import { furniturePlace, furnitureStore } from '../api/furniture';
+import { useArrange } from '../state/arrange';
+import { ArrangeBar } from './game/ArrangeBar';
 import { supabase } from '../lib/supabase';
 import { useHouseRoom } from '../state/houseRoom';
 import { IX_ROLE, loadInteractionTypes, type InteractionType } from '../api/interactions';
@@ -77,6 +80,11 @@ function useInsets() {
     return () => window.removeEventListener('resize', on);
   }, []);
   return w >= 900 ? { top: 84, bottom: 108, narrow: false } : { top: 128, bottom: 176, narrow: true };
+}
+
+/** A player_house_furniture row as a saved position (B1: stored + layout). */
+function rowPosition(row: HouseFurniturePlacement): SavedHomePosition {
+  return { x: Number(row.x), z: Number(row.z), rotation: Number(row.rotation), stored: Boolean(row.stored), layout: row.layout ?? null };
 }
 
 export default function Game() {
@@ -146,8 +154,8 @@ export default function Game() {
   const homeOwnerId = p ? (p.home_visit_host_id ?? p.id) : null;
   const [houseInfo, setHouseInfo] = useState<HouseInfo | null>(null);
   const [housePositions, setHousePositions] = useState<Record<string, SavedHomePosition>>({});
-  const [arrangingHome, setArrangingHome] = useState(false);
-  const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
+  const [arrangeBusy, setArrangeBusy] = useState(false);
+  const [buyTab, setBuyTab] = useState<'shop' | 'arrange' | 'bag'>('shop');
   const [selectedHousePlayer, setSelectedHousePlayer] = useState<string | null>(null);
   // V2 house interactions: the catalogue, our side of a running one (slot 0 asked, 1 accepted), the
   // request waiting for our answer, and ours waiting for theirs
@@ -254,8 +262,7 @@ export default function Game() {
     if (!atHome || !p || !homeOwnerId) {
       setHouseInfo(null);
       setHousePositions({});
-      setArrangingHome(false);
-      setSelectedFurnitureId(null);
+      useArrange.getState().close();
       setSelectedHousePlayer(null);
       return;
     }
@@ -263,14 +270,12 @@ export default function Game() {
     setHousePositions({});
     void Promise.all([
       socialHouseInfo(),
-      supabase.from('player_house_furniture').select('owner_id,furniture_key,x,z,rotation').eq('owner_id', homeOwnerId),
+      supabase.from('player_house_furniture').select('owner_id,furniture_key,x,z,rotation,stored,layout').eq('owner_id', homeOwnerId),
     ]).then(([info, rows]) => {
       if (!alive) return;
       setHouseInfo(info);
       if (!rows.error) {
-        setHousePositions(Object.fromEntries(((rows.data ?? []) as HouseFurniturePlacement[]).map((row) => [row.furniture_key, {
-          x: Number(row.x), z: Number(row.z), rotation: Number(row.rotation),
-        }])));
+        setHousePositions(Object.fromEntries(((rows.data ?? []) as HouseFurniturePlacement[]).map((row) => [row.furniture_key, rowPosition(row)])));
       }
     }).catch(() => { /* retain the local default furnishing if house metadata is temporarily unavailable */ });
     const channel = supabase.channel(`house-furniture:${homeOwnerId}`)
@@ -286,7 +291,7 @@ export default function Game() {
         }
         const row = payload.new as HouseFurniturePlacement;
         if (row.furniture_key) setHousePositions((positions) => ({
-          ...positions, [row.furniture_key]: { x: Number(row.x), z: Number(row.z), rotation: Number(row.rotation) },
+          ...positions, [row.furniture_key]: rowPosition(row),
         }));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'player_furniture', filter: `user_id=eq.${homeOwnerId}` }, () => {
@@ -512,27 +517,98 @@ export default function Game() {
   }, []);
 
   const layoutId = p ? homeLayoutFor(p.housing_id, (state && byId[state.location.id]?.scene) ?? state?.location.scene) : 'face_me';
-  const furnished = useMemo(() => applyHomePositions(furnishLayout(LAYOUTS[layoutId], furniture), housePositions), [layoutId, furniture, housePositions]);
+  const furnished = useMemo(() => furnishHome(LAYOUTS[layoutId], furniture, housePositions), [layoutId, furniture, housePositions]);
 
-  const saveHousePlacement = useCallback(async (key: string, x: number, z: number, rotation: number) => {
-    if (!p || p.home_visit_host_id || !atHome) return;
+  // ---- B1 arrange (inside Buy): the selected piece is drawn live as the scene's ghost
+  const arrangeOn = useArrange((s) => s.active);
+  const arrSel = useArrange((s) => s.sel);
+  const arrPending = useArrange((s) => s.pending);
+  const canArrange = Boolean(showHome && p && !p.home_visit_host_id);
+  const arrActive = arrangeOn && canArrange;
+  const selKey = arrActive ? arrSel?.key ?? null : null;
+  const pieceItem = useCallback((key: string): FurnitureItem | null => {
+    const placed = furnished.furniture.find((f) => f.id === key);
+    if (placed) return placed;
+    const piece = furniture?.find((f) => f.id === furnitureIdOfKey(key));
+    if (!piece || !(piece.kind in KINDS)) return null;
+    return { id: key, kind: piece.kind as FurnitureKind, x: 0, z: 0, rot: 0, color: piece.color ?? undefined, activities: piece.activities };
+  }, [furnished, furniture]);
+  const sceneLayout = useMemo(
+    () => (selKey ? { ...furnished, furniture: furnished.furniture.filter((f) => f.id !== selKey) } : furnished),
+    [furnished, selKey],
+  );
+  const ghostItem = useMemo(() => {
+    if (!selKey || !arrSel) return null;
+    const base = pieceItem(selKey);
+    return base ? { ...base, x: arrSel.x, z: arrSel.z, rot: arrSel.rot } : null;
+  }, [selKey, arrSel, pieceItem]);
+  const arrIssue = ghostItem ? placementIssue(layoutId, ghostItem, sceneLayout.furniture) : null;
+  const ghost = useMemo(() => (ghostItem ? { item: ghostItem, invalid: Boolean(arrIssue) } : null), [ghostItem, arrIssue]);
+  const selName = selKey ? (furniture?.find((f) => f.id === furnitureIdOfKey(selKey))?.name ?? KINDS[ghostItem?.kind ?? 'stool']?.label ?? 'Furniture') : null;
+  // close arrange mode when leaving home / visiting
+  useEffect(() => {
+    if (arrangeOn && !canArrange && furnitureOf) useArrange.getState().close();
+  }, [arrangeOn, canArrange, furnitureOf]);
+  // a piece asked for by key (just bought, or picked from My items): select it once it has loaded
+  useEffect(() => {
+    if (!arrActive || !arrPending || !furniture) return;
+    const id = furnitureIdOfKey(arrPending);
+    const piece = furniture.find((f) => f.id === id);
+    if (!piece) return; // the purchase is still loading
+    const copy = Number(/-(\d+)$/.exec(arrPending)?.[1] ?? 1);
+    if ((piece.qty ?? 1) < copy) return;
+    useArrange.getState().clearPending();
+    const placed = furnished.furniture.find((f) => f.id === arrPending);
+    if (placed) {
+      useArrange.getState().select({ key: placed.id, x: placed.x, z: placed.z, rot: placed.rot ?? 0, fromStore: false });
+      return;
+    }
+    const others = furnished.furniture;
+    const spot = findFreeSpot(layoutId, piece.kind, others, { x: LAYOUTS[layoutId].home[0], z: LAYOUTS[layoutId].home[1] })
+      ?? { x: LAYOUTS[layoutId].w / 2, z: LAYOUTS[layoutId].d / 2, rot: 0 };
+    useArrange.getState().select({ key: arrPending, x: spot.x, z: spot.z, rot: spot.rot, fromStore: true });
+    if (!findFreeSpot(layoutId, piece.kind, others)) toast('No free space for this one. Store something first or move things around.', 'bad');
+  }, [arrActive, arrPending, furniture, furnished, layoutId]);
+
+  const arrangeDone = useCallback(async () => {
+    const sel = useArrange.getState().sel;
+    if (!sel || arrangeBusy) return;
+    if (arrIssue) {
+      toast(`Can't put it there: ${arrIssue}`, 'bad');
+      return;
+    }
+    setArrangeBusy(true);
     try {
-      const placement = await socialHomePlaceFurniture(key, x, z, rotation);
-      setHousePositions((rows) => ({ ...rows, [placement.furniture_key]: {
-        x: Number(placement.x), z: Number(placement.z), rotation: Number(placement.rotation),
-      } }));
+      const r = await furniturePlace(sel.key, sel.x, sel.z, sel.rot);
+      setHousePositions((rows) => ({ ...rows, [r.furniture_key]: { x: Number(r.x), z: Number(r.z), rotation: Number(r.rotation), stored: false, layout: r.layout } }));
+      useArrange.getState().select(null);
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Could not save that furniture position.', 'bad');
+    } finally {
+      setArrangeBusy(false);
     }
-  }, [p, atHome]);
-
-  const rotateSelectedFurniture = useCallback(() => {
-    if (!selectedFurnitureId) return;
-    const item = furnished.furniture.find((piece) => piece.id === selectedFurnitureId);
-    if (!item) return;
-    const current = housePositions[selectedFurnitureId] ?? { x: item.x, z: item.z, rotation: item.rot ?? 0 };
-    void saveHousePlacement(selectedFurnitureId, current.x, current.z, (current.rotation + 1) % 4);
-  }, [selectedFurnitureId, furnished, housePositions, saveHousePlacement]);
+  }, [arrIssue, arrangeBusy]);
+  const arrangeStore = useCallback(async () => {
+    const sel = useArrange.getState().sel;
+    if (!sel || arrangeBusy) return;
+    setArrangeBusy(true);
+    try {
+      const r = await furnitureStore(sel.key);
+      setHousePositions((rows) => ({ ...rows, [sel.key]: { ...(rows[sel.key] ?? { x: 0, z: 0, rotation: 0 }), stored: true, layout: r.layout } }));
+      useArrange.getState().select(null);
+      toast('Stored. Find it under My items.', 'info');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Could not store that.', 'bad');
+    } finally {
+      setArrangeBusy(false);
+    }
+  }, [arrangeBusy]);
+  // positions changed elsewhere (a purchase materialises the starter pieces): reload the saved rows
+  const reloadPositions = useCallback(async () => {
+    if (!homeOwnerId) return;
+    const rows = await supabase.from('player_house_furniture').select('owner_id,furniture_key,x,z,rotation,stored,layout').eq('owner_id', homeOwnerId);
+    if (!rows.error) setHousePositions(Object.fromEntries(((rows.data ?? []) as HouseFurniturePlacement[]).map((row) => [row.furniture_key, rowPosition(row)])));
+  }, [homeOwnerId]);
 
   const leaveHouse = useCallback(async () => {
     if (!p?.home_visit_host_id || leavingHouse) return;
@@ -620,7 +696,8 @@ export default function Game() {
         ) : showHome ? (
           <HomeView
             layoutId={layout}
-            layout={furnished}
+            layout={sceneLayout}
+            ghost={ghost}
             playerId={p.id}
             arrivalKey={homeArrival.n}
             origin={(houseInfo?.origin ?? p.origin) === 'nepo' ? 'nepo' : 'lapo'}
@@ -643,16 +720,14 @@ export default function Game() {
             onWalkPath={publishHousePath}
             remotePlayers={houseMembers}
             onPickRemote={(id) => setSelectedHousePlayer(id)}
-            editableFurniture={arrangingHome && !p.home_visit_host_id}
-            selectedFurnitureId={selectedFurnitureId}
-            onSelectFurniture={(item) => setSelectedFurnitureId(item.id)}
-            onMoveFurniture={(id, x, z) => {
-              const current = furnished.furniture.find((piece) => piece.id === id);
-              const position = housePositions[id] ?? { x, z, rotation: current?.rot ?? 0 };
-              void saveHousePlacement(id, x, z, position.rotation);
+            editableFurniture={arrActive}
+            selectedFurnitureId={selKey}
+            onSelectFurniture={(item) => {
+              useArrange.getState().select({ key: item.id, x: item.x, z: item.z, rot: item.rot ?? 0, fromStore: false });
             }}
+            onMoveFurniture={(_id, x, z) => useArrange.getState().setPos(x, z)}
             insetTop={clean ? 70 : insets.top}
-            insetBottom={clean ? 40 : insets.bottom}
+            insetBottom={arrActive && window.innerWidth < 900 ? 320 : clean ? 40 : insets.bottom}
             fallbackScene={here.scene}
             fallbackAction={
               <button type="button" className="where-chip home3d__fallback-btn" onClick={() => select(here.id)}>
@@ -680,20 +755,17 @@ export default function Game() {
         )}
       </div>
 
-      {showHome && !p.home_visit_host_id && (
-        <div className={`house-arrange${arrangingHome ? ' is-open' : ''}`}>
-          {!arrangingHome ? (
-            <button type="button" className="house-arrange__toggle" onClick={() => setArrangingHome(true)}>
-              <Icon name="rotate" size={17} /> Arrange home
-            </button>
-          ) : (
-            <div className="house-arrange__tools">
-              <span>{selectedFurnitureId ? 'Tap a floor spot to move this item' : 'Tap one of your furniture pieces to select it'}</span>
-              {selectedFurnitureId && <button type="button" onClick={rotateSelectedFurniture}><Icon name="rotate" size={16} /> Rotate</button>}
-              <button type="button" className="house-arrange__done" onClick={() => { setArrangingHome(false); setSelectedFurnitureId(null); }}>Done</button>
-            </div>
-          )}
-        </div>
+      {arrActive && (
+        <ArrangeBar
+          name={selName}
+          issue={arrIssue}
+          busy={arrangeBusy}
+          onDone={() => void arrangeDone()}
+          onStore={() => void arrangeStore()}
+          onCancel={() => useArrange.getState().select(null)}
+          onExit={() => useArrange.getState().close()}
+          onOwned={() => { setBuyTab('arrange'); setOverlay('buy'); }}
+        />
       )}
 
       {showHome && (
@@ -732,7 +804,7 @@ export default function Game() {
       <DailySync here={dailyHere} />
       <LeftRail state={state} status={status} atHome={atHome} compact={!showHome && (!showPlace || insets.narrow)} />
 
-      <div className="game__bottom" ref={bottomRef}>
+      <div className={`game__bottom${arrActive ? ' is-arranging' : ''}`} ref={bottomRef}>
         <div className="game__banners">
           <StatusBanners state={state} status={status} />
           {!clean && !state.travel && chatUnread > 0 && (
@@ -796,7 +868,17 @@ export default function Game() {
       <AlertsSheet />
       <SimSheet state={state} />
       <LookSheet state={state} />
-      <BuySheet />
+      <BuySheet
+        tab={buyTab}
+        onTab={setBuyTab}
+        home={canArrange ? { layout: furnished, pieces: furniture ?? [], positions: housePositions, layoutId } : null}
+        onBought={(key) => {
+          if (homeOwnerId) void useCatalog.getState().loadFurniture(homeOwnerId, true);
+          void reloadPositions();
+          if (canArrange) { setOverlay(null); useArrange.getState().open(key); }
+        }}
+        onArrange={(key) => { setOverlay(null); useArrange.getState().open(key); }}
+      />
       <GarageSheet />
       <ShortcutsSheet />
       <Phone state={state} clock={clock} />

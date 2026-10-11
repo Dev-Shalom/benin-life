@@ -1,9 +1,14 @@
-// The keyboard shortcuts help sheet and the dock's Buy sheet (R4; V1-4 adds the Bag and Chowdeck, with
-// Buy mode still a teaser).
+// The keyboard shortcuts help sheet and the dock's Buy sheet (R4; V1-4 adds the Bag and Chowdeck;
+// B1: the furniture catalogue with room tabs and LAPO/Mid/Nepo filter, and Arrange / My items).
+import { useEffect, useMemo, useState } from 'react';
 import { SHORTCUTS } from './shortcuts';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
-import { Icon, Sheet } from '../../ui';
+import { useCatalog, type ShopFurniture } from '../../state/catalog';
+import { furnitureBuy } from '../../api/furniture';
+import { furnitureKey, type HomeLayout, type HomeLayoutId, type OwnedPiece, type SavedHomePosition } from '../../art/home3d/model';
+import { naira, nairaShort } from '../../lib/format';
+import { Icon, Segmented, Sheet, toast } from '../../ui';
 
 export function ShortcutsSheet() {
   const overlay = useUi((s) => s.overlay);
@@ -31,64 +36,227 @@ export function ShortcutsSheet() {
   );
 }
 
-const BUY_SAMPLES: [string, string, string][] = [
-  ['🪑', 'Plastic chair', '₦4,500'],
-  ['🌀', 'Standing fan', '₦28,000'],
-  ['🛏️', 'Spring mattress', '₦95,000'],
-  ['📺', 'Flat-screen TV', '₦240,000'],
-  ['❄️', 'Split AC', '₦585,000'],
-  ['⚡', 'Inverter + battery', '₦720,000'],
-];
+type BuyTab = 'shop' | 'arrange' | 'bag';
+type Cat = ShopFurniture['category'];
+type TierFilter = 'all' | ShopFurniture['tier'];
 
-export function BuySheet() {
+const CATS: [Cat, string, string][] = [
+  ['living', 'Parlour', '🛋️'],
+  ['bedroom', 'Bedroom', '🛏️'],
+  ['kitchen', 'Kitchen', '🍳'],
+  ['bathroom', 'Bathroom', '🛁'],
+  ['utility', 'Outside', '⚡'],
+  ['decor', 'Decor', '🖼️'],
+];
+const TIERS: { id: TierFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'lapo', label: 'LAPO' },
+  { id: 'mid', label: 'Mid' },
+  { id: 'nepo', label: 'Nepo' },
+];
+const ACT_LABEL: Record<string, string> = {
+  sleep: 'Sleep', nap: 'Nap', cook_home: 'Cooking', bathe: 'Bath', watch_tv: 'TV', listen_radio: 'Music',
+  relax_sofa: 'Relax', sit_rest: 'Sit', cold_drink: 'Cold drink',
+};
+const ACT_USE: Record<string, string> = {
+  sleep: 'sleep', nap: 'nap', cook_home: 'cook', bathe: 'bathe', watch_tv: 'watch TV', listen_radio: 'play music',
+  relax_sofa: 'relax', sit_rest: 'sit and rest', cold_drink: 'cold drinks',
+};
+const NEED_LABEL: Record<string, string> = { energy: 'energy', hunger: 'belle', hygiene: 'clean', fun: 'fun', stress: 'stress', social: 'social', health: 'health' };
+
+/** "Sleep +8 energy" — the strongest perk of a piece, for its card. */
+function perkLine(it: ShopFurniture): string | null {
+  if (it.rest_pct > 100 && it.activities.includes('sleep')) return `Sleep ×${(it.rest_pct / 100).toFixed(2).replace(/0$/, '')} rest`;
+  let best: string | null = null;
+  let score = 0;
+  for (const [act, eff] of Object.entries(it.bonus ?? {})) {
+    const nums = Object.entries(eff).filter(([, v]) => typeof v === 'number' && v !== 0);
+    const sc = nums.reduce((n, [, v]) => n + Math.abs(v), 0);
+    if (!nums.length || sc <= score) continue;
+    score = sc;
+    best = `${ACT_LABEL[act] ?? act} ${nums.slice(0, 2).map(([k, v]) => `${v > 0 ? '+' : '−'}${Math.abs(v)} ${NEED_LABEL[k] ?? k}`).join(' ')}`;
+  }
+  if (best) return best;
+  if (it.activities.length) return `Lets you: ${it.activities.map((a) => ACT_USE[a] ?? a).join(', ')}`;
+  return null;
+}
+
+export interface BuyHome {
+  layout: HomeLayout;
+  pieces: OwnedPiece[];
+  positions: Record<string, SavedHomePosition>;
+  layoutId: HomeLayoutId;
+}
+
+export function BuySheet({ tab, onTab, home, onBought, onArrange }: {
+  tab: BuyTab;
+  onTab: (t: BuyTab) => void;
+  /** The player's own home when they are in it (null = away / visiting: buying still delivers). */
+  home: BuyHome | null;
+  onBought: (key: string) => void;
+  onArrange: (key: string | null) => void;
+}) {
   const overlay = useUi((s) => s.overlay);
   const setOverlay = useUi((s) => s.setOverlay);
   const openPanel = useUi((s) => s.openPanel);
   const openPhone = useUi((s) => s.openPhone);
   const inv = useGame((s) => s.state?.inventory);
+  const profile = useGame((s) => s.state?.profile);
+  const shop = useCatalog((s) => s.shop);
+  const loadShop = useCatalog((s) => s.loadShop);
+  const owned = useCatalog((s) => s.furniture);
+  const [cat, setCat] = useState<Cat>('living');
+  const [tier, setTier] = useState<TierFilter>('all');
+  const [confirm, setConfirm] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const open = overlay === 'buy';
+  useEffect(() => {
+    if (open) void loadShop();
+    if (!open) setConfirm(null);
+  }, [open, loadShop]);
   const count = (inv ?? []).reduce((n, i) => n + i.qty, 0);
   const preview = (inv ?? []).slice(0, 4).map((i) => i.icon || '📦').join(' ');
+  const money = (profile?.cash ?? 0) + Math.max(0, profile?.bank ?? 0);
+  const ownedQty = (id: string) => owned?.find((o) => o.id === id)?.qty ?? 0;
+  const items = useMemo(() => (shop ?? []).filter((it) => it.category === cat && (tier === 'all' || it.tier === tier)), [shop, cat, tier]);
+
+  const buy = async (it: ShopFurniture) => {
+    if (confirm !== it.id) { setConfirm(it.id); return; }
+    setConfirm(null);
+    setBusy(it.id);
+    try {
+      const r = await furnitureBuy(it.id);
+      toast(home ? r.message : `${r.name} don land for your house. Place am when you reach home.`, 'good');
+      void useGame.getState().refresh();
+      onBought(r.furniture_key);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not buy that.', 'bad');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // My items: every owned copy, placed or waiting in the inventory
+  const mine = useMemo(() => {
+    if (!home) return [];
+    const placed = new Set(home.layout.furniture.map((f) => f.id));
+    const rows: { key: string; name: string; emoji: string; placed: boolean }[] = [];
+    for (const p of home.pieces) {
+      const emoji = shop?.find((s2) => s2.id === p.id)?.emoji ?? '🪑';
+      for (let c = 1; c <= Math.max(1, p.qty ?? 1); c++) {
+        const key = furnitureKey(p.id, c);
+        rows.push({ key, name: (p.name ?? p.id) + ((p.qty ?? 1) > 1 ? ` #${c}` : ''), emoji, placed: placed.has(key) });
+      }
+    }
+    return rows.sort((a, b) => Number(a.placed) - Number(b.placed));
+  }, [home, shop]);
+
   return (
-    <Sheet open={overlay === 'buy'} onClose={() => setOverlay(null)}
+    <Sheet open={open} onClose={() => setOverlay(null)} className="buy-sheet"
       header={
-        <div className="home-sheet__head">
-          <span className="home-sheet__emoji" aria-hidden>🛍️</span>
-          <div>
-            <h3 className="bl-sheet__title">Buy</h3>
-            <p className="bl-sheet__sub">Your Bag, food delivery and shops</p>
+        <div className="buy-sheet__headwrap">
+          <div className="home-sheet__head">
+            <span className="home-sheet__emoji" aria-hidden>🛍️</span>
+            <div className="grow">
+              <h3 className="bl-sheet__title">Buy</h3>
+              <p className="bl-sheet__sub">Furnish your house · {nairaShort(money)} to spend</p>
+            </div>
           </div>
+          <Segmented<BuyTab> label="Buy sections" className="buy-seg" value={tab} onChange={onTab}
+            options={[{ id: 'shop', label: 'Furniture' }, { id: 'arrange', label: 'Arrange' }, { id: 'bag', label: 'Bag & food' }]} />
         </div>
       }>
-      <div className="buy-choices">
-        <button type="button" className="buy-choice" onClick={() => { setOverlay(null); openPanel('inventory'); }}>
-          <span className="buy-choice__emoji" aria-hidden>🎒</span>
-          <span className="grow">
-            <span className="buy-choice__title">Bag</span>
-            <span className="buy-choice__sub">{count > 0 ? `${count} ${count === 1 ? 'thing' : 'things'} · ${preview}` : 'Empty for now'} · eat, use, sell</span>
-          </span>
-          <Icon name="chevronRight" size={18} stroke={2.4} />
-        </button>
-        <button type="button" className="buy-choice" onClick={() => openPhone('food')}>
-          <span className="buy-choice__emoji" aria-hidden>🛵</span>
-          <span className="grow">
-            <span className="buy-choice__title">Chowdeck</span>
-            <span className="buy-choice__sub">Order food to wherever you are</span>
-          </span>
-          <Icon name="chevronRight" size={18} stroke={2.4} />
-        </button>
-        <p className="buy-tip"><span aria-hidden>🛒</span> Markets, bukas, motor parks and PoS stands sell food, drinks, airtime and more: open the place on the map and tap <b>Shop</b>.</p>
-      </div>
-      <div className="sim-section-head buy-mode-head"><h4>Buy mode</h4><span className="soon-pill">Coming soon</span></div>
-      <div className="buy-grid">
-        {BUY_SAMPLES.map(([e, name, price]) => (
-          <div key={name} className="buy-card" aria-disabled>
-            <span className="buy-card__emoji" aria-hidden>{e}</span>
-            <span className="buy-card__name">{name}</span>
-            <span className="buy-card__price">{price}</span>
+      {tab === 'shop' && (
+        <>
+          <div className="buy-cats" role="tablist" aria-label="Rooms">
+            {CATS.map(([id, label, emoji]) => (
+              <button key={id} type="button" role="tab" aria-selected={cat === id} className={`buy-cat${cat === id ? ' is-active' : ''}`} onClick={() => setCat(id)}>
+                <span aria-hidden>{emoji}</span> {label}
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
-      <p className="muted buy-note">Furnish your home your way: move, rotate and sell furniture, and every piece will make your Sim happier in its own way. Prices shown are a preview.</p>
+          <div className="buy-tiers" role="radiogroup" aria-label="Budget">
+            {TIERS.map((t) => (
+              <button key={t.id} type="button" role="radio" aria-checked={tier === t.id} className={`buy-tier buy-tier--${t.id}${tier === t.id ? ' is-active' : ''}`} onClick={() => setTier(t.id)}>{t.label}</button>
+            ))}
+          </div>
+          {!shop ? <p className="muted buy-note">Loading the catalogue…</p> : (
+            <div className="buy-grid buy-grid--shop">
+              {items.map((it) => {
+                const have = ownedQty(it.id);
+                const maxed = have >= it.max_qty;
+                const broke = money < it.price;
+                const perk = perkLine(it);
+                return (
+                  <div key={it.id} className={`buy-card buy-card--${it.tier}`}>
+                    <span className="buy-card__thumb" aria-hidden>{it.emoji}</span>
+                    <span className={`buy-card__tier buy-card__tier--${it.tier}`}>{it.tier === 'mid' ? 'Mid' : it.tier.toUpperCase()}</span>
+                    <span className="buy-card__name">{it.name}</span>
+                    {perk && <span className="buy-card__perk">{perk}</span>}
+                    <span className="buy-card__price" title={naira(it.price)}>{naira(it.price)}</span>
+                    {have > 0 && <span className="buy-card__owned">You have {have}{it.max_qty > 1 ? ` of ${it.max_qty}` : ''}</span>}
+                    <button type="button" className={`buy-card__btn${confirm === it.id ? ' is-confirm' : ''}`} disabled={maxed || broke || busy !== null}
+                      onClick={() => void buy(it)}>
+                      {busy === it.id ? 'Buying…' : maxed ? 'Owned' : broke ? 'Not enough money' : confirm === it.id ? `Pay ${nairaShort(it.price)}` : 'Buy'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <p className="muted buy-note">Prices from Benin and Lagos shops (2025/26). Every piece lands in your house: place it, move it, store it.</p>
+        </>
+      )}
+      {tab === 'arrange' && (
+        home ? (
+          <div className="buy-arrange">
+            <button type="button" className="buy-choice buy-choice--arrange" onClick={() => onArrange(null)}>
+              <span className="buy-choice__emoji" aria-hidden>🧭</span>
+              <span className="grow">
+                <span className="buy-choice__title">Arrange home</span>
+                <span className="buy-choice__sub">Tap a piece in the room, then move it with the arrows</span>
+              </span>
+              <Icon name="chevronRight" size={18} stroke={2.4} />
+            </button>
+            <div className="sim-section-head"><h4>My items</h4><span className="muted">{mine.filter((m) => !m.placed).length} in storage</span></div>
+            <ul className="buy-mine">
+              {mine.map((m) => (
+                <li key={m.key} className="buy-mine__row">
+                  <span className="buy-mine__emoji" aria-hidden>{m.emoji}</span>
+                  <span className="grow">
+                    <span className="buy-mine__name">{m.name}</span>
+                    <span className={`buy-mine__state${m.placed ? '' : ' is-stored'}`}>{m.placed ? 'In the room' : 'In storage'}</span>
+                  </span>
+                  <button type="button" className="buy-mine__btn" onClick={() => onArrange(m.key)}>{m.placed ? 'Move' : 'Place'}</button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="buy-tip"><span aria-hidden>🏠</span> Go home to arrange your furniture. Anything you buy now waits for you there.</p>
+        )
+      )}
+      {tab === 'bag' && (
+        <div className="buy-choices">
+          <button type="button" className="buy-choice" onClick={() => { setOverlay(null); openPanel('inventory'); }}>
+            <span className="buy-choice__emoji" aria-hidden>🎒</span>
+            <span className="grow">
+              <span className="buy-choice__title">Bag</span>
+              <span className="buy-choice__sub">{count > 0 ? `${count} ${count === 1 ? 'thing' : 'things'} · ${preview}` : 'Empty for now'} · eat, use, sell</span>
+            </span>
+            <Icon name="chevronRight" size={18} stroke={2.4} />
+          </button>
+          <button type="button" className="buy-choice" onClick={() => openPhone('food')}>
+            <span className="buy-choice__emoji" aria-hidden>🛵</span>
+            <span className="grow">
+              <span className="buy-choice__title">Chowdeck</span>
+              <span className="buy-choice__sub">Order food to wherever you are</span>
+            </span>
+            <Icon name="chevronRight" size={18} stroke={2.4} />
+          </button>
+          <p className="buy-tip"><span aria-hidden>🛒</span> Markets, bukas, motor parks and PoS stands sell food, drinks, airtime and more: open the place on the map and tap <b>Shop</b>.</p>
+        </div>
+      )}
     </Sheet>
   );
 }

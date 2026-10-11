@@ -298,5 +298,5 @@ https://ranked.ng/car-dealerships/benin-city · https://www.facebook.com/p/Ighod
 ## Q1. Quick fixes (user, 2026-10-11): DONE
 Dance sound, game-length interaction seconds, slower needs, leaving a house ends shared actions, walk-in arrival, House chat only with 2+ players, Go Crazy dropped, desktop pop-ups unchanged.
 
-## B1. Buy mode + arrange (user, 2026-10-11): NEXT
+## B1. Buy mode + arrange (user, 2026-10-11): DONE
 Full researched home catalogue for LAPO and Nepo at real Nigerian prices; buy, place, persist. Arrange lives in Buy: live preview, D-pad nudge + rotate, warning when placement is not allowed. Remove HUD "Arrange home".

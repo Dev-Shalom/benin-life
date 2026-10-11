@@ -38,7 +38,8 @@ import { looksNight, mixHex } from '../../../lib/daylight';
 import { poseCook, poseDance, poseGreet, poseLie, poseScrub, poseSit, sitRootY } from './poses';
 import { decodeAct, encodeAct } from '../../../api/interactions';
 import { buildRoom, type Parking } from './room';
-import { LAYERS } from './build';
+import { HomeBuilder, LAYERS } from './build';
+import { buildPiece } from './furniture';
 import { feelQuality, useTier } from '../../feel/quality';
 import { rigFor } from '../../feel/rigs';
 import { applyFeelRender, makeFan, makeFeelMats, sampleFrames, tickFeel } from '../../feel/scene';
@@ -99,6 +100,9 @@ export interface HomeSceneProps {
   selectedFurnitureId?: string | null;
   onSelectFurniture?: (item: FurnitureItem) => void;
   onMoveFurniture?: (itemId: string, x: number, z: number) => void;
+  /** B1 arrange: the piece being moved, drawn on its own (live, no room rebuild) and tinted red when
+   * `invalid`. Leave it out of `layout`. */
+  ghost?: { item: FurnitureItem; invalid: boolean } | null;
   onReady?: (api: HomeApi) => void;
   onLost?: () => void;
   /** Pixels covered by HUD chrome at the top / bottom, so the house is framed between them. */
@@ -625,7 +629,7 @@ function House(props: HomeSceneProps & {
     const g = new Group();
     for (const f of L.furniture) {
       const grp = itemGroup(f);
-      if (!grp) continue;
+      if (!grp && !(props.editableFurniture && f.id.startsWith('own_'))) continue;
       const [x0, z0, x1, z1] = footprint(f);
       const m = new Mesh(pickGeo, mats.pick);
       const h = pickHeight(f);
@@ -635,8 +639,51 @@ function House(props: HomeSceneProps & {
       g.add(m);
     }
     return g;
-  }, [L, pickGeo, mats.pick]);
+  }, [L, pickGeo, mats.pick, props.editableFurniture]);
   useEffect(() => () => pickGeo.dispose(), [pickGeo]);
+
+  // ---- B1 arrange ghost: the selected piece as its own small mesh, moved by a transform
+  const ghostItem = props.ghost?.item ?? null;
+  const ghostShape = ghostItem ? `${ghostItem.id}:${ghostItem.kind}:${ghostItem.color ?? ''}` : '';
+  const ghostMats = useMemo(() => ({
+    solid: new MeshLambertMaterial({ vertexColors: true, emissive: '#0b3d1f' }),
+    ring: new MeshBasicMaterial({ color: '#17a05c', transparent: true, opacity: 0.45, depthWrite: false }),
+  }), []);
+  useEffect(() => () => { ghostMats.solid.dispose(); ghostMats.ring.dispose(); }, [ghostMats]);
+  const ghostObj = useMemo(() => {
+    if (!ghostItem) return null;
+    const b = new HomeBuilder();
+    b.ao = false;
+    buildPiece(b, { ...ghostItem, x: 0, z: 0, rot: 0 }, L.wallH);
+    const layers = b.finish();
+    const g = new Group();
+    for (const k of LAYERS) {
+      const geo = layers[k];
+      if (!geo || k === 'light') continue;
+      g.add(new Mesh(geo, k === 'solid' ? ghostMats.solid : mats[k]));
+    }
+    const k = KINDS[ghostItem.kind];
+    const ringM = new Mesh(new PlaneGeometry(k.w + 0.16, k.d + 0.16), ghostMats.ring);
+    ringM.rotation.x = -Math.PI / 2;
+    ringM.position.y = 0.025;
+    ringM.renderOrder = 2;
+    g.add(ringM);
+    return g;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ghostShape, ghostMats, mats, L.wallH]);
+  useEffect(() => () => {
+    ghostObj?.traverse((o) => { if (o instanceof Mesh) o.geometry.dispose(); });
+  }, [ghostObj]);
+  useEffect(() => {
+    if (!ghostObj || !props.ghost) return;
+    const { item, invalid } = props.ghost;
+    ghostObj.position.set(item.x, item.y ?? 0, item.z);
+    ghostObj.rotation.y = ((item.rot ?? 0) * Math.PI) / 2;
+    ghostMats.solid.color.set(invalid ? '#ff6b6b' : '#ffffff');
+    ghostMats.solid.emissive.set(invalid ? '#6e0b0b' : '#0b3d1f');
+    ghostMats.ring.color.set(invalid ? '#e0322b' : '#17a05c');
+    invalidate();
+  }, [ghostObj, props.ghost, ghostMats, invalidate]);
 
   // ---- selection ring
   const ringGeo = useMemo(() => new PlaneGeometry(1, 1), []);
@@ -1370,6 +1417,7 @@ function House(props: HomeSceneProps & {
         {fan && <primitive object={fan} />}
         <primitive object={ring} />
         <primitive object={marker} />
+        {ghostObj && <primitive object={ghostObj} />}
         <primitive object={actorObj} />
         {props.remotePlayers?.length ? <RemoteHomeAvatars actors={props.remotePlayers} layout={L} grid={grid} walk={props.walk} crowd={crowd} hotRef={actorRef} onPick={props.onPickRemote} /> : null}
         <primitive object={tapMark} />

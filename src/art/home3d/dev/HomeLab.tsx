@@ -4,7 +4,23 @@
 import { useMemo, useState } from 'react';
 import { defaultAvatar } from '../../avatar3d';
 import { HomeView } from '../HomeView';
-import { furnishLayout, LAYOUTS, type HomeGroup, type HomeLayoutId, type OwnedPiece } from '../model';
+import { furnishLayout, KINDS, LAYOUTS, type FurnitureItem, type FurnitureKind, type HomeGroup, type HomeLayout, type HomeLayoutId, type OwnedPiece } from '../model';
+
+/** B1: ?show=1 lays every furniture kind out in rows on the duplex lot (model check). */
+function showroom(): HomeLayout {
+  const base = LAYOUTS.duplex;
+  const kinds = (Object.keys(KINDS) as FurnitureKind[]).filter((k) => !['toilet', 'pit_toilet', 'shower', 'bathtub', 'sink', 'bucket_bath', 'stall', 'kitchen', 'island'].includes(k));
+  const furniture: FurnitureItem[] = [];
+  let x = 0, z = 0, row = 0;
+  for (const k of kinds) {
+    const m = KINDS[k];
+    if (x + m.w > 15) { x = 0; z += row + 0.5; row = 0; }
+    furniture.push({ id: `own_${k}`, kind: k, x: base.lot[0] + 0.3 + x + m.w / 2, z: base.lot[1] + 0.3 + z + m.d / 2 });
+    x += m.w + 0.4;
+    row = Math.max(row, m.d);
+  }
+  return { ...base, partitions: [], doors: [], windows: [], furniture, w: 0.01, d: 0.01 };
+}
 
 // Mirrors the seeds in 20261006000400_starter_furniture.sql (the game reads them from the server).
 const SETS: Record<string, OwnedPiece[]> = {
@@ -33,7 +49,7 @@ export default function HomeLab() {
   const [busy, setBusy] = useState<HomeGroup | null>((q.get('busy') as HomeGroup) || null);
   const [picked, setPicked] = useState<string | null>(null);
   const [origin, setOrigin] = useState<string>(q.get('o') ?? '');
-  const furnished = useMemo(() => furnishLayout(LAYOUTS[layout], SETS[origin] ?? null), [layout, origin]);
+  const furnished = useMemo(() => (q.get('show') ? showroom() : furnishLayout(LAYOUTS[layout], SETS[origin] ?? null)), [layout, origin, q]);
   const avatar = useMemo(() => defaultAvatar(q.get('g') === 'female' ? 'female' : 'male'), [q]);
   return (
     <div style={{ position: 'fixed', inset: 0 }}>

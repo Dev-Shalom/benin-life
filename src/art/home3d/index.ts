@@ -2,3 +2,4 @@
 // <HomeView> mounts. See docs/HUD_HOME.md.
 export * from './model';
 export { HomeView, type HomeViewProps } from './HomeView';
+export * from './arrange';

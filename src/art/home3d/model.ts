@@ -53,7 +53,23 @@ export type FurnitureKind =
   | 'kerosene_stove' | 'hotplate' | 'kitchen' | 'island' | 'fridge' | 'gas'
   | 'bucket_bath' | 'shower' | 'bathtub' | 'toilet' | 'pit_toilet' | 'sink'
   | 'generator' | 'drum' | 'clothesline' | 'stall'
-  | 'drum_bucket' | 'gas_cooker';
+  | 'drum_bucket' | 'gas_cooker'
+  // B1 buy catalogue (docs/FURNITURE_CATALOGUE.md)
+  | 'plastic_table' | 'sofa_2' | 'sofa_lux' | 'recliner' | 'centre_glass' | 'office_chair' | 'garden_set'
+  | 'tv_small' | 'tv_43' | 'tv_55' | 'tv_75' | 'speaker_small' | 'home_theatre' | 'speaker_tower'
+  | 'mat_raffia' | 'rug_big' | 'curtain' | 'curtain_lux' | 'fan_table' | 'fan_ceiling' | 'ac_big' | 'ac_standing'
+  | 'bookshelf' | 'mattress_thick' | 'bed_6' | 'bed_lux' | 'clothes_rack' | 'wardrobe_big' | 'dressing'
+  | 'mirror_stand' | 'bedside' | 'lamp_small' | 'chandelier'
+  | 'gas_table' | 'cooker_big' | 'fridge_small' | 'fridge_sbs' | 'freezer' | 'microwave' | 'blender' | 'pots'
+  | 'dispenser' | 'dining4' | 'dining6' | 'kitchen_cab'
+  | 'bucket_bowl' | 'water_heater' | 'mirror_wall' | 'towel_rack' | 'washer'
+  | 'gen_small' | 'gen_big' | 'inverter' | 'inverter_small' | 'solar' | 'water_tank' | 'gate_light' | 'car_shade'
+  | 'plant_big' | 'wall_art' | 'plaque' | 'bronze_head' | 'wall_clock' | 'photo_frame' | 'aquarium' | 'vase';
+
+/** Where a piece may stand (B1 arrange; the server checks the same rule from furniture.placement):
+ * in = inside the house, out = in the yard, any = either (not across a wall), wall = inside, against
+ * the north or west wall (hung on it). */
+export type Placement = 'in' | 'out' | 'any' | 'wall';
 
 export interface KindMeta {
   /** Footprint in local space (before rotation). */
@@ -67,6 +83,8 @@ export interface KindMeta {
   /** Sit poses: where the hips go, local [x, y, z, yaw]. Lie poses: where the FEET go (head points to -z). */
   seat?: [number, number, number, number];
   label: string;
+  /** Default 'in'. */
+  place?: Placement;
 }
 
 // Local frame: +z is the "front" of a piece (where you use it from).
@@ -79,9 +97,9 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   sofa: { w: 1.9, d: 0.85, solid: true, group: 'seat', spot: [0, 0.75, 0], seat: [0, 0.46, 0.06, 0], label: 'Sofa' },
   sofa_l: { w: 2.8, d: 0.9, solid: true, group: 'seat', spot: [0, 0.8, 0], seat: [0, 0.46, 0.06, 0], label: 'Sofa' },
   armchair: { w: 0.85, d: 0.85, solid: true, group: 'seat', spot: [0, 0.75, 0], seat: [0, 0.46, 0.06, 0], label: 'Armchair' },
-  plastic_chair: { w: 0.5, d: 0.5, solid: true, group: 'seat', spot: [0, 0.5, 0], seat: [0, 0.45, 0.02, 0], label: 'Plastic chair' },
-  stool: { w: 0.4, d: 0.4, solid: true, group: 'seat', spot: [0, 0.45, 0], seat: [0, 0.42, 0, 0], label: 'Stool' },
-  bench: { w: 1.4, d: 0.4, solid: true, group: 'seat', spot: [0, 0.5, 0], seat: [0, 0.45, 0, 0], label: 'Bench' },
+  plastic_chair: { w: 0.5, d: 0.5, solid: true, group: 'seat', spot: [0, 0.5, 0], seat: [0, 0.45, 0.02, 0], label: 'Plastic chair', place: 'any' },
+  stool: { w: 0.4, d: 0.4, solid: true, group: 'seat', spot: [0, 0.45, 0], seat: [0, 0.42, 0, 0], label: 'Stool', place: 'any' },
+  bench: { w: 1.4, d: 0.4, solid: true, group: 'seat', spot: [0, 0.5, 0], seat: [0, 0.45, 0, 0], label: 'Bench', place: 'any' },
   table: { w: 0.9, d: 0.6, solid: true, label: 'Table' },
   dining: { w: 1.4, d: 0.9, solid: true, label: 'Dining table' },
   centre_table: { w: 1.0, d: 0.55, solid: true, label: 'Centre table' },
@@ -91,12 +109,12 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   shelf: { w: 0.9, d: 0.35, solid: true, label: 'Shelf' },
   tv: { w: 1.2, d: 0.45, solid: true, group: 'media', label: 'TV' },
   tv_big: { w: 1.8, d: 0.45, solid: true, group: 'media', label: 'Big TV' },
-  radio: { w: 0.45, d: 0.4, solid: true, group: 'media', label: 'Radio' },
+  radio: { w: 0.45, d: 0.4, solid: true, group: 'media', label: 'Radio', place: 'any' },
   fan: { w: 0.45, d: 0.45, solid: true, label: 'Standing fan' },
   lamp: { w: 0.35, d: 0.35, solid: true, label: 'Lamp' },
-  plant: { w: 0.45, d: 0.45, solid: true, label: 'Plant' },
+  plant: { w: 0.45, d: 0.45, solid: true, label: 'Plant', place: 'any' },
   rug: { w: 2.0, d: 1.4, solid: false, label: 'Rug' },
-  ac: { w: 0.9, d: 0.25, solid: false, label: 'Split AC' },
+  ac: { w: 0.9, d: 0.25, solid: false, label: 'Split AC', place: 'wall' },
   kerosene_stove: { w: 0.6, d: 0.5, solid: true, group: 'kitchen', spot: [0, 0.6, Math.PI], label: 'Kerosene stove' },
   hotplate: { w: 0.55, d: 0.45, solid: true, group: 'kitchen', spot: [0, 0.55, Math.PI], label: 'Hot plate' },
   kitchen: { w: 2.2, d: 0.62, solid: true, group: 'kitchen', spot: [-0.6, 0.62, Math.PI], label: 'Kitchen' },
@@ -109,12 +127,80 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   toilet: { w: 0.45, d: 0.7, solid: true, group: 'toilet', spot: [0, 0.55, 0], seat: [0, 0.44, 0.02, 0], label: 'Toilet' },
   pit_toilet: { w: 1.1, d: 1.1, solid: false, group: 'toilet', spot: [0, 0, 0], label: 'Shared toilet' },
   sink: { w: 0.5, d: 0.42, solid: true, label: 'Sink' },
-  generator: { w: 0.8, d: 0.55, solid: true, label: 'Generator' },
-  drum: { w: 0.6, d: 0.6, solid: true, label: 'Water drum' },
-  clothesline: { w: 2.4, d: 0.2, solid: false, label: 'Clothesline' },
+  generator: { w: 0.8, d: 0.55, solid: true, label: 'Generator', place: 'out' },
+  drum: { w: 0.6, d: 0.6, solid: true, label: 'Water drum', place: 'any' },
+  clothesline: { w: 2.4, d: 0.2, solid: false, label: 'Clothesline', place: 'out' },
   stall: { w: 1.2, d: 1.2, solid: false, label: 'Stall' },
   drum_bucket: { w: 1.0, d: 0.6, solid: true, group: 'bath', spot: [0.1, 0.65, Math.PI], label: 'Water drum and bucket' },
   gas_cooker: { w: 0.95, d: 0.6, solid: true, group: 'kitchen', spot: [-0.12, 0.62, Math.PI], label: 'Gas cooker' },
+
+  // ---- B1 buy catalogue. Sizes here are copied into furniture.w/d by the buy_catalogue migration.
+  plastic_table: { w: 0.8, d: 0.8, solid: true, label: 'Plastic table', place: 'any' },
+  sofa_2: { w: 1.4, d: 0.85, solid: true, group: 'seat', spot: [0, 0.75, 0], seat: [0, 0.46, 0.06, 0], label: 'Loveseat' },
+  sofa_lux: { w: 2.4, d: 0.95, solid: true, group: 'seat', spot: [0, 0.85, 0], seat: [0, 0.46, 0.08, 0], label: 'Luxury sofa' },
+  recliner: { w: 0.95, d: 0.95, solid: true, group: 'seat', spot: [0, 0.8, 0], seat: [0, 0.46, 0.06, 0], label: 'Recliner' },
+  centre_glass: { w: 1.2, d: 0.65, solid: true, label: 'Glass centre table' },
+  office_chair: { w: 0.6, d: 0.6, solid: true, group: 'seat', spot: [0, 0.55, 0], seat: [0, 0.48, 0.02, 0], label: 'Office chair' },
+  garden_set: { w: 1.6, d: 1.6, solid: true, label: 'Garden chairs', place: 'out' },
+  tv_small: { w: 0.8, d: 0.4, solid: true, group: 'media', label: 'Small TV' },
+  tv_43: { w: 1.3, d: 0.45, solid: true, group: 'media', label: 'TV' },
+  tv_55: { w: 1.5, d: 0.45, solid: true, group: 'media', label: 'TV' },
+  tv_75: { w: 2.2, d: 0.5, solid: true, group: 'media', label: 'Big TV' },
+  speaker_small: { w: 0.3, d: 0.3, solid: true, group: 'media', label: 'Speaker' },
+  home_theatre: { w: 1.6, d: 0.45, solid: true, group: 'media', label: 'Home theatre' },
+  speaker_tower: { w: 0.35, d: 0.35, solid: true, group: 'media', label: 'Tower speaker' },
+  mat_raffia: { w: 1.6, d: 1.0, solid: false, label: 'Raffia mat' },
+  rug_big: { w: 2.6, d: 1.8, solid: false, label: 'Big rug' },
+  curtain: { w: 1.4, d: 0.15, solid: false, label: 'Curtains', place: 'wall' },
+  curtain_lux: { w: 1.8, d: 0.18, solid: false, label: 'Curtains', place: 'wall' },
+  fan_table: { w: 0.35, d: 0.3, solid: true, label: 'Rechargeable fan', place: 'any' },
+  fan_ceiling: { w: 1.2, d: 1.2, solid: false, label: 'Ceiling fan' },
+  ac_big: { w: 1.1, d: 0.28, solid: false, label: 'Inverter AC', place: 'wall' },
+  ac_standing: { w: 0.5, d: 0.4, solid: true, label: 'Standing AC' },
+  bookshelf: { w: 1.0, d: 0.38, solid: true, label: 'Bookshelf' },
+  mattress_thick: { w: 1.4, d: 1.95, solid: true, group: 'bed', spot: [1.0, 0.2, -Math.PI / 2], seat: [0.15, 0.4, 0.85, 0], label: 'Foam mattress' },
+  bed_6: { w: 1.8, d: 2.05, solid: true, group: 'bed', spot: [1.2, 0.2, -Math.PI / 2], seat: [0.35, 0.66, 0.9, 0], label: 'Bed' },
+  bed_lux: { w: 2.1, d: 2.25, solid: true, group: 'bed', spot: [1.35, 0.2, -Math.PI / 2], seat: [0.45, 0.72, 1.0, 0], label: 'King bed' },
+  clothes_rack: { w: 1.0, d: 0.45, solid: true, group: 'wardrobe', label: 'Hanger rack' },
+  wardrobe_big: { w: 1.9, d: 0.62, solid: true, group: 'wardrobe', label: 'Wardrobe' },
+  dressing: { w: 1.0, d: 0.45, solid: true, label: 'Dressing table' },
+  mirror_stand: { w: 0.5, d: 0.35, solid: true, label: 'Standing mirror' },
+  bedside: { w: 0.45, d: 0.4, solid: true, label: 'Bedside table' },
+  lamp_small: { w: 0.3, d: 0.3, solid: true, label: 'Lamp' },
+  chandelier: { w: 0.9, d: 0.9, solid: false, label: 'Chandelier' },
+  gas_table: { w: 0.7, d: 0.5, solid: true, group: 'kitchen', spot: [0, 0.6, Math.PI], label: 'Gas burner' },
+  cooker_big: { w: 0.95, d: 0.62, solid: true, group: 'kitchen', spot: [0, 0.65, Math.PI], label: 'Gas cooker' },
+  fridge_small: { w: 0.5, d: 0.5, solid: true, group: 'kitchen', spot: [0, 0.55, Math.PI], label: 'Bar fridge' },
+  fridge_sbs: { w: 0.95, d: 0.75, solid: true, group: 'kitchen', spot: [0, 0.75, Math.PI], label: 'Fridge' },
+  freezer: { w: 1.0, d: 0.62, solid: true, group: 'kitchen', spot: [0, 0.65, Math.PI], label: 'Freezer' },
+  microwave: { w: 0.55, d: 0.45, solid: true, group: 'kitchen', spot: [0, 0.55, Math.PI], label: 'Microwave' },
+  blender: { w: 0.4, d: 0.4, solid: true, group: 'kitchen', spot: [0, 0.5, Math.PI], label: 'Blender' },
+  pots: { w: 0.7, d: 0.4, solid: true, group: 'kitchen', spot: [0, 0.5, Math.PI], label: 'Pots' },
+  dispenser: { w: 0.38, d: 0.38, solid: true, group: 'kitchen', spot: [0, 0.45, Math.PI], label: 'Water dispenser' },
+  dining4: { w: 1.5, d: 1.6, solid: true, label: 'Dining set' },
+  dining6: { w: 2.1, d: 1.7, solid: true, label: 'Dining set' },
+  kitchen_cab: { w: 1.2, d: 0.55, solid: true, group: 'kitchen', spot: [0, 0.6, Math.PI], label: 'Kitchen cabinet' },
+  bucket_bowl: { w: 0.6, d: 0.45, solid: true, group: 'bath', spot: [0, 0.55, Math.PI], label: 'Bucket and bowl' },
+  water_heater: { w: 0.45, d: 0.3, solid: false, label: 'Water heater', place: 'wall' },
+  mirror_wall: { w: 0.6, d: 0.08, solid: false, label: 'Mirror', place: 'wall' },
+  towel_rack: { w: 0.6, d: 0.3, solid: true, label: 'Towel rack' },
+  washer: { w: 0.62, d: 0.62, solid: true, label: 'Washing machine' },
+  gen_small: { w: 0.55, d: 0.4, solid: true, label: 'Small generator', place: 'out' },
+  gen_big: { w: 1.8, d: 0.9, solid: true, label: 'Soundproof generator', place: 'out' },
+  inverter: { w: 0.8, d: 0.5, solid: true, label: 'Inverter' },
+  inverter_small: { w: 0.5, d: 0.4, solid: true, label: 'Inverter' },
+  solar: { w: 2.0, d: 1.1, solid: true, label: 'Solar panels', place: 'out' },
+  water_tank: { w: 1.2, d: 1.2, solid: true, label: 'Water tank', place: 'out' },
+  gate_light: { w: 0.4, d: 0.4, solid: true, label: 'Floodlight', place: 'out' },
+  car_shade: { w: 2.8, d: 4.2, solid: false, label: 'Car shade', place: 'out' },
+  plant_big: { w: 0.6, d: 0.6, solid: true, label: 'Palm', place: 'any' },
+  wall_art: { w: 0.9, d: 0.08, solid: false, label: 'Wall art', place: 'wall' },
+  plaque: { w: 0.5, d: 0.1, solid: false, label: 'Bronze plaque', place: 'wall' },
+  bronze_head: { w: 0.45, d: 0.45, solid: true, label: 'Bronze head' },
+  wall_clock: { w: 0.4, d: 0.08, solid: false, label: 'Wall clock', place: 'wall' },
+  photo_frame: { w: 0.5, d: 0.08, solid: false, label: 'Photo frame', place: 'wall' },
+  aquarium: { w: 1.0, d: 0.42, solid: true, label: 'Aquarium' },
+  vase: { w: 0.3, d: 0.3, solid: true, label: 'Flower vase' },
 };
 
 /** Kinds that come with the house (bathroom, shared compound things, wall units). Everything else is
@@ -422,43 +508,82 @@ export interface OwnedPiece {
   slot: string;
   activities: string[];
   color?: string | null;
+  /** B1: copies owned (plastic chairs, fans ...). Default 1. */
+  qty?: number;
+  /** B1: catalogue name (for the arrange list). */
+  name?: string;
 }
 
 export interface SavedHomePosition {
   x: number;
   z: number;
   rotation: number;
+  /** B1: in the inventory (bought or stored), not in the room. */
+  stored?: boolean;
+  /** B1: the layout the position belongs to (null = legacy row, current home). */
+  layout?: string | null;
 }
 
-const SEATS = new Set<string>(['sofa', 'sofa_l', 'armchair']);
+/** B1: the placement key of copy n (1-based) of a furniture id: own_<id>, own_<id>-2, own_<id>-3 ... */
+export function furnitureKey(id: string, copy = 1): string {
+  return copy <= 1 ? `own_${id}` : `own_${id}-${copy}`;
+}
+
+/** B1: furniture id of a placement key (own_plastic_chair-3 -> plastic_chair). */
+export function furnitureIdOfKey(key: string): string {
+  return key.replace(/^own_/, '').replace(/-\d+$/, '');
+}
+
+const SEATS = new Set<string>(['sofa', 'sofa_l', 'armchair', 'sofa_2', 'sofa_lux', 'recliner']);
 
 /**
  * The layout with the player's own furniture: the house's fixtures (FIXED_KINDS) stay, every other
- * piece is replaced by the owned pieces, each placed at its slot. Pieces with an unknown kind or a
- * slot this layout doesn't have are skipped; the first piece in a slot wins. `null` = the full
- * default furnishing (dev page, before the furniture loads).
+ * piece is replaced by the owned pieces. `null` = the full default furnishing (dev page, before the
+ * furniture loads). Same rule as the server's bl_furniture_materialize (B1):
+ * - a copy with a saved row stands at the row, or is in the inventory when the row is `stored`;
+ * - a copy without a row (starter furniture never moved) takes its slot's default spot when this
+ *   layout has that slot and no earlier row-less piece took it; otherwise it waits in the inventory.
+ * Rows saved for another layout (the player moved house) count as no row.
  */
-export function furnishLayout(base: HomeLayout, pieces: OwnedPiece[] | null): HomeLayout {
+export function furnishHome(base: HomeLayout, pieces: OwnedPiece[] | null, rows: Record<string, SavedHomePosition> = {}): HomeLayout {
   if (!pieces) return base;
   const fixtures = base.furniture.filter((f) => FIXED_KINDS.has(f.kind));
   const used = new Set<string>();
   const own: FurnitureItem[] = [];
   for (const p of pieces) {
-    const at = base.slots[p.slot];
-    if (!at || used.has(p.slot) || !(p.kind in KINDS)) continue;
-    used.add(p.slot);
-    own.push({
-      id: `own_${p.id}`,
-      kind: p.kind as FurnitureKind,
-      x: at[0],
-      z: at[1],
-      rot: at[2],
-      color: p.color ?? undefined,
-      activities: p.activities,
-      actorFor: SEATS.has(p.kind) ? ['media', 'seat'] : undefined,
-    });
+    if (!(p.kind in KINDS)) continue;
+    const qty = Math.max(1, p.qty ?? 1);
+    for (let copy = 1; copy <= qty; copy++) {
+      const id = furnitureKey(p.id, copy);
+      const row = rows[id] && (rows[id].layout == null || rows[id].layout === base.id) ? rows[id] : null;
+      let at: [number, number, number] | null = null;
+      if (row) {
+        if (row.stored) continue;
+        at = [row.x, row.z, ((row.rotation % 4) + 4) % 4];
+      } else {
+        const slot = base.slots[p.slot];
+        if (copy > 1 || !slot || used.has(p.slot)) continue;
+        used.add(p.slot);
+        at = slot;
+      }
+      own.push({
+        id,
+        kind: p.kind as FurnitureKind,
+        x: at[0],
+        z: at[1],
+        rot: at[2],
+        color: p.color ?? undefined,
+        activities: p.activities,
+        actorFor: SEATS.has(p.kind) ? ['media', 'seat'] : undefined,
+      });
+    }
   }
   return { ...base, furniture: [...fixtures, ...own] };
+}
+
+/** The layout with the player's own furniture at their default slots (no saved positions). */
+export function furnishLayout(base: HomeLayout, pieces: OwnedPiece[] | null): HomeLayout {
+  return furnishHome(base, pieces, {});
 }
 
 /** Apply the homeowner's saved furniture positions to the shared house layout. */
@@ -468,7 +593,7 @@ export function applyHomePositions(base: HomeLayout, positions: Record<string, S
   const furniture = base.furniture.map((item) => {
     if (!item.id.startsWith('own_')) return item;
     const position = positions[item.id];
-    if (!position) return item;
+    if (!position || position.stored) return item;
     changed = true;
     return { ...item, x: position.x, z: position.z, rot: ((position.rotation % 4) + 4) % 4 };
   });

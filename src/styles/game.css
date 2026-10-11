@@ -4362,25 +4362,104 @@ kbd {
 .voice-player__speed { width: 46px; flex: none; border: 0; border-radius: 9px; padding: 5px 2px; color: var(--ink); background: rgba(255,255,255,.72); font: 700 10px var(--font-display); }
 .voice-player.is-mine .voice-player__play { background: #086b43; }
 
-.house-arrange {
-  position: absolute; z-index: var(--z-hud); top: calc(var(--hud-bottom, calc(var(--sat) + 60px)) + 10px + var(--ev-h, 0px)); right: calc(var(--sar) + 12px); transition: top 240ms var(--ease-out);
-  display: flex; justify-content: flex-end; max-width: min(420px, calc(100vw - 24px)); pointer-events: none;
+/* B1: the bottom HUD (home chip, needs, dock) steps aside while arranging */
+.game__bottom.is-arranging { visibility: hidden; pointer-events: none; }
+/* ---------- B1 arrange toolbar (inside Buy). The HUD "Arrange home" button is gone. ---------- */
+.arrange-bar {
+  position: absolute; z-index: var(--z-hud); left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--sab, 0px) + 12px); width: min(460px, calc(100vw - 24px));
+  display: grid; gap: 8px; padding: 12px; border-radius: var(--r-xl); color: var(--ink);
+  background: var(--glass-strong); box-shadow: var(--e2); border: 2px solid transparent;
+  transition: border-color var(--t-fast) ease;
 }
-.house-arrange__toggle, .house-arrange__tools {
-  display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 10px; border: 1px solid var(--line);
-  border-radius: var(--r-pill); color: var(--ink); background: var(--glass-strong); box-shadow: var(--e2); font: 700 12px var(--font-display); pointer-events: auto;
+.arrange-bar.is-invalid { border-color: var(--red-500); }
+.arrange-bar--idle { gap: 10px; }
+.arrange-bar__hint { display: flex; align-items: center; gap: 6px; font: 700 13px var(--font-display); color: var(--ink-2); }
+.arrange-bar__row, .arrange-bar__top { display: flex; align-items: center; gap: 8px; }
+.arrange-bar__row { justify-content: flex-end; }
+.arrange-bar__top { justify-content: space-between; }
+.arrange-bar__name { font: 800 15px var(--font-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arrange-bar__x { display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--ink); cursor: pointer; }
+.arrange-bar__status { display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 10px; border-radius: var(--r-md); font: 700 12.5px var(--font-body); color: var(--green-700); background: var(--green-50); }
+.arrange-bar__status.is-bad { color: var(--red-600); background: var(--red-50); }
+.arrange-bar__controls { display: flex; align-items: center; gap: 12px; }
+.arrange-bar__actions { display: grid; gap: 6px; flex: 1; }
+.arrange-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; padding: 0 14px;
+  border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink); font: 800 13px var(--font-display); cursor: pointer;
+  transition: transform var(--t-press) var(--ease-out);
 }
-.house-arrange__toggle, .house-arrange__tools button { cursor: pointer; }
-.house-arrange__toggle { border: 0; }
-.house-arrange__tools span { max-width: 190px; color: var(--muted); font-size: 10px; line-height: 1.2; }
-.house-arrange__tools button { display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 20px; padding: 7px 9px; color: var(--ink); background: var(--surface-2); font: 700 11px var(--font-display); white-space: nowrap; }
-.house-arrange__tools .house-arrange__done { color: #fff; background: var(--green-700, #087246); }
+.arrange-btn:active { transform: scale(0.97); }
+.arrange-btn:disabled { opacity: 0.55; cursor: default; }
+.arrange-btn--done { color: #fff; background: var(--grad-primary); }
+.arrange-bar.is-invalid .arrange-btn--done { background: var(--surface-3); color: var(--ink-3); }
+/* diamond D-pad: the room is seen from the south-east, so the arrows point along its walls */
+.arrange-pad { position: relative; flex: none; width: 150px; height: 150px; }
+.arrange-pad__btn, .arrange-pad__mid {
+  position: absolute; display: grid; place-items: center; width: 50px; height: 50px; border: 0; border-radius: 16px;
+  background: var(--surface); color: var(--ink); box-shadow: var(--e1); cursor: pointer; touch-action: manipulation;
+  transition: transform var(--t-press) var(--ease-out), background-color var(--t-fast) ease;
+}
+.arrange-pad__btn:active, .arrange-pad__mid:active { transform: scale(0.92); background: var(--green-50); }
+.arrange-pad__btn span { display: grid; place-items: center; }
+.arrange-pad__btn--tl { left: 4px; top: 4px; }
+.arrange-pad__btn--tr { right: 4px; top: 4px; }
+.arrange-pad__btn--bl { left: 4px; bottom: 4px; }
+.arrange-pad__btn--br { right: 4px; bottom: 4px; }
+.arrange-pad__mid { left: 50%; top: 50%; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; color: var(--green-700); }
+@media (min-width: 900px) {
+  .arrange-bar { left: auto; right: calc(var(--sar, 0px) + 16px); transform: none; bottom: 16px; width: 400px; }
+}
 
-@media (max-width: 600px) {
-  .house-arrange { top: calc(var(--sat) + 136px + var(--ev-h, 0px)); right: calc(var(--sar) + 8px); }
-  .house-arrange__tools { gap: 5px; padding: 5px 7px; }
-  .house-arrange__tools span { max-width: 125px; }
+/* ---------- B1 Buy sheet: catalogue ---------- */
+.buy-sheet__headwrap { display: grid; gap: 12px; padding-bottom: 4px; }
+.buy-sheet__headwrap .grow { min-width: 0; }
+.buy-seg { width: 100%; }
+.buy-cats { display: flex; gap: 6px; overflow-x: auto; margin: 0 -4px 10px; padding: 2px 4px 4px; scrollbar-width: none; }
+.buy-cats::-webkit-scrollbar { display: none; }
+.buy-cat {
+  flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill); background: var(--surface); color: var(--ink-2); font: 700 13px var(--font-display); cursor: pointer;
 }
+.buy-cat.is-active { border-color: var(--green-600); background: var(--green-50); color: var(--green-700); }
+.buy-tiers { display: flex; gap: 6px; margin-bottom: 12px; }
+.buy-tier { min-height: 30px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font: 800 12px var(--font-display); cursor: pointer; }
+.buy-tier.is-active { color: #fff; background: var(--ink); }
+.buy-tier--lapo.is-active { background: #8a5a33; }
+.buy-tier--mid.is-active { background: var(--green-600); }
+.buy-tier--nepo.is-active { background: linear-gradient(135deg, #b0793a, #d9a441); }
+.buy-grid--shop { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 560px) { .buy-grid--shop { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.buy-grid--shop .buy-card { position: relative; align-items: stretch; text-align: left; padding: 10px; gap: 3px; background: var(--surface-2); }
+.buy-card__thumb {
+  display: grid; place-items: center; height: 72px; margin-bottom: 4px; border-radius: 14px; background: var(--surface);
+  font-family: var(--font-emoji); font-size: 38px; box-shadow: inset 0 -10px 18px rgba(17, 32, 56, 0.05);
+}
+.buy-card--nepo .buy-card__thumb { background: linear-gradient(160deg, #fff8e6, #f3e2bd); }
+.buy-card--lapo .buy-card__thumb { background: linear-gradient(160deg, #fbf3ea, #ecdcc8); }
+.buy-card__tier { position: absolute; top: 14px; left: 14px; padding: 2px 7px; border-radius: var(--r-pill); font: 800 10px var(--font-display); letter-spacing: 0.02em; color: #fff; background: var(--green-600); }
+.buy-card__tier--lapo { background: #8a5a33; }
+.buy-card__tier--nepo { background: #b0793a; }
+.buy-grid--shop .buy-card__name { font: 700 13px/1.25 var(--font-display); min-height: 2.5em; }
+.buy-card__perk { font-size: 11.5px; color: var(--ink-3); line-height: 1.25; }
+.buy-grid--shop .buy-card__price { font: 800 14px var(--font-display); color: var(--green-700); }
+.buy-card__owned { font-size: 11px; color: var(--ink-3); }
+.buy-card__btn {
+  margin-top: 4px; min-height: 38px; border: 0; border-radius: var(--r-pill); background: var(--grad-primary); color: #fff;
+  font: 800 13px var(--font-display); cursor: pointer; transition: transform var(--t-press) var(--ease-out);
+}
+.buy-card__btn:active { transform: scale(0.97); }
+.buy-card__btn.is-confirm { background: var(--grad-amber); color: #3b2600; }
+.buy-card__btn:disabled { background: var(--surface-3); color: var(--ink-3); cursor: default; }
+.buy-arrange { display: grid; gap: 12px; }
+.buy-choice--arrange .buy-choice__emoji { background: var(--green-50); }
+.buy-mine { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.buy-mine__row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-md); background: var(--surface-2); }
+.buy-mine__emoji { font-family: var(--font-emoji); font-size: 22px; width: 32px; text-align: center; }
+.buy-mine__name { display: block; font: 700 13.5px var(--font-display); }
+.buy-mine__state { display: block; font-size: 11.5px; color: var(--ink-3); }
+.buy-mine__state.is-stored { color: var(--amber-800); }
+.buy-mine__btn { min-height: 34px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: var(--surface); color: var(--green-700); font: 800 12.5px var(--font-display); box-shadow: var(--e1); cursor: pointer; }
 .chat-chip {
   align-self: flex-end;
   display: inline-flex;
