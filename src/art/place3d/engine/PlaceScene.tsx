@@ -1199,13 +1199,7 @@ function Interior(props: PlaceSceneProps & {
         }
         _v.set(bx - cx, by, bz - cz).project(camera);
         const sx = ((_v.x + 1) / 2) * size.width;
-        let sy = ((1 - _v.y) / 2) * size.height;
-        // P2: the hype man's bubble stays clear of the hype banner (phones: he stands right under it)
-        if (el.classList.contains('is-hype')) {
-          const ban = document.querySelector('.hype-banner');
-          const wr = gl.domElement.getBoundingClientRect();
-          if (ban) sy = Math.max(sy, ban.getBoundingClientRect().bottom - wr.top + el.offsetHeight + 34);
-        }
+        const sy = ((1 - _v.y) / 2) * size.height;
         el.style.opacity = '1';
         el.style.transform = `translate3d(${sx}px, ${sy}px, 0) translate(-50%, calc(-100% - ${who === 'me' ? 4 : 24}px))`;
       }

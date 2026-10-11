@@ -69,7 +69,7 @@ begin
   select * into pa from place_announcements where user_id = a order by id desc limit 1;
   perform pg_temp.assert(pa.id is not null, 'VIP table announced');
   perform pg_temp.assert(pa.location_id = 'club_360' and pa.kind = 'vip' and pa.amount = 150000 and pa.username = 'Hy_Nosa', 'row fields: ' || to_jsonb(pa)::text);
-  perform pg_temp.assert(pa.text like '%@Hy_Nosa%' and pa.text like '%360 Signature%', 'text has @name + place: ' || pa.text);
+  perform pg_temp.assert(pa.text like '%Hy_Nosa%', 'text has the name: ' || pa.text);
   perform pg_temp.assert(pg_temp.hy_rendered('vip', 'Hy_Nosa', 1, 150000, pa.text), 'text is a rendered vip template: ' || pa.text);
   perform pg_temp.assert(not pa.global and pa.ticker is null, '150k is below the app-wide threshold');
   perform pg_temp.assert((r->'hype'->>'id')::bigint = pa.id, 'do_activity returns the announcement');

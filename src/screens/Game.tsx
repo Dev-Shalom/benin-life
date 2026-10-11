@@ -41,7 +41,7 @@ import { supabase } from '../lib/supabase';
 import { useHouseRoom } from '../state/houseRoom';
 import { IX_ROLE, loadInteractionTypes, type InteractionType } from '../api/interactions';
 import { HouseInteractSheet, InteractPrompts, type Prompt, type Waiting } from './game/HouseInteract';
-import { HypeBanner, HypeTicker } from './game/Hype';
+import { HypeStrip, HypeTakeover } from './game/Hype';
 import { useHypeLive } from '../state/hype';
 import { useEventsLive } from '../state/events';
 import { EventBanner, useEventBadges } from './game/Events';
@@ -702,8 +702,9 @@ export default function Game() {
       )}
 
       {!clean && <TopPill state={state} clock={clock} />}
-      <HypeBanner mcName={inClub ? people?.npcs.find((n) => n.motion === 'hype')?.name ?? 'The hype man' : 'VIP alert'} top={inClub ? (clean ? 70 : insets.top) + 6 : clean ? 70 : insets.narrow ? 200 : insets.top + 6} />
-      <HypeTicker top={insets.narrow ? 14 : 72} />
+      <HypeTakeover mcName={people?.npcs.find((n) => n.motion === 'hype')?.name ?? 'MC Lightning'} />
+      <HypeStrip top={insets.narrow ? 14 : 72}
+        onOpen={(id) => { if (id !== state.location.id || state.travel) setMapOpen(true); select(id); }} />
       {!clean && (
         <EventBanner hereId={state.travel ? null : state.location.id}
           onOpen={(id) => { if (id !== state.location.id || state.travel) setMapOpen(true); select(id); }} />

@@ -216,7 +216,8 @@ begin
   reset role;
   perform pg_temp.assert(r->>'location' = 'mama_osas_buka', 'arrived');
   perform pg_temp.assert(exists (select 1 from place_announcements where user_id = b and kind = 'vip_arrival' and location_id = 'mama_osas_buka'
-                                   and text = 'VIP #1 @Pay_Ada just walked into Mama Osas Buka!' and qty = 1), 'VIP #1 arrival announced');
+                                   and text like '%@Pay_Ada%' and text like '%Mama Osas Buka%' and text !~ '\{' and qty = 1
+                                   and place = 'Mama Osas Buka'), 'VIP #1 arrival announced (a random P3 vip_arrival line)');
   -- cooldown
   update profiles set travel_to = 'oba_market', travel_mode = 'walk', travel_started_at = bl_now() - interval '10 minutes',
                       travel_arrives_at = bl_now() - interval '1 second' where id = b;

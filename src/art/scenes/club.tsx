@@ -39,13 +39,25 @@ function SuyaStand({ x, y, night }: { x: number; y: number; night: boolean }) {
   );
 }
 
-export default function ClubScene({ night }: { night: boolean }) {
+/** The neon sign says the real place name (any club): upper case, no "(…)" suffix, sized to fit the 340 px box. */
+function signOf(name?: string): { text: string; label: string; size: number; spacing: number } {
+  const label = (name ?? 'Bronze Lounge').replace(/\s*\(.*\)\s*$/, '').trim() || 'Nightclub';
+  const text = label.toUpperCase();
+  const n = Math.max(1, text.length);
+  const spacing = n > 14 ? 1 : 3;
+  // Arial Black is ~0.74 em per glyph; keep the line inside ~318 px
+  const size = Math.max(12, Math.min(30, (318 - n * spacing) / (n * 0.74)));
+  return { text, label, size: Math.round(size * 10) / 10, spacing };
+}
+
+export default function ClubScene({ night, name }: { night: boolean; name?: string }) {
+  const sign = signOf(name);
   const r = rng(31);
   const dancers = Array.from({ length: 11 }, (_, i) => ({ x: 236 + i * 32 + r() * 10, s: 0.8 + r() * 0.25, up: r() > 0.45, flip: r() > 0.5 }));
   const bulbs = Array.from({ length: 22 }, (_, i) => i);
   const bulbCol = ['#ff4fc0', '#ffd27a', '#3ff0e0', '#ffd27a'];
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" role="img" aria-label="Bronze Lounge nightclub">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" role="img" aria-label={`${sign.label} nightclub`}>
       <defs>
         <CommonDefs p={P} night={night} />
         <linearGradient id={`${P}-clad`} x1="0" y1="0" x2="1" y2="0">
@@ -140,7 +152,7 @@ export default function ClubScene({ night }: { night: boolean }) {
         {/* sign fascia */}
         <rect x="232" y="112" width="348" height="54" rx="4" fill="#1a1224" />
         <rect x="236" y="116" width="340" height="46" rx="3" fill="none" stroke={night ? '#ff4fc0' : '#8a4a7a'} strokeWidth="1.5" />
-        <Neon x={406} y={150} size={30} color="#ff4fc0" night={night}>BRONZE LOUNGE</Neon>
+        <Neon x={406} y={150 - (30 - sign.size) * 0.35} size={sign.size} spacing={sign.spacing} color="#ff4fc0" night={night}>{sign.text}</Neon>
         {/* upper terrace */}
         <rect x="232" y="176" width="348" height="34" fill="#2a2038" />
         {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -228,7 +240,7 @@ export default function ClubScene({ night }: { night: boolean }) {
       {night && (
         <g>
           <Glow p={P} kind="pink" cx={406} cy={140} rx={240} ry={70} o={0.55} />
-          <Neon x={406} y={150} size={30} color="#ff4fc0" night>BRONZE LOUNGE</Neon>
+          <Neon x={406} y={150 - (30 - sign.size) * 0.35} size={sign.size} spacing={sign.spacing} color="#ff4fc0" night>{sign.text}</Neon>
           <rect x="236" y="116" width="340" height="46" rx="3" fill="none" stroke="#3ff0e0" strokeWidth="2" />
           <Glow p={P} kind="pink" cx={406} cy={300} rx={260} ry={80} o={0.5} />
           <Glow p={P} kind="teal" cx={406} cy={265} rx={70} ry={30} o={0.8} />

@@ -368,28 +368,41 @@ export function readBeat(): BeatClock {
 }
 
 /** P2: a club announcement: the Doremi stinger (Sound setting) + the crowd's "ayyy" (Music setting), and the
- *  visuals' hype moment (DJ / hype man / crowd react). 'global' = the soft cue for the app-wide ticker. */
-export function playHype(kind: 'club' | 'global') {
-  if (kind === 'club') hypeAt = performance.now() / 1000;
+ *  visuals' hype moment (DJ / hype man / crowd react). 'global' = the soft cue for the app-wide strip.
+ *  P3: 'big' = Shut down the club (a doubled, louder stinger and a longer double cheer); 'calm' = a VIP arrival
+ *  (the soft bell and a gentle cheer, no stinger). */
+export function playHype(kind: 'club' | 'global' | 'big' | 'calm') {
+  if (kind !== 'global') hypeAt = performance.now() / 1000;
   if (!unlocked || !ensureCtx() || ctx!.state !== 'running') return;
   const t = ctx!.currentTime + 0.03;
   if (kind === 'global') {
     if (sfxOn()) softCueOn(ctx!, sfxBus, t);
     return;
   }
-  if (sfxOn()) stingerOn(ctx!, sfxBus, t, 1.5);
+  if (kind === 'calm') {
+    if (sfxOn()) softCueOn(ctx!, sfxBus, t);
+    if (placeBus && musicOn()) cheerOn(ctx!, placeBus, t + 0.35, 0.5);
+    return;
+  }
+  const big = kind === 'big';
+  if (sfxOn()) {
+    stingerOn(ctx!, sfxBus, t, big ? 1.9 : 1.5);
+    if (big) stingerOn(ctx!, sfxBus, t + 0.42, 0.9);
+  }
   if (placeBus && musicOn() && placeSound === 'club') {
     // duck the groove under the stinger, then the crowd cheers
     const lvl = PLACE_LEVEL.club;
+    const hold = big ? 2.4 : 1.3;
     if (t > duckUntil) {
       placeBus.gain.cancelScheduledValues(t);
       placeBus.gain.setValueAtTime(lvl, t);
       placeBus.gain.linearRampToValueAtTime(lvl * 0.45, t + 0.12);
-      placeBus.gain.setValueAtTime(lvl * 0.45, t + 1.3);
-      placeBus.gain.linearRampToValueAtTime(lvl, t + 2.2);
-      duckUntil = t + 2.2;
+      placeBus.gain.setValueAtTime(lvl * 0.45, t + hold);
+      placeBus.gain.linearRampToValueAtTime(lvl, t + hold + 0.9);
+      duckUntil = t + hold + 0.9;
     }
-    cheerOn(ctx!, placeBus, t + 1.0, 1.1);
+    cheerOn(ctx!, placeBus, t + 1.0, big ? 1.35 : 1.1);
+    if (big) cheerOn(ctx!, placeBus, t + 2.3, 1.1);
   }
 }
 

@@ -272,6 +272,63 @@ clients can only read.
 `bash scripts/sql-test.sh -- supabase/tests/hype_test.sql` (announce + text, no client writes, cooldown, global flag
 and cooldown, Shut down the club, bottles count up, non-club spends silent, publication + admin spec).
 
+## P3 hype aura (migration `20261011000200_hype_aura.sql`, tests `supabase/tests/hype_aura_test.sql`)
+The user: "The hype shouldn't be like what is there. It should carry aura and be all over the screen. It should
+have random messages, not just one thing, so it doesn't sound generic. It should sound real life." P2's small banner
+and slim ticker are replaced; the server pipeline is the same (`place_announcements` + Realtime).
+### Server
+- **Lines:** 25 per club kind (`vip`, `bottles`, `spray`, `shoutout`, `shutdown`) and 16 calm `vip_arrival` lines,
+  in the voice of a Benin club hype man: English with Pidgin and a little Edo (Koyo, Obokhian, Uyi, Ise), local
+  roads (Ring Road, Sapele Road, Uselu, GRA), no slurs, nothing sexual, no real people. Every club line has a short
+  ticker line (≤ 60 chars, name + place) for the app-wide strip. Seeded per stable id with `on conflict do nothing`
+  (admin edits are never overwritten; a DB that already holds the earlier P3 rows is fine). `hype_templates_kind_chk`
+  now allows `vip_arrival`.
+- **No repeats:** `hype_template_recent` (location, kind, template, used_at; RLS on, no grants) remembers what each
+  place has heard. `bl_hype_pick(place, kind)` picks at random among the unheard active lines; when the pool is used
+  up a new cycle starts, never with the line just heard. Per place, per kind.
+- **Variables:** `bl_hype_render(text, name, place, qty, amount)` fills `{name}` `{place}` `{count}` `{bottles}`
+  ("3 bottles") `{amount}` (₦ with commas) `{rank}` (VIP rank).
+- **`place_announcements.place`**: the place's display name ("360 Signature"), so the client can say "SHUT DOWN 360
+  SIGNATURE" without a lookup.
+- Re-created from their live definitions (grants kept, service_role only): `bl_hype_announce` (now uses the pick +
+  render helpers) and `bl_vip_arrival` (PAY: a random `vip_arrival` line, falls back to the old fixed text when the
+  pool is empty; still never breaks arriving).
+### Client
+- **Full-screen takeover** (`HypeTakeover` in `src/screens/game/Hype.tsx`, `src/styles/hype.css`, particles in
+  `src/screens/game/hypeFx.ts`) for everyone in the club, and a calm gold "VIP HAS ARRIVED" one (~3 s, soft bell + a
+  gentle cheer, few gold sparks) for a VIP arrival at any place. Hold 3.5–5 s by the size of the spend (log scale),
+  shutdown ~6 s; tap anywhere or Esc skips; queue of 3 (the oldest is dropped); "+n more" + a hairline of time left.
+- **Layers:** dimmed + slightly blurred backdrop → tier light → radial aura breathing on the beat (`readBeat()`,
+  transform + opacity written in the particle loop) → one capped canvas (≈120 particles on High, 40 on Low, from the
+  graphics tier; DPR ≤ 1.5): stylised SVG ₦1000 notes, confetti, sparks → content: MC pill (LIVE), crown (drops in,
+  then bobs), the @name huge in an SVG sized to the name (gold gradient, blurred glow copy, a light band sweeping
+  inside a text clip), the type label ("VIP TABLE", "POPPED 3 BOTTLES", "SPRAYED ₦50K", "HYPE MAN SHOUT-OUT", "SHUT
+  DOWN 360 SIGNATURE", "VIP HAS ARRIVED"), the amount rolling up (ease-out, written into the node), and MC
+  Lightning's line as big captions revealed word by word (the name glows gold, money green).
+- **Tiers:** VIP / bottles gold (bottles: sparklers shooting up from the bottom); spray naira rain, green-gold;
+  shout-out purple-gold with two sweeping spotlight beams; shutdown the biggest: fireworks shells, a light sweep (×3),
+  hot edge glow, a slam-in, ~6 s, and a doubled, louder Doremi stinger with a longer double cheer
+  (`playHype('big')`). `playHype('club')` / `'calm'` for the rest. The P2 3D reactions still fire (`bl:hype` +
+  the beat clock's hype moment).
+- **Motion:** transforms + opacity only (CSS keyframes with the app's ease-out curve; the canvas draws its own).
+  `prefers-reduced-motion`: a calm 320 ms fade, no canvas, no beat loop, no sweep/shine, the counter shows the
+  final amount and the caption shows at once. Fits 390 px through desktop (name SVG scales with `min(94vw, 980px)`,
+  capped at 24 vh).
+- **App-wide strip** (`HypeStrip`): a rich full-width card under the top (aura breathing, a shimmer passing, tier
+  icon, kicker "CLUB SHUT DOWN · ₦2M", the ticker line on up to 2 lines, "Go ›", 6 s hairline). Tapping it opens
+  that place's sheet (same handler as the event banner). It keeps priority over the Events banner (which hides while
+  a strip or takeover is up).
+- **Club header art:** the neon sign in `src/art/scenes/club.tsx` shows the real place name for every club (upper
+  case, "(…)" suffix dropped, font size fitted to the sign box); `Scene` takes an optional `name`, passed by the
+  location sheet and the place fallback.
+- DEV only: `window.__blHypeHold = 5` stretches the holds for screenshots.
+### Check
+`bash scripts/sql-test.sh -- supabase/tests/hype_aura_test.sql` (≥ 15 active lines per kind incl. vip_arrival, every
+line names the player, bottles lines count, tickers short with name + place; no repeats over a whole cycle and no
+back-to-back repeat at the edge, per place and kind; variables fill + place column; server-only; inactive lines
+skipped; VIP arrivals cycle the vip_arrival pool). `hype_test.sql` and `payments_test.sql` were adjusted for random
+lines (they check the rendered line, not one fixed text).
+
 ## Not done here (next steps)
 - L3 leftovers: rigs don't rebuild when the graphics tier changes mid-visit (they do on the next visit); no streaming
   "Loading…" pill. (P1 did the wandering and put the DJ behind the booth.)

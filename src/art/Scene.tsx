@@ -1,8 +1,9 @@
-// Phase 0 — do not edit. Lazy-loads src/art/scenes/<type>.tsx; falls back to a gradient.
+// Phase 0. Lazy-loads src/art/scenes/<type>.tsx; falls back to a gradient. P3: optional `name` = the place's
+// display name, for scenes that paint it (the club's neon sign).
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react';
 import type { SceneType } from '../lib/types';
 
-type SceneComp = ComponentType<{ night: boolean }>;
+type SceneComp = ComponentType<{ night: boolean; name?: string }>;
 const modules = import.meta.glob<{ default: SceneComp }>('./scenes/*.tsx');
 const cache = new Map<string, LazyExoticComponent<SceneComp>>();
 
@@ -21,7 +22,7 @@ function Fallback({ night }: { night: boolean }) {
   );
 }
 
-export function Scene({ type, night }: { type: SceneType; night: boolean }) {
+export function Scene({ type, night, name }: { type: SceneType; night: boolean; name?: string }) {
   const loader = modules[`./scenes/${type}.tsx`];
   if (!loader) return <Fallback night={night} />;
   let Comp = cache.get(type);
@@ -31,7 +32,7 @@ export function Scene({ type, night }: { type: SceneType; night: boolean }) {
   }
   return (
     <Suspense fallback={<Fallback night={night} />}>
-      <Comp night={night} />
+      <Comp night={night} name={name} />
     </Suspense>
   );
 }

@@ -48,7 +48,7 @@ function LocationHeader({ loc, night, here }: { loc: Location; night: boolean; h
   return (
     <div className="loc-head">
       <div className="loc-head__art">
-        <Scene type={loc.scene} night={night} />
+        <Scene type={loc.scene} night={night} name={loc.name} />
       </div>
       <div className="loc-head__shade" />
       <div className="loc-head__text">

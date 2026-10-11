@@ -45,7 +45,7 @@ export function PlaceView({ suspended, fallbackScene, fallbackAction, ...props }
 
   const fallback = (
     <div className="place3d place3d--fallback">
-      <div className="home3d__svg"><Scene type={fallbackScene} night={night} /></div>
+      <div className="home3d__svg"><Scene type={fallbackScene} night={night} name={props.placeName} /></div>
       {fallbackAction}
     </div>
   );

@@ -1,8 +1,9 @@
-// P2 club hype — live state (docs/PLACES.md "P2 hype"). Rows come ONLY from the server (place_announcements,
-// written by do_activity / shop_buy); the client just listens:
-//   club channel    INSERTs filtered by location_id=eq.<the club you're in>  -> banner + hype-man bubble + chat line
-//                   + the Doremi stinger and the crowd cheer
-//   global channel  INSERTs filtered by global=eq.true (big spends)          -> a slim ticker for ~6 s, soft cue
+// P2 club hype — live state (docs/PLACES.md "P2 hype", "P3 hype aura"). Rows come ONLY from the server
+// (place_announcements, written by do_activity / shop_buy / bl_vip_arrival); the client just listens:
+//   club channel    INSERTs filtered by location_id=eq.<the club you're in>  -> the P3 full-screen takeover
+//                   (3.5–5 s, shutdown ~6 s, VIP arrival ~3 s; queue of 3, oldest dropped) + hype-man bubble + chat
+//                   line + the Doremi stinger and the crowd cheer
+//   global channel  INSERTs filtered by global=eq.true (big spends)          -> the rich app-wide strip ~6 s, soft cue
 // Recent lines of the club (last 30 min) are loaded once on entry so the chat shows them too.
 import { useEffect } from 'react';
 import { create } from 'zustand';
@@ -22,10 +23,25 @@ export interface Announcement {
   ticker: string | null;
   global: boolean;
   created_at: string;
+  /** P3: the place's display name ("360 Signature"); older rows may not have it. */
+  place?: string | null;
 }
 
-const BANNER_MS = 7000;
 const TICKER_MS = 6000;
+
+/** P3: how long a takeover holds. Shutdown ~6 s, VIP arrival ~3 s, the rest 3.5–5 s by the size of the spend. */
+/** DEV only: window.__blHypeHold stretches the holds for screenshots. */
+function devK(): number {
+  return import.meta.env.DEV ? Number((window as { __blHypeHold?: number }).__blHypeHold) || 1 : 1;
+}
+
+export function hypeHoldMs(a: Pick<Announcement, 'kind' | 'amount'>): number {
+  const k = devK();
+  if (a.kind === 'shutdown') return 6000 * k;
+  if (a.kind === 'vip_arrival') return 3000 * k;
+  const amt = Math.max(10_000, Number(a.amount) || 0);
+  return Math.round((3500 + Math.min(1500, Math.max(0, Math.log10(amt) - 4) * 600)) * k);
+}
 
 interface HypeStore {
   locationId: string | null;
@@ -51,10 +67,10 @@ function showNext() {
   const next = queue[0] ?? null;
   useHype.setState({ banner: next, queue: queue.slice(1) });
   if (!next) return;
-  playHype(next.kind === 'vip_arrival' && !useHype.getState().inClub ? 'global' : 'club');
+  playHype(next.kind === 'vip_arrival' ? 'calm' : next.kind === 'shutdown' ? 'big' : 'club');
   // the hype man says it too (PlaceScene shows a bubble over him and he points + jumps)
   window.dispatchEvent(new CustomEvent('bl:hype', { detail: { text: next.text, kind: next.kind } }));
-  bannerTimer = window.setTimeout(showNext, BANNER_MS);
+  bannerTimer = window.setTimeout(showNext, hypeHoldMs(next));
 }
 
 function onClubRow(a: Announcement) {
@@ -75,10 +91,16 @@ function onGlobalRow(a: Announcement) {
   window.clearTimeout(tickerTimer);
   useHype.setState({ ticker: a });
   playHype('global');
-  tickerTimer = window.setTimeout(() => useHype.setState({ ticker: null }), TICKER_MS);
+  tickerTimer = window.setTimeout(() => useHype.setState({ ticker: null }), TICKER_MS * devK());
 }
 
-/** Dismiss the banner now (tap). */
+/** Hide the app-wide strip now (it was tapped). */
+export function dismissHypeTicker() {
+  window.clearTimeout(tickerTimer);
+  useHype.setState({ ticker: null });
+}
+
+/** Skip the takeover now (tap / Esc): the next queued one shows, or it closes. */
 export function dismissHypeBanner() {
   showNext();
 }
