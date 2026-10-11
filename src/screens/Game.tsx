@@ -3,7 +3,8 @@
 // HUD: top pill, left rail, needs card, dock (Home · Buy · Map · Phone), status banners, toasts.
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HomeView, KINDS, LAYOUTS, activityGroup, findFreeSpot, furnishHome, furnitureIdOfKey, homeLayoutFor, itemGroup, placementIssue, type FurnitureItem, type FurnitureKind, type SavedHomePosition } from '../art/home3d';
-import { CityView } from '../art/city3d';
+import { CityView, type CityBoard } from '../art/city3d';
+import { adImageUrl, noteAdView, useBillboards } from '../lib/billboards';
 import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
 import { serverNow, useGameClock } from '../lib/clock';
 import { devHourOverride, looksNight } from '../lib/daylight';
@@ -58,6 +59,7 @@ import { useGarage } from '../state/garage';
 import { garageHome, type GarageHome } from '../api/garage';
 
 const Boutique = lazy(() => import('./game/Boutique'));
+const BillboardSheet = lazy(() => import('./game/BillboardSheet'));
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
@@ -131,6 +133,25 @@ export default function Game() {
   const { clock, now } = useGameClock(1000);
   const greeted = useRef(false);
   const insets = useInsets();
+
+  // H3 billboards on the map: boards + their live rotation (refreshed every few minutes while the map is open)
+  const boardsData = useBillboards((s) => s.data);
+  const openBoard = useBillboards((s) => s.open);
+  const boardSheet = useBillboards((s) => s.sheet);
+  const boardsOn = cfg<boolean>('billboards.enabled', true);
+  useEffect(() => {
+    if (!mapOpen || !boardsOn) return;
+    void useBillboards.getState().load();
+    const t = window.setInterval(() => void useBillboards.getState().load(true), 180_000);
+    return () => window.clearInterval(t);
+  }, [mapOpen, boardsOn]);
+  const cityBoards = useMemo<CityBoard[] | undefined>(() => {
+    if (!boardsOn || !boardsData?.enabled) return undefined;
+    return boardsData.boards.map((b) => ({
+      id: b.id, name: b.name, x: Number(b.x), y: Number(b.y), yaw: Number(b.yaw), kind: b.kind,
+      ads: b.ads.map((a) => ({ id: a.id, url: adImageUrl(a.image) })),
+    }));
+  }, [boardsData, boardsOn]);
 
   // S1: lighting follows real Benin time continuously; the UI theme flips mid-dusk / mid-dawn.
   const hourF = devHourOverride() ?? clock.hour + clock.minute / 60;
@@ -755,6 +776,11 @@ export default function Game() {
             paused={coveredMap}
             insetTop={clean ? 70 : insets.top}
             insetBottom={clean ? 40 : insets.bottom}
+            boards={cityBoards}
+            rotateSeconds={boardsData?.rotate_seconds ?? 15}
+            nowMs={serverNow}
+            onBoard={openBoard}
+            onAdView={noteAdView}
           />
         )}
       </div>
@@ -892,6 +918,7 @@ export default function Game() {
       <ReceiptSheet />
       <ShortcutsSheet />
       <Phone state={state} clock={clock} />
+      {boardSheet && <Suspense fallback={null}><BillboardSheet state={state} /></Suspense>}
       {overlay === 'boutique' && <Suspense fallback={null}><Boutique state={state} /></Suspense>}
       <JourneyGuide state={state} onFinish={(explore) => { if (explore) setMapOpen(true); }} />
     </div>

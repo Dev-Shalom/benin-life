@@ -1,4 +1,4 @@
-// Phone "Ride" app (S1): book what you ride, ride-hailing style.
+// Phone "Bolt" app (S1 ride-hailing; renamed from "Ride" in H3, Bolt green #34D186): book what you ride.
 // Step 1: where to (search + places by distance, or pick on the map). Step 2: the ride options from
 // `travel_quote` (keke, ECTS bus, drop, your car, walk) with price, trip time and risk; Book -> `travel_start`.
 // The quote/book logic is shared with the location sheet's TravelPicker (useTravel).
@@ -84,7 +84,7 @@ export default function RideApp({ state, onPickOnMap, onBooked }: { state: GameS
     <div className="phone-app__body ride-app">
       <label className="ride-search">
         <Icon name="pin" size={16} />
-        <input className="ride-search__input" type="search" placeholder="Where to?" value={q} onChange={(e) => setQ(e.target.value)}
+        <input className="ride-search__input" type="search" placeholder="Where to? Bolt go carry you" value={q} onChange={(e) => setQ(e.target.value)}
           aria-label="Search places" />
       </label>
       <button type="button" className="ride-row ride-row--map" onClick={onPickOnMap}>

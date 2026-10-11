@@ -1,7 +1,8 @@
 // Paystack webhook (backup path): verifies x-paystack-signature (HMAC-SHA512 of the raw body with the secret
 // key), and on charge.success verifies + credits the same way as paystack-verify (idempotent).
+// H3: BLAD- references (metadata purpose 'billboard_ad') mark the billboard ad paid -> pending_review.
 // Deployed with verify_jwt = false (supabase/config.toml): Paystack sends no Supabase JWT.
-import { serviceClient, validSignature, verifyAndCredit } from '../_shared/paystack.ts';
+import { AD_REF, serviceClient, TOPUP_REF, validSignature, verifyAndCredit } from '../_shared/paystack.ts';
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('ok', { status: 200 });
@@ -12,7 +13,7 @@ Deno.serve(async (req) => {
   let evt: { event?: string; data?: { reference?: string } } | null = null;
   try { evt = JSON.parse(raw); } catch { return new Response('ok', { status: 200 }); }
   const reference = String(evt?.data?.reference ?? '');
-  if (evt?.event === 'charge.success' && reference.startsWith('BL-')) {
+  if (evt?.event === 'charge.success' && (TOPUP_REF.test(reference) || AD_REF.test(reference))) {
     // answer Paystack fast; finish the credit in the background
     const work = verifyAndCredit(serviceClient(), reference).catch(() => null);
     // deno-lint-ignore no-explicit-any

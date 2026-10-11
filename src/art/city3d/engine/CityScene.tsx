@@ -34,6 +34,7 @@ import {
 } from '../model';
 import { roadRoute } from '../route';
 import { buildCity, kekeGeometry, pinGeometry, radialTexture, ringGeometry, routeGeometry } from './build';
+import { boardDims, BoardsLayer, boardTop, type CityBoard } from './boards';
 import { getCityLayout } from './layout';
 import { cityLight } from './light';
 import { mixHex, smoothstep } from '../../../lib/daylight';
@@ -72,6 +73,15 @@ export interface CitySceneProps {
   hideChrome?: boolean;
   /** Dev page: start with these filters on. */
   initialFilters?: CityFilter[];
+  /** H3: digital billboards (ads already resolved to image URLs). */
+  boards?: CityBoard[];
+  /** Seconds per ad (billboards.rotate_seconds). */
+  rotateSeconds?: number;
+  /** Server-corrected wall clock (ms); every player sees the same ad at the same time. */
+  nowMs?: () => number;
+  onBoard?: (id: string) => void;
+  /** A player ad started showing on a board close to the camera (view counter). */
+  onAdView?: (adId: string) => void;
   className?: string;
   style?: CSSProperties;
 }
@@ -122,7 +132,7 @@ interface Controller {
 /* ------------------------------------------------------------------ */
 /* Label overlay                                                        */
 /* ------------------------------------------------------------------ */
-type LabelKind = 'place' | 'soon' | 'exit' | 'district' | 'me' | 'road';
+type LabelKind = 'place' | 'soon' | 'exit' | 'district' | 'me' | 'road' | 'board';
 interface LabelItem {
   key: string;
   kind: LabelKind;
@@ -136,6 +146,8 @@ interface LabelItem {
   x2?: number;
   y2?: number;
   text?: string;
+  /** world height the label is anchored at (billboards: above the screen) */
+  lift?: number;
 }
 
 interface LabelState {
@@ -202,6 +214,35 @@ function City(props: InnerProps) {
 
   const byId = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
 
+  /* ---------- H3 billboards ---------- */
+  const boardsLayer = useMemo(() => new BoardsLayer(), []);
+  useEffect(() => () => boardsLayer.dispose(), [boardsLayer]);
+  const boards = props.boards;
+  const rotate = props.rotateSeconds ?? 15;
+  const nowMs = props.nowMs ?? Date.now;
+  const onAdView = props.onAdView;
+  useEffect(() => {
+    boardsLayer.setBoards(boards ?? []);
+    view.current.dirty = true;
+  }, [boardsLayer, boards, view]);
+  useEffect(() => {
+    boardsLayer.onView = onAdView ?? null;
+    boardsLayer.onChange = () => {
+      view.current.dirty = true;
+    };
+  }, [boardsLayer, onAdView, view]);
+  // wake an idle canvas at every ad change (also with reduced motion)
+  useEffect(() => {
+    if (!boards?.length) return;
+    let t = 0;
+    const tick = () => {
+      view.current.dirty = true;
+      t = window.setTimeout(tick, BoardsLayer.msToNextSlot(nowMs(), rotate) + 40);
+    };
+    t = window.setTimeout(tick, BoardsLayer.msToNextSlot(nowMs(), rotate) + 40);
+    return () => window.clearTimeout(t);
+  }, [boards, rotate, nowMs, view]);
+
   /* ---------- lights, sky, fog ---------- */
   const lights = useMemo(() => {
     const g = new Group();
@@ -228,12 +269,13 @@ function City(props: InnerProps) {
     for (const o of city.nightOnly) o.visible = lt.dark > 0.08;
     city.mats.pools.opacity = 0.8 * glowK;
     city.mats.windows.color.set(mixHex('#56606e', '#ffdc8a', glowK));
+    boardsLayer.setGlow(0.94 + glowK * 0.12);
     const sky = new Color(lt.sky);
     scene.background = sky;
     if (!scene.fog) scene.fog = new Fog(sky, 50, 200);
     else (scene.fog as Fog).color.copy(sky);
     invalidate();
-  }, [lt, lights, city, scene, invalidate]);
+  }, [lt, lights, city, scene, invalidate, boardsLayer]);
 
   /* ---------- shared marker geometry/materials ---------- */
   const fx = useMemo(() => {
@@ -489,6 +531,11 @@ function City(props: InnerProps) {
 
     const t = motion ? (now - t0.current) / 1000 : 0;
     if (motion) city.animate(t);
+    if (boards?.length) {
+      const zoom = v.zoom;
+      const near = (b: CityBoard) => zoom < 62 && Math.hypot((b.x - 500) * WS - v.tx, (b.y - 500) * WS - v.tz) < Math.max(18, zoom * 1.1);
+      if (boardsLayer.update(nowMs(), now, rotate, near, motion)) v.dirty = true;
+    }
     // pulses
     const pulse = motion ? 0.5 + 0.5 * Math.sin(t * 3) : 0.6;
     if (me.g.visible) {
@@ -592,6 +639,7 @@ function City(props: InnerProps) {
     <>
       <primitive object={lights.g} />
       <primitive object={city.group} />
+      <primitive object={boardsLayer.group} />
       <primitive object={danger} />
       <primitive object={jamRoads.g} />
       <primitive object={filterRings} />
@@ -658,7 +706,7 @@ function placeLabels(L: LabelState, ctl: Controller | null, size: { width: numbe
       placeRoad(L, ctl, it, el, size, zoom, taken);
       continue;
     }
-    const lift = it.key === L.curKey ? L.curTop : it.kind === 'place' || it.kind === 'me' ? 0.15 : 0;
+    const lift = it.lift ?? (it.key === L.curKey ? L.curTop : it.kind === 'place' || it.kind === 'me' ? 0.15 : 0);
     const p = ctl.project(mx, my, lift);
     const off = !p.ok || p.x < -60 || p.x > W0 + 60 || p.y < -40 || p.y > size.height + 60;
     if (off) {
@@ -675,7 +723,7 @@ function placeLabels(L: LabelState, ctl: Controller | null, size: { width: numbe
     // S3: a pill that would be cut off by the screen edge slides back in (the ones that must show)
     // or turns into a dot (the rest)
     let px = p.x;
-    const pillish = it.kind === 'place' || it.kind === 'soon' || it.kind === 'me';
+    const pillish = it.kind === 'place' || it.kind === 'soon' || it.kind === 'me' || it.kind === 'board';
     const edgeL = 6 + w / 2;
     const edgeR = W0 - 6 - w / 2;
     const clipped = pillish && (px < edgeL || px > edgeR);
@@ -690,12 +738,14 @@ function placeLabels(L: LabelState, ctl: Controller | null, size: { width: numbe
     let want = 'full';
     if (it.kind === 'district') want = zoom > 18 && zoom < 70 ? 'full' : 'hidden';
     else if (it.kind === 'soon') want = zoom < 70 ? 'full' : 'hidden';
+    // H3 billboards: pills while the Billboards chip is on (tier 1), otherwise a small dot when zoomed in
+    else if (it.kind === 'board') want = it.tier === 1 ? (zoom > 70 || clipped ? 'dot' : 'full') : zoom < 30 ? 'dot' : 'hidden';
     else if (it.kind === 'place' && !it.must) {
       if (it.tier === 2 && zoom > 44) want = 'dot';
       if (zoom > 70) want = 'dot';
       if (clipped) want = 'dot';
     } else if (clipped && !it.must) want = 'hidden';
-    if (want === 'full' && taken.some((t) => hit(t, box))) want = it.kind === 'place' ? 'dot' : 'hidden';
+    if (want === 'full' && taken.some((t) => hit(t, box))) want = it.kind === 'place' || it.kind === 'board' ? 'dot' : 'hidden';
     if (want === 'full' || (it.must && want !== 'hidden')) {
       taken.push(box);
       setState(L, it.key, el, 'full');
@@ -822,8 +872,11 @@ const Labels = memo(function Labels(props: {
   onPick: (id: string) => void;
   onItems: (items: LabelItem[]) => void;
   dragMoved: MutableRefObject<boolean>;
+  boards?: CityBoard[];
+  onBoard?: (id: string) => void;
 }) {
-  const { locations, currentId, selectedId, travelTo, travelMode, crowd, events, filters, night, labels, onPick, onItems, dragMoved } = props;
+  const { locations, currentId, selectedId, travelTo, travelMode, crowd, events, filters, night, labels, onPick, onItems, dragMoved, boards, onBoard } = props;
+  const adsOn = filters.includes('ads');
   // priority order for the greedy placement
   const items = useMemo(() => {
     const out: LabelItem[] = [];
@@ -841,11 +894,12 @@ const Labels = memo(function Labels(props: {
       out.push({ key: l.id, kind: 'place', x: l.x, y: l.y, prio: prio + (crowd?.[l.id] ? -0.5 : 0) - (lift && prio > 4 ? 2 : 0) - evLift, tier: lift || ev === 'live' ? 1 : tier, must });
     }
     for (const c of COMING_SOON) out.push({ key: 'soon:' + c.id, kind: 'soon', x: c.x, y: c.y, prio: 7, tier: 1, must: false });
+    for (const b of boards ?? []) out.push({ key: 'bb:' + b.id, kind: 'board', x: b.x, y: b.y, prio: adsOn ? 4 : 9.5, tier: adsOn ? 1 : 2, must: false, lift: boardTop(b.kind) });
     for (const e of EXIT_SIGNS) out.push({ key: 'exit:' + e.text, kind: 'exit', x: e.x, y: e.y, prio: 9, tier: 1, must: false });
     for (const d of DISTRICT_NAMES) out.push({ key: 'd:' + d.t, kind: 'district', x: d.x, y: d.y, prio: 10, tier: 2, must: false });
     out.push(...roadLabels());
     return out.sort((a, b) => a.prio - b.prio);
-  }, [locations, currentId, selectedId, travelTo, crowd, events, filters, night]);
+  }, [locations, currentId, selectedId, travelTo, crowd, events, filters, night, boards, adsOn]);
   useEffect(() => onItems(items), [items, onItems]);
 
   const reg = (key: string) => (el: HTMLElement | null) => {
@@ -909,6 +963,19 @@ const Labels = memo(function Labels(props: {
           </button>
         </div>
       ))}
+      {(boards ?? []).map((b) => (
+        <div key={b.id} ref={reg('bb:' + b.id)} className={`c3-label c3-place c3-board${adsOn ? ' is-match' : ''}`} data-s="hidden"
+          style={{ '--c3-f': FILTER_COLOR.ads } as CSSProperties}>
+          <button type="button" className="c3-pill" onClick={tap(() => onBoard?.(b.id))} aria-label={`${b.name}, billboard`}>
+            <span className="c3-pill__emoji" aria-hidden>📺</span>
+            <span className="c3-pill__name">{b.name.replace(/ (mega )?screen$/i, '')}</span>
+            {b.ads.length > 0 && <span className="c3-pill__onair" aria-label={`${b.ads.length} ads on air`}>{b.ads.length}</span>}
+          </button>
+          <button type="button" className="c3-dot" onClick={tap(() => onBoard?.(b.id))} aria-label={`${b.name}, billboard`} tabIndex={-1}>
+            <span aria-hidden>📺</span>
+          </button>
+        </div>
+      ))}
       {EXIT_SIGNS.map((e) => (
         <div key={e.text} ref={reg('exit:' + e.text)} className="c3-label c3-exit" data-s="hidden" aria-hidden>
           <span className="c3-sign"><b>{e.arrow} {e.text}</b><small>{e.sub}</small></span>
@@ -941,6 +1008,12 @@ export default function CityScene(props: CitySceneProps) {
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+  const boardsRef = useRef(props.boards);
+  const onBoardRef = useRef(props.onBoard);
+  useEffect(() => {
+    boardsRef.current = props.boards;
+    onBoardRef.current = props.onBoard;
+  }, [props.boards, props.onBoard]);
   const onItems = useCallback((items: LabelItem[]) => {
     labels.current.items = items;
     labels.current.sizes.clear();
@@ -1171,6 +1244,27 @@ export default function CityScene(props: CitySceneProps) {
       const el = wrap.current;
       if (!c || !el) return;
       const r = el.getBoundingClientRect();
+      // H3: a tap on a billboard screen (or its legs) opens the board sheet
+      if (boardsRef.current?.length && onBoardRef.current) {
+        let bb: CityBoard | null = null;
+        let bdist = 30;
+        for (const b of boardsRef.current) {
+          const d = boardDims(b.kind);
+          for (const yy of [d.bottom + d.h / 2, d.bottom * 0.5]) {
+            const p = c.project(b.x, b.y, yy);
+            if (!p.ok) continue;
+            const dist = Math.hypot(p.x + r.left - cx, p.y + r.top - cy);
+            if (dist < bdist) {
+              bdist = dist;
+              bb = b;
+            }
+          }
+        }
+        if (bb) {
+          onBoardRef.current(bb.id);
+          return;
+        }
+      }
       let best: Location | null = null;
       let bd = 34;
       for (const l of locations) {
@@ -1214,8 +1308,9 @@ export default function CityScene(props: CitySceneProps) {
   const counts = useMemo(() => {
     const o: Record<string, number> = {};
     for (const f of FILTERS) o[f.id] = locations.filter((l) => matchesFilter(f.id, l, crowd)).length;
+    o.ads = props.boards?.length ?? 0;
     return o;
-  }, [locations, crowd]);
+  }, [locations, crowd, props.boards]);
   const caption = useMemo(() => {
     const last = filters[filters.length - 1];
     if (!last) return null;
@@ -1230,6 +1325,8 @@ export default function CityScene(props: CitySceneProps) {
         return { text: 'Markets: buy, sell and find small jobs.', soon: false };
       case 'gov':
         return { text: 'Police, hospitals and the bank.', soon: false };
+      case 'ads':
+        return { text: counts.ads ? 'Digital billboards: tap one to see who dey on air, or book your own ad.' : 'No billboards right now.', soon: false };
     }
   }, [filters, crowd, counts, night]);
 
@@ -1270,11 +1367,13 @@ export default function CityScene(props: CitySceneProps) {
         onPick={onPick}
         onItems={onItems}
         dragMoved={dragMoved}
+        boards={props.boards}
+        onBoard={props.onBoard}
       />
       {!props.hideChrome && (
         <div className="c3-top" onPointerDown={(e) => e.stopPropagation()}>
           <div className="c3-chips" role="toolbar" aria-label="Map filters">
-            {FILTERS.map((f) => {
+            {FILTERS.filter((f) => f.id !== 'ads' || (props.boards?.length ?? 0) > 0).map((f) => {
               const on = filters.includes(f.id);
               return (
                 <button key={f.id} type="button" className={`c3-chip${on ? ' is-on' : ''}`} aria-pressed={on} onClick={() => toggle(f.id)}

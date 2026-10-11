@@ -124,7 +124,13 @@ begin
   foreach c in array array['ighodalo_cars', 'sdd_motors', 'tokunbo_lot'] loop
     j := place_interior(c);
     perform pg_temp.assert(j::text like '%bicycle%', c || ' sells the bicycle');
-    perform pg_temp.assert(exists (select 1 from jsonb_array_elements(j->'zones') z where z->>'prop' = 'lux_cars'), c || ' has the luxury showroom');
+    -- H3: the Tokunbo Lot shows only what it sells (its own tokunbo row, no luxury display cars)
+    if c = 'tokunbo_lot' then
+      perform pg_temp.assert(not exists (select 1 from jsonb_array_elements(j->'zones') z where z->>'prop' = 'lux_cars')
+                             and exists (select 1 from jsonb_array_elements(j->'zones') z where z->>'prop' = 'tokunbo_cars'), c || ' has no luxury showroom');
+    else
+      perform pg_temp.assert(exists (select 1 from jsonb_array_elements(j->'zones') z where z->>'prop' = 'lux_cars'), c || ' has the luxury showroom');
+    end if;
   end loop;
   -- not sold anywhere else
   update profiles set location_id = 'oba_market', cash = 1000000000, busy_until = null where id = a;

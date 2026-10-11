@@ -303,5 +303,5 @@ Full researched home catalogue for LAPO and Nepo at real Nigerian prices; buy, p
 
 ## H1. Move house + bigger homes (user, 2026-10-11): DONE
 ## H2. Sell furniture/cars, 3D shop thumbnails, dealer price tiers, receipts: DONE
-## H3. Player billboards on the map + modern surroundings at top places
+## H3. Player billboards (real money, owner approval, push alerts) + Bolt: DONE
 ## L1. Launch pass: tidy coming-soon, full new-player test, balance, safety, errors/backups
