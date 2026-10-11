@@ -13,7 +13,7 @@ export type HomeLayoutId = 'hostel' | 'face_me' | 'self_contain' | 'flat' | 'dup
 /** What tapping a piece of furniture is about. Home activities map to one group each. */
 export type HomeGroup = 'bed' | 'kitchen' | 'bath' | 'toilet' | 'media' | 'seat' | 'wardrobe';
 
-export type HomePose = 'stand' | 'sit' | 'lie' | 'cook' | 'scrub';
+export type HomePose = 'stand' | 'sit' | 'lie' | 'cook' | 'scrub' | 'dance' | 'greet';
 
 /** Activity id -> furniture group. Home activities not listed here use 'seat' (sofa, chair, mat). */
 export const ACTIVITY_GROUP: Record<string, HomeGroup> = {

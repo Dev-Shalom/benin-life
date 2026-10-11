@@ -204,7 +204,7 @@ function startLive(uid: string) {
       }));
       // Street robbery already has its own modal (StatusBanners); hire/promotion already toast from the
       // RPC result (job_apply / work_finish), and so do pay_rent (data.settle) and bank_transfer (transfer_out). The events stay in Alerts.
-      if (!['robbed', 'hired', 'promoted', 'transfer_out'].includes(ev.kind) && !(ev.data as { settle?: boolean } | null)?.settle) toast(ev.body ? `${ev.title}${/[.!?…]$/.test(ev.title) ? '' : ':'} ${ev.body}` : ev.title, eventTone(ev.kind));
+      if (!['robbed', 'hired', 'promoted', 'transfer_out', 'house_interact'].includes(ev.kind) && !(ev.data as { settle?: boolean } | null)?.settle) toast(ev.body ? `${ev.title}${/[.!?…]$/.test(ev.title) ? '' : ':'} ${ev.body}` : ev.title, eventTone(ev.kind));
       scheduleRefresh(600);
     })
     .subscribe();

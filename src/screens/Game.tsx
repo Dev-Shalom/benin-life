@@ -36,9 +36,11 @@ import { PlaceCard, usePlaceInterior, usePlacePeople, usePlayersAt } from './gam
 import { placeClosedEject } from '../api/places';
 import { recoverPendingPayments } from '../lib/payments';
 import { naira } from '../lib/format';
-import { socialHouseInfo, socialHomeOffer, socialHomePlaceFurniture, socialLeaveHouse, type HouseFurniturePlacement, type HouseInfo } from '../api/social';
+import { socialHouseInfo, socialHomePlaceFurniture, socialLeaveHouse, type HouseFurniturePlacement, type HouseInfo } from '../api/social';
 import { supabase } from '../lib/supabase';
 import { useHouseRoom } from '../state/houseRoom';
+import { IX_ROLE, loadInteractionTypes, type InteractionType } from '../api/interactions';
+import { HouseInteractSheet, InteractPrompts, type Prompt, type Waiting } from './game/HouseInteract';
 import { HypeBanner, HypeTicker } from './game/Hype';
 import { useHypeLive } from '../state/hype';
 import { useEventsLive } from '../state/events';
@@ -82,6 +84,7 @@ export default function Game() {
   const locations = useGame((s) => s.locations);
   const byId = useGame((s) => s.locationsById);
   const unread = useGame((s) => s.unread);
+  const gameEvents = useGame((s) => s.events);
   // S3: live player counts per place on the map (Realtime Presence, other players only)
   const presentAt = usePresenceStore((s) => s.at);
   const presenceLive = usePresenceStore((s) => s.online !== null);
@@ -146,7 +149,13 @@ export default function Game() {
   const [arrangingHome, setArrangingHome] = useState(false);
   const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
   const [selectedHousePlayer, setSelectedHousePlayer] = useState<string | null>(null);
-  const [houseOfferBusy, setHouseOfferBusy] = useState<string | null>(null);
+  // V2 house interactions: the catalogue, our side of a running one (slot 0 asked, 1 accepted), the
+  // request waiting for our answer, and ours waiting for theirs
+  const [ixTypes, setIxTypes] = useState<InteractionType[]>([]);
+  const [ixSlot, setIxSlot] = useState<{ until: string; slot: number } | null>(null);
+  const [ixPrompt, setIxPrompt] = useState<Prompt | null>(null);
+  const [ixWaiting, setIxWaiting] = useState<Waiting | null>(null);
+  const ixHandled = useRef(new Set<number>());
   const [leavingHouse, setLeavingHouse] = useState(false);
   // G1: the home owner's garage + cars (the host's when visiting), reloaded after a car purchase or a build.
   const garageVersion = useGarage((s) => s.version);
@@ -182,7 +191,33 @@ export default function Game() {
   const wardrobeUid = p?.id ?? null;
   useEffect(() => { if (wardrobeUid) void useWardrobe.getState().load(wardrobeUid); }, [wardrobeUid]);
   const houseProfile = useMemo(() => (p && shownAvatar && shownAvatar !== p.avatar ? { ...p, avatar: shownAvatar } : p ?? null), [p, shownAvatar]);
-  const { members: houseMembers, publish: publishHouseMove } = useHouseRoom(houseRoomId, houseProfile);
+  const { members: houseMembers, publish: publishHouseMove, publishPath: publishHousePath } = useHouseRoom(houseRoomId, houseProfile);
+  useEffect(() => { if (houseRoomId) void loadInteractionTypes().then(setIxTypes); }, [houseRoomId]);
+  // requests arrive as events (postgres_changes on events, already live); replies tell the asker their slot
+  useEffect(() => {
+    const nowMs = Date.now();
+    for (const ev of gameEvents) {
+      if (ixHandled.current.has(ev.id)) continue;
+      const d = ev.data as { id?: number; kind?: string; from?: string; username?: string; label?: string; icon?: string; expires_at?: string; status?: string; busy_until?: string };
+      if (ev.kind === 'house_interact' && d.id && d.expires_at && Date.parse(d.expires_at) > nowMs) {
+        ixHandled.current.add(ev.id);
+        setIxPrompt({ id: d.id, label: d.label ?? 'Do something together', icon: d.icon ?? '✨', username: d.username ?? 'someone', from: d.from ?? '', expires: Date.parse(d.expires_at) });
+      } else if (ev.kind === 'house_interact_reply' && Date.parse(ev.created_at) > nowMs - 120_000) {
+        ixHandled.current.add(ev.id);
+        setIxWaiting((w) => (w && w.id === d.id ? null : w));
+        if (d.status === 'accepted' && d.busy_until) setIxSlot({ until: d.busy_until, slot: 0 });
+      } else ixHandled.current.add(ev.id);
+    }
+  }, [gameEvents]);
+  useEffect(() => {
+    if (!ixPrompt && !ixWaiting) return;
+    const next = Math.min(ixPrompt?.expires ?? Infinity, ixWaiting?.expires ?? Infinity);
+    const id = window.setTimeout(() => {
+      setIxPrompt((p) => (p && p.expires <= Date.now() ? null : p));
+      setIxWaiting((w) => (w && w.expires <= Date.now() ? null : w));
+    }, Math.max(0, next - Date.now()) + 200);
+    return () => window.clearTimeout(id);
+  }, [ixPrompt, ixWaiting]);
   if (import.meta.env.DEV) (window as unknown as { __house?: unknown }).__house = { room: houseRoomId, members: houseMembers };
   // Top-ups that stayed pending (verify failed at checkout) are re-checked once per session.
   const payRecovered = useRef(false);
@@ -284,8 +319,15 @@ export default function Game() {
     if (!busyUntil || !busyLabel || !busyActive) return null;
     const a = activities?.find((x) => x.name === busyLabel && x.home_only);
     const seconds = Math.max(0, (Date.parse(busyUntil) - serverNow()) / 1000);
-    return a ? { group: activityGroup(a.id), key: busyUntil, activity: a.id, seconds } : null;
-  }, [busyUntil, busyLabel, busyActive, activities]);
+    if (a) return { group: activityGroup(a.id), key: busyUntil, activity: a.id, seconds };
+    // V2: a house interaction (busy_label = its label): our role's piece / pose, our side of the sofa
+    const ix = ixTypes.find((t) => t.label === busyLabel);
+    if (!ix) return null;
+    const slot = ixSlot && Math.abs(Date.parse(ixSlot.until) - Date.parse(busyUntil)) < 2000 ? ixSlot.slot : 0;
+    const role = IX_ROLE[ix.kind]?.[slot] ?? {};
+    return { group: role.activity ? activityGroup(role.activity) : 'seat' as const, key: busyUntil, activity: role.activity, seconds, slot,
+      pose: role.pose ?? (role.activity ? null : 'stand' as const) };
+  }, [busyUntil, busyLabel, busyActive, activities, ixTypes, ixSlot]);
 
   const goHome = useCallback(() => {
     if (!p) return;
@@ -473,18 +515,6 @@ export default function Game() {
     void saveHousePlacement(selectedFurnitureId, current.x, current.z, (current.rotation + 1) % 4);
   }, [selectedFurnitureId, furnished, housePositions, saveHousePlacement]);
 
-  const offerHouseItem = useCallback(async (guestId: string, itemId: string) => {
-    setHouseOfferBusy(itemId);
-    try {
-      const result = await socialHomeOffer(guestId, itemId);
-      toast(result.message, 'good');
-      setSelectedHousePlayer(null);
-      await useGame.getState().refresh();
-    } catch (error) {
-      toast(error instanceof Error ? error.message : 'Could not share that item.', 'bad');
-    } finally { setHouseOfferBusy(null); }
-  }, []);
-
   const leaveHouse = useCallback(async () => {
     if (!p?.home_visit_host_id || leavingHouse) return;
     setLeavingHouse(true);
@@ -590,6 +620,7 @@ export default function Game() {
             selectedId={homePick?.id ?? null}
             onPick={onPick}
             onActorState={publishHouseMove}
+            onWalkPath={publishHousePath}
             remotePlayers={houseMembers}
             onPickRemote={(id) => setSelectedHousePlayer(id)}
             editableFurniture={arrangingHome && !p.home_visit_host_id}
@@ -645,22 +676,30 @@ export default function Game() {
         </div>
       )}
 
-      {showHome && selectedHousePlayer && (() => {
-        const guest = houseMembers.find((member) => member.id === selectedHousePlayer);
-        const food = (state.inventory ?? []).filter((item) => ['food', 'drink'].includes(item.category) && item.kind === 'use' && item.qty > 0);
-        if (!guest) return null;
-        return (
-          <div className="house-guest-card">
-            <div className="house-guest-card__head"><b>@{guest.username}</b><button type="button" onClick={() => setSelectedHousePlayer(null)} aria-label="Close player actions"><Icon name="close" size={15} /></button></div>
-            <span>Offer something from your Bag</span>
-            {food.length ? food.slice(0, 5).map((item) => (
-              <button key={item.id} type="button" disabled={houseOfferBusy !== null} onClick={() => void offerHouseItem(guest.id, item.id)}>
-                <span>{item.icon ?? '🍽️'} {item.name}</span><small>×{item.qty}</small>
-              </button>
-            )) : <small>You have no food or drinks in your Bag.</small>}
-          </div>
-        );
-      })()}
+      {showHome && (
+        <HouseInteractSheet
+          person={houseMembers.find((member) => member.id === selectedHousePlayer) ?? null}
+          types={ixTypes}
+          layout={furnished}
+          inventory={state.inventory ?? []}
+          busy={busyActive}
+          onClose={() => setSelectedHousePlayer(null)}
+          onAsked={(w) => { setIxWaiting(w); toast(`Asked @${w.username}. Waiting for an answer.`, 'info'); }}
+        />
+      )}
+      {showHome && (
+        <InteractPrompts
+          prompt={ixPrompt}
+          waiting={ixWaiting}
+          avatarOf={(id) => houseMembers.find((m) => m.id === id)?.avatar}
+          onAnswered={(prompt, r) => {
+            setIxPrompt((cur) => (cur?.id === prompt.id ? null : cur));
+            if (r?.status === 'accepted' && r.busy_until) setIxSlot({ until: r.busy_until, slot: 1 });
+            void useGame.getState().refresh();
+          }}
+          onDismissWaiting={() => setIxWaiting(null)}
+        />
+      )}
 
       {!clean && <TopPill state={state} clock={clock} />}
       <HypeBanner mcName={inClub ? people?.npcs.find((n) => n.motion === 'hype')?.name ?? 'The hype man' : 'VIP alert'} top={inClub ? (clean ? 70 : insets.top) + 6 : clean ? 70 : insets.narrow ? 200 : insets.top + 6} />

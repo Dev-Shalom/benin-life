@@ -351,6 +351,22 @@ const DEFS: TableDef[] = [
     newRow: { name: 'New garage', description: '', price: 1000000, capacity: 1, allowed_housing: ['duplex'], style: 'garage', sort: 100, active: false },
   },
   {
+    id: 'interactions', table: 'interaction_types', title: 'House interactions', emoji: '🤝', blurb: 'V2 things two players can do together in a house (docs/SOCIAL.md): tap a person, they accept, both get the effects and a busy timer. Requires = home activities the host\'s furniture must offer (any one): cook_home, watch_tv, sit_rest, relax_sofa; empty = none. Cost is paid by the one who asks. Poses come from the kind (cook_meal, movie, gist, play_game, dance, greet); a new kind just stands together. Cooldown: Settings → social.interact_cooldown_s.',
+    pk: ['kind'], insert: true, inline: ['seconds'],
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => `${r.icon} ${r.label}`,
+    subOf: (r) => `${r.kind} · ${r.seconds}s${Number(r.cost) ? ` · ${naira(Number(r.cost))}` : ''}${(r.requires as string[] | null)?.length ? ` · needs ${(r.requires as string[]).join(' or ')}` : ''}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'label', label: 'Label', type: 'text' }, { key: 'icon', label: 'Icon', type: 'text' },
+      { key: 'description', label: 'Description', type: 'long' },
+      { key: 'effects', label: 'Effects (both players)', type: 'json', help: 'Needs deltas, e.g. {"fun": 20, "social": 10}' },
+      { key: 'requires', label: 'Requires furniture for', type: 'list', help: 'Comma-separated home activities, any one: cook_home, watch_tv, sit_rest, relax_sofa' },
+      { key: 'cost', label: 'Cost (asker pays)', type: 'money' }, { key: 'seconds', label: 'Seconds', type: 'int', help: '1 to 3600' },
+      { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { label: 'New interaction', icon: '✨', description: '', effects: { social: 5 }, requires: [], cost: 0, seconds: 20, sort: 100, active: false },
+  },
+  {
     id: 'wbrands', table: 'wardrobe_brands', title: 'Wardrobe brands', emoji: '🏷️', blurb: 'W1 Benin Boutique brands (docs/WARDROBE.md). Text names and an accent colour only: no logos. House brands (Benin Basics, Benin Owambe, Ring Road Atelier) are ours. Real brand names are used by the owner\'s choice for sponsorship: get each brand\'s permission before marketing. Switch the brand pills off: Settings → Wardrobe → wardrobe.brands_enabled.',
     pk: ['id'], insert: true,
     toggle: { key: 'active', label: 'On' },

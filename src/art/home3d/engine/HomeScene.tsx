@@ -30,11 +30,13 @@ import { buildCharacter } from '../../avatar3d/engine/character';
 import { applyPose, capturePose, DEFAULT_WALK, gaitFor, legRotationDiff, mixPose, poseGait, poseIdle, poseLife, POSE_SIZE, resetRig, stepLength } from '../../avatar3d/engine/anim';
 import { makeShadow } from '../../avatar3d/engine/scene';
 import { activityGroup, GROUP_META, itemGroup, KINDS, LAYOUTS, pieceFor, type FurnitureItem, type HomeGroup, type HomeLayout, type HomeLayoutId, type HomePose } from '../model';
-import { buildGrid, footprint, planPath, randomFree, toLayout, type P2 } from '../nav';
+import { buildGrid, footprint, planPath, randomFree, toLayout, type NavGrid, type P2 } from '../nav';
+import { freeAt } from '../../sim/nav';
 import { angleTo, DEFAULT_GAIT, makeWalker, place, stepWalker, stopWalk, walkPath, type Gait, type Walker } from '../../sim/locomotion';
 import { homeLight } from './light';
 import { looksNight, mixHex } from '../../../lib/daylight';
-import { poseCook, poseLie, poseScrub, poseSit, sitRootY } from './poses';
+import { poseCook, poseDance, poseGreet, poseLie, poseScrub, poseSit, sitRootY } from './poses';
+import { decodeAct, encodeAct } from '../../../api/interactions';
 import { buildRoom, type Parking } from './room';
 import { LAYERS } from './build';
 import { feelQuality, useTier } from '../../feel/quality';
@@ -67,7 +69,7 @@ export interface HomeSceneProps {
   parking?: Parking | null;
   /** The home activity running now on the server (key changes with each new run), or null. M2: the Sim
    * normally already stands at the piece (it walked there before the action started); if not, it walks. */
-  busy: { group: HomeGroup; key: string; activity?: string; seconds?: number } | null;
+  busy: { group: HomeGroup; key: string; activity?: string; seconds?: number; slot?: number | null; pose?: HomePose | null } | null;
   /** M2: a queued task the Sim should walk to now (before its action starts), or null. The scene calls
    * `onTaskArrive(key)` on arrival (at once when the task has no piece of furniture). */
   task?: { key: string; activity: string; group: HomeGroup } | null;
@@ -79,6 +81,8 @@ export interface HomeSceneProps {
   /** Position and action snapshots are broadcast only to the homeowner and admitted guests. */
   onActorState?: (state: Omit<HouseActorState, 'id' | 'username' | 'avatar' | 'updatedAt'>) => void;
   remotePlayers?: HouseActorState[];
+  /** V2: once per walk, the path the local Sim set off on (sent to the house room; receivers walk it). */
+  onWalkPath?: (pts: P2[], faceTo: number | null) => void;
   onPickRemote?: (userId: string) => void;
   /** M2: walk tuning from config (sim.walk_speed, sim.robe_speed_mult, sim.tired_slowdown). */
   walk?: { speed: number; robeMult: number; tiredSlow: number };
@@ -179,6 +183,10 @@ interface Actor {
   noBlend: boolean;
   /** Needs full-rate frames (walking, blending, marker fading). */
   hot: boolean;
+  /** V2: seat offset along the piece (two players on one sofa), local x in metres. */
+  shift: number;
+  /** V2: a remote avatar walks / blends: full-rate frames until this performance.now(). */
+  remoteHot: number;
 }
 
 function Driver({ view, actor, paused, spin }: { view: React.MutableRefObject<View>; actor: React.MutableRefObject<Actor>; paused: boolean; spin: boolean }) {
@@ -191,7 +199,7 @@ function Driver({ view, actor, paused, spin }: { view: React.MutableRefObject<Vi
       if (document.hidden || !view.current.visible) return;
       const a = actor.current;
       // full rate while something moves; paused (a sheet over the house) = only finish that
-      const hot = a.hot || (!paused && (spin || view.current.dragging));
+      const hot = a.hot || now < a.remoteHot || (!paused && (spin || view.current.dragging));
       if (paused && !hot) return;
       // idle life: breathing and fidgets read fine at 24 fps; asleep / reduced motion 12 fps
       const fps = (a.mode === 'pose' && a.pose === 'lie') || view.current.reduced ? 12 : 24;
@@ -212,8 +220,67 @@ function pickHeight(f: FurnitureItem): number {
   return 1.1;
 }
 
-function RemoteHomeAvatar({ actor, layout, cx, cz, onPick }: {
-  actor: HouseActorState; layout: HomeLayout; cx: number; cz: number; onPick?: (id: string) => void;
+/** Where everyone stands this frame (layout space), so idle avatars can step apart and greeters face each other. */
+type Crowd = Map<string, P2>;
+
+/** The piece an activity happens at. V2 interactions (slot set) prefer the piece that hosts the activity
+ * (the sofa for a movie), and the second player takes another seat when the first one is narrow. */
+function ixPiece(L: HomeLayout, activity: string | null | undefined, group: HomeGroup, slot: number | null | undefined): FurnitureItem | null {
+  if (slot == null) return pieceFor(L, activity, group);
+  const main = (activity && L.furniture.find((f) => f.activities?.includes(activity))) || pieceFor(L, activity, group);
+  if (slot !== 1 || !main || KINDS[main.kind].w >= 1.2 || !KINDS[main.kind].seat) return main;
+  return L.furniture.find((f) => f !== main && KINDS[f.kind].seat && itemGroup(f) === 'seat') ?? null;
+}
+
+/** Two players on one wide seat sit side by side (local x offset); everyone else sits in the middle. */
+function seatShift(item: FurnitureItem | null, slot: number | null | undefined): number {
+  if (slot == null || !item) return 0;
+  const k = KINDS[item.kind];
+  const g = itemGroup(item);
+  if (!k.seat || k.w < 1.2 || (g !== 'seat' && g !== 'media')) return 0;
+  return slot === 0 ? -0.42 : 0.42;
+}
+
+/** Nearest other person within 3 m, to face during a hug or a dance. */
+function faceNearest(crowd: Crowd, self: string, pos: P2): number | null {
+  let best: P2 | null = null;
+  let bd = 3;
+  for (const [id, p] of crowd) {
+    if (id === self) continue;
+    const d = Math.hypot(p[0] - pos[0], p[1] - pos[1]);
+    if (d < bd && d > 0.05) {
+      bd = d;
+      best = p;
+    }
+  }
+  return best ? Math.atan2(best[0] - pos[0], best[1] - pos[1]) : null;
+}
+
+const TP_S = 0.36; // fade-teleport: shrink out, move, grow back
+const TP_GAP = 4; // metres: further than this from where they really are = teleport once
+
+interface RemoteState {
+  w: Walker;
+  init: boolean;
+  pathAt: number;
+  phase: number;
+  gait: number;
+  lastPlan: number;
+  /** Fade-teleport under way: target, facing and start time (s). */
+  tp: { to: P2; yaw: number; t0: number; done: boolean } | null;
+  push: P2;
+  prevKey: string;
+  blendT0: number;
+  havePrev: boolean;
+  fromXf: number[];
+  prevXf: number[];
+}
+
+/** V2: a remote player walks the house like the local Sim: the same nav grid (the host's layout), the same
+ * walker and walk cycle, along the waypoints they broadcast once per walk; snapshots only correct drift. */
+function RemoteHomeAvatar({ actor, layout, grid, walk, crowd, hotRef, onPick }: {
+  actor: HouseActorState; layout: HomeLayout; grid: NavGrid; walk?: { speed: number; robeMult: number };
+  crowd: Crowd; hotRef: React.MutableRefObject<Actor>; onPick?: (id: string) => void;
 }) {
   const key = avatarKey(actor.avatar);
   // The avatar is built once per remote player, not on each movement update.
@@ -224,63 +291,253 @@ function RemoteHomeAvatar({ actor, layout, cx, cz, onPick }: {
     group.add(makeShadow(0.34));
     return group;
   }, []);
-  const target = useRef(new Vector3());
+  // a generous invisible tap target (the body alone is thin from above)
+  const pick = useMemo(() => {
+    const m = new Mesh(new BoxGeometry(0.62, 1.75, 0.62), new MeshBasicMaterial({ visible: false }));
+    m.position.y = 0.88;
+    return m;
+  }, []);
   useEffect(() => {
     outer.add(character.root);
-    return () => character.dispose();
-  }, [outer, character]);
+    outer.add(pick);
+    return () => {
+      outer.remove(pick);
+      character.dispose();
+    };
+  }, [outer, character, pick]);
+  useEffect(() => () => {
+    pick.geometry.dispose();
+    (pick.material as MeshBasicMaterial).dispose();
+  }, [pick]);
+  useEffect(() => () => {
+    crowd.delete(actor.id);
+  }, [crowd, actor.id]);
+  const tune = useMemo(() => gaitFor(character, { speed: walk?.speed ?? DEFAULT_WALK.speed, robeMult: walk?.robeMult ?? DEFAULT_WALK.robeMult }), [character, walk?.speed, walk?.robeMult]);
+  const gait = useMemo<Gait>(() => ({ ...DEFAULT_GAIT, cruise: tune.cruise, brake: 1.5 * Math.max(1, tune.cruise / 1.15) }), [tune]);
+  const buf = useMemo(() => ({ idle: new Float32Array(POSE_SIZE), walk: new Float32Array(POSE_SIZE), from: new Float32Array(POSE_SIZE), prev: new Float32Array(POSE_SIZE) }), []);
+  const st = useRef<RemoteState>({
+    w: makeWalker([actor.x, actor.z], actor.yaw), init: false, pathAt: 0, phase: 0, gait: 0, lastPlan: 0, tp: null,
+    push: [0, 0], prevKey: '', blendT0: -1, havePrev: false, fromXf: [0, 0, 0, 0, 0, 0], prevXf: [0, 0, 0, 0, 0, 0],
+  });
+  const salt = actor.id.length + (actor.id.charCodeAt(0) || 0) / 50;
+
   useFrame((state, dt) => {
-    const item = actor.activity ? pieceFor(layout, actor.activity, activityGroup(actor.activity)) : null;
-    const group = actor.activity ? activityGroup(actor.activity) : null;
-    const pose = group ? GROUP_META[group].pose : null;
-    const meta = item ? KINDS[item.kind] : null;
-    let x = actor.x;
-    let z = actor.z;
-    let y = 0;
-    let yaw = actor.yaw;
+    const s = st.current;
+    const w = s.w;
+    const t = state.clock.elapsedTime;
+    const step = Math.min(dt, 0.1);
+    const act = decodeAct(actor.activity);
+    const group = act.activity ? activityGroup(act.activity) : null;
+    const item = act.activity && group && !act.pose ? ixPiece(layout, act.activity, group, act.slot) : null;
+    const pose: HomePose | null = act.pose ?? (group ? (item ? GROUP_META[group].pose : 'stand') : null);
+    const shift = seatShift(item, act.slot);
+    const spot = item ? spotOf(item, shift) : null;
+    // where they are (or are heading to) in our house: the piece's spot during an activity, else their snapshot
+    const goal: P2 = spot ? spot.p : [actor.x, actor.z];
+    const goalYaw = spot ? spot.yaw : actor.yaw;
+    const teleport = (to: P2, yaw: number) => {
+      if (!s.tp) s.tp = { to, yaw, t0: t, done: false };
+    };
+    const goTo = (to: P2, faceTo: number | null) => {
+      s.lastPlan = t;
+      if (Math.hypot(to[0] - w.pos[0], to[1] - w.pos[1]) > TP_GAP) return teleport(to, faceTo ?? w.yaw);
+      const plan = planPath(grid, w.pos, to, { round: 0.22 });
+      if (!plan.reachable && Math.hypot(plan.end[0] - to[0], plan.end[1] - to[1]) > 0.5) return teleport(to, faceTo ?? w.yaw);
+      walkPath(w, [...plan.points.slice(0, -1), to], faceTo);
+    };
+
+    if (!s.init) {
+      // first sight (late join, reconnect): they are already standing there
+      s.init = true;
+      s.pathAt = actor.path?.at ?? 0;
+      place(w, goal, goalYaw);
+    } else if (s.tp) {
+      // fade-teleport in progress: no walking
+    } else if (actor.path && actor.path.at !== s.pathAt && !spot) {
+      // a new walk: follow their waypoints on our grid (lead in from where our copy stands)
+      s.pathAt = actor.path.at;
+      s.lastPlan = t;
+      const pts = actor.path.pts;
+      const start = pts[0];
+      const gap = Math.hypot(start[0] - w.pos[0], start[1] - w.pos[1]);
+      if (gap > TP_GAP) teleport(pts[pts.length - 1], actor.path.faceTo ?? w.yaw);
+      else if (gap < 0.05) walkPath(w, [w.pos, ...pts.slice(1)], actor.path.faceTo);
+      else {
+        const lead = planPath(grid, w.pos, start, { round: 0.22 });
+        if (!lead.reachable) teleport(pts[pts.length - 1], actor.path.faceTo ?? w.yaw);
+        else walkPath(w, [...lead.points.slice(0, -1), ...pts], actor.path.faceTo);
+      }
+    } else if (t - s.lastPlan > 0.25) {
+      // snapshots only correct drift: they stopped somewhere else, or we joined mid-walk
+      const walking = w.seg < w.path.length;
+      const dest = walking ? w.path[w.path.length - 1] : w.pos;
+      const off = Math.hypot(goal[0] - dest[0], goal[1] - dest[1]);
+      const behind = Math.hypot(goal[0] - w.pos[0], goal[1] - w.pos[1]);
+      if (behind > TP_GAP && !(walking && actor.moving)) teleport(goal, goalYaw);
+      else if (!actor.moving && off > 0.3) goTo(goal, spot ? spot.yaw : actor.yaw);
+      else if (actor.moving && !walking && behind > 0.5) goTo(goal, null);
+    }
+
+    // fade-teleport: shrink, jump, grow (once)
+    let scale = 1;
+    if (s.tp) {
+      const u = (t - s.tp.t0) / TP_S;
+      if (u >= 0.5 && !s.tp.done) {
+        place(w, s.tp.to, s.tp.yaw);
+        s.tp.done = true;
+        s.havePrev = false;
+      }
+      if (u >= 1) s.tp = null;
+      else scale = Math.max(0.001, Math.abs(1 - 2 * u));
+    }
+
+    const r = stepWalker(w, step, gait);
+    s.phase += r.moved / (2 * stepLength(character, Math.max(0.25, s.gait), tune.strideScale));
+    if (w.turning) s.phase += (r.turned * 0.16) / (2 * stepLength(character, 0.3));
+    const walking = w.seg < w.path.length || w.speed > 0.01;
+    // standing still after the walk: take on their facing (a turn on the spot)
+    if (!walking && !spot && !s.tp) w.yaw += angleTo(w.yaw, actor.yaw) * (1 - Math.exp(-step * 6));
+    const gaitTarget = walking ? Math.max(Math.min(1, w.speed / gait.cruise), w.turning ? 0.3 : 0) : 0;
+    s.gait += (gaitTarget - s.gait) * (1 - Math.exp(-step * 9));
+    if (s.gait < 0.004) s.gait = 0;
+
+    // ---- pose
     const rig = character.root;
     rig.rotation.set(0, 0, 0);
     rig.position.set(0, 0, 0);
+    let x = w.pos[0];
+    let z = w.pos[1];
+    let y = 0;
+    let yaw = w.yaw;
+    const arrived = !walking && (!spot || Math.hypot(spot.p[0] - w.pos[0], spot.p[1] - w.pos[1]) < 0.4);
+    const posing = arrived && pose !== null && pose !== 'stand';
+    const meta = item ? KINDS[item.kind] : null;
     resetRig(character);
-    if (item && meta && pose === 'lie' && meta.seat) {
+    if (posing && item && meta?.seat && pose === 'lie') {
       const [sx, sy, sz] = meta.seat;
-      [x, z] = toLayout(item, sx, sz);
+      [x, z] = toLayout(item, sx + shift, sz);
       y = sy + (item.y ?? 0);
       yaw = ((item.rot ?? 0) * Math.PI) / 2;
       rig.rotation.x = -Math.PI / 2;
-      poseLie(character, state.clock.elapsedTime);
-    } else if (item && meta && pose === 'sit' && meta.seat) {
+      poseLie(character, t);
+    } else if (posing && item && meta?.seat && pose === 'sit') {
       const [sx, sy, sz, seatYaw] = meta.seat;
-      [x, z] = toLayout(item, sx, sz);
+      [x, z] = toLayout(item, sx + shift, sz);
       yaw = ((item.rot ?? 0) * Math.PI) / 2 + seatYaw;
-      poseSit(character, state.clock.elapsedTime, actor.id.length);
+      poseSit(character, t, salt);
       rig.position.y = sitRootY(character, sy + (item.y ?? 0));
-    } else if (actor.activity && pose === 'cook') {
-      poseCook(character, state.clock.elapsedTime, actor.id.length);
-    } else if (actor.activity && pose === 'scrub') {
-      poseScrub(character, state.clock.elapsedTime, actor.id.length);
-    } else if (actor.moving) {
-      poseGait(character, state.clock.elapsedTime * 1.2, 1);
+    } else if (posing && pose === 'cook') {
+      poseCook(character, t, salt);
+    } else if (posing && pose === 'scrub') {
+      poseScrub(character, t, salt);
+    } else if (posing && (pose === 'dance' || pose === 'greet')) {
+      const f = faceNearest(crowd, actor.id, w.pos);
+      if (f !== null) w.yaw += angleTo(w.yaw, f) * (1 - Math.exp(-step * 6));
+      yaw = w.yaw;
+      if (pose === 'dance') poseDance(character, t, salt);
+      else poseGreet(character, t, salt);
+    } else if (s.gait <= 0) {
+      poseLife(character, t, salt, { idleFor: 3 });
+    } else if (s.gait >= 0.995) {
+      poseGait(character, s.phase, 1, { strideScale: tune.strideScale });
     } else {
-      poseLife(character, state.clock.elapsedTime, actor.id.length, { idleFor: 3 });
+      poseLife(character, t, salt, { idleFor: 0 });
+      capturePose(character, buf.idle);
+      poseGait(character, s.phase, s.gait, { strideScale: tune.strideScale });
+      capturePose(character, buf.walk);
+      const g = s.gait;
+      applyPose(character, mixPose(buf.walk, buf.idle, buf.walk, g * g * (3 - 2 * g)));
     }
-    target.current.set(x - cx, y, z - cz);
-    outer.position.lerp(target.current, 1 - Math.exp(-Math.min(dt, 0.1) * 15));
+
+    // idle avatars step apart instead of standing inside each other (visual only)
+    let pushX = 0;
+    let pushZ = 0;
+    if (!walking && !posing) {
+      for (const [id, p] of crowd) {
+        if (id === actor.id) continue;
+        const dx = w.pos[0] - p[0];
+        const dz = w.pos[1] - p[1];
+        const d = Math.hypot(dx, dz);
+        if (d < 0.55) {
+          const k = (0.55 - d) / Math.max(d, 0.05);
+          pushX += d < 0.01 ? 0.5 : dx * k;
+          pushZ += d < 0.01 ? 0.1 : dz * k;
+        }
+      }
+      if (!freeAt(grid, [w.pos[0] + pushX, w.pos[1] + pushZ])) {
+        pushX = 0;
+        pushZ = 0;
+      }
+    }
+    const ease = 1 - Math.exp(-step * 4);
+    s.push[0] += (pushX - s.push[0]) * ease;
+    s.push[1] += (pushZ - s.push[1]) * ease;
+    if (!posing) {
+      x += s.push[0];
+      z += s.push[1];
+    }
+    crowd.set(actor.id, [w.pos[0], w.pos[1]]);
+
+    // blend between states (sit down, stand up), like the local Sim
+    const stateKey = posing ? `pose:${pose}:${item?.id ?? ''}` : 'free';
+    let blending = false;
+    if (stateKey !== s.prevKey) {
+      if (s.havePrev && s.prevKey) {
+        buf.from.set(buf.prev);
+        for (let i = 0; i < 6; i++) s.fromXf[i] = s.prevXf[i];
+        s.blendT0 = t;
+      }
+      s.prevKey = stateKey;
+    }
+    let rootRotX = rig.rotation.x;
+    let rootY = rig.position.y;
+    if (s.blendT0 >= 0) {
+      const u = (t - s.blendT0) / BLEND_S;
+      if (u >= 1) s.blendT0 = -1;
+      else {
+        blending = true;
+        const e = u * u * (3 - 2 * u);
+        capturePose(character, buf.walk);
+        applyPose(character, mixPose(buf.walk, buf.from, buf.walk, e));
+        const f = s.fromXf;
+        x = f[0] + (x - f[0]) * e;
+        y = f[1] + (y - f[1]) * e;
+        z = f[2] + (z - f[2]) * e;
+        yaw = f[3] + angleTo(f[3], yaw) * e;
+        rootRotX = f[4] + (rootRotX - f[4]) * e;
+        rootY = f[5] + (rootY - f[5]) * e;
+      }
+    }
+    rig.rotation.x = rootRotX;
+    rig.position.y = rootY;
+    capturePose(character, buf.prev);
+    const px = s.prevXf;
+    px[0] = x; px[1] = y; px[2] = z; px[3] = yaw; px[4] = rootRotX; px[5] = rootY;
+    s.havePrev = true;
+
+    // the group is already centred on the lot: layout space goes straight in (no second -cx/-cz)
+    outer.position.set(x, y, z);
     outer.rotation.y = yaw;
+    outer.scale.setScalar(scale);
+    const shadow = outer.children[0];
+    shadow.position.y = -y + 0.002;
+    shadow.visible = rootRotX > -0.5;
+    if (walking || blending || s.tp || Math.abs(pushX - s.push[0]) + Math.abs(pushZ - s.push[1]) > 0.01) hotRef.current.remoteHot = performance.now() + 300;
   });
   return <primitive object={outer} onClick={(event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onPick?.(actor.id); }} />;
 }
 
-function RemoteHomeAvatars({ actors, layout, cx, cz, onPick }: {
-  actors: HouseActorState[]; layout: HomeLayout; cx: number; cz: number; onPick?: (id: string) => void;
+function RemoteHomeAvatars({ actors, layout, grid, walk, crowd, hotRef, onPick }: {
+  actors: HouseActorState[]; layout: HomeLayout; grid: NavGrid; walk?: { speed: number; robeMult: number };
+  crowd: Crowd; hotRef: React.MutableRefObject<Actor>; onPick?: (id: string) => void;
 }) {
-  return <>{actors.map((actor) => <RemoteHomeAvatar key={actor.id} actor={actor} layout={layout} cx={cx} cz={cz} onPick={onPick} />)}</>;
+  return <>{actors.map((actor) => <RemoteHomeAvatar key={actor.id} actor={actor} layout={layout} grid={grid} walk={walk} crowd={crowd} hotRef={hotRef} onPick={onPick} />)}</>;
 }
 
-function spotOf(item: FurnitureItem): { p: P2; yaw: number } {
+function spotOf(item: FurnitureItem, shift = 0): { p: P2; yaw: number } {
   const k = KINDS[item.kind];
   const [lx, lz, ly] = k.spot ?? [0, k.d / 2 + 0.35, Math.PI];
-  const p = toLayout(item, lx, lz);
+  const p = toLayout(item, lx + shift, lz);
   return { p, yaw: ((item.rot ?? 0) * Math.PI) / 2 + ly };
 }
 
@@ -304,6 +561,7 @@ function House(props: HomeSceneProps & {
   const room = useMemo(() => buildRoom(L, { dollhouse: doll, density: q.clutter, parking: props.parking, origin: props.origin }), [L, doll, q.clutter, parkKey, props.origin]);
   const rig = rigFor(room.rich ? 'home_nepo' : 'home_lapo', false);
   const grid = useMemo(() => buildGrid(L), [L]);
+  const crowd = useMemo<Crowd>(() => new Map(), []);
   const feel = useMemo(() => makeFeelMats(q), [q.atlas]); // eslint-disable-line react-hooks/exhaustive-deps
   const mats = useMemo(
     () => ({
@@ -563,6 +821,7 @@ function House(props: HomeSceneProps & {
     const first = plan.points[1] ?? plan.end;
     place(a.w, doorPt, Math.atan2(first[0] - doorPt[0], first[1] - doorPt[1]));
     walkPath(a.w, plan.points, L.home[2]);
+    propsRef.current.onWalkPath?.(plan.points, L.home[2]);
     a.mode = 'walk';
     a.then = 'idle';
     a.nextWander = performance.now() + 20000;
@@ -584,12 +843,24 @@ function House(props: HomeSceneProps & {
     const a = actorRef.current;
     const plan = planPath(grid, a.w.pos, to, { snapEnd: opts.snap, round: 0.22 });
     walkPath(a.w, plan.points, opts.faceTo ?? null);
+    // V2: one message per walk; the others walk the same waypoints on the same grid (no wall cutting)
+    propsRef.current.onWalkPath?.(plan.points, opts.faceTo ?? null);
     a.mode = 'walk';
     a.then = opts.then ?? 'idle';
     a.manual = Boolean(opts.manual);
     if (a.then !== 'task') a.taskKey = null;
     return plan;
   };
+
+  // dev only: window.__homeWalkTo(x, z) walks the Sim like a floor tap (two-account checks)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { __homeWalkTo?: (x: number, z: number) => void }).__homeWalkTo = (x, z) => {
+      walkTo([x, z], { snap: true, manual: true });
+      actorRef.current.nextWander = performance.now() + 45000;
+      invalidate();
+    };
+  });
 
   // a home activity started or ended (M2: no more "placed there" or hurried walks; the Sim walked to
   // the piece before the action started, so it normally just sits / lies down where it stands)
@@ -600,17 +871,20 @@ function House(props: HomeSceneProps & {
     const first = firstBusy.current;
     firstBusy.current = false;
     if (busy) {
-      const item = pieceFor(L, busy.activity, busy.group);
-      a.pose = GROUP_META[busy.group].pose;
+      // V2 interactions: a slot (0 asked, 1 accepted) picks the side of a shared sofa; a pose (dance, greet)
+      // is done where the Sim stands
+      const item = busy.pose ? null : ixPiece(L, busy.activity, busy.group, busy.slot);
+      a.pose = busy.pose ?? GROUP_META[busy.group].pose;
+      a.shift = seatShift(item, busy.slot);
       a.taskKey = null;
       if (!item) {
         a.mode = 'pose';
         a.item = null;
-        a.pose = 'stand';
+        if (!busy.pose) a.pose = 'stand';
         place(a.w, a.w.pos, a.w.yaw);
       } else {
-        const s = spotOf(item);
-        const from = a.mode === 'pose' && a.item ? spotOf(a.item).p : a.w.pos;
+        const s = spotOf(item, a.shift);
+        const from = a.mode === 'pose' && a.item ? spotOf(a.item, a.shift).p : a.w.pos;
         if (a.mode === 'pose') place(a.w, from, a.w.yaw);
         a.item = item;
         const far = Math.hypot(from[0] - s.p[0], from[1] - s.p[1]) > 0.35;
@@ -633,7 +907,7 @@ function House(props: HomeSceneProps & {
       if (a.mode === 'pose' || (a.mode === 'walk' && a.then === 'pose')) {
         // stand up next to the piece; the pose blend eases back to the idle (no frozen task pose)
         if (a.item) {
-          const s = spotOf(a.item);
+          const s = spotOf(a.item, a.shift);
           place(a.w, s.p, s.yaw);
         }
         a.mode = 'idle';
@@ -664,7 +938,7 @@ function House(props: HomeSceneProps & {
     const item = pieceFor(L, task.activity, task.group);
     if (a.mode === 'pose') {
       // still holding the last task's pose (its end not seen yet): stand up beside that piece first
-      if (a.item) place(a.w, spotOf(a.item).p, a.w.yaw);
+      if (a.item) place(a.w, spotOf(a.item, a.shift).p, a.w.yaw);
       a.mode = 'idle';
       a.item = null;
     }
@@ -838,7 +1112,7 @@ function House(props: HomeSceneProps & {
         poseLie(ch, t);
       } else if (a.pose === 'sit' && k?.seat) {
         const [sx, sy, sz, sYaw] = k.seat;
-        [x, z] = toLayout(item, sx, sz);
+        [x, z] = toLayout(item, sx + a.shift, sz);
         yaw = base + sYaw;
         poseSit(ch, t, salt);
         root.position.y = sitRootY(ch, sy + (item.y ?? 0));
@@ -849,6 +1123,14 @@ function House(props: HomeSceneProps & {
       } else {
         poseIdle(ch, t, salt);
       }
+    } else if (a.mode === 'pose' && (a.pose === 'dance' || a.pose === 'greet')) {
+      // V2: dance together / hug: face the nearest person
+      resetRig(ch);
+      const f = faceNearest(crowd, 'self', a.w.pos);
+      if (f !== null) a.w.yaw += angleTo(a.w.yaw, f) * (1 - Math.exp(-step * 6));
+      yaw = a.w.yaw;
+      if (a.pose === 'dance') poseDance(ch, t, salt);
+      else poseGreet(ch, t, salt);
     } else if (a.gait <= 0) {
       poseLife(ch, t, salt, life);
     } else if (a.gait >= 0.995) {
@@ -940,15 +1222,18 @@ function House(props: HomeSceneProps & {
     }
     actorObj.position.set(x, y, z);
     actorObj.rotation.y = yaw;
+    crowd.set('self', [a.w.pos[0], a.w.pos[1]]);
     const liveProps = propsRef.current;
     if (liveProps.onActorState) {
       const moving = a.mode === 'walk';
-      const activity = liveProps.busy?.activity ?? null;
+      const b = liveProps.busy;
+      const activity = b ? encodeAct(b.activity, b.slot, b.pose) : null;
       const prior = lastPresence.current;
       const changed = !Number.isFinite(prior.x) || !Number.isFinite(prior.z) || !Number.isFinite(prior.yaw)
         || moving !== prior.moving || activity !== prior.activity
         || Math.hypot(x - prior.x, z - prior.z) > 0.035 || Math.abs(angleTo(prior.yaw, yaw)) > 0.035;
-      if (changed && (moving ? now - prior.at >= 90 : now - prior.at >= 160)) {
+      // now is in seconds (the old 90 / 160 compared seconds to ms: one snapshot every 90 s, so visitors popped)
+      if (changed && (moving ? now - prior.at >= 0.09 : now - prior.at >= 0.16)) {
         liveProps.onActorState({ x, z, yaw, moving, activity });
         lastPresence.current = { at: now, x, z, yaw, moving, activity };
       }
@@ -1003,8 +1288,8 @@ function House(props: HomeSceneProps & {
     };
     onReady?.(api);
     if (!doll) sampleFrames(gl, scene, camera);
-    if (import.meta.env.DEV) Object.assign(window, { __home: api, __homeActor: actorRef.current, __homeLayout: L, __homeGrid: grid, __homeChar: ch });
-  }, [gl, scene, camera, room, onReady, actorRef, L, grid, cx, cz, size, ch]);
+    if (import.meta.env.DEV) Object.assign(window, { __home: api, __homeActor: actorRef.current, __homeLayout: L, __homeGrid: grid, __homeChar: ch, __homeCrowd: crowd });
+  }, [gl, scene, camera, room, onReady, actorRef, L, grid, cx, cz, size, ch, crowd]);
 
   /** A real tap: little movement, short, one finger (not the end of a drag, orbit or pinch). */
   const isTap = (e: ThreeEvent<MouseEvent>) => {
@@ -1080,7 +1365,7 @@ function House(props: HomeSceneProps & {
         <primitive object={ring} />
         <primitive object={marker} />
         <primitive object={actorObj} />
-        {props.remotePlayers?.length ? <RemoteHomeAvatars actors={props.remotePlayers} layout={L} cx={cx} cz={cz} onPick={props.onPickRemote} /> : null}
+        {props.remotePlayers?.length ? <RemoteHomeAvatars actors={props.remotePlayers} layout={L} grid={grid} walk={props.walk} crowd={crowd} hotRef={actorRef} onPick={props.onPickRemote} /> : null}
         <primitive object={tapMark} />
         {props.interactive !== false && <primitive object={floor} onClick={onFloor} />}
         {props.interactive !== false && <primitive
@@ -1121,6 +1406,8 @@ export default function HomeScene(props: HomeSceneProps) {
     idleSince: 0,
     noBlend: false,
     hot: false,
+    shift: 0,
+    remoteHot: 0,
   });
   const gesture = useRef<Gesture | null>(null);
   const [tapHint, setTapHint] = useState<{ text: string; x: number; y: number; n: number } | null>(null);

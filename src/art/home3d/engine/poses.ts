@@ -67,3 +67,36 @@ export function poseScrub(c: Character, t: number, salt = 0) {
   rig.foreR.rotation.set(-1.5 + 0.2 * s, 0, 0);
   rig.head.rotation.set(-0.15, 0.2 * s, 0);
 }
+
+/** V2 dancing together: a bouncy two-step with the arms up and swinging (Afrobeats energy). */
+export function poseDance(c: Character, t: number, salt = 0) {
+  const { rig, dims: d } = c;
+  poseIdle(c, t, salt);
+  const beat = t * 2 * Math.PI * 1.8 + salt;
+  const s = Math.sin(beat);
+  const b = Math.abs(Math.sin(beat));
+  rig.body.position.y = d.hipY + 0.025 * b;
+  rig.body.rotation.set(0, 0.18 * s, 0.05 * s);
+  rig.thighL.rotation.set(-0.25 * Math.max(0, s), 0, 0.06);
+  rig.thighR.rotation.set(-0.25 * Math.max(0, -s), 0, -0.06);
+  rig.shinL.rotation.set(0.4 * Math.max(0, s), 0, 0);
+  rig.shinR.rotation.set(0.4 * Math.max(0, -s), 0, 0);
+  rig.armL.rotation.set(-1.9 + 0.35 * s, 0, 0.5);
+  rig.armR.rotation.set(-1.9 - 0.35 * s, 0, -0.5);
+  rig.foreL.rotation.set(-0.6, 0, 0);
+  rig.foreR.rotation.set(-0.6, 0, 0);
+  rig.head.rotation.set(0.08 * b, 0.15 * s, 0);
+}
+
+/** V2 greeting: arms open and forward for a hug, a small lean in. */
+export function poseGreet(c: Character, t: number, salt = 0) {
+  const { rig } = c;
+  poseIdle(c, t, salt);
+  const s = Math.sin(t * 3 + salt);
+  rig.body.rotation.x = 0.08;
+  rig.armL.rotation.set(-1.3, 0.55 + 0.05 * s, 0.25);
+  rig.armR.rotation.set(-1.3, -0.55 - 0.05 * s, -0.25);
+  rig.foreL.rotation.set(-0.7, 0, 0);
+  rig.foreR.rotation.set(-0.7, 0, 0);
+  rig.head.rotation.set(0.05, 0, 0.08 * s);
+}

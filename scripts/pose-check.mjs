@@ -40,6 +40,8 @@ const TASKS = {
   lie: (c, t) => poses.poseLie(c, t),
   cook: (c, t) => poses.poseCook(c, t, 0.3),
   scrub: (c, t) => poses.poseScrub(c, t, 0.3),
+  dance: (c, t) => poses.poseDance(c, t, 0.3),
+  greet: (c, t) => poses.poseGreet(c, t, 0.3),
 };
 const BLEND_S = 0.42;
 const legs = (c) => anim.LEG_BONES.map((n) => c.rig[n].rotation.toArray().slice(0, 3).map((v) => +v.toFixed(3)).join(',')).join(' | ');

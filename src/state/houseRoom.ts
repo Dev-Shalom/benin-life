@@ -13,6 +13,16 @@ export interface HouseActorState {
   moving: boolean;
   activity: string | null;
   updatedAt: number;
+  /** V2: the waypoints of the walk this player started last (their own nav grid = the host's layout). */
+  path?: HousePath;
+}
+
+/** One message per walk: where the owner set off from, the corners and the end, and the final facing. */
+export interface HousePath {
+  pts: [number, number][];
+  faceTo: number | null;
+  /** Sender clock (ms): a new value = a new walk. */
+  at: number;
 }
 
 interface HouseMove {
@@ -33,6 +43,7 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
   const lastPublishRef = useRef(0);
   const selfMoveRef = useRef<HouseMove>({ x: 0, z: 0, yaw: 0, moving: false, activity: null, updatedAt: 0 });
   const latestRef = useRef(new Map<string, HouseActorState>());
+  const trailRef = useRef(0);
 
   useEffect(() => {
     if (!locationId || !profile || profile.location_id !== locationId) {
@@ -67,15 +78,30 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
           for (const [id, prior] of latestRef.current) {
             const tracked = next.get(id);
             if (tracked && prior.updatedAt > tracked.updatedAt) next.set(id, { ...tracked, ...prior });
+            else if (tracked && prior.path) next.set(id, { ...tracked, path: prior.path });
           }
           latestRef.current = next;
           publishList();
+        }).on('presence', { event: 'join' }, ({ key }) => {
+          // a newcomer: tell them where we stand now (our last snapshot may predate their join)
+          if (!channel || key === profile.id || !subscribedRef.current) return;
+          void channel.send({ type: 'broadcast', event: 'move', payload: { ...selfMoveRef.current, updatedAt: Date.now(), id: profile.id } });
         }).on('broadcast', { event: 'move' }, ({ payload }) => {
           const move = payload as HouseMove & { id: string };
           if (!move?.id || move.id === profile.id) return;
           const prior = latestRef.current.get(move.id);
           if (!prior) return;
           latestRef.current.set(move.id, { ...prior, ...move });
+          publishList();
+        }).on('broadcast', { event: 'path' }, ({ payload }) => {
+          const msg = payload as { id: string; p: number[]; f: number | null; at: number };
+          if (!msg?.id || msg.id === profile.id || !Array.isArray(msg.p) || msg.p.length < 2) return;
+          const prior = latestRef.current.get(msg.id);
+          if (!prior) return;
+          const pts: [number, number][] = [];
+          for (let i = 0; i + 1 < msg.p.length && pts.length < 64; i += 2) pts.push([Number(msg.p[i]), Number(msg.p[i + 1])]);
+          if (pts.some(([x, z]) => !Number.isFinite(x) || !Number.isFinite(z))) return;
+          latestRef.current.set(msg.id, { ...prior, moving: true, path: { pts, faceTo: typeof msg.f === 'number' ? msg.f : null, at: Number(msg.at) || Date.now() } });
           publishList();
         }).subscribe(async (status) => {
           subscribedRef.current = alive && status === 'SUBSCRIBED';
@@ -94,6 +120,8 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
     return () => {
       alive = false;
       subscribedRef.current = false;
+      window.clearTimeout(trailRef.current);
+      trailRef.current = 0;
       latestRef.current.clear();
       setMembers([]);
       if (channelRef.current === channel) channelRef.current = null;
@@ -107,10 +135,31 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
     const channel = channelRef.current;
     const id = selfRef.current;
     const now = performance.now();
-    if (!channel || !id || !subscribedRef.current || now - lastPublishRef.current < (move.moving ? 100 : 280)) return;
+    if (!channel || !id || !subscribedRef.current) return;
+    const wait = (move.moving ? 100 : 280) - (now - lastPublishRef.current);
+    if (wait > 0) {
+      // throttled: send the latest snapshot when the window ends (never drop the final stop)
+      if (!trailRef.current) trailRef.current = window.setTimeout(() => {
+        trailRef.current = 0;
+        const ch = channelRef.current;
+        if (!ch || !subscribedRef.current) return;
+        lastPublishRef.current = performance.now();
+        void ch.send({ type: 'broadcast', event: 'move', payload: { ...selfMoveRef.current, id } });
+      }, wait);
+      return;
+    }
     lastPublishRef.current = now;
     void channel.send({ type: 'broadcast', event: 'move', payload: { ...snapshot, id } });
   }, []);
 
-  return { members, publish };
+  /** V2: once per walk, the path the local Sim set off on (receivers walk it on their own grid). */
+  const publishPath = useCallback((pts: [number, number][], faceTo: number | null) => {
+    const channel = channelRef.current;
+    const id = selfRef.current;
+    if (!channel || !id || !subscribedRef.current || pts.length < 2) return;
+    const p = pts.slice(0, 48).flatMap(([x, z]) => [Math.round(x * 100) / 100, Math.round(z * 100) / 100]);
+    void channel.send({ type: 'broadcast', event: 'path', payload: { id, p, f: faceTo == null ? null : Math.round(faceTo * 1000) / 1000, at: Date.now() } });
+  }, []);
+
+  return { members, publish, publishPath };
 }
