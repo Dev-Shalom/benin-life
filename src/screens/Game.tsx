@@ -174,6 +174,10 @@ export default function Game() {
   const atHome = Boolean(p && state && !state.travel && p.location_id === state.location.id
     && (p.location_id === p.home_location_id || p.home_visit_host_id));
   const showHome = atHome && !mapOpen;
+  // Q1: count arrivals at a house (derived during render, so the scene mounts with the new key and the
+  // Sim walks in from the door instead of reappearing where it stood before the trip)
+  const [homeArrival, setHomeArrival] = useState({ at: atHome, n: 0 });
+  if (homeArrival.at !== atHome) setHomeArrival({ at: atHome, n: atHome ? homeArrival.n + 1 : homeArrival.n });
   useEffect(() => {
     if (!atHome || !homeOwnerId) { setGarage(null); return; }
     let alive = true;
@@ -206,9 +210,21 @@ export default function Game() {
         ixHandled.current.add(ev.id);
         setIxWaiting((w) => (w && w.id === d.id ? null : w));
         if (d.status === 'accepted' && d.busy_until) setIxSlot({ until: d.busy_until, slot: 0 });
+      } else if (ev.kind === 'house_interact_end') {
+        // Q1: the partner left the house or stopped: the server freed us too (the toast comes from state/game)
+        ixHandled.current.add(ev.id);
+        setIxSlot(null);
       } else ixHandled.current.add(ev.id);
     }
   }, [gameEvents]);
+  // Q1: a different house (or none: we left, the visit ended, we travelled) drops any running/pending
+  // interaction state; the server already ended it for both players (profiles_end_interactions_on_leave)
+  useEffect(() => {
+    setIxSlot(null);
+    setIxPrompt(null);
+    setIxWaiting(null);
+    setSelectedHousePlayer(null);
+  }, [houseRoomId]);
   useEffect(() => {
     if (!ixPrompt && !ixWaiting) return;
     const next = Math.min(ixPrompt?.expires ?? Infinity, ixWaiting?.expires ?? Infinity);
@@ -402,6 +418,8 @@ export default function Game() {
       void useGame.getState().refresh();
     }).catch(() => { /* try again next minute */ });
   }, [showPlace, interior.data, atOwnHome, atLoc, state?.travel, busyActive]);
+  // Q1: a shared "Dance together" running at home plays the afrobeats loop for both players until it ends
+  const danceOn = Boolean(busyActive && busyLabel && ixTypes.some((t) => t.kind === 'dance' && t.label === busyLabel));
   const placeSound: PlaceSound = showPlace
     ? !placeOpen ? null
       : placeScene === 'club' ? 'club'
@@ -412,6 +430,7 @@ export default function Game() {
       : placeScene === 'stadium' ? 'stadium'
       : placeScene === 'cinema' ? 'cinema'
       : placeScene === 'hotel' ? 'lounge' : null
+    : showHome && danceOn ? 'dance'
     : showHome && skyNight && (placeScene === 'home_face_me' || placeScene === 'hostel') ? 'generator' : null;
   useEffect(() => { setSoundPlace(placeSound); }, [placeSound]);
   // P2: a licensed club track (admin) replaces the synthesized amapiano groove
@@ -603,6 +622,7 @@ export default function Game() {
             layoutId={layout}
             layout={furnished}
             playerId={p.id}
+            arrivalKey={homeArrival.n}
             origin={(houseInfo?.origin ?? p.origin) === 'nepo' ? 'nepo' : 'lapo'}
             parking={parking}
             walk={walk}
@@ -750,9 +770,11 @@ export default function Game() {
                 <span aria-hidden>🏠</span> <span className="home-chip__name">{here.name.replace(/ \(.*\)$/, '')}</span>
                 <span className="home-chip__go">Things to do <Icon name="chevronUp" size={13} /></span>
               </button>
-              <button type="button" className="home-chip-chat" onClick={() => select(here.id, 'chat')}>
-                <Icon name="chat" size={15} /> House chat
-              </button>
+              {houseMembers.length > 0 && (
+                <button type="button" className="home-chip-chat" onClick={() => select(here.id, 'chat')}>
+                  <Icon name="chat" size={15} /> House chat
+                </button>
+              )}
               {p.home_visit_host_id && <button type="button" className="home-chip-chat home-chip-leave" onClick={() => void leaveHouse()} disabled={leavingHouse}>
                 <Icon name="back" size={15} /> {leavingHouse ? 'Leaving…' : 'Leave house'}
               </button>}

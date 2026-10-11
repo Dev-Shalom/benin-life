@@ -294,3 +294,9 @@ https://ranked.ng/car-dealerships/benin-city · https://www.facebook.com/p/Ighod
 
 ## UI1. Layout pass across devices (user, 2026-10-11):
 **UI1 notes (agent, 2026-10-11, not committed; status marker left for the lead):** left column decluttered: task pill + queue stay on top, then one compact **Today** pill (small icons, red dot when something can be collected, chevron) that opens a tidy list of the old tip/daily chips (tap outside folds; open by default only on ≥ 1280 × 760 desktops), then a small "Clean screen · Beta" row. LIVE / upcoming **event banner** now always sits just under the top bar, centred; where it would overlap the left column it pushes the column and "Arrange home" down (`--ev-h`); phone 8 s auto-hide kept. **Benin Boutique**: centred rounded panel with dimmed backdrop from 768 px (turntable left / shop right from 900 px), standard sheet header + × close on every size, full height on phones. CSS/layout only, no game logic, SQL or config changes. Details: docs/HUD_HOME.md "UI1 layout".
+
+## Q1. Quick fixes (user, 2026-10-11): DONE
+Dance sound, game-length interaction seconds, slower needs, leaving a house ends shared actions, walk-in arrival, House chat only with 2+ players, Go Crazy dropped, desktop pop-ups unchanged.
+
+## B1. Buy mode + arrange (user, 2026-10-11): NEXT
+Full researched home catalogue for LAPO and Nepo at real Nigerian prices; buy, place, persist. Arrange lives in Buy: live preview, D-pad nudge + rotate, warning when placement is not allowed. Remove HUD "Arrange home".

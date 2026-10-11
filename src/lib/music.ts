@@ -307,7 +307,7 @@ export class Engine {
   }
 }
 
-export type TrackKind = 'club' | 'buka' | 'market' | 'stadium' | 'cinema' | 'lounge' | 'motorpark';
+export type TrackKind = 'club' | 'buka' | 'market' | 'stadium' | 'cinema' | 'lounge' | 'motorpark' | 'afrobeats';
 
 export interface Track {
   /** Beats per minute of the grid (visual beat clock), 0 = no grid. */
@@ -484,6 +484,36 @@ function buka(e: Engine, t0: number): Track {
   });
 }
 
+// ---------------------------------------------------------------- afrobeats: Q1 "Dance together" at home
+// A clean (no radio filter) afrobeats loop at 104 BPM: syncopated kick, clap on 2 and 4, tresillo rims,
+// rolling shakers, offbeat keys and a bouncing bass pluck; a 4-bar build with a drop every 16 bars.
+export const AFRO_BPM = 104;
+function afrobeats(e: Engine, t0: number): Track {
+  const b = e.bank;
+  const bus = e.c.createGain();
+  bus.gain.value = 0.7;
+  bus.connect(e.out);
+  const CH = [[57, 60, 64, 67], [62, 65, 69, 72], [55, 59, 62, 65], [60, 64, 67, 71]]; // Am7 Dm7 G7 Cmaj7
+  const BASS = [[0, 0], [3, 0], [6, 7], [10, 0], [12, 12]]; // [step, semitones over the root]
+  const pr = (n: number) => Math.pow(2, (n - PLUCK_BASE) / 12);
+  return grid(e, AFRO_BPM, t0, 0.1, (step, at) => {
+    const bar = Math.floor(step / 16);
+    const s = step % 16;
+    const phrase = bar % 16;
+    const breakdown = phrase >= 12 && phrase < 14; // two bars without the kick, then back in
+    const ch = CH[bar % 4];
+    if (!breakdown && (s === 0 || s === 7 || s === 8 || (s === 11 && bar % 2 === 1))) e.hit(b.kick, at, 0.72, 1, bus);
+    if (s === 4 || s === 12) e.hit(b.clap, at, breakdown ? 0.2 : 0.38, 1, bus);
+    if ([0, 3, 6, 10, 12].includes(s)) e.hit(b.rim, at, 0.18, 1, bus);
+    e.hit(b.shaker, at, s % 4 === 2 ? 0.26 : s % 2 ? 0.12 : 0.18, 1, bus);
+    if (s % 4 === 2) e.hit(s === 14 && bar % 4 === 3 ? b.ohat : b.hat, at, 0.16, 1, bus);
+    if (s === 3 || s === 6 || s === 11 || (s === 14 && bar % 2 === 0)) e.hit(keysChord(b.sr, ch), at, 0.34, 1, bus, 0.16);
+    if (!breakdown) for (const [bs, semi] of BASS) if (bs === s) e.hit(b.pluck, at, 0.62, pr(ch[0] - 24 + semi), bus);
+    if (bar % 4 === 3 && (s === 13 || s === 14 || s === 15)) e.hit(b.pluck, at, 0.28, pr(ch[3] + 12 - (15 - s) * 2), bus);
+    if (phrase === 13 && s >= 8) e.hit(b.rim, at, 0.1 + (s - 8) * 0.03, 1, bus); // build back into the drop
+  });
+}
+
 // ---------------------------------------------------------------- event tracks (no grid)
 function loopBed(e: Engine, d: Float32Array, gain: number, at: number, cutoff = 0) {
   const s = e.c.createBufferSource();
@@ -615,6 +645,7 @@ export function makeTrack(kind: TrackKind, e: Engine, t0: number): Track {
     case 'stadium': return stadium(e, t0);
     case 'cinema': return cinema(e, t0);
     case 'lounge': return lounge(e, t0);
+    case 'afrobeats': return afrobeats(e, t0);
   }
 }
 

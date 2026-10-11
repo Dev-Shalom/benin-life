@@ -213,9 +213,10 @@ function tuneAmbience() {
 // One scheduler (100 ms tick, ~0.3 s lookahead) drives the place's track from src/lib/music.ts: the club's
 // amapiano groove, the buka radio, market hawkers, stadium chants, cinema pad, hotel-lounge keys, motor park.
 // Bank / hospital hum and a neighbour's generator stay simple drones. Paused while the tab is hidden.
-export type PlaceSound = 'club' | 'buka' | 'bank' | 'market' | 'generator' | 'stadium' | 'cinema' | 'lounge' | 'motorpark' | null;
+// 'dance' = Q1: the afrobeats loop while a shared "Dance together" runs at home (both players' clients)
+export type PlaceSound = 'club' | 'buka' | 'bank' | 'market' | 'generator' | 'stadium' | 'cinema' | 'lounge' | 'motorpark' | 'dance' | null;
 // bus levels, matched to the old background music (a groove peak of ~0.04 after the master): felt, not loud
-const PLACE_LEVEL: Record<string, number> = { club: 0.12, buka: 0.1, market: 0.24, stadium: 0.2, cinema: 0.14, lounge: 0.09, motorpark: 0.28 };
+const PLACE_LEVEL: Record<string, number> = { club: 0.12, buka: 0.1, market: 0.24, stadium: 0.2, cinema: 0.14, lounge: 0.09, motorpark: 0.28, dance: 0.14 };
 let placeSound: PlaceSound = null;
 let placeTimer: number | null = null;
 let placeBus: GainNode | null = null;
@@ -318,7 +319,7 @@ function applyPlace() {
     }
     if (!fileAudio) {
       placeEngine = new Engine(ctx, placeBus);
-      placeTrack = makeTrack(placeSound as TrackKind, placeEngine, ctx.currentTime + 0.15);
+      placeTrack = makeTrack(placeSound === 'dance' ? 'afrobeats' : placeSound as TrackKind, placeEngine, ctx.currentTime + 0.15);
     }
   }
   placeTick = 0;

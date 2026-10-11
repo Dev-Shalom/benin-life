@@ -34,6 +34,21 @@ interface HouseMove {
   updatedAt: number;
 }
 
+/** The rest of a flat [x0, z0, x1, z1, ...] path from the walker's current position (nearest segment). */
+function remainingPath(p: number[], x: number, z: number): number[] {
+  let best = 0;
+  let bestD = Infinity;
+  for (let i = 0; i + 3 < p.length; i += 2) {
+    const ax = p[i], az = p[i + 1], bx = p[i + 2], bz = p[i + 3];
+    const dx = bx - ax, dz = bz - az;
+    const len2 = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / len2));
+    const d = Math.hypot(ax + dx * t - x, az + dz * t - z);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return [Math.round(x * 100) / 100, Math.round(z * 100) / 100, ...p.slice(best + 2)];
+}
+
 /** A private, invite-only home room for low-latency avatar movement updates. */
 export function useHouseRoom(locationId: string | null, profile: Profile | null) {
   const [members, setMembers] = useState<HouseActorState[]>([]);
@@ -44,6 +59,8 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
   const selfMoveRef = useRef<HouseMove>({ x: 0, z: 0, yaw: 0, moving: false, activity: null, updatedAt: 0 });
   const latestRef = useRef(new Map<string, HouseActorState>());
   const trailRef = useRef(0);
+  // Q1: a walk that started before the room was joined (the walk in from the door on arrival)
+  const pendingPathRef = useRef<{ p: number[]; f: number | null; at: number } | null>(null);
 
   useEffect(() => {
     if (!locationId || !profile || profile.location_id !== locationId) {
@@ -111,6 +128,18 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
           await channel.track({ id: profile.id, username: profile.username, avatar: profile.avatar, ...snapshot });
           lastPublishRef.current = performance.now();
           await channel.send({ type: 'broadcast', event: 'move', payload: { ...snapshot, id: profile.id } });
+          // the arrival walk began before we joined: send it now (if still fresh), shortly after our presence
+          // lands, so the others see us walk in from the door instead of popping in
+          const pending = pendingPathRef.current;
+          pendingPathRef.current = null;
+          if (pending && Date.now() - pending.at < 8000) {
+            window.setTimeout(() => {
+              const cur = selfMoveRef.current;
+              if (!alive || !subscribedRef.current || channelRef.current !== channel || !cur.moving) return;
+              const p = remainingPath(pending.p, cur.x, cur.z);
+              if (p.length >= 4) void channel?.send({ type: 'broadcast', event: 'path', payload: { id: profile.id, ...pending, p, at: Date.now() } });
+            }, 350);
+          }
         });
       } catch {
         // The local home remains playable if Realtime is unavailable; visitors simply do not appear live.
@@ -156,9 +185,15 @@ export function useHouseRoom(locationId: string | null, profile: Profile | null)
   const publishPath = useCallback((pts: [number, number][], faceTo: number | null) => {
     const channel = channelRef.current;
     const id = selfRef.current;
-    if (!channel || !id || !subscribedRef.current || pts.length < 2) return;
+    if (pts.length < 2) return;
     const p = pts.slice(0, 48).flatMap(([x, z]) => [Math.round(x * 100) / 100, Math.round(z * 100) / 100]);
-    void channel.send({ type: 'broadcast', event: 'path', payload: { id, p, f: faceTo == null ? null : Math.round(faceTo * 1000) / 1000, at: Date.now() } });
+    const msg = { p, f: faceTo == null ? null : Math.round(faceTo * 1000) / 1000, at: Date.now() };
+    if (!channel || !id || !subscribedRef.current) {
+      pendingPathRef.current = msg;
+      return;
+    }
+    pendingPathRef.current = null;
+    void channel.send({ type: 'broadcast', event: 'path', payload: { id, ...msg } });
   }, []);
 
   return { members, publish, publishPath };

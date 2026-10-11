@@ -38,7 +38,7 @@ const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: strin
 const QUICK: { key: string; hint: string }[] = [
   { key: 'payments.enabled', hint: 'Real-money top-ups with Paystack. Turn on only after the keys are set (docs/PAYMENTS.md).' },
   { key: 'clock.mode', hint: 'real = the game shows the real time in Benin City. accelerated = the old fast clock.' },
-  { key: 'needs.decay_speed', hint: 'How fast needs drop with the real clock. 2.5 = hunger empties in about 10 real hours.' },
+  { key: 'needs.decay_speed', hint: 'How fast needs drop with the real clock. 1 = hunger empties in about 25 real hours (2.5 = about 10).' },
   { key: 'action.mode', hint: 'short = every action takes a few real seconds. game_minutes = the old long timers.' },
   { key: 'action.shift_seconds', hint: 'Real seconds one work shift takes.' },
   { key: 'action.travel_max_seconds', hint: 'No trip takes longer than this (real seconds).' },

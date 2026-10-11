@@ -60,6 +60,9 @@ export interface HomeSceneProps {
   layoutId: HomeLayoutId;
   /** Stable player identity gives each visitor a distinct arrival point in the shared room. */
   playerId?: string;
+  /** Q1: changes each time the player arrives at this house (after travelling / a visit). A new value
+   * replays the walk in from the door; the same value (canvas only remounted) resumes where the Sim stood. */
+  arrivalKey?: number;
   /** Birth tier controls the home finish details as well as the starter inventory. */
   origin?: 'lapo' | 'nepo';
   /** The layout with the player's own furniture (furnishLayout); keep it memoised. Default: LAYOUTS[layoutId]. */
@@ -149,7 +152,7 @@ const BLEND_S = 0.42;
 /** Tap marker fade, seconds. */
 const MARK_S = 0.7;
 /** Where this Sim was when the canvas last unmounted (so a short suspend doesn't replay the arrival). */
-let memory: { playerId: string; layout: string; pos: P2; yaw: number; at: number } | null = null;
+let memory: { playerId: string; layout: string; arrival: number; pos: P2; yaw: number; at: number } | null = null;
 const _v = new Vector3();
 const _r = new Vector3();
 const _u = new Vector3();
@@ -804,7 +807,9 @@ function House(props: HomeSceneProps & {
   useEffect(() => {
     const a = actorRef.current;
     const playerId = props.playerId ?? 'preview';
-    const mem = memory && memory.playerId === playerId && memory.layout === L.id && performance.now() - memory.at < 10 * 60_000 ? memory : null;
+    const arrival = props.arrivalKey ?? 0;
+    const mem = memory && memory.playerId === playerId && memory.layout === L.id && memory.arrival === arrival
+      && performance.now() - memory.at < 10 * 60_000 ? memory : null;
     a.item = null;
     a.idleSince = nowS();
     if (mem) {
@@ -826,7 +831,7 @@ function House(props: HomeSceneProps & {
     a.then = 'idle';
     a.nextWander = performance.now() + 20000;
     invalidate();
-  }, [L, grid, actorRef, invalidate, props.playerId]);
+  }, [L, grid, actorRef, invalidate, props.playerId, props.arrivalKey]);
   useEffect(() => {
     const born = performance.now();
     const holder = actorRef; // a mutable state holder, not a DOM node: read it at unmount on purpose
@@ -834,9 +839,10 @@ function House(props: HomeSceneProps & {
       const a = holder.current;
       // ignore StrictMode's instant remount in dev
       if (performance.now() - born < 1500) return;
-      memory = { playerId: props.playerId ?? 'preview', layout: L.id, pos: a.mode === 'pose' && a.item ? spotOf(a.item).p : a.w.pos, yaw: a.w.yaw, at: performance.now() };
+      memory = { playerId: props.playerId ?? 'preview', layout: L.id, arrival: props.arrivalKey ?? 0,
+        pos: a.mode === 'pose' && a.item ? spotOf(a.item).p : a.w.pos, yaw: a.w.yaw, at: performance.now() };
     };
-  }, [L, actorRef, props.playerId]);
+  }, [L, actorRef, props.playerId, props.arrivalKey]);
 
   /** Walk to a point in layout space (client-side only). Returns where the walk ends. */
   const walkTo = (to: P2, opts: { snap?: boolean; faceTo?: number | null; then?: 'idle' | 'pose' | 'task'; manual?: boolean } = {}) => {
