@@ -1,14 +1,17 @@
 // Phone "Houses" app (V1-4): your home, weekly rent, the next rent day, rent owed + Pay now.
-// Moving house arrives later.
+// H1: Move house: every home with its size, rent and move-in fee; picking one opens the confirm sheet.
 import { useEffect, useState } from 'react';
+import { houseOptions, type HouseOptions } from '../../../api/houses';
 import { payRent } from '../../../api/shops';
 import { errorMessage } from '../../../lib/api';
 import { dateLabel, gameClockAt, useNow, weekdayOf } from '../../../lib/clock';
-import { clockTime, naira, realDuration } from '../../../lib/format';
+import { clockTime, naira, nairaShort, realDuration } from '../../../lib/format';
 import { WEEKDAYS } from '../../../lib/pidgin';
 import type { GameState } from '../../../lib/types';
 import { useCatalog } from '../../../state/catalog';
 import { useGame } from '../../../state/game';
+import { useMove } from '../../../state/move';
+import { useUi } from '../../../state/ui';
 import { Button, toast } from '../../../ui';
 
 export default function HousesApp({ state }: { state: GameState }) {
@@ -18,9 +21,18 @@ export default function HousesApp({ state }: { state: GameState }) {
   const loadCatalog = useCatalog((s) => s.loadCatalog);
   const now = useNow(15_000);
   const [paying, setPaying] = useState(false);
+  const [opts, setOpts] = useState<HouseOptions | null>(null);
+  const openMove = useMove((s) => s.open);
   useEffect(() => {
     void loadCatalog();
   }, [loadCatalog]);
+  // reload after a move (start_home changes)
+  useEffect(() => {
+    let alive = true;
+    houseOptions().then((o) => alive && setOpts(o)).catch(() => alive && setOpts(null));
+    return () => { alive = false; };
+  }, [state.profile.start_home]);
+  const visiting = Boolean(state.profile.home_visit_host_id);
 
   const p = state.profile;
   const rent = state.rent;
@@ -94,13 +106,36 @@ export default function HousesApp({ state }: { state: GameState }) {
           : enabled ? `Rent is collected every ${WEEKDAYS[catalog?.rent_weekday ?? 5]} at midnight, from your bank first, then cash. If you can't cover it, the rest becomes rent owed.`
             : 'Rent collection is paused right now.'}
       </p>
-      <div className="soon-card">
-        <span className="soon-card__emoji" aria-hidden>🔑</span>
-        <div>
-          <div className="soon-card__title">Moving house arrives soon</div>
-          <div className="soon-card__text">Rent a bigger place, from a self-contain in Uselu to a duplex in GRA.</div>
-        </div>
-      </div>
+      {opts && (
+        <section className="move-list" aria-label="Move house">
+          <div className="move-list__title">Move house</div>
+          <p className="phone-app__lead">
+            Rent a bigger place. The fee is {opts.move_in_weeks} weeks of the new rent (agent, caution and legal). Your furniture comes along.
+          </p>
+          {opts.homes.map((h) => {
+            const mine = h.status === 'current';
+            const gone = h.status === 'released';
+            const disabled = mine || gone || !opts.enabled || visiting || owed > 0;
+            return (
+              <button key={h.id} type="button" className="garage-opt" disabled={disabled}
+                onClick={() => { openMove(h, opts.garage?.name ?? null, opts.move_in_weeks); useUi.getState().setOverlay(null); }}>
+                <span className="garage-opt__emoji" aria-hidden>{h.emoji || '🏠'}</span>
+                <span className="grow">
+                  <span className="garage-opt__title">{h.name}{h.district ? ` · ${h.district}` : ''}</span>
+                  <span className="garage-opt__sub">{h.area} m² · {naira(h.weekly_rent)} a week</span>
+                  <span className="garage-opt__meta">
+                    {mine ? 'Your home' : gone ? "You moved out. You can't go back." : owed > 0 ? 'Pay your rent first'
+                      : visiting ? 'Go home first' : !opts.enabled ? 'Moving is paused' : h.tag}
+                  </span>
+                </span>
+                {!mine && !gone && (
+                  <span className="garage-opt__price" title={naira(h.move_in)}>{nairaShort(h.move_in)}<small>to move in</small></span>
+                )}
+              </button>
+            );
+          })}
+        </section>
+      )}
     </div>
   );
 }

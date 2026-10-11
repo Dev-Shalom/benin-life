@@ -52,6 +52,7 @@ import JourneyGuide from './game/JourneyGuide';
 import { DailySync, usePlaceGem } from './game/Daily';
 import { useShownAvatar, useWardrobe } from '../state/wardrobe';
 import { GarageSheet } from './game/GarageSheet';
+import { MoveHouseSheet } from './game/MoveHouseSheet';
 import { useGarage } from '../state/garage';
 import { garageHome, type GarageHome } from '../api/garage';
 
@@ -184,8 +185,10 @@ export default function Game() {
   const showHome = atHome && !mapOpen;
   // Q1: count arrivals at a house (derived during render, so the scene mounts with the new key and the
   // Sim walks in from the door instead of reappearing where it stood before the trip)
-  const [homeArrival, setHomeArrival] = useState({ at: atHome, n: 0 });
-  if (homeArrival.at !== atHome) setHomeArrival({ at: atHome, n: atHome ? homeArrival.n + 1 : homeArrival.n });
+  // H1: moving house (housing changes while at home) is an arrival too: the Sim walks into the new home
+  const arrivalSig = atHome ? `home:${p?.housing_id ?? ''}` : null;
+  const [homeArrival, setHomeArrival] = useState({ at: arrivalSig, n: 0 });
+  if (homeArrival.at !== arrivalSig) setHomeArrival({ at: arrivalSig, n: arrivalSig ? homeArrival.n + 1 : homeArrival.n });
   useEffect(() => {
     if (!atHome || !homeOwnerId) { setGarage(null); return; }
     let alive = true;
@@ -298,7 +301,7 @@ export default function Game() {
         void loadFurniture(homeOwnerId, true);
       }).subscribe();
     return () => { alive = false; void supabase.removeChannel(channel); };
-  }, [atHome, homeOwnerId, p?.id, loadFurniture]);
+  }, [atHome, homeOwnerId, p?.id, p?.housing_id, loadFurniture]);
   // L2: anywhere else (not on the road) you are INSIDE the place: its 3D interior + the place card
   const showPlace = Boolean(p && state && !state.travel && !atHome && !mapOpen);
   // V1-6: stay subscribed to the chat of the place you are at (unread dot while the sheet is closed).
@@ -880,6 +883,7 @@ export default function Game() {
         onArrange={(key) => { setOverlay(null); useArrange.getState().open(key); }}
       />
       <GarageSheet />
+      <MoveHouseSheet />
       <ShortcutsSheet />
       <Phone state={state} clock={clock} />
       {overlay === 'boutique' && <Suspense fallback={null}><Boutique state={state} /></Suspense>}

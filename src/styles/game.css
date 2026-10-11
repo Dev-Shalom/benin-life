@@ -6231,3 +6231,15 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 @keyframes ix-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes ix-pulse { 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { .ix-prompt, .ix-wait { animation: none; } .ix-wait__dot { animation: none; } .ix-prompt__bar { animation: none; } }
+
+/* H1 move house: Houses app list + confirm sheet */
+.move-list { display: grid; gap: 8px; margin-top: 14px; }
+.move-list__title { font-weight: 800; font-size: 15px; margin: 6px 2px 0; }
+.move-list .garage-opt { background: #fff; box-shadow: var(--e1); }
+.move-list .garage-opt__price { text-align: right; }
+.move-list .garage-opt__price small { display: block; font-size: 11px; font-weight: 700; color: var(--ink-3); }
+.move-sheet__body { display: grid; gap: 12px; }
+.move-sheet__home { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--r-lg); background: var(--surface-2); }
+.move-sheet__info { font-size: 13px; color: var(--ink-2); line-height: 1.45; margin: 0; padding: 0 2px; }
+.move-sheet__info--warn { color: #9a5b12; }
+.move-sheet__note { font-size: 12px; color: var(--ink-3); margin: 0; padding: 0 2px; }

@@ -131,6 +131,8 @@ interface View {
   dragging: boolean;
   visible: boolean;
   reduced: boolean;
+  /** H1: how far the player may pinch out (below 1 when the camera frames the house of a big lot). */
+  zoomMin?: number;
 }
 
 /** The pointer gesture under way (to tell a tap from a drag, an orbit or a pinch). */
@@ -148,6 +150,8 @@ const BASE_YAW = Math.PI / 4;
 const CAM_ELEV = 0.66;
 const YAW_RANGE = 0.75;
 const ZOOM_MIN = 0.85;
+/** H1: below this many pixels per metre the camera frames the house instead of the whole lot. */
+const MIN_PX_PER_M = 24;
 const ZOOM_MAX = 1.9;
 /** Pre-walk to a tapped piece only when it takes at most this long (s); the sheet opens at once anyway. */
 const PREWALK_MAX_S = 7;
@@ -1072,15 +1076,27 @@ function House(props: HomeSceneProps & {
     cam.lookAt(0, 0, 0);
     cam.updateMatrixWorld();
     // fit the lot (house + yard, walls included) and the G1 parking between the HUD insets
-    const [x0, z0, x1, z1] = room.frame;
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const x of [x0, x1]) for (const z of [z0, z1]) for (const y of [0, L.wallH]) {
-      _v.set(x - cx, y, z - cz).applyMatrix4(cam.matrixWorldInverse);
-      minX = Math.min(minX, _v.x); maxX = Math.max(maxX, _v.x);
-      minY = Math.min(minY, _v.y); maxY = Math.max(maxY, _v.y);
-    }
     const availH = Math.max(120, size.height - insetTop - insetBottom);
-    const fit = Math.min(size.width / ((maxX - minX) * 1.1), availH / ((maxY - minY) * 1.12));
+    const fitRect = ([x0, z0, x1, z1]: readonly number[]) => {
+      let a = Infinity, b = -Infinity, c = Infinity, e = -Infinity;
+      for (const x of [x0, x1]) for (const z of [z0, z1]) for (const y of [0, L.wallH]) {
+        _v.set(x - cx, y, z - cz).applyMatrix4(cam.matrixWorldInverse);
+        a = Math.min(a, _v.x); b = Math.max(b, _v.x);
+        c = Math.min(c, _v.y); e = Math.max(e, _v.y);
+      }
+      return { minX: a, maxX: b, minY: c, maxY: e, fit: Math.min(size.width / ((b - a) * 1.1), availH / ((e - c) * 1.12)) };
+    };
+    let f = fitRect(room.frame);
+    // H1: a big home (GRA duplex) on a narrow phone would shrink to a toy: frame the house itself (with its
+    // doorstep) instead; pinching out still shows the whole compound (zoom goes below 1 down to the lot).
+    if (f.fit < MIN_PX_PER_M) {
+      const house = fitRect([-0.5, -0.4, L.w + 0.8, L.d + 1.0]);
+      if (house.fit > f.fit) {
+        v.zoomMin = Math.min(ZOOM_MIN, (f.fit / house.fit) * 0.95);
+        f = house;
+      }
+    } else v.zoomMin = ZOOM_MIN;
+    const { minX, maxX, minY, maxY, fit } = f;
     cam.zoom = fit * v.zoom;
     // centre the lot on screen: slide the camera in its own plane
     _r.setFromMatrixColumn(cam.matrixWorld, 0).multiplyScalar((minX + maxX) / 2);
@@ -1505,7 +1521,7 @@ export default function HomeScene(props: HomeSceneProps) {
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const v = view.current;
-      v.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v.zoom * Math.exp(-e.deltaY * 0.0015)));
+      v.zoom = Math.min(ZOOM_MAX, Math.max(v.zoomMin ?? ZOOM_MIN, v.zoom * Math.exp(-e.deltaY * 0.0015)));
       kick();
     };
     el.addEventListener('wheel', onWheel, { passive: false });
@@ -1531,7 +1547,7 @@ export default function HomeScene(props: HomeSceneProps) {
     if (pointers.current.size === 2 && pinch.current) {
       const [a, b] = [...pointers.current.values()];
       const d = Math.hypot(a.x - b.x, a.y - b.y);
-      v.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinch.current.zoom * (d / Math.max(1, pinch.current.d))));
+      v.zoom = Math.min(ZOOM_MAX, Math.max(v.zoomMin ?? ZOOM_MIN, pinch.current.zoom * (d / Math.max(1, pinch.current.d))));
       v.dragging = true;
       kick();
       return;

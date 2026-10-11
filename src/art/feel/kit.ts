@@ -34,8 +34,10 @@ export interface OutsideOpts {
   /** The room / lot footprint. */
   x0: number; z0: number; x1: number; z1: number;
   seed: number;
-  /** 'compound' (laterite, face-me neighbours), 'estate' (paved, walls, trees), 'city' (street, shops). */
-  style: 'compound' | 'estate' | 'city';
+  /** 'compound' (laterite, face-me neighbours with zinc roofs), 'estate' (mid: painted bungalows and flats,
+   * tarred road), 'gra' (H1 top tier: modern duplexes behind gated walls, palms, paved road, street lights),
+   * 'city' (street, shops). */
+  style: 'compound' | 'estate' | 'gra' | 'city';
   /** Skip the street (outdoor yards that already have their own ground). */
   street?: boolean;
   /** Clutter density 0..1 (Low tier halves it). */
@@ -47,6 +49,7 @@ export interface OutsideOpts {
 const HOUSE_COLS = ['#d9c9a8', '#c9d3c0', '#e2cfbd', '#b9c4cc', '#e6d7a6', '#cfb8a3'];
 
 export function buildOutside(b: HomeBuilder, o: OutsideOpts) {
+  if (o.style === 'gra') { buildGraOutside(b, o); return; }
   const r = seeded(o.seed);
   const cx = (o.x0 + o.x1) / 2, cz = (o.z0 + o.z1) / 2;
   const den = o.density ?? 1;
@@ -77,10 +80,29 @@ export function buildOutside(b: HomeBuilder, o: OutsideOpts) {
   for (let z = o.z0 - 1; z < o.z1 + 6; z += 7 + r() * 2.5) behind.push([o.x0 - 7 - r() * 2, z, 4.4 + r() * 1.8, true]);
   for (const [hx, hz, hw, west] of behind) {
     const hd = 4.2 + r() * 1.2;
-    const hh = o.style === 'estate' ? 2.8 + r() * 2.2 : 2.3 + r() * 0.4;
-    const w = west ? hd : hw, d = west ? hw : hd;
+    // H1: mid areas mix bungalows with two-storey blocks of flats; local compounds are long face-me rows
+    const flats = o.style === 'estate' && r() < 0.4;
+    const hh = o.style === 'estate' ? (flats ? 5.4 + r() * 0.6 : 2.9 + r() * 0.6) : 2.3 + r() * 0.4;
+    const long = o.style === 'compound' ? 1.35 : 1;
+    const w = west ? hd : hw * long, d = west ? hw * long : hd;
     const col = pick(r, HOUSE_COLS);
     b.box(w, hh, d, hx, -0.05, hz, col, { mat: o.style === 'estate' ? 'paint' : 'plaster' });
+    if (o.style === 'compound') {
+      // face-me-I-face-you: a row of room doors and a cement step along the facing side
+      const n = 3;
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n - 0.5;
+        if (!west) b.box(0.7, 1.9, 0.04, hx + t * w, 0, hz + d / 2 + 0.01, pick(r, ['#5a3d2b', '#2f5d8a', '#6b4f3a']), { mat: 'wood' });
+        else b.box(0.04, 1.9, 0.7, hx + w / 2 + 0.01, 0, hz + t * d, pick(r, ['#5a3d2b', '#2f5d8a', '#6b4f3a']), { mat: 'wood' });
+      }
+      if (!west) b.box(w, 0.12, 0.6, hx, -0.05, hz + d / 2 + 0.3, '#9c958a', { mat: 'concrete' });
+      else b.box(0.6, 0.12, d, hx + w / 2 + 0.3, -0.05, hz, '#9c958a', { mat: 'concrete' });
+    } else if (flats) {
+      // upper-floor slab line + a second row of windows
+      b.box(w + 0.1, 0.12, d + 0.1, hx, 2.75, hz, shadeCol(col, 0.85), { mat: 'concrete' });
+      if (!west) for (let i = 0; i < 2; i++) b.box(0.8, 0.8, 0.04, hx - w / 4 + i * (w / 2), 3.7, hz + d / 2 + 0.01, '#2c3138', { mat: 'metal' });
+      else b.box(0.04, 0.8, 0.8, hx + w / 2 + 0.01, 3.7, hz, '#2c3138', { mat: 'metal' });
+    }
     // roof: rusty zinc (compound) or tiles (estate), a shallow slab with an overhang
     const roof = o.style === 'estate' ? pick(r, ['#7a3b2a', '#5b5f66', '#8a4a2c']) : pick(r, ['#8d6f5a', '#a7b0b6', '#7f898f', '#96705a']);
     b.box(w + 0.5, 0.16, d + 0.5, hx, hh - 0.05, hz, roof, { mat: o.style === 'estate' ? 'tiles' : 'zinc', uv: 1.6 });
@@ -120,6 +142,145 @@ export function buildOutside(b: HomeBuilder, o: OutsideOpts) {
   b.box(1.1, 0.08, 0.08, o.x0 + (o.x1 - o.x0) * 0.7, 4.9, pz, '#4a3a28', { mat: 'wood' });
   for (const dx of [-3.5, 3.5]) b.box(0.02, 0.02, 3.6, o.x0 + (o.x1 - o.x0) * 0.7 + dx * 0.15, 4.85, pz - 1.5, '#1e1e20', { ry: dx * 0.08 });
   b.ao = prevAo;
+}
+
+function shadeCol(hex: string, k: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = (v: number) => Math.max(0, Math.min(255, Math.round(v * k)));
+  return `#${((1 << 24) | (ch((n >> 16) & 255) << 16) | (ch((n >> 8) & 255) << 8) | ch(n & 255)).toString(16).slice(1)}`;
+}
+
+const GRA_WALLS = ['#f4f1ea', '#ece6da', '#f7f5f0', '#e3e6e8', '#efe7d8'];
+const GRA_ROOFS = ['#3c4148', '#4a4f57', '#5b2e26', '#2f3338'];
+
+/** H1: a modern GRA duplex (two storeys, upper floor set back, parapet or grey hip roof, glass strips,
+ * balcony) in its own walled plot with a black gate facing the room. `west` = it faces east. */
+function graDuplex(b: HomeBuilder, r: Rand, hx: number, hz: number, west: boolean) {
+  const w0 = 6.2 + r() * 1.6, d0 = 5.0 + r() * 1.0;
+  const w = west ? d0 : w0, d = west ? w0 : d0;
+  const wall = pick(r, GRA_WALLS);
+  const trim = pick(r, ['#2f3640', '#5b3a24', '#7a7f86']);
+  // ground floor + upper floor (set back towards the far side), slab lines
+  b.box(w, 3.0, d, hx, -0.05, hz, wall, { mat: 'paint' });
+  const uw = west ? w * 0.8 : w * 0.72, ud = west ? d * 0.72 : d * 0.8;
+  const ux = west ? hx - w * 0.1 : hx - w * 0.14, uz = west ? hz - d * 0.14 : hz - d * 0.1;
+  b.box(uw, 2.8, ud, ux, 2.95, uz, shadeCol(wall, 0.97), { mat: 'paint' });
+  b.box(w + 0.2, 0.14, d + 0.2, hx, 2.92, hz, trim, { mat: 'concrete' });
+  if (r() < 0.55) {
+    // flat roof with a parapet cap
+    b.box(uw + 0.12, 0.35, ud + 0.12, ux, 5.75, uz, shadeCol(wall, 0.92), { mat: 'paint' });
+    b.box(uw + 0.2, 0.06, ud + 0.2, ux, 6.1, uz, trim, { mat: 'concrete' });
+  } else {
+    const roof = pick(r, GRA_ROOFS);
+    b.box(uw + 0.6, 0.18, ud + 0.6, ux, 5.72, uz, roof, { mat: 'tiles', uv: 1.6 });
+    b.box(uw * 0.55, 0.45, ud * 0.55, ux, 5.88, uz, roof, { mat: 'tiles', uv: 1.6 });
+  }
+  // glass strips facing the room (both floors) + a balcony with a rail on the upper floor
+  const glass = '#22303c';
+  if (!west) {
+    const fz = hz + d / 2 + 0.01;
+    for (let i = 0; i < 2; i++) b.box(1.3, 1.5, 0.04, hx - w / 4 + i * (w / 2), 0.7, fz, glass, { mat: 'metal' });
+    const uf = uz + ud / 2 + 0.01;
+    b.box(uw * 0.6, 1.4, 0.04, ux, 3.6, uf, glass, { mat: 'metal' });
+    b.box(uw * 0.7, 0.1, 0.9, ux, 2.95, uf + 0.45, '#d9d4ca', { mat: 'concrete' });
+    b.box(uw * 0.7, 0.05, 0.05, ux, 3.95, uf + 0.88, trim, { mat: 'metal' });
+  } else {
+    const fx = hx + w / 2 + 0.01;
+    for (let i = 0; i < 2; i++) b.box(0.04, 1.5, 1.3, fx, 0.7, hz - d / 4 + i * (d / 2), glass, { mat: 'metal' });
+    const uf = ux + uw / 2 + 0.01;
+    b.box(0.04, 1.4, ud * 0.6, uf, 3.6, uz, glass, { mat: 'metal' });
+    b.box(0.9, 0.1, ud * 0.7, uf + 0.45, 2.95, uz, '#d9d4ca', { mat: 'concrete' });
+    b.box(0.05, 0.05, ud * 0.7, uf + 0.88, 3.95, uz, trim, { mat: 'metal' });
+  }
+  // its plot wall towards us with a black sliding gate and two lit pillars
+  const fw = '#e9e4da';
+  if (!west) {
+    const gz = hz + d / 2 + 2.6;
+    b.box(w + 3, 1.9, 0.2, hx, -0.05, gz, fw, { mat: 'paint' });
+    b.box(w + 3.1, 0.08, 0.3, hx, 1.85, gz, '#8f877a', { mat: 'concrete' });
+    b.box(3.0, 1.8, 0.08, hx + w / 4, 0, gz + 0.14, '#1f2226', { mat: 'metal' });
+    for (const dx of [-1.6, 1.6]) {
+      b.box(0.36, 2.2, 0.36, hx + w / 4 + dx, -0.05, gz + 0.05, fw, { mat: 'paint' });
+      b.box(0.2, 0.2, 0.2, hx + w / 4 + dx, 2.15, gz + 0.05, '#fff1c9', { layer: 'glow' });
+    }
+  } else {
+    const gx = hx + w / 2 + 2.6;
+    b.box(0.2, 1.9, d + 3, gx, -0.05, hz, fw, { mat: 'paint' });
+    b.box(0.3, 0.08, d + 3.1, gx, 1.85, hz, '#8f877a', { mat: 'concrete' });
+    b.box(0.08, 1.8, 3.0, gx + 0.14, 0, hz + d / 4, '#1f2226', { mat: 'metal' });
+  }
+}
+
+/** H1 top tier: the GRA around a duplex. Clean paved road with kerbs and street lights, palms, lawn verges,
+ * modern duplexes in walled plots behind and to the west, no potholes and no sagging NEPA wires. */
+function buildGraOutside(b: HomeBuilder, o: OutsideOpts) {
+  const r = seeded(o.seed);
+  const cx = (o.x0 + o.x1) / 2, cz = (o.z0 + o.z1) / 2;
+  const den = o.density ?? 1;
+  b.resetFrame();
+  const prevAo = b.ao;
+  b.ao = false;
+  // manicured ground (lawn) with a paved ring round the plot
+  b.box(110, 0.05, 110, cx, -0.1, cz, '#7f9a63', { mat: 'grass', seg: 1, noOcc: true, uv: 4 });
+  b.box(o.x1 - o.x0 + 2.4, 0.02, o.z1 - o.z0 + 2.4, cx, -0.06, cz, '#b8b1a4', { mat: 'tiles', seg: 1, noOcc: true, uv: 2 });
+  if (o.street !== false) {
+    // interlocking-paved walkway, painted kerb, smooth asphalt with lane marks, far kerb + walkway
+    const z = o.z1 + 1.6;
+    b.box(110, 0.06, 1.2, cx, -0.06, z + 0.6, '#c9c2b4', { mat: 'tiles', seg: 1, noOcc: true, uv: 2 });
+    for (let x = cx - 50; x < cx + 50; x += 1.6) b.box(0.8, 0.13, 0.18, x, -0.06, z + 1.25, (Math.round(x / 1.6) % 2) ? '#f1efe8' : '#2b2c2f', { mat: 'concrete', seg: 1, noOcc: true });
+    b.box(110, 0.04, 6.8, cx, -0.07, z + 4.75, '#3b3d42', { mat: 'asphalt', seg: 1, noOcc: true });
+    for (let x = cx - 50; x < cx + 50; x += 3.2) b.box(1.6, 0.01, 0.12, x, -0.03, z + 4.75, '#f1efe8', { mat: 'concrete', seg: 1, noOcc: true });
+    b.box(110, 0.13, 0.18, cx, -0.06, z + 8.25, '#d8d4ca', { mat: 'concrete', seg: 1, noOcc: true });
+    b.box(110, 0.05, 1.6, cx, -0.07, z + 9.2, '#c9c2b4', { mat: 'tiles', seg: 1, noOcc: true, uv: 2 });
+    // street lights + palms on both kerbs, kept clear of the plot so nothing tall stands in front of the room
+    for (let x = cx - 40; x <= cx + 40; x += 10) {
+      if (x > o.x0 - 2.5 && x < o.x1 + 2.5) continue;
+      streetLight(b, x, z + 1.0, 1);
+      streetLight(b, x + 5, z + 8.6, -1);
+      if (den >= 1) tree(b, x + 2.5, z + 9.4, 1.05, true);
+    }
+  }
+  // modern duplexes behind (north) and to the west, each in its own walled plot
+  for (let x = o.x0 - 10; x < o.x1 + 14; x += 10.5 + r() * 2) graDuplex(b, r, x, o.z0 - 10 - r() * 1.5, false);
+  for (let z = o.z0 + 1; z < o.z1 + 8; z += 10.5 + r() * 2) graDuplex(b, r, o.x0 - 10 - r() * 1.5, z, true);
+  // our own high fence (back + west) with coping, and the estate road lights along it
+  const fh = 2.3;
+  b.box(o.x1 - o.x0 + 6, fh, 0.2, cx + 1, -0.05, o.z0 - 2.2, '#ece7dd', { mat: 'paint' });
+  b.box(0.2, fh, o.z1 - o.z0 + 5, o.x0 - 2.2, -0.05, cz + 1.5, '#e6e0d4', { mat: 'paint' });
+  b.box(o.x1 - o.x0 + 6.1, 0.08, 0.32, cx + 1, fh - 0.05, o.z0 - 2.2, '#8f877a', { mat: 'concrete' });
+  b.box(0.32, 0.08, o.z1 - o.z0 + 5.1, o.x0 - 2.2, fh - 0.05, cz + 1.5, '#8f877a', { mat: 'concrete' });
+  for (let x = o.x0; x <= o.x1 + 2; x += 7) streetLight(b, x, o.z0 - 2.8, -1);
+  // front: a low dwarf wall with railings (the camera sees over it) and gate pillars at the driveway (east)
+  const fz = o.z1 + 0.85;
+  const gx0 = o.x1 - 3.6, gx1 = o.x1 + 0.6;
+  const run = (xa: number, xb: number) => {
+    if (xb - xa < 0.2) return;
+    b.box(xb - xa, 0.45, 0.18, (xa + xb) / 2, -0.05, fz, '#ece7dd', { mat: 'paint' });
+    b.box(xb - xa, 0.04, 0.05, (xa + xb) / 2, 0.95, fz, '#1f2226', { mat: 'metal' });
+    for (let x = xa + 0.15; x < xb; x += 0.3) b.box(0.03, 0.55, 0.03, x, 0.4, fz, '#1f2226', { mat: 'metal' });
+  };
+  run(o.x0 - 2.2, gx0 - 0.25);
+  for (const x of [gx0 - 0.2, gx1 + 0.2]) {
+    b.box(0.42, 2.0, 0.42, x, -0.05, fz, '#ece7dd', { mat: 'paint' });
+    b.box(0.5, 0.08, 0.5, x, 1.95, fz, '#8f877a', { mat: 'concrete' });
+    b.box(0.2, 0.2, 0.2, x, 2.03, fz, '#fff1c9', { layer: 'glow' });
+  }
+  // the black sliding gate, rolled open behind the dwarf wall
+  b.box(3.6, 1.5, 0.07, gx0 - 2.1, 0, fz - 0.22, '#1f2226', { mat: 'metal' });
+  // palms inside the back and west fence lines
+  const nt = Math.round((3 + r() * 2) * den);
+  for (let i = 0; i < nt; i++) {
+    if (i % 2 === 0) tree(b, o.x0 - 1 + r() * (o.x1 - o.x0 + 2), o.z0 - 3.4 - r() * 1.2, 1.1 + r() * 0.3, true);
+    else tree(b, o.x0 - 3.4 - r() * 1.2, o.z0 + r() * (o.z1 - o.z0), 1.1 + r() * 0.3, true);
+  }
+  b.ao = prevAo;
+}
+
+/** H1: a slim modern street light (pole, arm, LED head that glows at night). dir = which way the arm points (z). */
+function streetLight(b: HomeBuilder, x: number, z: number, dir: number) {
+  b.cyl(0.05, 0.07, 5.0, x, -0.05, z, '#5d646b', { mat: 'metal', seg: 6 });
+  b.box(0.06, 0.06, 1.1, x, 4.9, z + dir * 0.5, '#5d646b', { mat: 'metal' });
+  b.box(0.22, 0.08, 0.42, x, 4.82, z + dir * 1.0, '#f6f1dc', { layer: 'glow' });
 }
 
 export function tree(b: HomeBuilder, x: number, z: number, s: number, palm = false) {

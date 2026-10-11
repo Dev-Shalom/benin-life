@@ -116,3 +116,19 @@ No per-district price multipliers in v1: edit `items.price` instead.
 - Buy mode / furniture (dock Buy sheet keeps the preview), Cars app (the starter car is not sellable until then),
   moving house (Houses app has the teaser card), eviction (read `rent_owed`), hospital vs paracetamol balance (P2-FIN).
 - Admin page (V1-7): edit `items` rows (price, effects, sold_at, sellable, resale_pct) and the `shop.*` / `rent.*` config.
+
+## Moving house (H1)
+Phone → Houses lists every active home (`house_options()`): size in m², weekly rent and the move-in fee
+(`weekly_rent × house.move_in_weeks`, default 4 weeks: agent, caution and legal). Tapping one opens the
+"Move into your new <home>?" sheet (`MoveHouseSheet.tsx`): furniture comes along, you can't go back, the garage stays
+behind. Yes calls `house_move(home)` (migration `20261012000300_move_house.sql`, test `move_house_test.sql`):
+- Refused while travelling, busy, jailed, in hospital, visiting (`visiting`), with guests in the house (`hosting`),
+  with rent owed (`rent_owed`), short of money, into the same home (`same_home`), into a home you left (`old_home`),
+  or with `house.move_enabled` off.
+- Pays bank first, then cash (ledger `house_move`, statement "Move-in: <home>"), records the old home in
+  `player_released_homes`, deletes the garage row, moves the private home location to the new map spot/scene and
+  carries the player home; the Sim walks in from the door (Game.tsx arrival key includes the housing id).
+- Furniture: see docs/FURNITURE_CATALOGUE.md. Weekly rent switches to the new home on the usual rent day.
+- The home scene's neighbourhood follows the house tier (`neighbourhoodOf` in `room.ts`): local compounds with
+  zinc-roof face-me rows (hostel, face-me, self-contain), a mid estate of bungalows and two-storey flats (mini-flat),
+  and the GRA (duplex): modern duplexes behind gated walls, palms, a paved road with street lights.

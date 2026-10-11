@@ -11,7 +11,7 @@ Files: `supabase/migrations/20261010000400_garage.sql`, `supabase/tests/garage_t
 - **Building** is instant, with a toast. Live progress was left out because garage building is not a home activity and the busy/timer pattern is tied to `do_activity`.
 - **Paying:** bank first, then cash, through `bl_add_money`. The ledger reason is `garage` with meta `{garage, name}`, and the statement label is **"Garage: <name>"**.
 - **Upgrading or changing type** replaces the old garage at the **full new price**. There is no refund or trade-in. Building the type you already have is refused (`already_built`).
-- **Moving home:** the garage belongs to the home it was built at (`housing_id` + `home_location_id` saved on the row). In a different home it reads as "no garage", and the player builds again. If they move back, the old one counts again, because the row is still there until they build elsewhere.
+- **Moving home:** the garage belongs to the home it was built at (`housing_id` + `home_location_id` saved on the row). H1 moving house deletes the garage row: the garage stays behind, the cars stay owned (parked outside until a new garage is built), and the move sheet says so. You can never move back to an old home.
 
 ## Gating by home type
 
