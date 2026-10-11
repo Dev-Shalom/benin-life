@@ -930,6 +930,25 @@ export function buildPiece(b: B, f: FurnitureItem, wallH: number) {
       }
       return;
     }
+    case 'stairs': {
+      // H1 duplex staircase: tiled treads climbing towards the back wall, a dark wood stringer and a
+      // steel + wood handrail on the open (west) side. The upper floor itself is cut away.
+      const n = 10;
+      const run = 2.6 / n;
+      const rise = Math.min(0.29, (wallH - 0.1) / n);
+      for (let i = 0; i < n; i++) {
+        const z = 1.3 - (i + 0.5) * run;
+        b.box(1.0, rise * (i + 1) - 0.03, run, 0, 0, z, '#d9d3c7', { mat: 'concrete' });
+        b.box(1.02, 0.03, run + 0.02, 0, rise * (i + 1) - 0.03, z, '#efe9de', { mat: 'tiles' });
+      }
+      b.box(0.06, rise * n, 2.6, 0.5, 0, 0, WOOD_DARK, { mat: 'wood' });
+      for (let i = 0; i <= n; i += 2) {
+        const z = 1.3 - (i + 0.5) * run;
+        b.box(0.03, 0.9, 0.03, -0.47, rise * Math.min(n, i + 1), z, CHROME, { mat: 'metal' });
+      }
+      b.box(0.06, 0.05, 2.75, -0.47, rise * n * 0.5 + 0.92, 0, WOOD_DARK, { mat: 'wood', rx: Math.atan2(rise * n, 2.6) });
+      return;
+    }
     default:
       void wallH;
   }

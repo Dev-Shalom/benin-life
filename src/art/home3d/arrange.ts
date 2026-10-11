@@ -8,7 +8,7 @@
 // - a SOLID piece may not overlap the house's fixtures (toilet, shower, shared stalls, generator, drum),
 //   interior partitions, the clear zone inside/outside each door, or another solid piece of yours.
 //   Rugs, curtains and other non-solid pieces only follow the area rule.
-import { FIXED_KINDS, KINDS, LAYOUTS, type FurnitureItem, type HomeLayout, type HomeLayoutId, type Placement } from './model';
+import { FIXED_KINDS, KINDS, LAYOUTS, isFixture, type FurnitureItem, type HomeLayout, type HomeLayoutId, type Placement } from './model';
 
 export type Rect = [number, number, number, number];
 
@@ -52,7 +52,9 @@ export function homeBlocks(id: HomeLayoutId): HomeBlocks {
   const R = (a: Rect): Rect => a.map(r2) as Rect;
   const blocks: Rect[] = [];
   for (const f of L.furniture) {
-    if (!FIXED_KINDS.has(f.kind) || f.kind === 'ac' || f.kind === 'clothesline') continue;
+    if (!isFixture(f) || f.kind === 'ac' || f.kind === 'clothesline') continue;
+    // H1 built-ins block only when solid (a chandelier or curtains never get in the way)
+    if (!FIXED_KINDS.has(f.kind) && !KINDS[f.kind].solid) continue;
     blocks.push(R(rectOf(f.kind, f.x, f.z, f.rot ?? 0)));
   }
   for (const [x1, z1, x2, z2] of L.partitions) {
