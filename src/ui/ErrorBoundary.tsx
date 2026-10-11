@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { EmptyState } from './EmptyState';
 import { Button } from './Button';
+import { reportError } from '../lib/errorReport';
 
 interface Props {
   children: ReactNode;
@@ -28,6 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[panel crash]', error, info.componentStack);
+    reportError('boundary', error, info.componentStack ?? undefined);
   }
 
   render() {

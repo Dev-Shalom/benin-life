@@ -28,6 +28,31 @@ Open tabs from before a deploy reload themselves once if they ask for a JS chunk
 - **Database:** migrations can't be undone automatically. Write a new migration that reverses the change (e.g. re-create the old function body) and push it. Config mistakes are easier: Admin → Audit → **↺ Restore old**, or Admin → Settings → "↺ Back to …".
 - Supabase free plan has **no point-in-time restore**; daily backups exist on paid plans. Before a risky migration, take a manual dump: Supabase dashboard → Database → Backups (paid) or `supabase db dump --linked -f backup.sql` (needs the DB password).
 
+## Backups: turn them on before real money comes in (L1)
+Supabase dashboard → project `twwttirvesbwjvzjmenp`:
+1. **Daily backups.** Organization → **Billing** → upgrade the organization to **Pro**. Daily backups start by themselves (kept 7 days on Pro). Check them at Project → **Database → Backups → Scheduled backups**: a new row should appear within a day.
+2. **Point-in-time recovery (PITR)** (restore to any second, recommended once top-ups and ads are live). Project → **Settings → Add-ons → Point in time recovery → Change** → pick 7 days → Confirm. It needs at least the Small compute add-on (Settings → Add-ons → **Compute size**); the dashboard tells you if it does. Then Database → Backups shows a **Point in time** tab.
+3. **Restore drill (5 minutes, once):** Database → Backups → pick yesterday's backup → **Restore**. Do this only on a test project, or read the confirmation screen and cancel; a restore overwrites the live database.
+4. **Free-plan fallback** (if you stay on Free for now): weekly by hand, `supabase db dump --linked -f backup-YYYY-MM-DD.sql` and `supabase db dump --linked --data-only -f data-YYYY-MM-DD.sql` (needs the DB password from Settings → Database). Keep the files somewhere private (they contain player emails).
+5. **Storage** (billboard ad images, voice notes) is not in database backups. It is small; if you need a copy, download the `billboard-ads` bucket from Storage.
+
+## Vercel settings to check (L1)
+Vercel dashboard → project:
+| Where | What to check |
+|---|---|
+| Settings → Git | Production Branch = **`main`**. |
+| Settings → Environment Variables (Production) | `PAYSTACK_PUBLIC_KEY` (or `VITE_PAYSTACK_PUBLIC_KEY`) = your live `pk_live_…` key (a `pk_test_` key means test checkouts). `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` come from the committed `.env.production`, so leave them unset in Vercel or make sure they match. |
+| Settings → Deployment Protection | **Vercel Authentication off for Production** (otherwise players get a Vercel login page). |
+| Settings → Domains | `benin-life.vercel.app` (and your custom domain if you add one; then update Supabase Site URL + Redirect URLs). |
+| Deployments | The newest `main` deploy says **Ready**, and https://benin-life.vercel.app/version.json shows its commit SHA. |
+| Settings → Functions / Usage | Hobby plan limits (bandwidth). Vercel Hobby is non-commercial; real-money top-ups and ads count as commercial use, so plan to move to **Pro** when you start selling. |
+
+## Client errors (L1)
+The app reports crashes to the database so you can see them without player screenshots.
+- **What is sent:** the top-level crash screen (ErrorBoundary), every panel crash, `window.onerror`, unhandled promise rejections and stale-chunk reloads. Code: `src/lib/errorReport.ts` (hooked in `src/main.tsx` and `src/ui/ErrorBoundary.tsx`). Noise is skipped (ResizeObserver, "Failed to fetch" on bad data, cross-origin "Script error"). The same message is sent at most once a minute and at most 20 reports per tab. Dev builds send nothing unless `localStorage['bl.debug.errors'] = '1'`.
+- **Where it lands:** table `client_errors` through `client_error_log()` (migration `20261012000600_launch.sql`). Only the user id from the session, the message (≤ 500 chars), stack (≤ 4,000), page path without query string, build id and browser are stored. Players can't read the table. Per player at most `errors.per_user_per_hour` (30) an hour; logged-out visitors share 10× that. Rows older than `errors.keep_days` (14) are deleted.
+- **Where you see it:** Admin → **Overview → App errors** (last 24 h / 3 days / 7 days, grouped by message, tap for the stack, user and browser). Switch it off with `errors.enabled`.
+
 ## Becoming admin
 - **Owner claim (easiest):** sign up on the live site with an email listed in `admin.bootstrap_emails` (currently dev.shalom1@gmail.com, code.devshalom@gmail.com), finish creating the Sim, open https://benin-life.vercel.app/admin and press **"I'm the owner: claim admin"**. Then in Admin → Settings → Admin, **clear the owner emails list**.
 - **SQL editor:** Supabase dashboard → SQL Editor → `update profiles set is_admin = true where username = '<your username>';`

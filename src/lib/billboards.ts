@@ -343,7 +343,7 @@ export type BuyResult =
 
 /** Upload → create the ad (awaiting payment) → Paystack → server verify (ad becomes pending review). */
 export async function buyAd(opts: { board: string; days: Duration; image: Blob; type: string; link: string; userId: string }): Promise<BuyResult> {
-  if (!paystackReady()) return { status: 'error', message: 'Ad payments are coming soon.' };
+  if (!paystackReady()) return { status: 'error', message: 'Ad payments are paused right now. Check back later.' };
   const ext = opts.type === 'image/webp' ? 'webp' : opts.type === 'image/png' ? 'png' : 'jpg';
   const path = `${opts.userId}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const up = await supabase.storage.from('billboard-ads').upload(path, opts.image, { contentType: opts.type, cacheControl: '31536000', upsert: false });

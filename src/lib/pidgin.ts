@@ -62,7 +62,7 @@ export const P = {
   protected: 'New player protection',
   logout: 'Log out',
   ageNote: 'For players 18 and over. Benin Life is a game: the money is fake and nothing here is real-world advice.',
-  panelMissing: 'Coming soon. This part of the city is still being built.',
+  panelMissing: 'Nothing to do here yet. Try another spot in the city.',
 };
 
 export type NeedKey = 'hunger' | 'energy' | 'hygiene' | 'fun' | 'social' | 'bladder' | 'health' | 'stress';
@@ -190,7 +190,6 @@ export const ORIGIN_UI = {
   item: (name: string) => `Your own ${name}, from day one`,
   allowance: (amount: string) => `Dad sends ${amount} allowance every day`,
   headStart: (n: number) => `Career head start: +${n} level${n === 1 ? '' : 's'} at your first job`,
-  easyLoan: 'LAPO micro-loans are easy to get when you need a push (coming soon)',
   cashByHome: 'Your starting cash depends on where you choose to live',
   emptyBag: 'Empty bag for now. Your first buy will taste sweet.',
   collectDad: "Collect Dad's allowance",

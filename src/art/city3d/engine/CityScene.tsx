@@ -1318,7 +1318,7 @@ export default function CityScene(props: CitySceneProps) {
       case 'goslow':
         return { text: 'Red roads are jammed. Ramat Park is the worst. Rides here take longer.', soon: false };
       case 'neighbours':
-        return crowd ? (counts.neighbours ? null : { text: 'No other players out right now.', soon: false }) : { text: 'Live player counts per place · Coming soon', soon: true };
+        return crowd ? (counts.neighbours ? null : { text: 'No other players out right now.', soon: false }) : { text: 'Player counts are loading…', soon: false };
       case 'danger':
         return { text: night ? 'Danger zones glow red at night. Move with care.' : 'These spots turn risky after dark.', soon: false };
       case 'markets':

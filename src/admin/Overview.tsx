@@ -6,6 +6,7 @@ import { adminApi } from './api';
 import { Btn, LoadError, PageHead, Skeleton } from './parts';
 import { useLoad } from './util';
 import { usePresenceStore } from '../state/presence';
+import ErrorsSection from './Errors';
 
 function Stat({ label, value, sub, tone, title }: { label: string; value: string; sub?: string; tone?: 'green' | 'red' | 'amber'; title?: string }) {
   return (
@@ -123,6 +124,7 @@ export default function Overview() {
           </section>
         </>
       )}
+      <ErrorsSection />
     </div>
   );
 }

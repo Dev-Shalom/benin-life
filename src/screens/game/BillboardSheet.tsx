@@ -92,7 +92,7 @@ function BoardView({ board, rotate, buyEnabled, onAdd, onClose }: { board: Board
     else if (h.id === 'boutique') { onClose(); setOverlay('boutique'); }
     else if (h.id === 'events') { onClose(); toast('Check "On today" on the map for tonight\'s events.', 'info'); }
     else if (buyEnabled) onAdd();
-    else toast('Booking a billboard opens soon.', 'info');
+    else toast('Booking a billboard is paused right now.', 'info');
   };
 
   return (
@@ -136,12 +136,12 @@ function BoardView({ board, rotate, buyEnabled, onAdd, onClose }: { board: Board
               </div>
             ))}
       </div>
-      <button type="button" className="bb-add" onClick={() => (buyEnabled ? onAdd() : toast('Booking a billboard opens soon. Hold on!', 'info'))}>
+      <button type="button" className="bb-add" onClick={() => (buyEnabled ? onAdd() : toast('Booking a billboard is paused right now. Check back later.', 'info'))}>
         <Icon name="plus" size={20} stroke={2.4} /> Add your ad to this board
       </button>
       <p className="bb-foot">
         A digital board: yours goes live after a quick check and takes turns with {n ? `the ${n} ${n === 1 ? 'ad' : 'ads'} here` : 'the other ads'} · {koboLabel(price7)} for 7 days
-        {!buyEnabled && <><br />Booking opens soon.</>}
+        {!buyEnabled && <><br />Booking is paused right now.</>}
       </p>
       <LeaveModal ad={leaving} onClose={() => setLeaving(null)} />
       <ReportModal ad={reporting} onClose={() => setReporting(null)} />
@@ -334,7 +334,7 @@ function AddAd({ board, data, state, onBack, onDone }: {
       <div className="bb-actions">
         <Button variant="ghost" size="lg" onClick={onBack} disabled={busy}>Back</Button>
         <Button variant="green" size="lg" className="grow" disabled={!img || !linkValid || !ready} loading={busy} onClick={() => void pay()}>
-          {ready ? cta : 'Booking opens soon'}
+          {ready ? cta : 'Booking paused'}
         </Button>
       </div>
       <p className="bb-foot">

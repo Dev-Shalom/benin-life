@@ -24,7 +24,7 @@ export function PanelHost({ id, location, close, params }: {
   const refresh = useGame((s) => s.refresh);
   const Comp = loadPanel(id);
   if (!state) return null;
-  if (!Comp) return <EmptyState icon="sparkle" title={`${PANEL_LABELS[id]} never ready`} body={P.panelMissing} />;
+  if (!Comp) return <EmptyState icon="sparkle" title={`${PANEL_LABELS[id] ?? "This"} is not open yet`} body={P.panelMissing} />;
   return (
     <ErrorBoundary resetKey={`${id}:${location.id}`}>
       <Suspense fallback={<PanelSkeleton />}>

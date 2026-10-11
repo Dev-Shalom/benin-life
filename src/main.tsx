@@ -7,8 +7,10 @@ import './styles/game.css';
 import App from './App.tsx';
 import { initAuth } from './state/game';
 import { initSound } from './lib/sound';
+import { initErrorReporting, reportError } from './lib/errorReport';
 import { Button, EmptyState, ErrorBoundary } from './ui';
 
+initErrorReporting();
 initAuth();
 initSound();
 
@@ -22,6 +24,7 @@ window.addEventListener('vite:preloadError', (e) => {
   } catch {
     /* storage blocked: still reload once */
   }
+  reportError('chunk', (e as Event & { payload?: unknown }).payload ?? 'vite:preloadError');
   e.preventDefault();
   window.location.reload();
 });

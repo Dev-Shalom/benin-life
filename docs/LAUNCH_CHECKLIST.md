@@ -1,0 +1,19 @@
+# Launch checklist (things only the owner can do)
+
+Do these in order on the live site, https://benin-life.vercel.app. Each step takes a few minutes. Details are in the linked docs.
+
+1. **Check the release is live.** GitHub → Actions: "Supabase preview DB" is green for the latest push (it applies `20261012000600_launch.sql`). Vercel → Deployments: newest `main` deploy is **Ready**. Open https://benin-life.vercel.app/version.json and check the SHA matches the latest commit.
+2. **Claim admin.** Sign up (or log in) with dev.shalom1@gmail.com or code.devshalom@gmail.com, create the Sim, open https://benin-life.vercel.app/admin and press **"I'm the owner: claim admin"**. Do it for both emails if you want both to be admins. (docs/ADMIN.md)
+3. **Clear the owner emails.** Admin → Settings → search `admin.bootstrap_emails` → empty it → Save. From now on nobody else can claim admin, even with email confirmation off.
+4. **Admin push alerts.** GitHub → repo → Settings → Secrets and variables → Actions → add **`VAPID_PRIVATE_KEY`** (the 43-character key you were given) and **`VAPID_SUBJECT`** (`mailto:code.devshalom@gmail.com`). Then Actions → **Supabase Edge Functions** → **Run workflow**, wait for green. On your phone open `/admin/ads` (iPhone: from the Home Screen app), tap **Notify me**, then **Send a test**. (docs/BILLBOARDS.md "Owner setup")
+5. **Turn on backups.** Supabase → Billing → Pro (daily backups), then Settings → Add-ons → **Point in time recovery** (7 days). Check Database → Backups shows a backup the next day. (docs/DEPLOY.md "Backups")
+6. **Check Vercel settings.** Production branch `main`, live Paystack public key, Deployment Protection off for Production. (docs/DEPLOY.md "Vercel settings to check")
+7. **Read Terms and Privacy.** https://benin-life.vercel.app/terms and /privacy. Check you are happy with: 18+ only, game money has no cash value, top-ups are final, **billboard ads are real-money ads, approved by you, fully refunded if rejected, taken down without a refund if they break the rules**, contact email code.devshalom@gmail.com. Text lives in `src/screens/Legal.tsx`.
+8. **Test a ₦200 top-up end to end.** Admin → Settings → `payments.enabled` on. In the game: Wallet → **Small chops (₦200)** → pay with a real card. Check: the bank goes up by ₦20,000, Bank → History says "Top-up via Paystack", Admin → Payments shows it as **success**, and the Paystack dashboard shows the payment. (docs/PAYMENTS.md)
+9. **Test a cheap billboard ad end to end.** In the game: tap a billboard (or Phone → Billboards) → Add your ad → 1 day on the cheapest board → upload an image, link `https://wa.me/234…` → pay. Check you get the push alert, then Admin → Ads → **Approve**: the ad shows on the map within 15 s. Book a second one and **Reject** it: the player gets an alert and Admin → Ads → Refunds shows **refunded** (Paystack dashboard → Refunds too; money returns in a few working days).
+10. **Set the balance values.** Admin → Settings / Content → Homes, using the table in docs/BALANCE.md (main one: lower `daily.gem_prize` to 1000 and `daily.gem_all_bonus` to 2000).
+11. **Check `origin.force_next`.** Admin → Settings: leave it empty unless you want the next account to be Nepo (it clears itself after one use). Keep `origin.nepo_pct` at 10.
+12. **One last look.** Admin → Overview → **App errors** should be empty or nearly empty after your own test play. Play 5 minutes on your phone: walk, eat, work a shift, open the phone apps.
+13. **Announce.** Share the link. Watch Admin → Overview (online now, new players, App errors) and Admin → Ads for the first hours. If something breaks: Vercel → Deployments → last good one → **Promote to Production** (docs/DEPLOY.md "Rolling back").
+
+Optional soon after launch: turn on **Confirm email** and set up custom SMTP in Supabase Auth (docs/DEPLOY.md "Supabase Auth settings"), and move Vercel to Pro once you are selling top-ups and ads.

@@ -6350,3 +6350,18 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .phone-app--bolt .ride-dest__edit {
   color: #12a35f;
 }
+/* L1: Wishes in the Sim sheet are real buttons (today's D1 daily goals) */
+.wish-row {
+  width: 100%;
+  border: 0;
+  text-align: left;
+  font: inherit;
+  opacity: 1;
+  cursor: pointer;
+}
+.wish-row.is-done {
+  opacity: 0.6;
+}
+.wish-row:active {
+  transform: scale(0.98);
+}

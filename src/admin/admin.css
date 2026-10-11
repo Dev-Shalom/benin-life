@@ -462,3 +462,17 @@
 }
 .adm-tabbar__item { position: relative; }
 .adm-tabbar__badge { position: absolute; top: 2px; right: calc(50% - 20px); margin: 0; }
+
+/* L1: App errors (Overview) */
+.adm-errors__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.adm-errors__head .adm-chips { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.adm-cerr { border-top: 1px solid var(--adm-line); }
+.adm-cerr:first-child { border-top: 0; }
+.adm-cerr__row { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; width: 100%; padding: 10px 2px; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; color: inherit; }
+.adm-cerr__count { font-weight: 800; font-variant-numeric: tabular-nums; }
+.adm-cerr__msg { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.adm-cerr__meta { grid-column: 2; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--muted); }
+.adm-cerr__detail { padding: 0 2px 12px; }
+.adm-cerr__sample { margin-top: 8px; }
+.adm-cerr__ua { overflow-wrap: anywhere; }
+.adm-cerr__stack { margin: 6px 0 0; max-height: 220px; overflow: auto; padding: 8px 10px; border-radius: 10px; background: #0f172a; color: #e2e8f0; font-size: 11.5px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
