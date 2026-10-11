@@ -5,10 +5,13 @@ import { SHORTCUTS } from './shortcuts';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { useCatalog, type ShopFurniture } from '../../state/catalog';
-import { furnitureBuy } from '../../api/furniture';
+import { furnitureBuy, furnitureSell } from '../../api/furniture';
+import { Thumb } from '../../art/thumbs/Thumb';
+import { getCfg } from '../../lib/config';
+import { errorMessage } from '../../lib/api';
 import { furnitureKey, type HomeLayout, type HomeLayoutId, type OwnedPiece, type SavedHomePosition } from '../../art/home3d/model';
 import { naira, nairaShort } from '../../lib/format';
-import { Icon, Segmented, Sheet, toast } from '../../ui';
+import { Button, Icon, Modal, Segmented, Sheet, toast } from '../../ui';
 
 export function ShortcutsSheet() {
   const overlay = useUi((s) => s.overlay);
@@ -88,12 +91,22 @@ export interface BuyHome {
   layoutId: HomeLayoutId;
 }
 
-export function BuySheet({ tab, onTab, home, onBought, onArrange }: {
+/** H2: what selling one piece pays (furniture.resale_pct of the price, rounded down to ₦100), like furniture_sell. */
+export function furniturePayout(price: number): number {
+  const pct = Math.max(0, Math.min(100, Number(getCfg('furniture.resale_pct', 45))));
+  return Math.floor((price * pct) / 100 / 100) * 100;
+}
+
+interface MineRow { key: string; id: string; kind: string; color: string | null; name: string; emoji: string; placed: boolean; price: number; canSell: boolean }
+
+export function BuySheet({ tab, onTab, home, onBought, onSold, onArrange }: {
   tab: BuyTab;
   onTab: (t: BuyTab) => void;
   /** The player's own home when they are in it (null = away / visiting: buying still delivers). */
   home: BuyHome | null;
   onBought: (key: string) => void;
+  /** H2: a piece was sold (reload the furniture + positions). */
+  onSold: () => void;
   onArrange: (key: string | null) => void;
 }) {
   const overlay = useUi((s) => s.overlay);
@@ -109,6 +122,8 @@ export function BuySheet({ tab, onTab, home, onBought, onArrange }: {
   const [tier, setTier] = useState<TierFilter>('all');
   const [confirm, setConfirm] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [selling, setSelling] = useState<MineRow | null>(null);
+  const [sellBusy, setSellBusy] = useState(false);
   const open = overlay === 'buy';
   useEffect(() => {
     if (open) void loadShop();
@@ -140,16 +155,38 @@ export function BuySheet({ tab, onTab, home, onBought, onArrange }: {
   const mine = useMemo(() => {
     if (!home) return [];
     const placed = new Set(home.layout.furniture.map((f) => f.id));
-    const rows: { key: string; name: string; emoji: string; placed: boolean }[] = [];
+    const rows: MineRow[] = [];
     for (const p of home.pieces) {
-      const emoji = shop?.find((s2) => s2.id === p.id)?.emoji ?? '🪑';
-      for (let c = 1; c <= Math.max(1, p.qty ?? 1); c++) {
+      const cat = shop?.find((s2) => s2.id === p.id);
+      const qty = Math.max(1, p.qty ?? 1);
+      for (let c = 1; c <= qty; c++) {
         const key = furnitureKey(p.id, c);
-        rows.push({ key, name: (p.name ?? p.id) + ((p.qty ?? 1) > 1 ? ` #${c}` : ''), emoji, placed: placed.has(key) });
+        rows.push({
+          key, id: p.id, kind: p.kind, color: p.color ?? null, emoji: cat?.emoji ?? '🪑',
+          name: (p.name ?? p.id) + (qty > 1 ? ` #${c}` : ''), placed: placed.has(key), price: cat?.price ?? 0,
+          // the free starter piece stays (server: starter_piece); a bought extra copy can go
+          canSell: (cat?.price ?? 0) > 0 && !(p.source === 'starter' && qty <= 1),
+        });
       }
     }
     return rows.sort((a, b) => Number(a.placed) - Number(b.placed));
   }, [home, shop]);
+
+  const sell = async () => {
+    if (!selling) return;
+    setSellBusy(true);
+    try {
+      const r = await furnitureSell(selling.key);
+      toast(r.message, 'good');
+      setSelling(null);
+      void useGame.getState().refresh();
+      onSold();
+    } catch (e) {
+      toast(errorMessage(e), 'bad');
+    } finally {
+      setSellBusy(false);
+    }
+  };
 
   return (
     <Sheet open={open} onClose={() => setOverlay(null)} className="buy-sheet"
@@ -189,7 +226,7 @@ export function BuySheet({ tab, onTab, home, onBought, onArrange }: {
                 const perk = perkLine(it);
                 return (
                   <div key={it.id} className={`buy-card buy-card--${it.tier}`}>
-                    <span className="buy-card__thumb" aria-hidden>{it.emoji}</span>
+                    <Thumb spec={{ type: 'furniture', kind: it.kind, color: it.color }} fallback={it.emoji} className="buy-card__thumb" />
                     <span className={`buy-card__tier buy-card__tier--${it.tier}`}>{it.tier === 'mid' ? 'Mid' : it.tier.toUpperCase()}</span>
                     <span className="buy-card__name">{it.name}</span>
                     {perk && <span className="buy-card__perk">{perk}</span>}
@@ -222,11 +259,14 @@ export function BuySheet({ tab, onTab, home, onBought, onArrange }: {
             <ul className="buy-mine">
               {mine.map((m) => (
                 <li key={m.key} className="buy-mine__row">
-                  <span className="buy-mine__emoji" aria-hidden>{m.emoji}</span>
+                  <Thumb spec={{ type: 'furniture', kind: m.kind, color: m.color }} fallback={m.emoji} className="buy-mine__emoji" />
                   <span className="grow">
                     <span className="buy-mine__name">{m.name}</span>
-                    <span className={`buy-mine__state${m.placed ? '' : ' is-stored'}`}>{m.placed ? 'In the room' : 'In storage'}</span>
+                    <span className={`buy-mine__state${m.placed ? '' : ' is-stored'}`}>{m.placed ? 'In the room' : 'In storage'}{m.canSell ? '' : ' · came with the house'}</span>
                   </span>
+                  {m.canSell && (
+                    <button type="button" className="buy-mine__btn buy-mine__btn--sell" onClick={() => setSelling(m)}>Sell</button>
+                  )}
                   <button type="button" className="buy-mine__btn" onClick={() => onArrange(m.key)}>{m.placed ? 'Move' : 'Place'}</button>
                 </li>
               ))}
@@ -257,6 +297,23 @@ export function BuySheet({ tab, onTab, home, onBought, onArrange }: {
           <p className="buy-tip"><span aria-hidden>🛒</span> Markets, bukas, motor parks and PoS stands sell food, drinks, airtime and more: open the place on the map and tap <b>Shop</b>.</p>
         </div>
       )}
+      <Modal open={selling !== null} onClose={() => !sellBusy && setSelling(null)} title={selling ? `Sell ${selling.name}?` : ''}
+        art={selling ? <Thumb spec={{ type: 'furniture', kind: selling.kind, color: selling.color }} fallback={<span className="sell-dialog__emoji">{selling.emoji}</span>} className="sell-dialog__thumb" /> : null}
+        actions={
+          <>
+            <Button variant="ghost" disabled={sellBusy} onClick={() => setSelling(null)}>Keep it</Button>
+            <Button variant="gold" loading={sellBusy} onClick={() => void sell()}>Sell for {selling ? naira(furniturePayout(selling.price)) : ''}</Button>
+          </>
+        }>
+        {selling && (
+          <div className="sell-dialog">
+            <div className="sell-dialog__row"><span>Shop price</span><span>{naira(selling.price)}</span></div>
+            <div className="sell-dialog__row"><span>Fairly-used buyer pays</span><span>{Math.round(Number(getCfg('furniture.resale_pct', 45)))}%</span></div>
+            <div className="sell-dialog__row sell-dialog__row--total"><span>You get (cash)</span><b>{naira(furniturePayout(selling.price))}</b></div>
+            <p className="sell-dialog__note">{selling.placed ? 'It leaves the room for good.' : 'It leaves My items for good.'}</p>
+          </div>
+        )}
+      </Modal>
     </Sheet>
   );
 }

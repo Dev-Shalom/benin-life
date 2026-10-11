@@ -22,7 +22,7 @@ function Row({ it, sellHere, busyNow, busy, onUse, onSell }: {
 }) {
   const verb = verbFor(it);
   const note = it.kind === 'boost' ? 'Used up on your next bath at home' : undefined;
-  const canSell = sellHere && it.sellable && it.resale_price > 0;
+  const canSell = sellHere && it.sellable && it.resale_price > 0 && it.category !== 'vehicle'; // H2: cars sell via Phone → Cars
   return (
     <ItemCard item={it} owned={undefined} kind={it.kind} action={verb} note={note}
       actionVariant="green" blocked={verb && busyNow ? 'Busy right now' : null} busy={busy === `use:${it.id}`}

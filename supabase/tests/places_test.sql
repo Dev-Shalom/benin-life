@@ -308,12 +308,13 @@ begin
   -- too expensive for bank + cash
   update profiles set bank = 100000 where id = b;
   perform pg_temp.pl_hint($q$ select shop_buy('tokunbo_car', 1) $q$, 'not_enough_cash');
-  -- bank first, then cash: 2.0m bank + 0.5m cash of 300k? -> 2.2m bank + 300k cash covers 2.5m
-  update profiles set bank = 2200000, cash = 300000 where id = b;
+  -- bank first, then cash. H2: the lot is a budget dealer (x0.88), so the 2.5m saloon costs 2.2m here:
+  -- 1.9m bank + 300k cash covers it
+  update profiles set bank = 1900000, cash = 300000 where id = b;
   r := shop_buy('tokunbo_car', 1);
   select * into p from profiles where id = b;
-  perform pg_temp.assert((r->>'car')::boolean and p.bank = 0 and p.cash = 0, format('paid 2.2m bank + 300k cash (bank %s cash %s)', p.bank, p.cash));
-  perform pg_temp.assert(exists (select 1 from ledger where user_id = b and reason = 'car_purchase' and account = 'bank' and delta = -2200000), 'bank ledger');
+  perform pg_temp.assert((r->>'car')::boolean and p.bank = 0 and p.cash = 0, format('paid 1.9m bank + 300k cash (bank %s cash %s)', p.bank, p.cash));
+  perform pg_temp.assert(exists (select 1 from ledger where user_id = b and reason = 'car_purchase' and account = 'bank' and delta = -1900000), 'bank ledger');
   perform pg_temp.assert(exists (select 1 from ledger where user_id = b and reason = 'car_purchase' and account = 'cash' and delta = -300000), 'cash ledger');
   perform pg_temp.assert(exists (select 1 from inventory where user_id = b and item_id = 'tokunbo_car' and qty = 1), 'car in the Bag');
   -- own-car travel is now allowed (with fuel money)

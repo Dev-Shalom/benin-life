@@ -555,6 +555,8 @@ export interface OwnedPiece {
   qty?: number;
   /** B1: catalogue name (for the arrange list). */
   name?: string;
+  /** H2: 'starter' (came with the house: copy 1 can't be sold) or 'buy'. */
+  source?: string;
 }
 
 export interface SavedHomePosition {

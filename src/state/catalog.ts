@@ -74,6 +74,7 @@ interface FurnitureJoin {
   furniture_id: string;
   slot: string | null;
   qty?: number | null;
+  source?: string | null;
   furniture: { kind: string; slot: string; activities: string[] | null; color: string | null; active: boolean; sort: number; name?: string } | null;
 }
 
@@ -101,7 +102,7 @@ export const useCatalog = create<CatalogStore>((set, get) => ({
     furnLoading ??= (async () => {
       const { data, error } = await supabase
         .from('player_furniture')
-        .select('furniture_id, slot, qty, furniture(kind, slot, activities, color, active, sort, name)')
+        .select('furniture_id, slot, qty, source, furniture(kind, slot, activities, color, active, sort, name)')
         .eq('user_id', userId);
       if (error) {
         set({ furnitureOf: userId, furniture: null }); // tried: the home keeps its default furnishing
@@ -120,6 +121,7 @@ export const useCatalog = create<CatalogStore>((set, get) => ({
           color: r.furniture!.color,
           qty: r.qty ?? 1,
           name: r.furniture!.name,
+          source: r.source ?? undefined,
         })),
       });
     })().finally(() => {

@@ -12,6 +12,9 @@ export const shopBuy = async (item: string, qty = 1) => {
   afterPurchase(r);
   return r;
 };
+/** H2: sell an owned car back (cars.resale_pct of the base price, into the bank). */
+export const carSell = (item: string) =>
+  rpc<Msg & { item: string; name: string; earned: number; bank: number; left: number }>('car_sell', { p_item: item });
 export const itemUse = (item: string) => rpc<Msg & { left: number }>('item_use', { p_item: item });
 export const itemSell = (item: string, qty = 1) => rpc<Msg & { earned: number; left: number }>('item_sell', { p_item: item, p_qty: qty });
 export const foodMenu = () => rpc<FoodMenu>('food_menu');

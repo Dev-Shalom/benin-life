@@ -103,8 +103,9 @@ begin
   foreach c in array v_cars loop
     select * into it from items where id = c;
     perform pg_temp.assert(it.id is not null and it.category = 'vehicle', c || ' is a vehicle item');
-    perform pg_temp.assert(it.sold_at <@ array(select id from locations where scene = 'car_dealer') and cardinality(it.sold_at) = 3,
-      c || ' sold at the three dealers only: ' || it.sold_at::text);
+    -- H2: luxury cars only at the premium showroom, brand-new ones not at the budget lot (dealer tiers)
+    perform pg_temp.assert(it.sold_at <@ array(select id from locations where scene = 'car_dealer') and cardinality(it.sold_at) >= 1,
+      c || ' sold at dealers only: ' || it.sold_at::text);
     perform pg_temp.assert(coalesce(it.icon, '') <> '', c || ' has an icon');
   end loop;
   perform pg_temp.assert((select price from items where id = 'gwagon_g63') = 350000000, 'G-Wagon 350m');
@@ -115,11 +116,14 @@ begin
   perform pg_temp.assert((select price from items where id = 'bicycle') < (select price from items where id = 'bajaj_boxer'), 'bicycle < motorcycle');
   -- on the cards at every dealer
   perform pg_temp.login(a);
+  -- H2: the luxury buy cards are at the premium showroom (SDD); every dealer still has the showroom zone
+  j := place_interior('sdd_motors');
+  perform pg_temp.assert(j::text like '%lambo_urus%' and j::text like '%gwagon_g63%' and j::text like '%tesla_cybertruck%'
+                         and j::text like '%gle63_coupe%' and j::text like '%escalade%' and j::text like '%bicycle%',
+                         'sdd_motors shows the cars');
   foreach c in array array['ighodalo_cars', 'sdd_motors', 'tokunbo_lot'] loop
     j := place_interior(c);
-    perform pg_temp.assert(j::text like '%lambo_urus%' and j::text like '%gwagon_g63%' and j::text like '%tesla_cybertruck%'
-                           and j::text like '%gle63_coupe%' and j::text like '%escalade%' and j::text like '%bicycle%',
-                           c || ' shows the cars');
+    perform pg_temp.assert(j::text like '%bicycle%', c || ' sells the bicycle');
     perform pg_temp.assert(exists (select 1 from jsonb_array_elements(j->'zones') z where z->>'prop' = 'lux_cars'), c || ' has the luxury showroom');
   end loop;
   -- not sold anywhere else
@@ -137,12 +141,13 @@ begin
   perform pg_temp.po_at_hour(11);
   -- G-Wagon at SDD Motors: bank first, then cash
   perform pg_temp.login(a);
-  update profiles set location_id = 'sdd_motors', cash = 50000000, bank = 300000000, busy_until = null where id = a;
+  -- H2: SDD is the premium showroom (x1.20 by default): price the G-Wagon there
+  update profiles set location_id = 'sdd_motors', cash = 50000000, bank = (select bl_dealer_price(i, 'sdd_motors') from items i where id = 'gwagon_g63') - 50000000, busy_until = null where id = a;
   q := travel_quote('mama_ebo');
   perform pg_temp.assert(not (select (x->>'allowed')::boolean from jsonb_array_elements(q->'options') x where x->>'mode' = 'car'), 'no car yet');
   r := shop_buy('gwagon_g63', 1);
   select * into p from profiles where id = a;
-  perform pg_temp.assert((r->>'car')::boolean and p.bank = 0 and p.cash = 0, format('paid 300m bank + 50m cash (bank %s cash %s)', p.bank, p.cash));
+  perform pg_temp.assert((r->>'car')::boolean and p.bank = 0 and p.cash = 0, format('paid bank + 50m cash (bank %s cash %s)', p.bank, p.cash));
   perform pg_temp.po_hint($q$ select shop_buy('gwagon_g63', 1) $q$, 'already_owned');
   update profiles set cash = 100000 where id = a;
   q := travel_quote('mama_ebo');
@@ -151,7 +156,7 @@ begin
   car_gm := (o->>'game_minutes')::int;
   -- bicycle only: slow and free
   perform pg_temp.login(b);
-  update profiles set location_id = 'sdd_motors', cash = 200000, bank = 0, busy_until = null where id = b;
+  update profiles set location_id = 'sdd_motors', cash = 300000, bank = 0, busy_until = null where id = b;  -- H2: premium price
   perform shop_buy('bicycle', 1);
   update profiles set cash = 0 where id = b;
   q := travel_quote('mama_ebo');
