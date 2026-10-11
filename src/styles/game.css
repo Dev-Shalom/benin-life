@@ -6330,3 +6330,23 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .receipts-list li { list-style: none; }
 .receipts-list__row { width: 100%; border: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .receipts-list__ref { display: block; font: 700 10.5px ui-monospace, Menlo, monospace; color: var(--ink-3); letter-spacing: 0.03em; }
+
+/* H3: the ride-hailing app is "Bolt" (green #34D186) */
+.phone-app--bolt .phone-app__title {
+  color: #12a35f;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.phone-app--bolt .ride-row--map {
+  background: #e6faf0;
+}
+.phone-app--bolt .ride-dest__dots span + span,
+.phone-app--bolt .bl-btn--green {
+  background: #34d186;
+}
+.phone-app--bolt .bl-btn--green {
+  color: #08331f;
+}
+.phone-app--bolt .ride-dest__edit {
+  color: #12a35f;
+}

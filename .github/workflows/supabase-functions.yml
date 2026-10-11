@@ -1,7 +1,7 @@
-# Deploys the Paystack Edge Functions (supabase/functions) to the hosted project and sets the
-# PAYSTACK_SECRET_KEY Supabase secret from the GitHub repository secret of the same name (docs/PAYMENTS.md).
-# Needs SUPABASE_ACCESS_TOKEN (already used by supabase-deploy.yml). PAYSTACK_SECRET_KEY is optional:
-# when it is empty the secret step is skipped with a notice (the functions still deploy).
+# Deploys the Edge Functions (supabase/functions) to the hosted project and sets the PAYSTACK_SECRET_KEY,
+# VAPID_PRIVATE_KEY and VAPID_SUBJECT Supabase secrets from the GitHub repository secrets of the same names
+# (docs/PAYMENTS.md, docs/BILLBOARDS.md). Needs SUPABASE_ACCESS_TOKEN (already used by supabase-deploy.yml).
+# The other secrets are optional: an empty one is skipped with a notice (the functions still deploy).
 name: Supabase Edge Functions
 
 on:
@@ -9,7 +9,7 @@ on:
     branches: [main]
     paths: ['supabase/functions/**', 'supabase/config.toml', '.github/workflows/supabase-functions.yml']
   workflow_dispatch:
-  # Re-sync PAYSTACK_SECRET_KEY daily, so a key changed in GitHub (test -> live) reaches Supabase without a code push.
+  # Re-sync the secrets daily, so a key changed in GitHub (test -> live) reaches Supabase without a code push.
   schedule:
     - cron: '23 4 * * *'
 
@@ -23,6 +23,8 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+      VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
       PROJECT_REF: twwttirvesbwjvzjmenp
     steps:
       - uses: actions/checkout@v4
@@ -44,5 +46,17 @@ jobs:
             supabase secrets set --project-ref "$PROJECT_REF" PAYSTACK_SECRET_KEY="$PAYSTACK_SECRET_KEY" > /dev/null
             echo "PAYSTACK_SECRET_KEY set."
           fi
+      - name: Set VAPID secrets (admin Web Push)
+        run: |
+          if [ -z "$VAPID_PRIVATE_KEY" ]; then
+            echo "::notice::VAPID_PRIVATE_KEY repository secret is empty: skipped. Admin phone notifications stay off until it is added (docs/BILLBOARDS.md)."
+          else
+            # passed through the environment, never echoed
+            supabase secrets set --project-ref "$PROJECT_REF" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" > /dev/null
+            if [ -n "$VAPID_SUBJECT" ]; then
+              supabase secrets set --project-ref "$PROJECT_REF" VAPID_SUBJECT="$VAPID_SUBJECT" > /dev/null
+            fi
+            echo "VAPID secrets set."
+          fi
       - name: Deploy functions
-        run: supabase functions deploy paystack-verify paystack-webhook --project-ref "$PROJECT_REF" --use-api
+        run: supabase functions deploy paystack-verify paystack-webhook admin-push billboard-refund --project-ref "$PROJECT_REF" --use-api

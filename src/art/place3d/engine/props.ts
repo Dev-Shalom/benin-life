@@ -643,6 +643,43 @@ function buildProp(b: B, z: PlaceZone, room: Room, seed: number) {
       b.setFrame(z.x, 0, z.z, yaw);
       return;
     }
+    case 'tokunbo_cars': {
+      // H3: the Tokunbo Lot's own row: only what it sells (Belgium-used saloons, the "Muscle" Camry, a used
+      // Lexus SUV), dusty paint, cardboard price signs on the windscreen side. No luxury display cars here.
+      const row: [string, number][] = [['#c8ced4', 1.0], ['#1f2a36', 1.08], ['#7a1d18', 1.0], ['#d9d4c7', 1.22]];
+      const s = Math.min(0.62, lw / row.length / 3.3);
+      const slot = lw / row.length;
+      row.forEach(([paint, k], i) => {
+        const lx = -hw + (i + 0.5) * slot;
+        car(b, z.x + Math.cos(yaw) * lx, z.z - Math.sin(yaw) * lx, yaw + 0.28, paint, s * k);
+        b.setFrame(z.x, 0, z.z, yaw);
+        b.box(0.05, 0.6, 0.05, lx + slot * 0.32, 0, hd - 0.2, '#6b4a2b', { seg: 1 });
+        b.box(0.42, 0.26, 0.03, lx + slot * 0.32, 0.6, hd - 0.2, '#efe2c4', { seg: 1 });
+      });
+      // shade cloth on poles
+      for (const sx of [-1, 1]) b.box(0.08, 2.1, 0.08, sx * (hw - 0.1), 0, -hd + 0.2, METAL_D);
+      b.box(lw, 0.04, ld * 0.55, 0, 2.1, -hd + ld * 0.3, '#2f6f4e');
+      b.setFrame(z.x, 0, z.z, yaw);
+      return;
+    }
+    case 'tokunbo_yard': {
+      // H3: small used car (Kia Rio), a Bajaj Boxer, a bicycle and a "TOKUNBO" sign: what the lot sells up front
+      const s = Math.min(0.56, lw / 4.4 / 3.4);
+      const cx = -hw + lw * 0.22;
+      car(b, z.x + Math.cos(yaw) * cx, z.z - Math.sin(yaw) * cx, yaw + 0.3, '#2f6fb3', s * 0.92);
+      b.setFrame(z.x, 0, z.z, yaw);
+      b.box(0.42, 0.26, 0.03, cx + 0.8, 0.6, hd - 0.15, '#efe2c4', { seg: 1 });
+      const bx = lw * 0.12;
+      for (const [i, draw] of [[0, motorcycle], [1, bicycle]] as const) {
+        const lx = bx + i * 0.9;
+        b.setFrame(z.x + Math.cos(yaw) * lx, 0, z.z - Math.sin(yaw) * lx, yaw + 0.5);
+        draw(b, 0.95);
+      }
+      b.setFrame(z.x, 0, z.z, yaw);
+      b.box(0.08, 1.5, 0.08, hw - 0.5, 0, -hd + 0.3, METAL_D);
+      b.box(1.3, 0.45, 0.06, hw - 0.5, 1.5, -hd + 0.3, '#f3cf5e', { seg: 1 });
+      return;
+    }
     case 'lane': {
       b.box(lw, 0.012, ld, 0, 0.004, 0, '#4a4f56');
       for (let i = 0; i < Math.round(ld / 0.8); i++) b.box(0.1, 0.006, 0.4, 0, 0.018, -hd + 0.4 + i * 0.8, WHITE);

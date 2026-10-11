@@ -136,6 +136,8 @@ export const PROPS: Record<string, PropMeta> = {
   cars: P(false, 'centre', 'stand', 1.4),
   lux_cars: P(true, 'front', 'stand', 1.5),
   car_lot: P(true, 'front', 'stand', 1.4),
+  tokunbo_cars: P(true, 'front', 'stand', 1.4),
+  tokunbo_yard: P(true, 'front', 'stand', 1.3),
   lane: P(false, 'centre', 'stand', 0.3),
   none: P(false, 'centre', 'stand', 0.5),
 };

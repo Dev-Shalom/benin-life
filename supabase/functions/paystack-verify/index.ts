@@ -1,8 +1,9 @@
 // POST { reference } with the player's JWT, after Paystack Inline reports success.
 // Checks the caller owns the payment, verifies it with Paystack (secret key) and credits once.
 // Returns { ok, credited, already, bank } or { ok:false, error }.
+// H3: BLAD- references are billboard ads: same checks, then the ad moves to pending_review ({ ok, marked, already, ad_id }).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { corsHeaders, env, json, serviceClient, verifyAndCredit } from '../_shared/paystack.ts';
+import { AD_REF, corsHeaders, env, json, serviceClient, TOPUP_REF, verifyAndCredit } from '../_shared/paystack.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
@@ -22,10 +23,11 @@ Deno.serve(async (req) => {
     const body = await req.json();
     reference = String(body?.reference ?? '').trim();
   } catch { /* fall through */ }
-  if (!/^BL-[a-f0-9]{32}$/.test(reference)) return json(req, { ok: false, error: 'bad_reference' }, 400);
+  const isAd = AD_REF.test(reference);
+  if (!isAd && !TOPUP_REF.test(reference)) return json(req, { ok: false, error: 'bad_reference' }, 400);
 
   const db = serviceClient();
-  const { data: pay } = await db.from('payments').select('user_id').eq('reference', reference).maybeSingle();
+  const { data: pay } = await db.from(isAd ? 'billboard_ads' : 'payments').select('user_id').eq('reference', reference).maybeSingle();
   if (!pay) return json(req, { ok: false, error: 'unknown_reference' }, 404);
   if (pay.user_id !== u.user.id) return json(req, { ok: false, error: 'not_yours' }, 403);
 

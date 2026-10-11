@@ -62,9 +62,10 @@ export const placeEmoji = (l: Pick<Location, 'id' | 'scene'>) => ID_EMOJI[l.id] 
 /** 1 = landmark (label shows from far away), 2 = local place (label shows when zoomed in). */
 export const placeTier = (id: string): 1 | 2 => PIN_META[id]?.tier ?? 2;
 
-export type CityFilter = 'goslow' | 'neighbours' | 'danger' | 'markets' | 'gov';
+export type CityFilter = 'goslow' | 'neighbours' | 'danger' | 'markets' | 'gov' | 'ads';
 
 export const FILTERS: { id: CityFilter; label: string; emoji: string }[] = [
+  { id: 'ads', label: 'Billboards', emoji: '📺' },
   { id: 'goslow', label: 'Go-slow', emoji: '🔴' },
   { id: 'neighbours', label: 'Neighbours', emoji: '🏘️' },
   { id: 'danger', label: 'Danger zones', emoji: '⚠️' },
@@ -88,6 +89,8 @@ export function matchesFilter(f: CityFilter, l: Location, crowd?: Record<string,
       return l.scene === 'market';
     case 'gov':
       return l.scene === 'police' || l.scene === 'hospital' || l.scene === 'bank';
+    case 'ads':
+      return false; // billboards are not places (H3: they get their own pills)
   }
 }
 
@@ -97,6 +100,7 @@ export const FILTER_COLOR: Record<CityFilter, string> = {
   danger: '#e5484d',
   markets: '#f2a516',
   gov: '#1f9d63',
+  ads: '#e5484d',
 };
 
 /** Yellow "Coming soon" pills: features that arrive later, pinned where they will live. */

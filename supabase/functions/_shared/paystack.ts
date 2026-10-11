@@ -1,7 +1,14 @@
 // Shared Paystack helpers for the paystack-verify and paystack-webhook Edge Functions (docs/PAYMENTS.md).
 // The secret key lives only in the Supabase secret PAYSTACK_SECRET_KEY; it never reaches the client or the repo.
 // Only bl_payment_credit (service role) credits naira: once per reference, only for the exact amount.
+// H3: references starting BLAD- are billboard ads (purpose 'billboard_ad'): bl_billboard_paid moves the ad to
+// 'pending_review', again only for the exact stored price and only once (docs/BILLBOARDS.md).
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { flushQuietly } from './notify.ts';
+
+/** Top-up references (payments table) and billboard ad references (billboard_ads table). */
+export const TOPUP_REF = /^BL-[a-f0-9]{32}$/;
+export const AD_REF = /^BLAD-[a-f0-9]{32}$/;
 
 const ALLOWED_ORIGINS = [
   'https://benin-life.vercel.app',
@@ -56,6 +63,7 @@ export interface CreditResult {
  * bl_payment_credit (idempotent). Safe to call any number of times, from the verify call and the webhook.
  */
 export async function verifyAndCredit(db: SupabaseClient, reference: string): Promise<CreditResult> {
+  if (AD_REF.test(reference)) return verifyAndMarkAd(db, reference);
   const secret = env('PAYSTACK_SECRET_KEY');
   if (!secret) return { ok: false, error: 'not_configured', status: 503 };
 
@@ -92,6 +100,65 @@ export async function verifyAndCredit(db: SupabaseClient, reference: string): Pr
   if (error) return { ok: false, error: 'credit_failed', status: 500 };
   const out = data as CreditResult;
   return { ...out, status: out.ok ? 200 : 409 };
+}
+
+interface PaystackTx { [k: string]: unknown }
+
+/** GET /transaction/verify/:reference and the checks every purpose shares (success, NGN, same reference). */
+async function paystackVerify(reference: string): Promise<{ tx: PaystackTx } | { error: string; status: number }> {
+  const secret = env('PAYSTACK_SECRET_KEY');
+  if (!secret) return { error: 'not_configured', status: 503 };
+  const res = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${secret}` },
+  });
+  if (!res.ok) return { error: res.status === 404 ? 'not_paid' : 'paystack_error', status: 502 };
+  const body = await res.json().catch(() => null) as { status?: boolean; data?: PaystackTx } | null;
+  const tx = body?.data;
+  if (!body?.status || !tx) return { error: 'paystack_error', status: 502 };
+  if (tx.status !== 'success') return { error: 'not_paid', status: 402 };
+  if (String(tx.currency ?? '').toUpperCase() !== 'NGN') return { error: 'bad_currency', status: 400 };
+  if (String(tx.reference ?? '') !== reference) return { error: 'bad_reference', status: 400 };
+  return { tx };
+}
+
+export interface AdPayResult {
+  ok: boolean;
+  marked?: boolean;
+  already?: boolean;
+  ad_id?: string;
+  status?: string | number;
+  error?: string;
+  user_id?: string;
+}
+
+/**
+ * Billboard ad payment: Paystack must say success for this reference; bl_billboard_paid then checks the paid
+ * amount equals the stored price (else: rejected + refund due) and moves the ad to pending_review once.
+ * Admins get a push (outbox) when it lands.
+ */
+export async function verifyAndMarkAd(db: SupabaseClient, reference: string): Promise<CreditResult & AdPayResult> {
+  const { data: ad, error: adErr } = await db.from('billboard_ads')
+    .select('id, status, paid_at, user_id, price_kobo').eq('reference', reference).maybeSingle();
+  if (adErr) return { ok: false, error: 'db_error', status: 500 };
+  if (!ad) return { ok: false, error: 'unknown_reference', status: 404 };
+  if (ad.paid_at) return { ok: true, already: true, credited: false, marked: false, ad_id: ad.id, user_id: ad.user_id, status: 200 };
+  if (ad.status !== 'awaiting_payment' && ad.status !== 'cancelled') return { ok: false, error: 'not_awaiting', status: 409 };
+
+  const v = await paystackVerify(reference);
+  if ('error' in v) return { ok: false, error: v.error, status: v.status };
+  const tx = v.tx;
+  const meta = (tx.metadata ?? {}) as Record<string, unknown>;
+  if (meta.ad_id && String(meta.ad_id) !== ad.id) return { ok: false, error: 'bad_metadata', status: 400 };
+  const raw = {
+    id: tx.id, status: tx.status, reference: tx.reference, amount: tx.amount, currency: tx.currency,
+    channel: tx.channel, paid_at: tx.paid_at, gateway_response: tx.gateway_response, purpose: meta.purpose ?? null,
+    customer_email: (tx.customer as Record<string, unknown> | undefined)?.email ?? null,
+  };
+  const { data, error } = await db.rpc('bl_billboard_paid', { p_reference: reference, p_amount_kobo: Number(tx.amount), p_raw: { data: raw } });
+  if (error) return { ok: false, error: 'mark_failed', status: 500 };
+  const out = data as AdPayResult;
+  await flushQuietly(db);
+  return { ...out, credited: false, status: out.ok ? 200 : 409 };
 }
 
 /** Hex HMAC-SHA512 of the raw body with the secret key, compared in constant time. */

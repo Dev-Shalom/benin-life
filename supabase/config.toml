@@ -421,3 +421,9 @@ verify_jwt = false
 
 [functions.paystack-verify]
 verify_jwt = true
+
+[functions.admin-push]
+verify_jwt = true
+
+[functions.billboard-refund]
+verify_jwt = true

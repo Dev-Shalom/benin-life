@@ -118,8 +118,43 @@ export async function recoverPendingPayments(): Promise<number> {
   return credited;
 }
 
+const PUBLIC_KEY = String(import.meta.env.PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '').trim();
+
+/** H3: true when the Paystack key is set and an admin turned payments on (billboard ads use this too). */
+export function paystackReady(): boolean {
+  return (import.meta.env.VITE_PAYMENT_PROVIDER ?? 'paystack').trim() === 'paystack' && PUBLIC_KEY.startsWith('pk_')
+    && getCfg<boolean>('payments.enabled', false) === true;
+}
+
+/**
+ * H3: open Paystack Inline for a reference the SERVER created (billboard ads: billboard_ad_create), then ask
+ * paystack-verify to check it. The server decides what the payment does from the reference; metadata is only
+ * shown in the Paystack dashboard.
+ */
+export async function paystackCheckout(init: { reference: string; amount_kobo: number; email: string; currency?: string },
+                                       metadata: Record<string, unknown>): Promise<'cancelled' | { error: string } | { ok: boolean; data: Record<string, unknown> }> {
+  if (!PUBLIC_KEY.startsWith('pk_')) return { error: 'Payments are not set up yet.' };
+  let Pop: PaystackPopCtor;
+  try {
+    Pop = await loadInline();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Paystack did not load.' };
+  }
+  const outcome = await new Promise<'success' | 'cancelled' | { error: string }>((resolve) => {
+    new Pop().newTransaction({
+      key: PUBLIC_KEY, email: init.email, amount: init.amount_kobo, currency: init.currency || 'NGN', reference: init.reference, metadata,
+      onSuccess: () => resolve('success'),
+      onCancel: () => resolve('cancelled'),
+      onError: (e) => resolve({ error: e?.message || 'Paystack could not open.' }),
+    });
+  });
+  if (outcome !== 'success') return outcome;
+  const v = await verifyOnServer(init.reference);
+  return { ok: Boolean(v.ok), data: v as Record<string, unknown> };
+}
+
 function paystackProvider(): PaymentProvider {
-  const key = String(import.meta.env.PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '').trim();
+  const key = PUBLIC_KEY;
   return {
     id: 'paystack',
     name: 'Paystack',

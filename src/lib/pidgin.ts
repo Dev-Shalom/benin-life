@@ -116,7 +116,7 @@ export const MODE_META: Record<string, { label: string; blurb: string }> = {
   walk: { label: 'Walk', blurb: 'Free, but slow' },
   keke: { label: 'Keke', blurb: 'Side roads only' },
   bus: { label: 'ECTS bus', blurb: 'Cheap and steady' },
-  drop: { label: 'Drop', blurb: 'Ride-hail, quick and safer' },
+  drop: { label: 'Drop', blurb: 'Bolt ride-hail, quick and safer' },
   car: { label: 'Your car', blurb: 'Just fuel money' },
 };
 

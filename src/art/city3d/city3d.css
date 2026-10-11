@@ -462,3 +462,33 @@
 @media (prefers-reduced-motion: reduce) {
   .c3-pill__ev.is-live { animation: none; }
 }
+
+/* H3 billboards: pill above each digital board (shown while the Billboards chip is on; a dot when zoomed in) */
+.c3-board .c3-pill {
+  background: #17191f;
+  color: #fff;
+}
+.c3-pill__onair {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px 0 5px;
+  border-radius: 9px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.c3-pill__onair::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+}
+.c3-board .c3-dot {
+  background: #17191f;
+}
