@@ -13,6 +13,7 @@ import { useCatalog } from '../../state/catalog';
 import { activityIcon, useTasks, WALK_TO } from '../../state/tasks';
 import type { PlayerStatus } from './status';
 import { stopRunning } from './TaskRunner';
+import { STEAL_LABEL } from '../../api/crime';
 
 function shortName(s: string): string {
   return s.length > 22 ? `${s.slice(0, 21).trimEnd()}…` : s;
@@ -44,6 +45,7 @@ export function TaskPill({ state, status }: { state: GameState; status: PlayerSt
       ? (state.career?.job?.emoji ?? '💼')
       : current?.phase === 'running' && current.kind !== 'buy'
         ? current.icon
+        : p.busy_label === STEAL_LABEL ? '🫳'
         : act?.icon ?? activityIcon(act?.id ?? null, '⏳');
     const label = p.busy_label ?? 'Busy';
     const pay = shift ? Math.floor((Number(p.job_shift_pay ?? 0) * frac) / 10) * 10 : 0;

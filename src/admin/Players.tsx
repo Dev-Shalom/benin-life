@@ -4,7 +4,7 @@ import { toast } from '../ui';
 import { errorMessage } from '../lib/api';
 import { naira, nairaShort, parseNaira } from '../lib/format';
 import { useGame } from '../state/game';
-import { adminApi, type PlayerDetail, type PlayerRow } from './api';
+import { adminApi, type JailCaseRow, type PlayerDetail, type PlayerRow } from './api';
 import { Badge, Btn, ConfirmButton, DetailPane, LoadError, PageHead, Skeleton } from './parts';
 import { timeShort, useLoad } from './util';
 
@@ -269,6 +269,7 @@ export default function Players() {
             </label>
             <Btn icon="refresh" onClick={reload} aria-label="Refresh" />
           </div>
+          <JailCases onOpen={setSel} />
           {error && <LoadError error={error} onRetry={reload} />}
           {!data && loading && <Skeleton rows={8} />}
           {data && (
@@ -347,6 +348,41 @@ function DeleteAccount({ id, username, onDeleted }: { id: string; username: stri
           </div>
         </div>
       )}
+    </section>
+  );
+}
+
+/** C1: open jail cases (pickpocket arrests) with an audited Release. */
+function JailCases({ onOpen }: { onOpen: (id: string) => void }) {
+  const { data, reload } = useLoad(() => adminApi.jailCases('open'));
+  const [busy, setBusy] = useState<number | null>(null);
+  const rows: JailCaseRow[] = data?.rows ?? [];
+  if (!rows.length) return null;
+  const release = async (c: JailCaseRow) => {
+    setBusy(c.id);
+    try {
+      const r = await adminApi.jailRelease(c.id, 'Released from Admin → Players');
+      toast(r.message, 'good');
+      await reload();
+    } catch (e) { toast(errorMessage(e), 'bad'); } finally { setBusy(null); }
+  };
+  return (
+    <section className="adm-box adm-jail">
+      <h3 className="adm-h3">🚓 Open jail cases ({rows.length})</h3>
+      <div className="adm-rows">
+        {rows.map((c) => {
+          const left = Math.max(0, Math.ceil((Date.parse(c.jail_until) - Date.now()) / 1000));
+          return (
+            <div key={c.id} className="adm-ledger__row">
+              <button type="button" className="adm-ledger__label adm-linklike" onClick={() => onOpen(c.user_id)}>
+                @{c.username} · {c.reason}
+                <small>Bail {naira(c.bail_amount)} · {c.escape_attempts} failed escape{c.escape_attempts === 1 ? '' : 's'} · {left}s left · {c.decided ? 'serving' : 'deciding'}</small>
+              </button>
+              <ConfirmButton tone="ghost" confirmText="Tap again: release" disabled={busy !== null} onConfirm={() => void release(c)}>Release</ConfirmButton>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }

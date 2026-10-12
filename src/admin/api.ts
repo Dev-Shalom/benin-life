@@ -91,6 +91,11 @@ export interface PaymentsData {
 
 type Msg = { message: string };
 
+export interface JailCaseRow {
+  id: number; user_id: string; username: string; status: string; decided: boolean; reason: string; bail_amount: number;
+  escape_attempts: number; jail_seconds: number; jail_until: string; created_at: string; place: string | null;
+}
+
 export const adminApi = {
   configList: () => rpc<ConfigRow[]>('admin_config_list'),
   configSet: (key: string, value: unknown) => rpc<Msg & { changed: boolean }>('admin_config_set', { p_key: key, p_value: value }),
@@ -127,4 +132,7 @@ export const adminApi = {
   chatReports: () => rpc<ChatReport[]>('admin_chat_reports', { p_include_hidden: true }),
   chatHide: (id: number, hidden: boolean) => rpc<Msg>('admin_chat_hide', { p_message_id: id, p_hidden: hidden }),
   claim: () => rpc<Msg & { is_admin: boolean }>('admin_claim'),
+  /** C1: jail cases (open by default) and admin release (audited). */
+  jailCases: (status = 'open') => rpc<{ rows: JailCaseRow[] }>('admin_jail_cases', { p_status: status, p_limit: 100 }),
+  jailRelease: (caseId: number, reason: string) => rpc<Msg>('admin_jail_release', { p_case_id: caseId, p_reason: reason }),
 };

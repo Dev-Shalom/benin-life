@@ -107,6 +107,8 @@ export interface PlaceSceneProps {
   speech?: { id: number; who: string; text: string }[];
   /** L3: people here beyond the render cap ("+N more here"). */
   moreCount?: number;
+  /** C1: a real player was tapped; `metres` = floor distance between my Sim and theirs as drawn on this screen. */
+  onTapPlayer?: (id: string, metres: number) => void;
   className?: string;
   style?: CSSProperties;
 }
@@ -310,7 +312,7 @@ function Interior(props: PlaceSceneProps & {
   pillRefs: React.MutableRefObject<Map<string, HTMLSpanElement>>;
   bubbleRefs: React.MutableRefObject<Map<string, HTMLSpanElement>>;
   gemRef: React.MutableRefObject<HTMLButtonElement | null>;
-  onTapPerson: (id: string) => void;
+  onTapPerson: (id: string, metres: number) => void;
 }) {
   const { zones, scene: sceneType, hour, view, actorRef, insetTop = 0, insetBottom = 0 } = props;
   const { gl, scene, camera, size, invalidate } = useThree();
@@ -1283,8 +1285,18 @@ function Interior(props: PlaceSceneProps & {
     const p = crowd[e.instanceId];
     if (!p) return;
     e.stopPropagation();
-    props.onTapPerson(p.id);
+    // C1: how far that person stands from my Sim (as drawn here), for the Steal reach check
+    const ag = agents[e.instanceId];
+    const me = actorRef.current.w.pos;
+    const metres = Math.hypot((ag ? ag.w.pos[0] : p.p[0]) - me[0], (ag ? ag.w.pos[1] : p.p[1]) - me[1]);
+    props.onTapPerson(p.id, metres);
   };
+
+  // dev/tests: where each person stands now (room coordinates, like __placeActor.w.pos)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    Object.assign(window, { __placePeople: () => crowd.map((p, i) => ({ id: p.id, player: p.player, x: agents[i] ? agents[i].w.pos[0] : p.p[0], z: agents[i] ? agents[i].w.pos[1] : p.p[1] })) });
+  }, [crowd, agents]);
 
   const onFloor = (e: ThreeEvent<MouseEvent>) => {
     if (!isTap(e)) return;
@@ -1386,10 +1398,12 @@ export default function PlaceScene(props: PlaceSceneProps) {
     say(id, pick === 'line' && p.line ? p.line : lines[Math.floor(Math.random() * lines.length)], 4000, 'npc');
     return true;
   };
-  const onTapPerson = (id: string) => {
+  const onTapPerson = (id: string, metres = Infinity) => {
     if (!sayNpc(id)) {
       const p = crowdRef.current.find((c) => c.id === id);
-      if (p?.player) {
+      if (p?.player && props.onTapPlayer) {
+        props.onTapPlayer(p.id, metres);
+      } else if (p?.player) {
         const el = pillRefs.current.get(id);
         const r = el?.getBoundingClientRect();
         const w = wrap.current?.getBoundingClientRect();

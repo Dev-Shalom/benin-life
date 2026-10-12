@@ -3,6 +3,7 @@
 // HUD: top pill, left rail, needs card, dock (Home · Buy · Map · Phone), status banners, toasts.
 import { useBroadcasts } from '../state/broadcasts';
 import { BroadcastHost } from './game/Broadcasts';
+import { CrimeHost, PlacePlayerSheet } from './game/Crime';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HomeView, KINDS, LAYOUTS, activityGroup, findFreeSpot, furnishHome, furnitureIdOfKey, homeLayoutFor, itemGroup, placementIssue, type FurnitureItem, type FurnitureKind, type SavedHomePosition } from '../art/home3d';
 import { CityView, type CityBoard } from '../art/city3d';
@@ -187,6 +188,8 @@ export default function Game() {
   const [arrangeBusy, setArrangeBusy] = useState(false);
   const [buyTab, setBuyTab] = useState<'shop' | 'arrange' | 'bag'>('shop');
   const [selectedHousePlayer, setSelectedHousePlayer] = useState<string | null>(null);
+  // C1: a real player tapped inside a place (+ how far from my Sim on this screen)
+  const [placePlayer, setPlacePlayer] = useState<{ id: string; metres: number } | null>(null);
   // V2 house interactions: the catalogue, our side of a running one (slot 0 asked, 1 accepted), the
   // request waiting for our answer, and ours waiting for theirs
   const [ixTypes, setIxTypes] = useState<InteractionType[]>([]);
@@ -370,6 +373,7 @@ export default function Game() {
     if (arrivedAt && lastArrived.current !== arrivedAt) {
       setMapOpen(false);
       setPlaceZone(null);
+      setPlacePlayer(null);
     }
     lastArrived.current = arrivedAt;
   }, [arrivedAt, setMapOpen]);
@@ -720,6 +724,7 @@ export default function Game() {
             walkLock={busyActive ? `${busyLabel ?? 'Busy'} first, then you can walk` : taskPhase === 'starting' ? 'Starting, one moment' : null}
             walk={walk}
             gem={placeGem}
+            onTapPlayer={(id, metres) => setPlacePlayer({ id, metres })}
             mood={simPosture(p)}
             suspended={suspendHome}
             paused={Boolean(panel || selectedId || (overlay && !suspendHome))}
@@ -914,6 +919,15 @@ export default function Game() {
       <GlobalPanelSheet />
       <AlertsSheet />
       <BroadcastHost />
+      <CrimeHost />
+      {showPlace && (
+        <PlacePlayerSheet
+          person={placePlayer ? playersHere.find((pl) => pl.id === placePlayer.id) ?? null : null}
+          metres={placePlayer?.metres ?? null}
+          free={status.free}
+          onClose={() => setPlacePlayer(null)}
+        />
+      )}
       <SimSheet state={state} />
       <LookSheet state={state} />
       <BuySheet

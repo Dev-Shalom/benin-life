@@ -520,3 +520,7 @@
 .adm-bc__reach { height: 6px; border-radius: 3px; background: #eef1f5; overflow: hidden; }
 .adm-bc__reach span { display: block; height: 100%; border-radius: 3px; background: var(--primary); transition: width 300ms ease; }
 .adm-bc__item .adm-btnrow { margin-top: 2px; }
+
+/* C1 open jail cases (Players) */
+.adm-jail { margin-bottom: 12px; }
+.adm-linklike { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: inherit; font: inherit; }

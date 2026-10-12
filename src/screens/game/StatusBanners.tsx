@@ -9,6 +9,8 @@ import { Button, Icon, Modal, toast } from '../../ui';
 import type { PlayerStatus } from './status';
 import { workFinish } from '../../api/careers';
 import { useLiveNow } from '../../lib/live';
+import { useCrime } from '../../state/crime';
+import { JailCaseButtons } from './Crime';
 
 interface ArriveResult {
   message?: string;
@@ -23,6 +25,7 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
   const byId = useGame((s) => s.locationsById);
   const openPanel = useUi((s) => s.openPanel);
   const select = useUi((s) => s.select);
+  const crimeCase = useCrime((s) => s.case);
   const [robbed, setRobbed] = useState<{ amount: number; injured: boolean; where: string } | null>(null);
   const arriving = useRef<string | null>(null);
   const tries = useRef(0);
@@ -137,14 +140,14 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
         )}
         {/* M2: the busy/progress pill moved to the left column (TaskPill.tsx) */}
         {status.jailLeft > 0 && (
-          <div className="banner banner--jail">
+          <div className={`banner banner--jail${crimeCase ? ' has-case' : ''}`}>
             <span className="banner__icon"><Icon name="lock" size={20} /></span>
             <div className="grow">
               <div className="banner__title">You're in a police cell</div>
               {p.jail_reason && <div className="banner__sub">{p.jail_reason}</div>}
             </div>
             <span className="banner__time">{countdown(status.jailLeft)}</span>
-            <Button size="sm" variant="gold" onClick={() => openPanel('police', undefined, policeHq)}>Bail</Button>
+            {crimeCase ? <JailCaseButtons /> : <Button size="sm" variant="gold" onClick={() => openPanel('police', undefined, policeHq)}>Bail</Button>}
           </div>
         )}
         {status.hospLeft > 0 && (
