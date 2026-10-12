@@ -3,6 +3,7 @@
 // The game stays usable while the banner shows; it only tells the player why taps may be slow.
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { realtimeHeartbeat, useRealtime } from '../lib/realtime';
 
 interface NetStore {
   /** Consecutive RPC failures that look like a connection problem (0 / 429 / 5xx). */
@@ -38,13 +39,18 @@ export function initNet() {
   window.addEventListener('online', () => useNet.setState({ browserOffline: false, fails: 0 }));
   window.addEventListener('offline', () => useNet.setState({ browserOffline: true }));
   let downSince = 0;
+  // F1: switching to poll mode is not a connection problem: drop the "Reconnecting…" flag
+  useRealtime.subscribe((s) => {
+    if (s.mode === 'poll' && useNet.getState().realtimeDown) useNet.setState({ realtimeDown: false });
+  });
   try {
     supabase.realtime.onHeartbeat((status) => {
+      realtimeHeartbeat(status); // F1: feeds the live/poll decision (lib/realtime.ts)
       if (status === 'ok') {
         downSince = 0;
         if (useNet.getState().realtimeDown) useNet.setState({ realtimeDown: false });
-      } else if (supabase.getChannels().length === 0) {
-        downSince = 0; // no channels joined (landing, admin): an idle socket is not "down"
+      } else if (supabase.getChannels().length === 0 || useRealtime.getState().mode === 'poll') {
+        downSince = 0; // no channels joined (landing, admin) or polling on purpose (F1): not "down"
       } else if (status === 'timeout' || status === 'error' || status === 'disconnected') {
         // only after ~a minute of trouble: Realtime reconnects by itself (with jitter, lib/supabase.ts)
         if (!downSince) downSince = Date.now();

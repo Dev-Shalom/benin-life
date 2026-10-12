@@ -43,6 +43,7 @@ import { useArrange } from '../state/arrange';
 import { ArrangeBar } from './game/ArrangeBar';
 import { supabase } from '../lib/supabase';
 import { useHouseRoom } from '../state/houseRoom';
+import { startPoller, trackSubscribe, usePollMode } from '../lib/realtime';
 import { IX_ROLE, loadInteractionTypes, type InteractionType } from '../api/interactions';
 import { HouseInteractSheet, InteractPrompts, type Prompt, type Waiting } from './game/HouseInteract';
 import { HypeStrip, HypeTakeover } from './game/Hype';
@@ -225,6 +226,7 @@ export default function Game() {
     ? { cars: garage.cars.map((c) => c.id), garage: garage.garage ? { style: garage.garage.style, capacity: garage.garage.capacity } : null }
     : null, [garage]);
   const houseRoomId = atHome && state ? state.location.id : null;
+  const pollMode = usePollMode(); // F1: Realtime full / switched off: features poll instead
   // W1: the 3D Sim wears the outfit for the context (sleep / home / work / party / gym / everyday).
   const atOwnHomeNow = Boolean(p && state && !state.travel && !p.home_visit_host_id && p.location_id === p.home_location_id
     && state.location.id === p.home_location_id);
@@ -307,6 +309,14 @@ export default function Game() {
         setHousePositions(Object.fromEntries(((rows.data ?? []) as HouseFurniturePlacement[]).map((row) => [row.furniture_key, rowPosition(row)])));
       }
     }).catch(() => { /* retain the local default furnishing if house metadata is temporarily unavailable */ });
+    if (pollMode) {
+      // F1 poll mode: the host's furniture layout every ~60 s instead of Postgres Changes
+      const poller = startPoller(async () => {
+        const rows = await supabase.from('player_house_furniture').select('owner_id,furniture_key,x,z,rotation,stored,layout').eq('owner_id', homeOwnerId);
+        if (alive && !rows.error) setHousePositions(Object.fromEntries(((rows.data ?? []) as HouseFurniturePlacement[]).map((row) => [row.furniture_key, rowPosition(row)])));
+      }, () => 60_000);
+      return () => { alive = false; poller.stop(); };
+    }
     const channel = supabase.channel(`house-furniture:${homeOwnerId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'player_house_furniture', filter: `owner_id=eq.${homeOwnerId}` }, (payload) => {
         if (payload.eventType === 'DELETE') {
@@ -325,9 +335,10 @@ export default function Game() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'player_furniture', filter: `user_id=eq.${homeOwnerId}` }, () => {
         void loadFurniture(homeOwnerId, true);
-      }).subscribe();
+      });
+    trackSubscribe(channel, 'house-furniture');
     return () => { alive = false; void supabase.removeChannel(channel); };
-  }, [atHome, homeOwnerId, p?.id, p?.housing_id, loadFurniture]);
+  }, [atHome, homeOwnerId, p?.id, p?.housing_id, loadFurniture, pollMode]);
   // L2: anywhere else (not on the road) you are INSIDE the place: its 3D interior + the place card
   const showPlace = Boolean(p && state && !state.travel && !atHome && !mapOpen);
   // V1-6: stay subscribed to the chat of the place you are at (unread dot while the sheet is closed).

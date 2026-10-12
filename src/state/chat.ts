@@ -10,6 +10,7 @@ import { migrateAvatar } from '../art/avatar3d';
 import { chatHistory } from '../api/chat';
 import { rpc } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { startPoller, trackSubscribe, usePollMode } from '../lib/realtime';
 import type { AvatarConfig, ChatMessage } from '../lib/types';
 
 /** Most messages kept in memory / rendered (older pages included). */
@@ -146,27 +147,66 @@ function stop() {
   channel = null;
 }
 
+/** F1 poll mode: chat poll period — panel open vs closed (unread dot only). */
+const CHAT_POLL_OPEN_MS = 8_000;
+const CHAT_POLL_CLOSED_MS = 30_000;
+const CHAT_COLS = 'id,location_id,user_id,username,body,audio_path,audio_mime,created_at,reply_to,deleted_at';
+
+/** F1 poll cursor: newest chat id known for the current place (null = not known yet). */
+let chatCursor: number | null = null;
+
+/** F1: rows newer than the newest one we hold (same shape as a Realtime INSERT; add() dedupes by id). */
+async function fetchNewChat(loc: string) {
+  const held = useChat.getState().messages.reduce((m, x) => Math.max(m, x.id), 0);
+  if (chatCursor == null && !held) {
+    // empty chat: learn the current top id once, so rows older than the 14-day history never pour in
+    const { data, error } = await supabase.from('chat_messages').select('id').eq('location_id', loc).order('id', { ascending: false }).limit(1);
+    if (error || useChat.getState().locationId !== loc) return;
+    chatCursor = Number((data as { id: number }[] | null)?.[0]?.id ?? 0);
+  }
+  const after = Math.max(held, chatCursor ?? 0);
+  const { data, error } = await supabase.from('chat_messages').select(CHAT_COLS).eq('location_id', loc).gt('id', after)
+    .order('id', { ascending: true }).limit(50);
+  if (error || useChat.getState().locationId !== loc) return;
+  for (const r of (data ?? []) as ChatMessage[]) {
+    chatCursor = Math.max(chatCursor ?? 0, r.id);
+    useChat.getState().add(r);
+  }
+}
+
 /**
  * Keep the chat subscribed to the place the player is at (null while travelling / logged out).
  * Mounted once by the game screen so the HUD can show an unread dot while the sheet is closed.
+ * F1: in poll mode new rows are fetched every ~8 s while the chat is on screen, ~30 s otherwise.
  */
 export function useChatLive(locationId: string | null, uid: string | null) {
+  const poll = usePollMode();
   useEffect(() => {
     myId = uid;
-    stop();
+    chatCursor = null;
     useChat.setState({ locationId, messages: [], unread: 0, status: locationId ? 'loading' : 'idle', error: null, hasOlder: false, loadingOlder: false });
+  }, [locationId, uid]);
+  useEffect(() => {
+    stop();
     if (!locationId || !uid) return;
-    channel = supabase
+    if (poll) {
+      void useChat.getState().reload();
+      const p = startPoller(() => fetchNewChat(locationId), () => (useChat.getState().viewing ? CHAT_POLL_OPEN_MS : CHAT_POLL_CLOSED_MS));
+      // the panel just opened: fetch now instead of waiting for the slow period
+      const unsub = useChat.subscribe((s, prev) => { if (s.viewing && !prev.viewing) p.kick(150); });
+      return () => { p.stop(); unsub(); };
+    }
+    channel = trackSubscribe(supabase
       .channel(`chat-${locationId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `location_id=eq.${locationId}` },
         (payload) => useChat.getState().add(payload.new as ChatMessage))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: `location_id=eq.${locationId}` },
-        (payload) => useChat.getState().patch(payload.new as ChatMessage))
-      .subscribe((status) => {
-        // (re)load once the channel is live, so nothing falls in the gap; on a realtime failure still
-        // show the recent messages (new ones then appear on the next open).
-        if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') void useChat.getState().reload();
-      });
+        (payload) => useChat.getState().patch(payload.new as ChatMessage)),
+    'chat', (status) => {
+      // (re)load once the channel is live, so nothing falls in the gap (reload merges by id: no duplicates
+      // after a poll period); on a realtime failure still show the recent messages.
+      if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') void useChat.getState().reload();
+    });
     return stop;
-  }, [locationId, uid]);
+  }, [locationId, uid, poll]);
 }
