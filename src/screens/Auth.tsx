@@ -257,9 +257,9 @@ export default function Auth() {
       <Link to="/" className="auth__back"><Icon name="back" size={16} /> Back</Link>
       <div className="auth__inner">
         <header className="auth__brand">
-          <Logo size={60} />
-          <h1 className="auth__title">
-            Benin Life <span className="age-badge" aria-label="18 plus">18+</span>
+          <h1 className="auth__title auth__title--logo">
+            <Logo variant="stacked" size={132} title="Benin Life" />
+            <span className="age-badge" aria-label="18 plus">18+</span>
           </h1>
           <p className="auth__tagline">A life-sim set in the real Benin City.</p>
         </header>

@@ -4531,7 +4531,19 @@ kbd {
   box-shadow: var(--e1), inset 0 0 0 1px var(--line);
 }
 .beta-badge--hud {
-  opacity: 0.85;
+  opacity: 0.9;
+  display: inline-flex;
+  gap: 4px;
+  padding-left: 2px;
+}
+.beta-badge--hud .bl-logo {
+  border-radius: 4px;
+}
+.settings-brand {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+  color: var(--ink, #1e1410);
 }
 .settings-legal {
   display: flex;
@@ -6305,7 +6317,7 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
   padding-bottom: 22px;
 }
 .receipt__head { display: grid; justify-items: center; gap: 2px; text-align: center; }
-.receipt__logo { font-family: var(--font-emoji); font-size: 26px; }
+.receipt__logo { font-family: var(--font-emoji); font-size: 26px; line-height: 1; }
 .receipt__store { font: 800 16px/1.2 var(--font-display); letter-spacing: 0.01em; }
 .receipt__city { font-size: 11px; color: #5b6170; }
 .receipt__rule { height: 1px; background: #d9d4c7; }

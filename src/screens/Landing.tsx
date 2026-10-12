@@ -103,8 +103,7 @@ export default function Landing() {
     <div className="lp">
       <header className="lp-nav">
         <Link to="/" className="lp-brand" aria-label="Benin Life home">
-          <Logo size={36} />
-          <span className="lp-brand__name">Benin Life</span>
+          <Logo variant="full" size={52} title="" className="lp-brand__logo" />
           <span className="beta-badge" title="Benin Life is in beta: new features land often">Beta</span>
         </Link>
         <nav className="lp-nav__actions" aria-label="Account">
@@ -244,7 +243,7 @@ export default function Landing() {
         <Reveal className="lp-final" labelledBy="lp-final">
           <div className="lp-wrap">
             <div className="lp-final__card">
-              <Logo size={56} />
+              <Logo size={72} title="" />
               <h2 id="lp-final" className="lp-h2 lp-h2--center">Your Benin life is waiting.</h2>
               <p className="lp-lede lp-lede--center">Free to play in your browser, on any phone.</p>
               <Ctas center />
@@ -259,8 +258,7 @@ export default function Landing() {
 
       <footer className="lp-footer">
         <span className="lp-brand">
-          <Logo size={26} />
-          <span className="lp-brand__name">Benin Life</span>
+          <Logo variant="full" size={36} />
         </span>
         <p>Game money only. It has no real cash value.</p>
         <p>Made with love for Benin City.</p>

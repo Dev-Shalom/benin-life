@@ -1,42 +1,6 @@
-// Brand art for the shell screens (logo mark + landing go-slow). Pure SVG, no network.
-// The logo is the one place the Benin bronze + coral identity shows at full strength.
-
-/** Bronze medallion with a ring of coral beads around a map pin. */
-export function Logo({ size = 56 }: { size?: number }) {
-  const beads = Array.from({ length: 12 }, (_, i) => {
-    const a = (i / 12) * Math.PI * 2;
-    return { x: 32 + Math.cos(a) * 22, y: 32 + Math.sin(a) * 22 };
-  });
-  return (
-    <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden>
-      <defs>
-        <radialGradient id="logo-disc" cx="38%" cy="30%" r="75%">
-          <stop offset="0%" stopColor="#f6dc9a" />
-          <stop offset="45%" stopColor="#d9a441" />
-          <stop offset="80%" stopColor="#9a6328" />
-          <stop offset="100%" stopColor="#6e431a" />
-        </radialGradient>
-        <radialGradient id="logo-bead" cx="35%" cy="30%" r="70%">
-          <stop offset="0%" stopColor="#ffb3a1" />
-          <stop offset="50%" stopColor="#d2342a" />
-          <stop offset="100%" stopColor="#8a1a14" />
-        </radialGradient>
-        <linearGradient id="logo-pin" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2b3446" />
-          <stop offset="100%" stopColor="#131a24" />
-        </linearGradient>
-      </defs>
-      <circle cx="32" cy="33.5" r="30" fill="#5a3a1a" opacity="0.18" />
-      <circle cx="32" cy="32" r="30" fill="url(#logo-disc)" />
-      <circle cx="32" cy="32" r="27.5" fill="none" stroke="#fff3cf" strokeOpacity="0.45" strokeWidth="1" />
-      {beads.map((b, i) => (
-        <circle key={i} cx={b.x} cy={b.y} r="4.2" fill="url(#logo-bead)" stroke="#6e1410" strokeOpacity="0.4" strokeWidth="0.6" />
-      ))}
-      <path d="M32 45s9-8.2 9-15.2a9 9 0 1 0-18 0C23 36.8 32 45 32 45Z" fill="url(#logo-pin)" />
-      <circle cx="32" cy="29.6" r="3.6" fill="#f3d28a" />
-    </svg>
-  );
-}
+// Brand art for the shell screens (logo + landing go-slow). Pure SVG, no network.
+// The logo (Ada + Eben swords with a coral bead) lives in src/ui/Logo.tsx; see docs/BRAND.md.
+export { Logo } from '../ui/Logo';
 
 /** ECTS bus body, drawn around (0,0) = left end of the chassis line. */
 function BusBody({ grad = 'hero-bus' }: { grad?: string }) {

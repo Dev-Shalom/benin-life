@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Benin Life"><title>Benin Life</title><defs><linearGradient id="bz" x1="0" y1="0" x2="1" y2="1">
+ <stop offset="0" stop-color="#F4D58A"/><stop offset="0.45" stop-color="#C8922E"/><stop offset="1" stop-color="#7E5016"/></linearGradient>
+<linearGradient id="bzv" x1="0" y1="0" x2="0" y2="1">
+ <stop offset="0" stop-color="#F4D58A"/><stop offset="0.5" stop-color="#C8922E"/><stop offset="1" stop-color="#7E5016"/></linearGradient>
+<radialGradient id="cr" cx="0.35" cy="0.3" r="0.75">
+ <stop offset="0" stop-color="#F07A62"/><stop offset="0.55" stop-color="#C0392B"/><stop offset="1" stop-color="#7E1E14"/></radialGradient></defs><rect width="128" height="128" fill="#1E1410"/><rect x="5" y="5" width="118" height="118" rx="22" fill="none" stroke="#C8922E" stroke-opacity="0.35" stroke-width="1.5"/><g transform="translate(64 64) scale(0.9) translate(-64 -64)"><g transform="translate(37 80) rotate(-7) scale(0.95)"><path d="M-3.2 0 C-3.4 -22 -7.6 -44 -10.2 -58 C-11.6 -66 -6.8 -73 0.6 -73 C8 -73 12 -67 10.6 -59 C8.4 -45 3.6 -22 3.2 0 Z" fill="url(#bz)"/>
+<path d="M0 -4 C0.1 -24 0.4 -44 0.4 -62" fill="none" stroke="#7E5016" stroke-opacity="0.55" stroke-width="1.3" stroke-linecap="round"/>
+<path d="M-3 4 H3 V23 H-3 Z" fill="#F7EBD3" stroke="#7E5016" stroke-width="1.1"/>
+<rect x="-3.4" y="9.5" width="6.8" height="2.2" rx="1" fill="url(#cr)"/>
+<rect x="-3.4" y="17" width="6.8" height="2.2" rx="1" fill="url(#cr)"/>
+<path d="M-9 0.5 Q0 -2.5 9 0.5 L8.2 4.5 Q0 2.5 -8.2 4.5 Z" fill="url(#bz)"/>
+<circle cx="0" cy="28.5" r="5.5" fill="url(#cr)"/></g><g transform="translate(91 80) rotate(7) scale(0.95)"><path d="M-3 0 C-3.6 -10 -18 -20 -18.5 -40 C-19 -58 -9 -69 0 -69 C9 -69 19 -58 18.5 -40 C18 -20 3.6 -10 3 0 Z M-12.90 -45.00 a3.4 3.4 0 1 0 6.80 0 a3.4 3.4 0 1 0 -6.80 0 Z M6.10 -45.00 a3.4 3.4 0 1 0 6.80 0 a3.4 3.4 0 1 0 -6.80 0 Z M-7.50 -33.00 L-5.00 -29.00 L-7.50 -25.00 L-10.00 -29.00 Z M7.50 -33.00 L10.00 -29.00 L7.50 -25.00 L5.00 -29.00 Z M-8.10 -58.50 a2.1 2.1 0 1 0 4.20 0 a2.1 2.1 0 1 0 -4.20 0 Z M3.90 -58.50 a2.1 2.1 0 1 0 4.20 0 a2.1 2.1 0 1 0 -4.20 0 Z M-12.50 -38.20 L-11.20 -36.00 L-12.50 -33.80 L-13.80 -36.00 Z M12.50 -38.20 L13.80 -36.00 L12.50 -33.80 L11.20 -36.00 Z" fill="url(#bz)" fill-rule="evenodd"/>
+<path d="M0 -3 V-64" stroke="#7E5016" stroke-opacity="0.6" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M-2.8 4 H2.8 V14 H-2.8 Z" fill="#F7EBD3" stroke="#7E5016" stroke-width="1.1"/>
+<path d="M-5.5 0 H5.5 V4 H-5.5 Z" fill="url(#bz)"/>
+<ellipse cx="0" cy="20.5" rx="6.8" ry="5.2" fill="none" stroke="url(#cr)" stroke-width="2.6"/></g><circle cx="64" cy="52" r="12" fill="url(#cr)"/><circle cx="60.16" cy="47.92" r="3.36" fill="#fff" fill-opacity="0.38"/><circle cx="45.00" cy="80.00" r="2.7" fill="url(#cr)"/><circle cx="51.33" cy="86.00" r="2.7" fill="url(#cr)"/><circle cx="57.67" cy="90.39" r="2.7" fill="url(#cr)"/><circle cx="64.00" cy="92.00" r="2.7" fill="url(#cr)"/><circle cx="70.33" cy="90.39" r="2.7" fill="url(#cr)"/><circle cx="76.67" cy="86.00" r="2.7" fill="url(#cr)"/><circle cx="83.00" cy="80.00" r="2.7" fill="url(#cr)"/></g></svg>

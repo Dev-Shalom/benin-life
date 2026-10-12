@@ -29,7 +29,7 @@
       ]
     },
     {
-      "source": "/(icon-.*\\.png|apple-touch-icon\\.png|favicon\\.svg)",
+      "source": "/(icon-.*\\.png|apple-touch-icon\\.png|favicon\\.svg|favicon\\.ico|badge-96\\.png|og-image\\.png|brand/.*)",
       "headers": [
         {
           "key": "Cache-Control",

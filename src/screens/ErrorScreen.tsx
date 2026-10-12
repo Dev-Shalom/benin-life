@@ -8,8 +8,7 @@ export default function ErrorScreen({ message }: { message: string }) {
   return (
     <div className="center-screen">
       <div className="center-screen__brand">
-        <Logo size={44} />
-        <span>Benin Life</span>
+        <Logo variant="full" size={52} />
       </div>
       <div className="auth-card">
         <EmptyState

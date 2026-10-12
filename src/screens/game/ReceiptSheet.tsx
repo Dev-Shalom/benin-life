@@ -3,7 +3,7 @@
 import { naira } from '../../lib/format';
 import { useReceipts, type Receipt } from '../../state/receipts';
 import { useUi } from '../../state/ui';
-import { Button, Modal } from '../../ui';
+import { Button, Logo, Modal } from '../../ui';
 
 const KIND_LABEL: Record<string, string> = {
   furniture: 'Furniture', car: 'Vehicle', shop: 'Shop', garage: 'Garage build', house: 'House move-in', boutique: 'Boutique',
@@ -34,7 +34,7 @@ export function ReceiptPaper({ r }: { r: Receipt }) {
   return (
     <div className="receipt" role="document" aria-label={`Receipt ${r.ref}`}>
       <div className="receipt__head">
-        <span className="receipt__logo" aria-hidden>{receiptKindEmoji(r.kind)}</span>
+        <span className="receipt__logo" aria-hidden>{r.seller ? receiptKindEmoji(r.kind) : <Logo size={30} title="" />}</span>
         <b className="receipt__store">{r.seller || 'Benin Life'}</b>
         <span className="receipt__city">Benin City, Edo State{tier ? ` · ${tier}` : ''}</span>
       </div>

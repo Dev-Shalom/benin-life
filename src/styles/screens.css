@@ -518,6 +518,10 @@
 .lp-footer .lp-brand__name {
   font-size: 1rem;
 }
+.lp-brand__logo {
+  display: block;
+  flex: none;
+}
 
 @keyframes lp-card-in {
   from {
@@ -700,6 +704,16 @@
 }
 .auth__title .age-badge {
   margin: 0;
+}
+/* Stacked logo as the sign-in heading; the 18+ badge tucks under it. */
+.auth__title--logo {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: var(--ink);
+}
+.auth__brand .auth__title--logo svg {
+  margin-bottom: 0;
 }
 .auth__tagline {
   color: var(--text-2);

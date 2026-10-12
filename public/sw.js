@@ -15,7 +15,7 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(title, {
       body: d.body || '',
       icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      badge: '/badge-96.png',
       tag: d.tag || undefined,
       renotify: Boolean(d.tag),
       data: { url: d.url || '/admin/ads' },

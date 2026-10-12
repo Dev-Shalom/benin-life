@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, Link } from 'react-router-dom';
 import { rpc } from '../lib/api';
 import { chime, flushAdminPush } from '../lib/push';
-import { Icon } from '../ui';
+import { Icon, Logo } from '../ui';
 import { ensureConfig } from '../lib/config';
 import { useGame } from '../state/game';
 import Overview from './Overview';
@@ -75,7 +75,7 @@ export default function AdminApp() {
     <div className="adm">
       <aside className="adm-side">
         <div className="adm-brand">
-          <span className="adm-brand__mark" aria-hidden><Icon name="crown" size={18} /></span>
+          <Logo size={34} title="" className="adm-brand__logo" />
           <span>
             <b>Benin Life</b>
             <small>Admin</small>
@@ -98,7 +98,7 @@ export default function AdminApp() {
 
       <header className="adm-top">
         <div className="adm-brand">
-          <span className="adm-brand__mark" aria-hidden><Icon name="crown" size={16} /></span>
+          <Logo size={30} title="Benin Life" className="adm-brand__logo" />
           <b>Admin</b>
         </div>
         <Link to="/play" className="adm-btn adm-btn--ghost adm-btn--sm"><Icon name="back" size={14} /> Back to game</Link>

@@ -18,7 +18,7 @@ import { useDaily } from '../../state/daily';
 import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
 import { useUi, type SimTab } from '../../state/ui';
-import { Button, EmptyState, Sheet, Switch, Tabs, toast } from '../../ui';
+import { Button, EmptyState, Logo, Sheet, Switch, Tabs, toast } from '../../ui';
 import LookPanel from '../creator/LookPanel';
 import { JobCard, PerfBar, Promotion, ShiftStats } from '../../panels/careers/CareerUI';
 
@@ -405,6 +405,7 @@ function SettingsTab({ state }: { state: GameState }) {
         )}
         <Button variant="ghost" icon="logout" block onClick={() => { setOverlay(null); void signOut(); }}>{P.logout}</Button>
       </div>
+      <div className="settings-brand"><Logo variant="full" size={44} /></div>
       <p className="hint settings-foot"><span className="age-badge">18+</span> {P.ageNote}</p>
       <p className="hint settings-legal">
         <span className="beta-badge">Beta</span>
