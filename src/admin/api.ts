@@ -49,7 +49,7 @@ export interface PlayerRow {
 
 export interface LedgerRow { id: number; account: 'cash' | 'bank'; delta: number; balance_after: number; reason: string; label: string; created_at: string }
 export interface PlayerDetail {
-  profile: Row & PlayerRow & { job_title: string | null; traits: string[]; dream: string | null; street_cred: number };
+  profile: Row & PlayerRow & { job_title: string | null; traits: string[]; dream: string | null; street_cred: number; transfer_trusted?: boolean };
   ledger: LedgerRow[];
   inventory: { item_id: string; qty: number; name: string | null }[];
   audit: { id: number; action: string; data: Row; created_at: string; admin: string | null }[];
@@ -118,6 +118,7 @@ export const adminApi = {
   ban: (id: string, banned: boolean, reason = '') => rpc<Msg>('admin_ban', { p_id: id, p_banned: banned, p_reason: reason }),
   mute: (id: string, minutes: number) => rpc<Msg>('admin_mute', { p_id: id, p_minutes: minutes }),
   setAdmin: (id: string, isAdmin: boolean) => rpc<Msg>('admin_set_admin', { p_id: id, p_is_admin: isAdmin }),
+  setTransferTrusted: (id: string, on: boolean) => rpc<Msg>('admin_set_transfer_trusted', { p_id: id, p_on: on }),
   setOrigin: (id: string, origin: string, applyPerks: boolean) =>
     rpc<Msg>('admin_set_origin', { p_user: id, p_origin: origin, p_apply_perks: applyPerks }),
   stats: () => rpc<Stats>('admin_stats'),

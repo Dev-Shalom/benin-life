@@ -198,6 +198,20 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
             </div>
           </section>
 
+          <section className="adm-box">
+            <h3 className="adm-h3">Sending money</h3>
+            <p className="adm-sub">
+              {p.transfer_trusted
+                ? 'Allowed: this player can send money now, even as a new account.'
+                : 'New accounts wait before they can send money. Allow this player to skip the wait.'}
+            </p>
+            <div className="adm-btnrow">
+              {p.transfer_trusted
+                ? <ConfirmButton tone="ghost" confirmText="Tap again: remove" disabled={busy} onConfirm={() => run(() => adminApi.setTransferTrusted(id, false))}>Remove permission</ConfirmButton>
+                : <ConfirmButton tone="primary" confirmText="Tap again: allow sending" disabled={busy} onConfirm={() => run(() => adminApi.setTransferTrusted(id, true))}>Allow to send money now</ConfirmButton>}
+            </div>
+          </section>
+
           {!p.is_admin && p.id !== me && (
             <DeleteAccount id={id} username={p.username} onDeleted={() => { onChanged(); onClose(); }} />
           )}
