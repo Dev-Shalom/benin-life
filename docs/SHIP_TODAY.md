@@ -305,3 +305,5 @@ Full researched home catalogue for LAPO and Nepo at real Nigerian prices; buy, p
 ## H2. Sell furniture/cars, 3D shop thumbnails, dealer price tiers, receipts: DONE
 ## H3. Player billboards (real money, owner approval, push alerts) + Bolt: DONE
 ## L1. Launch pass: tidy coming-soon, full new-player test, balance, safety, errors/backups
+
+## S1. Scale hardening, admin delete account, password reset check, feedback box (user, 2026-10-11): DONE
