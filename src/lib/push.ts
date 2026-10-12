@@ -30,9 +30,9 @@ function keyBytes(b64: string): Uint8Array<ArrayBuffer> {
 }
 
 async function registration(): Promise<ServiceWorkerRegistration> {
+  // Always wait for an ACTIVE worker: subscribing while it is still installing fails on Android.
   const existing = await navigator.serviceWorker.getRegistration('/');
-  if (existing) return existing;
-  await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  if (!existing) await navigator.serviceWorker.register('/sw.js', { scope: '/' });
   return navigator.serviceWorker.ready;
 }
 
@@ -53,7 +53,26 @@ export async function enablePush(): Promise<string> {
   if (perm !== 'granted') throw new Error('Notifications were not allowed.');
   const reg = await registration();
   let sub = await reg.pushManager.getSubscription();
-  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) });
+  if (!sub) {
+    // Chrome on Android sometimes answers "push service error" on the first try (Google's push
+    // service not ready yet). Clear any stale subscription and retry a couple of times.
+    let lastErr: unknown = null;
+    for (let i = 0; i < 3 && !sub; i++) {
+      try {
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) });
+      } catch (e) {
+        lastErr = e;
+        await (await reg.pushManager.getSubscription())?.unsubscribe().catch(() => false);
+        await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+      }
+    }
+    if (!sub) {
+      const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+      throw new Error(/push service/i.test(msg)
+        ? 'Your phone\'s push service did not answer. Use Chrome, turn off any VPN or Data Saver, make sure Google Play Services is up to date, then tap Notify me again.'
+        : msg);
+    }
+  }
   const j = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
   const r = await rpc<{ message: string }>('admin_push_subscribe', {
     p_endpoint: j.endpoint, p_p256dh: j.keys?.p256dh, p_auth: j.keys?.auth, p_user_agent: navigator.userAgent.slice(0, 200),
