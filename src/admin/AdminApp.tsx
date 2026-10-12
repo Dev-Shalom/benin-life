@@ -16,6 +16,7 @@ import Audit from './Audit';
 import Payments from './Payments';
 import Ads from './Ads';
 import Feedback from './Feedback';
+import Broadcast from './Broadcast';
 import './admin.css';
 
 const NAV = [
@@ -23,6 +24,7 @@ const NAV = [
   { to: '/admin/settings', label: 'Settings', icon: 'gear' },
   { to: '/admin/content', label: 'Content', icon: 'file' },
   { to: '/admin/players', label: 'Players', icon: 'people' },
+  { to: '/admin/broadcast', label: 'Broadcast', icon: 'send' },
   { to: '/admin/payments', label: 'Payments', icon: 'cash' },
   { to: '/admin/ads', label: 'Ads', icon: 'bell' },
   { to: '/admin/feedback', label: 'Feedback', icon: 'mail' },
@@ -115,6 +117,7 @@ export default function AdminApp() {
           <Route path="payments" element={<Payments />} />
           <Route path="ads" element={<Ads />} />
           <Route path="feedback" element={<Feedback />} />
+          <Route path="broadcast" element={<Broadcast />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>

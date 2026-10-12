@@ -6405,3 +6405,48 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .fb-status--replied { background: #fff3dc; color: #a36400; }
 .fb-reply { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: #eaf6ef; font-size: 13px; }
 .fb-reply p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* A2 broadcasts: announcement / gift popup + pinned "From Benin Life" alerts */
+.bcast-art {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  font-size: 38px;
+  line-height: 1;
+  background: var(--blue-50);
+  animation: bcast-pop 420ms var(--ease-out) both;
+}
+.bcast-art--celebration { background: linear-gradient(135deg, var(--gold-soft), var(--amber-100)); }
+.bcast-art--warning { background: var(--amber-50); }
+.bl-modal--good .bl-modal__art:has(.bcast-art),
+.bl-modal--bad .bl-modal__art:has(.bcast-art) { background: none; padding: 0; }
+.bcast-title { display: grid; gap: 4px; }
+.bcast-kicker {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--laterite);
+}
+.bcast-amount {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--green-700);
+  font-variant-numeric: tabular-nums;
+}
+.bcast-amount small { display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--text-2); }
+.bcast-body { white-space: pre-line; overflow-wrap: anywhere; }
+.bcast-list { margin-bottom: 8px; }
+.bcast-item .alert__icon { font-size: 17px; background: var(--amber-50); }
+.bcast-item--celebration .alert__icon { background: var(--gold-soft); }
+.bcast-item--info .alert__icon { background: var(--blue-50); }
+.bcast-item .alert__body { white-space: pre-line; overflow-wrap: anywhere; }
+@keyframes bcast-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bcast-art { animation: none; }
+}

@@ -4,6 +4,7 @@
 // Bank (V1-5), Ranks (PAY), Feedback (S1-D suggestion box), Messages (friend requests, private text/voice chat and house visits), Wallet, Alerts and Settings.
 // Apps without working features stay hidden.
 // Esc closes the phone.
+import { useBroadcasts } from '../../state/broadcasts';
 import { lazy, Suspense, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { clockTime } from '../../lib/format';
@@ -118,7 +119,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const openSim = useUi((s) => s.openSim);
   const select = useUi((s) => s.select);
   const setMapOpen = useUi((s) => s.setMapOpen);
-  const unread = useGame((s) => s.unread);
+  const unread = useGame((s) => s.unread) + useBroadcasts((s) => s.unseen);
   const chatUnread = useChat((s) => s.unread);
   const events = useGame((s) => s.events);
   const lastReadEventId = useGame((s) => s.lastReadEventId);

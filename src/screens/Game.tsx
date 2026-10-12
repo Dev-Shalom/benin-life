@@ -1,6 +1,8 @@
 // Game screen (R4/R5): the 3D home when the player is at home, otherwise the 3D city map
 // (the 2D map only as the lite fallback, see src/art/city3d/CityView.tsx).
 // HUD: top pill, left rail, needs card, dock (Home · Buy · Map · Phone), status banners, toasts.
+import { useBroadcasts } from '../state/broadcasts';
+import { BroadcastHost } from './game/Broadcasts';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HomeView, KINDS, LAYOUTS, activityGroup, findFreeSpot, furnishHome, furnitureIdOfKey, homeLayoutFor, itemGroup, placementIssue, type FurnitureItem, type FurnitureKind, type SavedHomePosition } from '../art/home3d';
 import { CityView, type CityBoard } from '../art/city3d';
@@ -96,7 +98,7 @@ export default function Game() {
   const state = useGame((s) => s.state);
   const locations = useGame((s) => s.locations);
   const byId = useGame((s) => s.locationsById);
-  const unread = useGame((s) => s.unread);
+  const unread = useGame((s) => s.unread) + useBroadcasts((s) => s.unseen);
   const gameEvents = useGame((s) => s.events);
   // S3: live player counts per place on the map (Realtime Presence, other players only)
   // S1 scaling: counts come from world_counts() (polled) plus the live list at my own place
@@ -911,6 +913,7 @@ export default function Game() {
       <HomeSheet state={state} status={status} />
       <GlobalPanelSheet />
       <AlertsSheet />
+      <BroadcastHost />
       <SimSheet state={state} />
       <LookSheet state={state} />
       <BuySheet

@@ -3,6 +3,8 @@ import { timeAgo, titleCase } from '../../lib/format';
 import { eventTone, useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { EmptyState, Icon, Sheet } from '../../ui';
+import { useBroadcasts } from '../../state/broadcasts';
+import { BroadcastList } from './Broadcasts';
 
 /** The alerts list (used by the Alerts sheet and the phone's Alerts app). Opening it marks everything read. */
 export function AlertsList({ active }: { active: boolean }) {
@@ -18,10 +20,13 @@ export function AlertsList({ active }: { active: boolean }) {
     }
   }, [active, markEventsRead]);
 
-  if (events.length === 0) {
+  const hasBroadcasts = useBroadcasts((s) => s.rows.length > 0);
+  if (events.length === 0 && !hasBroadcasts) {
     return <EmptyState icon="bell" title="No alerts yet" body="Paydays, police visits, ready harvests and more will show up here." />;
   }
   return (
+    <>
+    <BroadcastList active={active} />
     <ul className="alerts">
       {events.map((e) => {
         const tone = eventTone(e.kind);
@@ -39,6 +44,7 @@ export function AlertsList({ active }: { active: boolean }) {
         );
       })}
     </ul>
+    </>
   );
 }
 
