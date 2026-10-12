@@ -56,7 +56,8 @@ export const KITS: Record<string, Kit> = {
   museum: { ...HALL, floor: '#d8c9ad', floorAlt: '#cdbd9f', wall: '#efe4cf', trim: '#74461c', signBg: '#74461c', signInk: '#fff6dc' },
   office: { ...HALL, floor: '#dfe4e8', floorAlt: '#d4dadf', wall: '#f4f7f9', trim: '#155a78', signBg: '#155a78' },
   cyber: { ...HALL, floor: '#cfd2dc', floorAlt: '#c4c8d3', wall: '#e8eaf2', trim: '#252886', signBg: '#252886' },
-  shrine: { ...HALL, floor: '#a8754e', floorAlt: '#9c6b45', wall: '#c4552f', trim: '#4a0f1c', signBg: '#4a0f1c', signInk: '#f3d28a', dimAtNight: 0.5 },
+  // B2: mud walls, earth floor, low firelight (Baba's Shrine)
+  shrine: { ...HALL, floor: '#8f6644', floorAlt: '#87603f', wall: '#a8653f', wallTop: '#8e5233', trim: '#4a0f1c', signBg: '#4a0f1c', signInk: '#f3d28a', dimAtNight: 0.6, wallH: 2.4 },
   salon: { ...HALL, floor: '#e9dcdc', floorAlt: '#e0d0d0', wall: '#fbeef3', trim: '#a02c68', signBg: '#a02c68' },
   workshop: { ...HALL, floor: '#9a8a78', floorAlt: '#907f6d', wall: '#c9b8a0', trim: '#6a4116', signBg: '#6a4116', dimAtNight: 0.4 },
   airport: { ...HALL, floor: '#e3e7ea', floorAlt: '#d8dde1', tile: 1.5, wall: '#f4f7f9', trim: '#1c6a9a', signBg: '#1c6a9a' },
@@ -122,6 +123,10 @@ export const PROPS: Record<string, PropMeta> = {
   desks: P(false, 'centre', 'sit', 1),
   stage: P(true, 'front', 'stand', 1),
   altar: P(true, 'front', 'stand', 1.6),
+  // B2 Baba's Shrine
+  shrine_hut: P(true, 'front', 'sit', 2.3),
+  fire_pit: P(true, 'front', 'sit', 0.9),
+  offering_mat: P(false, 'centre', 'stand', 0.5),
   salon_chairs: P(false, 'centre', 'sit', 1.2),
   furnace: P(true, 'front', 'stand', 1.4),
   crops: P(false, 'centre', 'stand', 0.7),

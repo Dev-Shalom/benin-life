@@ -8,11 +8,11 @@
 import { create } from 'zustand';
 import type { HomeGroup } from '../art/home3d/model';
 
-export type TaskKind = 'activity' | 'shift' | 'buy';
+export type TaskKind = 'activity' | 'shift' | 'buy' | 'shrine';
 
 export interface TaskItem {
   uid: string;
-  /** Activity id (do_activity), item id ('buy': shop_buy) or the job track ('shift': work_shift). */
+  /** Activity id (do_activity), item id ('buy': shop_buy), the job track ('shift': work_shift) or a shrine service ('shrine': shrine_start). */
   id: string;
   /** L2: what the task calls on arrival (default 'activity'). */
   kind?: TaskKind;

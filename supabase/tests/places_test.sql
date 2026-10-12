@@ -112,7 +112,7 @@ begin
   perform pg_temp.assert(n = 0, n || ' zone actions point at missing items');
   select count(*) into n from zone_actions za where za.kind = 'job' and not exists (select 1 from career_tracks t where t.id = za.ref);
   perform pg_temp.assert(n = 0, n || ' zone actions point at missing career tracks');
-  select count(*) into n from zone_actions za where za.kind = 'panel' and za.ref not in ('shop', 'jobs', 'bank', 'pos', 'activities', 'chat', 'inventory');
+  select count(*) into n from zone_actions za where za.kind = 'panel' and za.ref not in ('shop', 'jobs', 'bank', 'pos', 'activities', 'chat', 'inventory', 'babalawo');
   perform pg_temp.assert(n = 0, n || ' zone actions point at unknown tabs');
   -- the activity a zone offers is offered at that zone's type
   select string_agg(za.id, ', ') into v_missing from zone_actions za join place_zones z on z.id = za.zone_id

@@ -14,6 +14,7 @@ import { activityIcon, useTasks, WALK_TO } from '../../state/tasks';
 import type { PlayerStatus } from './status';
 import { stopRunning } from './TaskRunner';
 import { STEAL_LABEL } from '../../api/crime';
+import { SHRINE_LABEL_PREFIX } from '../../api/shrine';
 
 function shortName(s: string): string {
   return s.length > 22 ? `${s.slice(0, 21).trimEnd()}…` : s;
@@ -46,6 +47,7 @@ export function TaskPill({ state, status }: { state: GameState; status: PlayerSt
       : current?.phase === 'running' && current.kind !== 'buy'
         ? current.icon
         : p.busy_label === STEAL_LABEL ? '🫳'
+        : p.busy_label?.startsWith(SHRINE_LABEL_PREFIX) ? '🪔'
         : act?.icon ?? activityIcon(act?.id ?? null, '⏳');
     const label = p.busy_label ?? 'Busy';
     const pay = shift ? Math.floor((Number(p.job_shift_pay ?? 0) * frac) / 10) * 10 : 0;
@@ -65,7 +67,7 @@ export function TaskPill({ state, status }: { state: GameState; status: PlayerSt
           )}
           <span className="task-pill__bar"><span style={{ transform: `scaleX(${frac})` }} /></span>
         </span>
-        {!shift && (
+        {!shift && !p.busy_label?.startsWith(SHRINE_LABEL_PREFIX) && (
           <button type="button" className="task-pill__x" onClick={() => void stopRunning()} aria-label={`Stop ${label}`} title="Stop">
             <XIcon />
           </button>

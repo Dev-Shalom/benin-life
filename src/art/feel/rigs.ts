@@ -55,6 +55,8 @@ export const RIGS: Record<string, Rig> = {
   motorpark: OUT,
   street: OUT,
   pos: OUT,
+  // B2 Baba's Shrine: low firelight, warm orange, darker corners
+  shrine: { ...BASE, ambient: 0.74, tint: '#ff9a4a', tintMix: 0.3, lamp: '#ff8a3a', lampDay: 0.9, lampNight: 2.0, pool: '#ff9a50', poolDay: 0.18, poolNight: 0.42, exposure: 1.24 },
   home_lapo: { ...BASE, ambient: 0.84, tint: '#ffe0a0', tintMix: 0.18, lamp: '#ffc25c', lampDay: 0.35, lampNight: 2.1, pool: '#ffcf6b', poolDay: 0, poolNight: 0.36, fan: true, exposure: 1.25 },
   home_nepo: { ...BASE, ambient: 0.92, tint: '#fff0dc', tintMix: 0.14, lamp: '#ffd9a8', lampDay: 0.5, lampNight: 1.9, pool: '#ffe2b8', poolDay: 0.03, poolNight: 0.38, exposure: 1.22 },
 };

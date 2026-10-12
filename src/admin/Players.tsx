@@ -4,7 +4,7 @@ import { toast } from '../ui';
 import { errorMessage } from '../lib/api';
 import { naira, nairaShort, parseNaira } from '../lib/format';
 import { useGame } from '../state/game';
-import { adminApi, type JailCaseRow, type PlayerDetail, type PlayerRow } from './api';
+import { adminApi, type CharmRow, type JailCaseRow, type PlayerDetail, type PlayerRow } from './api';
 import { Badge, Btn, ConfirmButton, DetailPane, LoadError, PageHead, Skeleton } from './parts';
 import { timeShort, useLoad } from './util';
 
@@ -212,6 +212,8 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
             </div>
           </section>
 
+          <PlayerCharms id={id} />
+
           {!p.is_admin && p.id !== me && (
             <DeleteAccount id={id} username={p.username} onDeleted={() => { onChanged(); onClose(); }} />
           )}
@@ -383,6 +385,49 @@ function JailCases({ onOpen }: { onOpen: (id: string) => void }) {
           );
         })}
       </div>
+    </section>
+  );
+}
+
+/** B2: a player's charms from Baba's Shrine (and Baba's curses): see them, clear one or all (audited). */
+function PlayerCharms({ id }: { id: string }) {
+  const { data, reload } = useLoad(() => adminApi.playerCharms(id), [id]);
+  const [busy, setBusy] = useState(false);
+  const rows: CharmRow[] = data?.rows ?? [];
+  const live = rows.filter((r) => r.live);
+  const clear = async (charm: number | null) => {
+    setBusy(true);
+    try {
+      const r = await adminApi.charmClear(id, charm);
+      toast(r.message, 'good');
+      await reload();
+    } catch (e) { toast(errorMessage(e), 'bad'); } finally { setBusy(false); }
+  };
+  return (
+    <section className="adm-box" data-testid="adm-charms">
+      <h3 className="adm-h3">🪔 Charms ({live.length} active)</h3>
+      {rows.length === 0 && <p className="adm-empty">No charms from Baba's Shrine.</p>}
+      <div className="adm-rows">
+        {rows.slice(0, 12).map((c) => (
+          <div key={c.id} className="adm-ledger__row">
+            <span className="adm-ledger__label">
+              {c.icon} {c.name}{c.debuff ? ' (curse)' : ''}
+              <small>
+                {c.live ? 'active' : c.status}
+                {c.expires_at ? ` · ends ${timeShort(c.expires_at)}` : ''}
+                {c.uses_left != null ? ` · ${c.uses_left} uses left` : ''}
+                {c.effect ? ` · ${c.effect}` : ''}
+              </small>
+            </span>
+            {c.live && <ConfirmButton tone="ghost" small confirmText="Tap again: clear" disabled={busy} onConfirm={() => void clear(c.id)}>Clear</ConfirmButton>}
+          </div>
+        ))}
+      </div>
+      {live.length > 1 && (
+        <div className="adm-btnrow">
+          <ConfirmButton tone="ghost" confirmText="Tap again: clear all" disabled={busy} onConfirm={() => void clear(null)}>Clear all charms</ConfirmButton>
+        </div>
+      )}
     </section>
   );
 }

@@ -2,6 +2,8 @@
 // Career is live since V1-3 (shared UI in src/panels/careers/CareerUI.tsx). L1 launch pass: the
 // unfinished Skills tab, Perks and Feelings previews are hidden; Wishes are today's D1 daily goals.
 // The Profile turntable is the only live 3D view while this sheet is open: Game suspends the 3D home.
+import { CharmChips } from './Shrine';
+import { useShrine } from '../../state/shrine';
 import { useLiveProfile } from '../../lib/live';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -91,6 +93,18 @@ function TraitList({ ids }: { ids: string[] }) {
   );
 }
 
+/** B2: active charms (and Baba's curses) with time left; hidden when there are none. */
+function SimCharms() {
+  const charms = useShrine((s) => s.charms);
+  if (!charms.length) return null;
+  return (
+    <section className="sim-card" data-testid="sim-charms">
+      <h4 className="sim-card__title">Charms</h4>
+      <CharmChips charms={charms} />
+    </section>
+  );
+}
+
 function ProfileTab({ state, onEditLook, onWardrobe }: { state: GameState; onEditLook: () => void; onWardrobe: () => void }) {
   const p = state.profile;
   const catalog = useCatalog((s) => s.catalog);
@@ -143,6 +157,7 @@ function ProfileTab({ state, onEditLook, onWardrobe }: { state: GameState; onEdi
           <Button size="sm" variant="ghost" icon="bag" onClick={() => openPanel('inventory')}>Open</Button>
         </div>
       </section>
+      <SimCharms />
       <section className="sim-card">
         <h4 className="sim-card__title">Dream</h4>
         {dream ? (
@@ -172,6 +187,7 @@ function NeedsTab({ state }: { state: GameState }) {
       <div className="need-rows">
         {HUD_NEEDS.map((k) => <NeedRow key={k} k={k} v={needValue(p, k)} />)}
       </div>
+      <SimCharms />
       <section className="sim-card">
         <h4 className="sim-card__title">Body</h4>
         <div className="need-rows">

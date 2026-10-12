@@ -47,6 +47,7 @@ export const SCENE_EMOJI: Record<SceneType, string> = {
 
 /** A few places get a more specific emoji than their scene's. */
 const ID_EMOJI: Record<string, string> = {
+  babas_shrine: '🪔',
   uniben_hostel: '🛏️',
   bronze_tech_hub: '🚀',
   igun_street: '🔥',

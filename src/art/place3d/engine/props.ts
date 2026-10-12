@@ -53,7 +53,7 @@ const CLUTTER: Record<string, ClutterKind> = {
   police: 'office', airport: 'hall', hospital: 'clinic', campus: 'hall', market: 'market', motorpark: 'market', street: 'market', pos: 'market',
 };
 
-const WARM_PROPS = new Set(['tables', 'counter', 'bar', 'food_stall', 'grill', 'kiosk', 'checkout', 'desk', 'salon_chairs', 'stall']);
+const WARM_PROPS = new Set(['tables', 'counter', 'bar', 'food_stall', 'grill', 'kiosk', 'checkout', 'desk', 'salon_chairs', 'stall', 'fire_pit', 'shrine_hut', 'altar']);
 const PARTY_PROPS = new Set(['dance_floor', 'bar', 'dj_booth', 'vip', 'stage']);
 const STEAM_PROPS = new Set(['food_stall', 'grill', 'counter', 'kiosk']);
 
@@ -426,6 +426,76 @@ function buildProp(b: B, z: PlaceZone, room: Room, seed: number) {
       for (let i = 0; i < 5; i++) b.box(0.04, 0.06, 0.04, -0.6 + i * 0.3, 0.98, -hd * 0.2, '#ffb347', { layer: 'glow' });
       b.cyl(0.18, 0.22, 0.5, -hw * 0.7, 0, -hd * 0.6, '#5a2a1a', { seg: 8 });
       b.box(lw, 1.6, 0.08, 0, 0.5, -hd + 0.05, '#fbf3e4');
+      return;
+    }
+    case 'shrine_hut': {
+      // B2 Baba's hut: mud walls, thatch, red and white cloth, Baba's stool on a raffia mat, a carved staff,
+      // calabashes, a cowrie tray and a small oil lamp (respectful, no gore: offerings only)
+      const MUD = '#9c5a3c';
+      const MUD_D = '#7d4630';
+      b.box(lw, 2.2, 0.28, 0, 0, -hd + 0.14, MUD);
+      for (const sx of [-1, 1]) b.box(0.28, 2.0, ld * 0.75, sx * (hw - 0.14), 0, -hd + ld * 0.375, MUD_D);
+      b.box(lw + 0.5, 0.14, ld * 0.85, 0, 2.05, -hd + ld * 0.36, '#c9a45a', { rx: 0.32 }); // thatch
+      b.box(lw + 0.5, 0.06, 0.2, 0, 1.92, -hd + ld * 0.8, '#b08a44');
+      const n = Math.max(6, Math.round(lw / 0.4));
+      for (let i = 0; i < n; i++) b.box(lw / n - 0.02, 1.5, 0.03, -hw + (i + 0.5) * (lw / n), 0.45, -hd + 0.3, i % 2 ? '#f4f1e8' : '#c0262d');
+      b.box(1.8, 0.02, 1.1, 0, 0.005, -hd + 1.05, '#d8b46a'); // raffia mat
+      stool(b, 0, -hd + 0.8, WOOD_D);
+      b.box(0.9, 0.04, 0.3, 0, 0.48, -hd + 0.62, '#f4f1e8'); // white cloth on the stool
+      // carved staff with a bronze head
+      b.cyl(0.045, 0.06, 1.9, hw - 0.55, 0, -hd + 0.6, WOOD_D, { seg: 6 });
+      for (let i = 0; i < 4; i++) b.cyl(0.07, 0.07, 0.06, hw - 0.55, 0.5 + i * 0.32, -hd + 0.6, '#3e2616', { seg: 6 });
+      b.cyl(0.1, 0.05, 0.22, hw - 0.55, 1.9, -hd + 0.6, BRONZE, { seg: 6 });
+      // calabashes
+      for (let i = 0; i < 3; i++) {
+        b.cyl(0.16 + i * 0.03, 0.1, 0.18, -hw + 0.55 + i * 0.42, 0, -hd + 0.65, i === 1 ? '#a8692e' : '#c98a3a', { seg: 9 });
+        b.cyl(0.12 + i * 0.03, 0.16 + i * 0.03, 0.08, -hw + 0.55 + i * 0.42, 0.18, -hd + 0.65, '#d79b4a', { seg: 9 });
+      }
+      // cowrie tray in front of Baba
+      b.cyl(0.34, 0.34, 0.04, 0, 0, -hd + 1.45, WOOD, { seg: 12 });
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * Math.PI * 2;
+        b.box(0.06, 0.03, 0.04, Math.cos(a) * 0.2, 0.04, -hd + 1.45 + Math.sin(a) * 0.2, WHITE, { ry: a });
+      }
+      // oil lamp: a low warm flame
+      b.cyl(0.08, 0.1, 0.1, -0.7, 0, -hd + 1.3, '#6a3a20', { seg: 8 });
+      b.box(0.05, 0.08, 0.05, -0.7, 0.1, -hd + 1.3, '#ffb347', { layer: 'glow' });
+      // white chalk line at the door
+      b.box(lw * 0.8, 0.01, 0.06, 0, 0.004, hd - 0.15, '#f4f1e8');
+      return;
+    }
+    case 'fire_pit': {
+      // B2 low fire in a ring of stones: the shrine's firelight
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * Math.PI * 2;
+        b.cyl(0.13, 0.16, 0.16, Math.cos(a) * 0.62, 0, Math.sin(a) * 0.62, i % 2 ? '#6e6a64' : '#837e76', { seg: 6 });
+      }
+      for (const r of [0, Math.PI / 2, Math.PI / 4]) b.box(0.9, 0.1, 0.12, 0, 0.02, 0, '#4a2c1a', { ry: r });
+      b.cyl(0.32, 0.32, 0.03, 0, 0.12, 0, '#ff6a1a', { seg: 10, layer: 'glow' });
+      b.cyl(0.02, 0.3, 0.55, 0, 0.12, 0, '#ff8a2a', { seg: 7, layer: 'glow' });
+      b.cyl(0.01, 0.17, 0.8, 0.05, 0.14, -0.03, '#ffd25a', { seg: 6, layer: 'glow' });
+      // low benches (logs) to sit by the fire
+      b.box(1.4, 0.3, 0.3, 0, 0, hd - 0.2, WOOD);
+      b.box(0.3, 0.3, 1.2, -hw + 0.2, 0, 0, WOOD);
+      return;
+    }
+    case 'offering_mat': {
+      // B2 the offering mat: kola nuts, schnapps, folded white cloth, palm oil, calabashes, a white chicken
+      b.box(lw * 0.9, 0.02, ld * 0.8, 0, 0.005, 0, '#d8b46a');
+      b.box(lw * 0.9, 0.022, 0.06, 0, 0.006, -ld * 0.2, '#b8913f');
+      for (let i = 0; i < 5; i++) b.cyl(0.05, 0.05, 0.05, -hw + 0.4 + (i % 3) * 0.1, 0.02, -hd + 0.5 + Math.floor(i / 3) * 0.1, '#8a4b22', { seg: 6 });
+      b.cyl(0.07, 0.07, 0.3, -0.25, 0.02, -0.15, '#2f6b3a', { seg: 8 }); // schnapps
+      b.cyl(0.025, 0.04, 0.12, -0.25, 0.32, -0.15, '#2f6b3a', { seg: 6 });
+      b.box(0.45, 0.1, 0.3, 0.25, 0.02, -0.2, '#f4f1e8'); // white cloth
+      b.cyl(0.14, 0.11, 0.24, 0.75, 0.02, -0.1, '#7a3a1a', { seg: 9 }); // palm oil pot
+      b.cyl(0.12, 0.12, 0.02, 0.75, 0.26, -0.1, '#c0262d', { seg: 9 });
+      b.cyl(0.2, 0.12, 0.16, -hw + 0.5, 0.02, 0.25, '#c98a3a', { seg: 9 });
+      // white chicken in a basket
+      b.cyl(0.3, 0.24, 0.22, hw - 0.45, 0.02, 0.2, '#b08a44', { seg: 9 });
+      b.box(0.26, 0.2, 0.34, hw - 0.45, 0.2, 0.2, WHITE);
+      b.box(0.12, 0.14, 0.12, hw - 0.45, 0.36, 0.38, WHITE);
+      b.box(0.04, 0.06, 0.08, hw - 0.45, 0.5, 0.38, CORAL);
+      b.box(0.04, 0.03, 0.06, hw - 0.45, 0.4, 0.46, GOLD);
       return;
     }
     case 'salon_chairs': {

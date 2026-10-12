@@ -995,11 +995,17 @@ function buildLandmarks(b: HomeBuilder) {
   b.cyl(0.2, 0.25, 0.12, 0, 0.06, 0, '#e3ded3', { seg: 8 });
   b.box(0.08, 0.6, 0.08, 0, 0.18, 0, '#b0793a');
 
-  // --- Baba Osagie's shrine in the grove: thatched hut
-  at2(GROVE.x + 4, GROVE.y + 3);
-  b.cyl(0.32, 0.32, 0.28, 0, 0, 0, '#c9874f', { seg: 8 });
-  b.cyl(0, 0.46, 0.42, 0, 0.28, 0, '#c9a45a', { seg: 8 });
-  b.box(0.08, 0.06, 0.08, 0.38, 0, 0.2, '#f4f1e8');
+  // --- B2 Baba's Shrine in the grove on the outskirts: mud hut with a thatch cone, red and white cloth on poles, a fire
+  at2(GROVE.x + 3, GROVE.y + 2);
+  b.cyl(0.34, 0.36, 0.3, 0, 0, 0, '#9c5a3c', { seg: 8 });
+  b.cyl(0, 0.5, 0.44, 0, 0.3, 0, '#c9a45a', { seg: 8 });
+  b.cyl(0.24, 0.26, 0.2, 0.62, 0, -0.3, '#9c5a3c', { seg: 7 });
+  b.cyl(0, 0.36, 0.3, 0.62, 0.2, -0.3, '#c9a45a', { seg: 7 });
+  for (const [x, z, c] of [[-0.45, 0.35, '#c0262d'], [-0.2, 0.5, '#f4f1e8'], [0.1, 0.55, '#c0262d']] as const) {
+    b.box(0.02, 0.36, 0.02, x, 0, z, '#5b3a24');
+    b.box(0.12, 0.08, 0.01, x + 0.06, 0.26, z, c);
+  }
+  b.cyl(0.1, 0.12, 0.03, 0.15, 0, 0.42, '#ff8a2a', { seg: 7 });
 
   // --- Iguobazuwa farm huts on the NW edge
   for (const [x, y] of [[60, 290], [95, 330], [48, 370]] as const) {

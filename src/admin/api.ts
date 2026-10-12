@@ -26,7 +26,7 @@ export type AdminTable =
   | 'origin_tiers' | 'traits' | 'dreams' | 'start_homes' | 'career_tracks' | 'career_levels'
   | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture' | 'starter_furniture'
   | 'place_zones' | 'zone_actions' | 'place_moods' | 'npc_roster' | 'crowd_profiles' | 'hype_templates' | 'place_events' | 'topup_packs'
-  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards';
+  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services';
 
 export interface PlayerRow {
   id: string;
@@ -91,6 +91,12 @@ export interface PaymentsData {
 
 type Msg = { message: string };
 
+/** B2: a player's charm (Admin → Players → Charms). */
+export interface CharmRow {
+  id: number; kind: string; name: string; icon: string; status: string; expires_at: string | null; uses_left: number | null;
+  created_at: string; ended_at: string | null; effect: string | null; debuff: boolean; live: boolean;
+}
+
 export interface JailCaseRow {
   id: number; user_id: string; username: string; status: string; decided: boolean; reason: string; bail_amount: number;
   escape_attempts: number; jail_seconds: number; jail_until: string; created_at: string; place: string | null;
@@ -135,4 +141,7 @@ export const adminApi = {
   /** C1: jail cases (open by default) and admin release (audited). */
   jailCases: (status = 'open') => rpc<{ rows: JailCaseRow[] }>('admin_jail_cases', { p_status: status, p_limit: 100 }),
   jailRelease: (caseId: number, reason: string) => rpc<Msg>('admin_jail_release', { p_case_id: caseId, p_reason: reason }),
+  /** B2: a player's charms; clear one (id) or all active ones (null). Audited. */
+  playerCharms: (userId: string) => rpc<{ rows: CharmRow[] }>('admin_player_charms', { p_user: userId }),
+  charmClear: (userId: string, charmId: number | null) => rpc<Msg & { cleared: number }>('admin_charm_clear', { p_user: userId, p_charm: charmId }),
 };

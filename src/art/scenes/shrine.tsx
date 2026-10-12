@@ -1,4 +1,4 @@
-// Baba Osagie's shrine (native doctor, Sakponba) — light-hearted — P1-SCENES-B
+// Baba's Shrine (fictional Baba, never named; B2 outskirts of Benin) — light-hearted, respectful — P1-SCENES-B
 import { Sky, NightShade, Finish, GlowDefs, Glow, Person, Treeline, Haze, SIGN_FONT, HAND_FONT, rng } from './_sharedB';
 
 const P = 'shrine';
@@ -64,7 +64,7 @@ export default function ShrineScene({ night }: { night: boolean }) {
   }).sort((a, b) => a.y - b.y);
 
   return (
-    <svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" role="img" aria-label="Baba Osagie's shrine">
+    <svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" role="img" aria-label="Baba's Shrine">
       <defs>
         <linearGradient id={`${P}-earth`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#c46a3c" />
@@ -140,11 +140,11 @@ export default function ShrineScene({ night }: { night: boolean }) {
         <path d="M44 312 V236 M150 312 V236" stroke="#5a3a2a" strokeWidth="5" />
         <rect x="30" y="228" width="134" height="64" fill="#f6f2ea" />
         <rect x="30" y="228" width="134" height="64" fill="none" stroke="#d2342a" strokeWidth="3" />
-        <text x="97" y="243" fontSize="10" fontFamily={SIGN_FONT} fill="#d2342a" textAnchor="middle">BABA OSAGIE</text>
-        <text x="97" y="253" fontSize="6.5" fontFamily={SIGN_FONT} fill="#2a2440" textAnchor="middle">NATIVE DOCTOR</text>
-        <text x="97" y="263" fontSize="5.5" fontFamily={HAND_FONT} fill="#2a2440" textAnchor="middle">Love • Money • Promotion</text>
-        <text x="97" y="272" fontSize="5.5" fontFamily={HAND_FONT} fill="#2a2440" textAnchor="middle">Visa wahala? Come in!</text>
-        <text x="97" y="284" fontSize="5" fontFamily={HAND_FONT} fill="#7a3519" textAnchor="middle">NO REFUND o • 0803-OSAGIE</text>
+        <text x="97" y="243" fontSize="10" fontFamily={SIGN_FONT} fill="#d2342a" textAnchor="middle">BABA&apos;S SHRINE</text>
+        <text x="97" y="253" fontSize="6.5" fontFamily={SIGN_FONT} fill="#2a2440" textAnchor="middle">IFÁ • HERBS • CHARMS</text>
+        <text x="97" y="263" fontSize="5.5" fontFamily={HAND_FONT} fill="#2a2440" textAnchor="middle">Readings • Cleansing • Protection</text>
+        <text x="97" y="272" fontSize="5.5" fontFamily={HAND_FONT} fill="#2a2440" textAnchor="middle">Bring your offering</text>
+        <text x="97" y="284" fontSize="5" fontFamily={HAND_FONT} fill="#7a3519" textAnchor="middle">Remove your shoes o</text>
       </g>
 
       {/* hut */}

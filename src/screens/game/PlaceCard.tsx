@@ -23,6 +23,12 @@ import { npcAvatar } from '../../art/place3d/model';
 import { placeEmoji } from '../../art/city3d';
 import { deriveStatus } from './status';
 import { queueTask } from './TaskRunner';
+import { useShrine } from '../../state/shrine';
+
+/** B2 offering icons for the shrine cards (same as the items' icons). */
+const OFFER_ICON: Record<string, string> = {
+  kola_nut: '🌰', alligator_pepper: '🌶️', cowries: '🐚', white_cloth: '🏳️', palm_oil: '🫙', schnapps: '🍾', white_chicken: '🐓', goat: '🐐', cow: '🐄',
+};
 
 /* ------------------------------------------------------------------ */
 /* Data hooks                                                          */
@@ -135,13 +141,18 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
   const select = useUi((s) => s.select);
   const [armed, setArmed] = useState(false);
   const p = state.profile;
-  const secs = a.kind === 'activity' ? Math.round(activitySeconds({ game_minutes: a.game_minutes ?? 30, effects: a.effects ?? null, max_seconds: a.max_seconds, min_seconds: a.min_seconds, scale_by_need: a.scale_by_need }, p, cfg)) : null;
+  const shrine = a.kind === 'shrine';
+  const secs = shrine ? (a.seconds ?? null) : a.kind === 'activity' ? Math.round(activitySeconds({ game_minutes: a.game_minutes ?? 30, effects: a.effects ?? null, max_seconds: a.max_seconds, min_seconds: a.min_seconds, scale_by_need: a.scale_by_need }, p, cfg)) : null;
   const car = a.kind === 'shop' && a.category === 'vehicle';
   const cost = a.cost ?? 0;
   const money = car ? p.cash + p.bank : p.cash;
-  const broke = (a.kind === 'activity' || a.kind === 'shop') && cost > money;
+  const broke = (a.kind === 'activity' || a.kind === 'shop' || shrine) && cost > money;
   const owned = car && (a.owned ?? 0) > 0;
-  const lock = a.locked ?? (owned ? 'You own this one' : broke ? (car ? 'Not enough money' : 'Not enough cash') : null) ?? blocked;
+  // B2: a charm of that kind still works / offerings missing from the Bag
+  const missing = shrine ? (a.missing ?? []) : [];
+  const charmLock = shrine && a.charm_until ? (a.ref === 'money_charm' ? 'You carry one already' : 'Your charm is still working') : null;
+  const lock = a.locked ?? (owned ? 'You own this one' : charmLock ?? (missing.length ? `Missing ${missing.map((m) => `${m.need - m.have} ${m.name.toLowerCase()}`).join(', ')}`
+    : broke ? (car ? 'Not enough money' : 'Not enough cash') : null)) ?? blocked;
   useEffect(() => {
     if (!armed) return;
     const t = window.setTimeout(() => setArmed(false), 4000);
@@ -151,6 +162,12 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
   const go = () => {
     if (a.kind === 'panel') {
       select(locId, a.ref as PanelId);
+      return;
+    }
+    // B2: a locked shrine card opens Baba's tab on that service (what is missing, time left)
+    if (shrine && lock && lock !== blocked) {
+      useShrine.getState().setFocus(a.ref);
+      select(locId, 'babalawo');
       return;
     }
     if (a.kind === 'job' && !a.mine) {
@@ -166,13 +183,14 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
       toast(lock, 'info');
       return;
     }
-    if (car && !armed) {
+    if ((car || shrine) && !armed) {
       setArmed(true);
       return;
     }
     setArmed(false);
     const walkTo = WALK_LABEL(zone);
-    if (a.kind === 'job') queueTask({ id: a.ref, name: 'Work a shift' }, locId, { kind: 'shift', zone: zone.key, walkTo, icon: a.icon });
+    if (shrine) queueTask({ id: a.ref, name: a.name }, locId, { kind: 'shrine', zone: zone.key, walkTo, icon: a.icon });
+    else if (a.kind === 'job') queueTask({ id: a.ref, name: 'Work a shift' }, locId, { kind: 'shift', zone: zone.key, walkTo, icon: a.icon });
     else if (a.kind === 'shop') queueTask({ id: a.ref, name: `Buy ${a.name}` }, locId, { kind: 'buy', zone: zone.key, walkTo, icon: a.icon, qty: 1 });
     else queueTask({ id: a.ref, name: a.name, home_only: a.home_only }, locId, { zone: zone.key, walkTo, icon: a.icon });
   };
@@ -180,7 +198,7 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
   let price: React.ReactNode = null;
   if (a.kind === 'job') price = a.pay ? <span className="pc-act__earn">Earns {nairaShort(a.pay)}</span> : null;
   else if (a.kind === 'panel') price = null;
-  else price = cost > 0 ? <span className="pc-act__price" title={naira(cost)}>{car ? nairaShort(cost) : naira(cost)}</span> : <span className="pc-act__free">Free</span>;
+  else price = cost > 0 ? <span className="pc-act__price" title={naira(cost)}>{car || (shrine && cost >= 100000) ? nairaShort(cost) : naira(cost)}</span> : <span className="pc-act__free">Free</span>;
 
   const verb = a.kind === 'panel' || (a.kind === 'job' && !a.mine) ? 'Choose' : armed ? `Tap again · ${nairaShort(cost)}` : idle ? null : 'Add to queue';
   return (
@@ -200,6 +218,14 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
       {a.kind === 'job' && a.title && <span className="pc-act__sub">{a.mine ? a.title : `Start as ${a.title}`}</span>}
       {car && <span className="pc-act__sub">{owned ? 'In your Bag' : 'Unlocks "Your car" rides'}</span>}
       {a.kind === 'shop' && !car && (a.owned ?? 0) > 0 && <span className="pc-act__sub">{a.owned} in your Bag</span>}
+      {shrine && a.effect && <span className="pc-act__sub">{a.effect} · {a.duration}</span>}
+      {shrine && a.offerings && (
+        <span className="pc-act__fx pc-act__offer" aria-label="Offerings">
+          {Object.entries(a.offerings).map(([id, n]) => (
+            <span key={id} className={`pc-fx${missing.some((m) => m.item === id) ? ' is-bad' : ''}`}>{OFFER_ICON[id] ?? '🎁'}×{n}</span>
+          ))}
+        </span>
+      )}
       <EffectChips effects={a.kind === 'activity' || (a.kind === 'shop' && !car) ? a.effects : null} />
       {lock && a.event?.state === 'ticket' ? <span className="pc-act__verb">Buy a ticket ({naira(a.event.price)}) <Icon name="chevronRight" size={12} /></span>
         : lock && a.kind !== 'panel' && !(a.kind === 'job' && !a.mine) ? <span className="pc-act__lock">{lock}</span>
@@ -437,7 +463,7 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
       )}
       <PeopleSheet open={peopleOpen} onClose={() => setPeopleOpen(false)} total={peopleCount} players={players} npcs={npcs} me={me}
         placeName={name} onSheet={() => select(loc.id)} />
-      {open && current?.note && <p className="place-card__note"><span aria-hidden>🎩</span> {current.note}</p>}
+      {open && current?.note && <p className="place-card__note"><span aria-hidden>{data?.location.scene === 'shrine' ? current.icon : '🎩'}</span> {current.note}</p>}
       {open && data?.open && data.weekend_price && <p className="place-card__note"><span aria-hidden>🥂</span> Weekend prices tonight: Friday and Saturday nights cost more.</p>}
       {open && current && current.actions.length === 0 && (
         <p className="place-card__hint">Nothing to do here right now. Tap the floor to walk around.</p>

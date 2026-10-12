@@ -35,7 +35,7 @@ export const ownsItem = (state: GameState, id: string) => (state.inventory ?? []
 /** Shop/Bag section order and labels by item category. */
 export const CATEGORY_ORDER: [string, string][] = [
   ['food', 'Food'], ['drink', 'Drinks'], ['hygiene', 'Hygiene'], ['health', 'Health'], ['phone', 'Phone'],
-  ['gadget', 'Gadgets'], ['vehicle', 'Vehicles'], ['souvenir', 'Keepsakes'],
+  ['gadget', 'Gadgets'], ['vehicle', 'Vehicles'], ['souvenir', 'Keepsakes'], ['offering', "Offerings for Baba's Shrine"],
 ];
 
 /** Can items be sold at this location scene? (config shop.sell_scenes, comma-separated) */

@@ -2,7 +2,7 @@
 import { rpc } from '../lib/api';
 import type { SceneType } from '../lib/types';
 
-export type ZoneActionKind = 'activity' | 'job' | 'shop' | 'panel';
+export type ZoneActionKind = 'activity' | 'job' | 'shop' | 'panel' | 'shrine';
 
 export interface ZoneAction {
   /** zone_actions.id */
@@ -34,6 +34,15 @@ export interface ZoneAction {
   pay?: number | null;
   /** L4: an event-only card (activities.requires_event): the event on today here and the player's access. */
   event?: { id: string; title: string; state: 'ok' | 'ticket' | 'later'; price: number } | null;
+  /** B2 shrine service cards (kind 'shrine', ref = shrine_services.id): action seconds, effect + duration text,
+   *  offerings needed, offerings still missing from the Bag, an extra note, and until when my charm of that kind works. */
+  seconds?: number;
+  effect?: string;
+  duration?: string;
+  offerings?: Record<string, number>;
+  missing?: { item: string; name: string; icon: string | null; need: number; have: number }[];
+  note?: string | null;
+  charm_until?: string | null;
   /** Why it can't be done now ("Opens 9 PM", "Night only", "Only in your own home"), or null. */
   locked: string | null;
 }

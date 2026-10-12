@@ -357,7 +357,7 @@ export const ROADS: RoadDef[] = [
   { id: 'gra-2', kind: 'minor', pts: [[531, 636], [490, 648], [450, 662], [410, 676], [372, 700]] },
   { id: 'farm-1', kind: 'dirt', pts: [[80, 271], [62, 300], [52, 345], [60, 420]] },
   { id: 'farm-2', kind: 'dirt', pts: [[140, 279], [132, 230], [112, 185]] },
-  { id: 'shrine', kind: 'dirt', pts: [[628, 597], [642, 622], [656, 640]] },
+  { id: 'shrine', kind: 'dirt', pts: [[743, 722], [752, 727], [760, 731]] },
 ];
 
 /** Off-map exits (green road signs). */
@@ -400,8 +400,8 @@ export const STADIUM = { x: 514, y: 140 };
 export const UBTH_SIGN = { x: 422, y: 182 };
 /** Bronze Tech Hub plot (V1-3, fictional, Ugbowo near UNIBEN): kept clear of generated buildings. */
 export const TECH_HUB = { x: 535, y: 190, r: 15 };
-/** Sacred grove around the shrine. */
-export const GROVE = { x: 655, y: 632, r: 22 };
+/** Sacred grove around Baba's Shrine (B2: moved to the outskirts with the shrine, off the Upper Sakponba dirt road). */
+export const GROVE = { x: 766, y: 734, r: 18 };
 
 /** Market stall zones: [x, y, radius, location id]. */
 export const MARKETS: [number, number, number, string][] = [
@@ -517,7 +517,7 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   aduwawa_room: { short: 'Aduwawa Room', tier: 2, side: 'b' },
   third_east: { short: 'Third East', tier: 2, side: 'r' },
   ekiosa_market: { short: 'Ekiosa Market', tier: 1, side: 'r' },
-  baba_shrine: { short: 'Baba Osagie', tier: 2, side: 'r' },
+  baba_shrine: { short: 'Old shrine', tier: 2, side: 'r' },
   upper_sakponba: { short: 'Upper Sakponba', tier: 2, side: 'r' },
   santana_market: { short: 'Santana Mkt', tier: 1, side: 'l' },
   sapele_pos: { short: 'Sapele Rd PoS', tier: 2, side: 'b' },
@@ -554,6 +554,8 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   // K1 clubs (docs/PLACES.md "K1 new clubs")
   club_raptor: { short: 'Club Raptor', tier: 2, side: 'l' },
   patricia_nightlife: { short: 'Patricia Nightlife', tier: 2, side: 'r' },
+  // B2 Baba's Shrine (docs/BABALAWO.md), outskirts
+  babas_shrine: { short: "Baba's Shrine", tier: 1, side: 'l' },
 };
 
 export function shortName(id: string, name: string): string {

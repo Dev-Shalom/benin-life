@@ -1,9 +1,11 @@
 # Lifestyle plan: Babalawo, Yahoo, Hookup, Church (owner-approved 2026-10-12)
 
 Build order: 1. Babalawo shrine → 2. Yahoo lifestyle → 3. Hookup lifestyle → 4. Church / prophet (rival).
+
+Status: **1. Babalawo shrine BUILT (B2, 2026-10-12)**: migration `20261012001500_babalawo.sql`, test `babalawo_test.sql`, details in `docs/BABALAWO.md`. Attraction charm and EFCC blindfold are sold and stored; they start working when the dating / Yahoo lives read `bl_charm_value()`. 2–4 not started.
 Every price, chance, duration and effect below must be an admin-editable config/table value (Admin → Settings / Content).
 
-## 1. Babalawo shrine ("Baba's shrine", fictional Baba, outskirts of Benin)
+## 1. Babalawo shrine ("Baba's shrine", fictional Baba, outskirts of Benin) — BUILT (docs/BABALAWO.md)
 Offerings are items sold at Oba Market (Benin Life market). Prices = draft × 1.2 (owner):
 | Item | Price |
 |---|---|

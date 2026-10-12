@@ -9,7 +9,7 @@ import { adminApi, type AdminTable, type Row } from './api';
 import { Badge, Btn, DetailPane, JsonControl, LoadError, PageHead, Skeleton, Toggle } from './parts';
 import { useLoad } from './util';
 
-type FieldType = 'text' | 'long' | 'int' | 'money' | 'num' | 'bool' | 'json' | 'list' | 'intnull' | 'textnull' | 'time';
+type FieldType = 'text' | 'long' | 'int' | 'money' | 'num' | 'bool' | 'json' | 'list' | 'intnull' | 'numnull' | 'textnull' | 'time';
 interface Field { key: string; label: string; type: FieldType; help?: string }
 interface TableDef {
   id: string; table: AdminTable; title: string; emoji: string; blurb: string; pk: string[]; insert: boolean;
@@ -386,6 +386,29 @@ const DEFS: TableDef[] = [
     newRow: { location_id: '', tier: 'mid', multiplier: 1, label: 'Car dealer', blurb: '', sort: 100, active: false },
   },
   {
+    id: 'shrine', table: 'shrine_services', title: 'Shrine services', emoji: '🪔', blurb: 'B2 Baba\'s Shrine (docs/BABALAWO.md): the 10 services. Price = cash; offerings = items taken from the Bag, e.g. {"kola_nut": 2, "palm_oil": 1} (item ids from Items, category offering). Effect value by kind: luck / road_opener = +% job pay; protection = pickpocket caught % (caps the base); vanishing = escape caught % (uses = how many escapes); home_guard = +% caught for thieves who target the holder (capped by shrine.guard_cap_pct); attraction = +% dates say yes; fame_bath = +% club hype; efcc_blindfold = − points EFCC caught; money_charm / cleansing ignore it (money charm numbers: Settings → Shrine). Duration in seconds (86400 = 1 day; empty = no time limit). Fail % empty = Settings → shrine.fail_pct. Changes apply to new charms only.',
+    pk: ['id'], insert: true, inline: ['price'],
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => `${r.icon} ${r.name}`,
+    subOf: (r) => `${naira(Number(r.price))} + ${Object.entries((r.offerings as Row) ?? {}).map(([k, v]) => `${v} ${k}`).join(', ') || 'nothing'} · ${r.effect_kind} ${r.effect_value}${r.duration_seconds ? ` · ${Math.round(Number(r.duration_seconds) / 3600)} h` : ''}${r.uses ? ` · ${r.uses} uses` : ''}${r.fail_pct !== null && r.fail_pct !== undefined ? ` · fails ${r.fail_pct}%` : ''}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'name', label: 'Name', type: 'text' }, { key: 'icon', label: 'Icon', type: 'text' },
+      { key: 'price', label: 'Price (cash)', type: 'money' },
+      { key: 'offerings', label: 'Offerings (from the Bag)', type: 'json', help: '{"kola_nut": 2, "palm_oil": 1}' },
+      { key: 'effect_kind', label: 'Effect kind', type: 'text', help: 'luck, road_opener, protection, vanishing, home_guard, attraction, fame_bath, efcc_blindfold, money_charm, cleansing' },
+      { key: 'effect_value', label: 'Effect value', type: 'num', help: 'See the note above for the unit per kind' },
+      { key: 'duration_seconds', label: 'Lasts (seconds)', type: 'intnull', help: '86400 = 1 day, 604800 = 7 days; empty = until used / instant' },
+      { key: 'uses', label: 'Uses', type: 'intnull', help: 'Vanishing charm: 3 escapes; empty = no limit' },
+      { key: 'fail_pct', label: 'Fail chance %', type: 'numnull', help: 'Empty = Settings → shrine.fail_pct (10). Consultation and cleansing: 0' },
+      { key: 'seconds', label: 'Action seconds', type: 'int' },
+      { key: 'blurb', label: 'Blurb', type: 'long' }, { key: 'note', label: 'Note under the card', type: 'long' },
+      { key: 'baba_line', label: 'Baba says when it works', type: 'long' }, { key: 'fail_line', label: 'Baba says when it fails', type: 'long' },
+      { key: 'lines', label: 'Readings (consultation, one per line)', type: 'long' },
+      { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { name: 'New service', icon: '🪔', price: 100000, offerings: { kola_nut: 1 }, effect_kind: 'luck', effect_value: 5, duration_seconds: 86400, seconds: 12, blurb: '', note: '', baba_line: '', fail_line: '', lines: '', sort: 100, active: false },
+  },
+  {
     id: 'interactions', table: 'interaction_types', title: 'House interactions', emoji: '🤝', blurb: 'V2 things two players can do together in a house (docs/SOCIAL.md): tap a person, they accept, both get the effects and a busy timer. Requires = home activities the host\'s furniture must offer (any one): cook_home, watch_tv, sit_rest, relax_sofa; empty = none. Cost is paid by the one who asks. Poses come from the kind (cook_meal, movie, gist, play_game, dance, greet); a new kind just stands together. Cooldown: Settings → social.interact_cooldown_s.',
     pk: ['kind'], insert: true, inline: ['seconds'],
     toggle: { key: 'active', label: 'On' },
@@ -480,10 +503,10 @@ function parseField(f: Field, raw: unknown): [unknown, string | null] {
       } catch { return [null, 'Invalid JSON']; }
     default: {
       const s = String(raw ?? '').trim();
-      if (s === '' && f.type === 'intnull') return [null, null];
+      if (s === '' && (f.type === 'intnull' || f.type === 'numnull')) return [null, null];
       const n = Number(s);
       if (s === '' || !Number.isFinite(n)) return [null, 'Enter a number'];
-      if (f.type !== 'num' && !Number.isInteger(n)) return [null, 'Whole number'];
+      if (f.type !== 'num' && f.type !== 'numnull' && !Number.isInteger(n)) return [null, 'Whole number'];
       if (n < 0 && f.key !== 'sort') return [null, 'Can’t be negative'];
       return [n, null];
     }
@@ -504,7 +527,7 @@ function FieldInput({ f, value, onChange }: { f: Field; value: unknown; onChange
     );
   }
   if (f.type === 'long') return <textarea className="adm-input" rows={3} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)} />;
-  const numeric = ['int', 'money', 'num', 'intnull'].includes(f.type);
+  const numeric = ['int', 'money', 'num', 'intnull', 'numnull'].includes(f.type);
   return (
     <label className="adm-numbox adm-numbox--wide">
       {f.type === 'money' && <span className="adm-numbox__affix">₦</span>}
