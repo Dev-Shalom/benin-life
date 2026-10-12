@@ -5,6 +5,8 @@ update game_config set value = '"game_minutes"' where key = 'action.mode';
 -- Starter furniture (20261006000400) scales sleep energy by the bed's rest_pct (LAPO mat 90 %);
 -- these tests pin the rent penalty maths, so every piece rests 100 % here (furniture_test covers it).
 update furniture set rest_pct = 100;
+-- Markets close at 8 PM since 20261012001550; these tests shop at any hour, so keep markets open here.
+update locations set open_hour = null, close_hour = null where scene = 'market';
 
 -- Shops tests (V1-4): item seeds + shop locations, shop_list / shop_buy (location rule, cash, qty),
 -- inventory counts, item_use effects, boost items (soap + bath), item_sell at markets, ChopNow

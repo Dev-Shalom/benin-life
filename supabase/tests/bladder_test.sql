@@ -1,3 +1,5 @@
+-- Markets close at 8 PM since 20261012001550; this test visits a market at any hour, so keep markets open here.
+update locations set open_hour = null, close_hour = null where scene = 'market';
 -- L1 (20261006000100_real_time.sql): this file pins the pre-L1 behaviour (accelerated clock +
 -- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
 update game_config set value = '"accelerated"' where key = 'clock.mode';
