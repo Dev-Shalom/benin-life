@@ -35,7 +35,27 @@ export interface FurnitureSellResult {
   id: string;
   name: string;
   earned: number;
+  /** H4: it came with the house (paid furniture.included_resale_pct, capped). */
+  included?: boolean;
   qty: number;
   cash: number;
 }
+
+/** H4: what selling one copy pays now (the sell dialog asks before confirming). */
+export interface FurnitureSellQuote {
+  key: string;
+  id: string;
+  name: string;
+  price: number;
+  /** Came with the house: furniture.included_resale_pct, capped by the house allowance left. */
+  included: boolean;
+  pct: number;
+  /** Payout before the cap. */
+  full: number;
+  payout: number;
+  /** House allowance left (came-with-house copies only). */
+  left: number | null;
+  capped: boolean;
+}
+export const furnitureSellQuote = (key: string) => rpc<FurnitureSellQuote>('furniture_sell_quote', { p_key: key });
 export const furnitureSell = (key: string) => rpc<FurnitureSellResult>('furniture_sell', { p_key: key });

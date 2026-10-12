@@ -111,7 +111,7 @@ begin
   perform pg_temp.assert(not exists (select 1 from player_house_furniture where owner_id = a and layout <> 'flat'), 'all rows are for the flat');
   select count(*) into n from player_furniture pf, generate_series(1, pf.qty) where pf.user_id = a;
   perform pg_temp.assert((select count(*) from player_house_furniture where owner_id = a) = n, 'every owned copy has a row');
-  perform pg_temp.assert((r->>'placed')::int >= 3 and (select count(*) from player_house_furniture where owner_id = a and not stored) = (r->>'placed')::int, 'starters re-placed: ' || r::text);
+  perform pg_temp.assert((r->>'placed')::int >= 3 and (select count(*) from player_house_furniture where owner_id = a and not stored) = (r->>'placed')::int + (r->>'came_with')::int, 'starters re-placed (+ H4 came-with pieces): ' || r::text);
   perform pg_temp.assert(not exists (select 1 from player_house_furniture where owner_id = a and stored and furniture_key = 'own_stool'), 'stool takes the flat''s seat slot');
   perform pg_temp.assert(pg_temp.all_valid(a), 'placements valid in the flat');
 

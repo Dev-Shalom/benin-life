@@ -22,7 +22,7 @@ export function MoveHouseSheet() {
     setBusy(true);
     try {
       const r = await houseMove(h.id);
-      toast(r.message, 'good');
+      toast(r.came_with ? `${r.message} It came with ${r.came_with} ${r.came_with === 1 ? 'piece' : 'pieces'} of furniture: they are yours now.` : r.message, 'good');
       close();
       await refresh();
       useGarage.getState().bump();

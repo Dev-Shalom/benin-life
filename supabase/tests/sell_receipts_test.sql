@@ -1,6 +1,6 @@
 -- H2 sell furniture + cars, dealer price tiers, receipts (20261012000400_sell_receipts.sql). Rolled back. Run:
 --   bash scripts/sql-test.sh -- supabase/tests/sell_receipts_test.sql
--- Groups: 1 sell furniture (payout, copy removal + key renumbering, ledger, starter/fixed refusals) ·
+-- Groups: 1 sell furniture (payout, copy removal + key renumbering, ledger, fixed refusals; H4: starters sell) ·
 -- 2 receipts above/below the threshold (furniture) · 3 dealer price tiers + stock · 4 car purchase receipt ·
 -- 5 sell a car (bank payout, ledger, refusals, no market path) · 6 RLS + grants on receipts · 7 switches.
 create or replace function pg_temp.hint_of(p_sql text) returns text
@@ -84,13 +84,14 @@ begin
   -- refusals
   perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_sell('own_plastic_chair_red') $q$) = 'not_owned', 'not owned');
   perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_sell('bed') $q$) = 'fixed_furniture', 'built-in / fixed key refused');
-  perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_sell('own_foam_mat') $q$) = 'starter_piece', 'the free starter mat stays');
-  -- a bought extra copy of a starter piece can be sold, the free one stays
+  -- H4 (20261012001400): the starter mat came with the house and sells at furniture.included_resale_pct (25%)
+  perform pg_temp.assert((furniture_sell('own_foam_mat')->>'earned')::bigint = 6200, 'H4: starter mat sells for 25% of 25,000');
+  -- a bought extra copy of a starter piece: the bought one takes key 1, the starter is the highest copy
   perform furniture_buy('stool');
   perform pg_temp.assert((select qty from player_furniture where user_id = a and furniture_id = 'stool') = 2, 'two stools');
   r := furniture_sell('own_stool-2');
-  perform pg_temp.assert((select qty from player_furniture where user_id = a and furniture_id = 'stool') = 1, 'extra stool sold');
-  perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_sell('own_stool') $q$) = 'starter_piece', 'last starter stool refused');
+  perform pg_temp.assert((r->>'included')::boolean and (select qty from player_furniture where user_id = a and furniture_id = 'stool') = 1, 'starter stool (copy 2) sold');
+  perform pg_temp.assert(not (furniture_sell_quote('own_stool')->>'included')::boolean, 'the bought stool is left on key 1');
   -- busy refuses
   update profiles set busy_until = bl_now() + interval '1 minute', busy_label = 'Sleeping' where id = a;
   perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_sell('own_stool') $q$) = 'busy', 'busy refuses');

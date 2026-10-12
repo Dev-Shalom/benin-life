@@ -74,7 +74,10 @@ begin
   l := pg_temp.make_home('LapoFu', 'lapo', 'ekenwan_face_me');
   perform pg_temp.assert(pg_temp.owned(l) = '{drum_bucket,foam_mat,kerosene_stove,stool}', 'LAPO basics: ' || pg_temp.owned(l)::text);
   n := pg_temp.make_home('NepoFu', 'nepo', 'gra_duplex');
-  perform pg_temp.assert(pg_temp.owned(n) = '{bed_double,centre_table,fridge,gas_cooker,rug,sofa,tv,wardrobe}', 'Nepo set: ' || pg_temp.owned(n)::text);
+  -- H4: the duplex also gives its came-with-the-house pieces (ACs, dining set ...); the starter set is the 'starter' rows
+  perform pg_temp.assert((select coalesce(array_agg(furniture_id order by furniture_id), '{}') from player_furniture where user_id = n and source = 'starter')
+                         = '{bed_double,centre_table,fridge,gas_cooker,rug,sofa,tv,wardrobe}', 'Nepo set: ' || pg_temp.owned(n)::text);
+  perform pg_temp.assert('chandelier' = any (pg_temp.owned(n)) and 'dining_6' = any (pg_temp.owned(n)), 'H4: duplex pieces owned too');
   h := pg_temp.make_home('NepoHostel', 'nepo', 'uniben_hostel');
   perform pg_temp.assert('bed_single' = any (pg_temp.owned(h)) and not ('bed_double' = any (pg_temp.owned(h))),
                          'hostel row replaces the bed slot: ' || pg_temp.owned(h)::text);
@@ -111,9 +114,13 @@ begin
   perform pg_temp.free(l);
 
   perform pg_temp.login(n);
+  -- H4: the duplex's ACs, ceiling fan and generator are the player's now and add a sleep bonus; store them for the plain bed check
+  perform bl_furniture_materialize(n);
+  update player_house_furniture set stored = true
+   where owner_id = n and (furniture_key like 'own_ac_split%' or furniture_key like 'own_fan_ceiling%' or furniture_key like 'own_gen_firman%');
   r := do_activity('sleep');
   perform pg_temp.assert((r->'effects'->>'energy')::numeric = (select (effects->>'energy')::numeric from activities where id = 'sleep'),
-                         'bed sleep = full energy');
+                         'bed sleep = full energy: ' || r::text || bl_furniture_for(n, 'sleep')::text);
   perform pg_temp.free(n);
   r := do_activity('watch_tv');
   perform pg_temp.assert(r ? 'busy_until', 'Nepo watches TV');

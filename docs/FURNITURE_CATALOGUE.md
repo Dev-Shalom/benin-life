@@ -22,10 +22,10 @@ Admin → Content → Furniture.
 - **Selling (H2):** Buy → Arrange → My items has **Sell** on every piece you bought, placed or in storage. A
   confirm dialog shows the payout: **furniture.resale_pct** of the catalogue price (default 45 %, rounded down to
   ₦100), paid in cash by `furniture_sell(key)`; ledger "Sold furniture: <name>". The copy disappears (the last copy
-  takes the sold key, so keys stay `own_x`, `own_x-2`, ...). The free piece that came with the house (copy 1 of a
-  starter row) can't be sold ("came with the house"; a bought extra copy can), and built-ins (`fixed`) are part of the
-  house, not your furniture. Not while busy. Switch: `furniture.sell_enabled`. Furniture of ₦500,000 or more gives a
-  receipt (docs/RECEIPTS.md).
+  takes the sold key, so keys stay `own_x`, `own_x-2`, ...). H4: pieces that came with the house (starter pieces and a
+  home's built-ins) can be sold too, at a lower rate (see "Came with the house" below). Architecture (`fixed`) is part
+  of the house, never your furniture. Not while busy. Switch: `furniture.sell_enabled`. Furniture of ₦500,000 or more
+  gives a receipt (docs/RECEIPTS.md).
 - **3D thumbnails (H2):** the Buy cards, My items and the sell dialog show the real model, rendered by ONE shared
   offscreen WebGL renderer (`src/art/thumbs/render.ts`, loaded lazily) only for cards that scroll into view, a few
   per tick, cached in memory and sessionStorage (`bl.thumb.v1.*`). The renderer is disposed after 15 s idle. The emoji
@@ -37,14 +37,70 @@ Admin → Content → Furniture.
   already in My items take a free default slot of the new home when valid. The toast says how many wait in My items.
 - **Home sizes (H1):** hostel 5.2×4.4, face-me 4.2×3.8, self-contain 6.0×4.8 (unchanged), mini-flat 9.6×7.2 (bedroom,
   kitchen, bathroom, parlour, dining), GRA duplex 14.4×10 (master bedroom, fitted kitchen + island, bathroom with
-  tub, laundry + staircase, furnished guest bedroom, dining, big parlour). Bigger homes come with built-in pieces
-  (`fixed: true` in `model.ts`: kitchen units, ACs, ceiling fan, chandelier, dining set, guest room) that block
-  placement like fixtures. `home_layouts` is regenerated from `model.ts` by the H1 migration.
+  tub, laundry + staircase, furnished guest bedroom, dining, big parlour). Bigger homes come with furniture (H4: yours,
+  see below) and a little architecture (`fixed: true`: the fitted kitchen counter, the island, the staircase) that
+  blocks placement like fixtures. `home_layouts` is regenerated from `model.ts` (H1, then H4 for `included`).
 - **Need bonuses** come only from placed pieces:
   - `rest_pct` scales sleep energy, as before (beds from 90 % to 140 %).
   - `bonus` adds need effects to a home activity, using the strongest value per need, so bonuses never
     stack. Examples: a split AC gives sleep +8 energy and −4 stress, a fridge gives cooking +2 belle, a
     water heater gives bath +8 clean, and a 75" TV gives TV +8 fun.
+
+## Came with the house (H4, migration `20261012001400_house_items_movable.sql`)
+Everything movable that comes with a home is the player's own furniture: select it in Arrange, nudge it with the D-pad,
+rotate it, Store it in My items, Sell it. My items and the sell dialog say **"Came with the house"**.
+
+**What became furniture** (`included: '<catalogue id>'` in `model.ts`, server copy `home_layouts.included`):
+
+| Home | Pieces (catalogue id) |
+|---|---|
+| Mini-flat | kitchen cabinet (`kitchen_cabinet`), bedroom split AC (`ac_split`), ceiling fan (`fan_ceiling`), 4-seater dining set (`dining_4`), Firman generator (`gen_firman`) |
+| GRA duplex | water heater, kitchen cabinet, washing machine, 2 split ACs, crystal chandelier, ceiling fan, 6-seater dining set, guest bed (`bed_double`), guest bedside table, guest 3-door wardrobe, Firman generator, 2 compound palms (`plant_palm`) |
+| Hostel, face-me, self-contain | nothing: their toilets, bucket baths, drums, clotheslines and generators are shared compound things |
+| Starter pieces (by origin) | the starter set from `starter_furniture` (foam mat, stool ... / bed, sofa, TV ...) |
+
+**What stays part of the house** (`fixed` or `FIXED_KINDS`): walls, partitions, doors, windows, toilets, sinks, showers,
+the bathtub, the fitted kitchen counter (`kitchen`), the kitchen island, the staircase, and the shared compound things
+of the small homes. They still block placement and can't be selected, moved or sold (`fixed_furniture`).
+Every included kind was already in the catalogue, so no new rows or prices were needed.
+
+**How it is granted.** `bl_house_items_grant(uid, move_in)` gives a home's pieces ONCE per (player, home)
+(`player_house_grants`), as real copies (`player_furniture.source = 'came_with_house'`, `house_qty` +1) standing at the
+spots the house had them (else the nearest free spot, else My items). It runs when you choose your first home, in
+`house_move` (before your old furniture is placed around them), for every existing player in the migration, and as a
+safety net on any furniture action. You can never move back into a home you left (H1), so a home's pieces come once.
+Selling a piece never brings it back. `house_qty` counts the copies that came with a house; they are always the highest
+copy numbers (`own_x-<qty-house_qty+1>` .. `own_x-<qty>`), and buying or selling renumbers keys to keep it so.
+
+**Selling them.** A came-with-the-house copy pays `furniture.included_resale_pct` (default **25 %**) of its catalogue
+price, a bought copy pays `furniture.resale_pct` (45 %) as before. Came-with-the-house sales also share an allowance: the
+total they can ever pay is the sum of
+- the starter pieces' value at 25 % (once per life; a new life starts with new money), plus
+- for every home: at most `furniture.included_move_cap_pct` (default **75 %**) of its move-in fee (the fee paid when
+  moving; for the first home, its listed fee = 4 weeks of rent).
+
+When the allowance is used up, `furniture_sell` refuses with `house_resale_used` (the dialog says so and the piece can
+still be kept or stored). `furniture_sell_quote(key)` gives the dialog the real amount first. The ledger row of a
+came-with-house sale has `meta.included = true`.
+
+**Profit math per tier** (4 weeks move-in, 25 %, cap 75 %; test `supabase/tests/house_items_test.sql` group 5):
+
+| Home | Move-in fee | Pieces at 25 % | Most a move can add | Net per move |
+|---|---|---|---|---|
+| UNIBEN hostel | ₦4,000 | ₦0 | ₦0 | −₦4,000 |
+| Face-me (Aduwawa / Ekenwan) | ₦4,800 / ₦6,000 | ₦0 | ₦0 | −₦4,800 / −₦6,000 |
+| Self-contain | ₦16,000 | ₦0 | ₦0 | −₦16,000 |
+| Mini-flat | ₦32,000 | ₦356,200 | ₦24,000 | −₦8,000 |
+| GRA duplex | ₦100,000 | ₦1,497,300 | ₦75,000 | −₦25,000 |
+
+So move → sell → move always loses at least a quarter of the fee (plus the weekly rent), whatever the admin sets the
+rents to, as long as the cap stays under 100 %. Without the cap, 25 % of the duplex's pieces (₦1.5M) would be 15× its
+move-in fee, which is why the cap is needed. Because the allowance is one pool, a Nepo who never sells their starter
+set can use that part on the home's pieces instead; the total stays the same.
+
+**Need bonuses** follow the pieces: `bl_furniture_for` counts owned copies minus stored ones, so a sold piece (qty − 1)
+or a stored one stops giving its bonus (e.g. sell the duplex water heater and the bath bonus drops from +8 to the
+washer's +4; store the washer and it is gone).
 
 ## Price sources (checked October 2026; shop prices change often, so treat these as a guide)
 - Vitafoam 6x6, 8": about ₦100–110k; 6x6x10 spring about ₦190k. Source: nigerianqueries.com Vitafoam / 6x6

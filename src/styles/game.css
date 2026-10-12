@@ -6289,6 +6289,9 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .sell-dialog__row--total { padding-top: 8px; margin-top: 2px; border-top: 1px dashed var(--line); color: var(--ink); font-size: 15px; }
 .sell-dialog__row--total b { color: var(--green-700); font: 800 16px var(--font-display); }
 .sell-dialog__note { margin: 4px 0 0; font-size: 12px; color: var(--ink-3); }
+/* H4: pieces that came with the house */
+.buy-mine__came { color: var(--green-700); font-weight: 600; }
+.sell-dialog__came { justify-self: center; margin: 0 0 2px; padding: 3px 10px; border-radius: 999px; background: var(--green-50); color: var(--green-700); font-size: 12px; font-weight: 700; }
 .sell-dialog__thumb { display: grid; place-items: center; width: 112px; height: 88px; margin: 0 auto; border-radius: 16px; background: var(--surface-2); }
 .sell-dialog__emoji { font-family: var(--font-emoji); font-size: 44px; }
 

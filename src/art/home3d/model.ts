@@ -65,7 +65,7 @@ export type FurnitureKind =
   | 'bucket_bowl' | 'water_heater' | 'mirror_wall' | 'towel_rack' | 'washer'
   | 'gen_small' | 'gen_big' | 'inverter' | 'inverter_small' | 'solar' | 'water_tank' | 'gate_light' | 'car_shade'
   | 'plant_big' | 'wall_art' | 'plaque' | 'bronze_head' | 'wall_clock' | 'photo_frame' | 'aquarium' | 'vase'
-  // H1: built into the bigger homes (never sold)
+  // H1: built into the duplex (architecture: never player furniture)
   | 'stairs';
 
 /** Where a piece may stand (B1 arrange; the server checks the same rule from furniture.placement):
@@ -207,7 +207,8 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   stairs: { w: 1.0, d: 2.6, solid: true, label: 'Staircase' },
 };
 
-/** Kinds that come with the house (bathroom, shared compound things, wall units). Everything else is
+/** Kinds that are part of the house (bathroom, shared compound things, wall units), unless an item is marked
+ * `included` (H4: then the player owns it). Everything else is
  * the player's own furniture and is replaced by their furniture set (furnishLayout). */
 export const FIXED_KINDS: ReadonlySet<FurnitureKind> = new Set<FurnitureKind>([
   'toilet', 'pit_toilet', 'shower', 'bathtub', 'sink', 'bucket_bath', 'generator', 'drum', 'clothesline', 'ac', 'stall',
@@ -230,13 +231,20 @@ export interface FurnitureItem {
   actorFor?: HomeGroup[];
   /** Home activities this piece hosts (a player's own furniture, from the server's furniture table). */
   activities?: string[];
-  /** H1: built into this house (fitted kitchen, ACs, guest-room set ...): stays when the player's own
-   * furniture replaces the default set, can't be moved, and blocks solid pieces like FIXED_KINDS. */
+  /** H1: built into this house (fitted kitchen counter, island, staircase): architecture. Stays when the
+   * player's own furniture replaces the default set, can't be moved, and blocks solid pieces like FIXED_KINDS. */
   fixed?: boolean;
+  /** H4: came with the house (ACs, ceiling fan, dining set, guest room ...): the catalogue furniture id the
+   * player is given a real copy of when they move in (server: home_layouts.included, bl_house_items_grant).
+   * Drawn here only until the player's own furniture loads; then the owned copy stands in its place and can be
+   * moved, stored and sold like bought furniture. Never a fixture, even for FIXED_KINDS kinds (ac, generator). */
+  included?: string;
 }
 
-/** H1: part of the house itself (FIXED_KINDS or a built-in piece), not the player's furniture. */
-export function isFixture(f: Pick<FurnitureItem, 'kind' | 'fixed'>): boolean {
+/** H1: part of the house itself (FIXED_KINDS or a built-in piece), not the player's furniture. H4: pieces that
+ * came with the house (`included`) are the player's furniture, not fixtures. */
+export function isFixture(f: Pick<FurnitureItem, 'kind' | 'fixed' | 'included'>): boolean {
+  if (f.included) return false;
   return Boolean(f.fixed) || FIXED_KINDS.has(f.kind);
 }
 
@@ -410,11 +418,11 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
       { id: 'toilet', kind: 'toilet', x: 7.25, z: 0.5 },
       { id: 'sink', kind: 'sink', x: 8.0, z: 0.3 },
       { id: 'shower', kind: 'shower', x: 9.05, z: 0.6 },
-      { id: 'cab', kind: 'kitchen_cab', x: 6.12, z: 0.33, color: '#f4f1ea', fixed: true },
-      { id: 'ac', kind: 'ac', x: 1.2, z: 0.15 },
-      { id: 'cfan', kind: 'fan_ceiling', x: 2.2, z: 5.2, fixed: true },
-      { id: 'dining', kind: 'dining4', x: 7.6, z: 4.7, color: '#8a5a33', fixed: true },
-      { id: 'gen', kind: 'generator', x: 10.6, z: 1.2, rot: 1 * Q },
+      { id: 'cab', kind: 'kitchen_cab', x: 6.12, z: 0.33, color: '#f4f1ea', included: 'kitchen_cabinet' },
+      { id: 'ac', kind: 'ac', x: 1.2, z: 0.15, included: 'ac_split' },
+      { id: 'cfan', kind: 'fan_ceiling', x: 2.2, z: 5.2, included: 'fan_ceiling' },
+      { id: 'dining', kind: 'dining4', x: 7.6, z: 4.7, color: '#8a5a33', included: 'dining_4' },
+      { id: 'gen', kind: 'generator', x: 10.6, z: 1.2, rot: 1 * Q, included: 'gen_firman' },
       // default set (replaced by the player's own furniture)
       { id: 'bed', kind: 'bed_double', x: 1.15, z: 1.25, color: '#5b3fa0' },
       { id: 'wardrobe', kind: 'wardrobe', x: 3.42, z: 1.6, rot: 3 * Q, color: '#8a5a33' },
@@ -468,29 +476,29 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
       { id: 'toilet', kind: 'toilet', x: 9.7, z: 0.5 },
       { id: 'sink', kind: 'sink', x: 10.6, z: 0.3 },
       { id: 'tub', kind: 'bathtub', x: 11.3, z: 1.2 },
-      { id: 'heater', kind: 'water_heater', x: 10.3, z: 0.15, fixed: true },
+      { id: 'heater', kind: 'water_heater', x: 10.3, z: 0.15, included: 'water_heater' },
       // fitted kitchen
       { id: 'kitchen', kind: 'kitchen', x: 6.75, z: 0.35, color: '#2f3640', fixed: true },
-      { id: 'cab', kind: 'kitchen_cab', x: 8.5, z: 0.33, color: '#2f3640', fixed: true },
+      { id: 'cab', kind: 'kitchen_cab', x: 8.5, z: 0.33, color: '#2f3640', included: 'kitchen_cabinet' },
       { id: 'island', kind: 'island', x: 6.9, z: 2.3, color: '#e9e4dc', fixed: true },
       // laundry + staircase
-      { id: 'washer', kind: 'washer', x: 12.3, z: 0.4, fixed: true },
+      { id: 'washer', kind: 'washer', x: 12.3, z: 0.4, included: 'washing_machine' },
       { id: 'stairs', kind: 'stairs', x: 13.8, z: 1.5, fixed: true },
       // master bedroom + parlour comfort
-      { id: 'ac1', kind: 'ac', x: 1.4, z: 0.15 },
-      { id: 'ac2', kind: 'ac', x: 0.15, z: 5.2, rot: 1 * Q },
-      { id: 'chand', kind: 'chandelier', x: 2.2, z: 6.9, fixed: true },
-      { id: 'cfan', kind: 'fan_ceiling', x: 8.8, z: 6.4, fixed: true },
+      { id: 'ac1', kind: 'ac', x: 1.4, z: 0.15, included: 'ac_split' },
+      { id: 'ac2', kind: 'ac', x: 0.15, z: 5.2, rot: 1 * Q, included: 'ac_split' },
+      { id: 'chand', kind: 'chandelier', x: 2.2, z: 6.9, included: 'chandelier' },
+      { id: 'cfan', kind: 'fan_ceiling', x: 8.8, z: 6.4, included: 'fan_ceiling' },
       // dining
-      { id: 'dining', kind: 'dining6', x: 8.8, z: 6.4, color: '#5b3a24', fixed: true },
+      { id: 'dining', kind: 'dining6', x: 8.8, z: 6.4, color: '#5b3a24', included: 'dining_6' },
       // guest bedroom (furnished)
-      { id: 'gbed', kind: 'bed_double', x: 13.4, z: 7.6, rot: 3 * Q, color: '#e8dccb', fixed: true },
-      { id: 'gside', kind: 'bedside', x: 13.9, z: 6.2, fixed: true },
-      { id: 'gward', kind: 'wardrobe_big', x: 11.5, z: 9.65, rot: 2 * Q, color: '#5b3a24', fixed: true },
+      { id: 'gbed', kind: 'bed_double', x: 13.4, z: 7.6, rot: 3 * Q, color: '#e8dccb', included: 'bed_double' },
+      { id: 'gside', kind: 'bedside', x: 13.9, z: 6.2, included: 'bedside' },
+      { id: 'gward', kind: 'wardrobe_big', x: 11.5, z: 9.65, rot: 2 * Q, color: '#5b3a24', included: 'wardrobe_big' },
       // compound
-      { id: 'gen', kind: 'generator', x: 16.6, z: 1.2, rot: 1 * Q },
-      { id: 'palm1', kind: 'plant_big', x: -0.5, z: 13.8, fixed: true },
-      { id: 'palm2', kind: 'plant_big', x: 17.9, z: 6.2, fixed: true },
+      { id: 'gen', kind: 'generator', x: 16.6, z: 1.2, rot: 1 * Q, included: 'gen_firman' },
+      { id: 'palm1', kind: 'plant_big', x: -0.5, z: 13.8, included: 'plant_palm' },
+      { id: 'palm2', kind: 'plant_big', x: 17.9, z: 6.2, included: 'plant_palm' },
       // default set (replaced by the player's own furniture)
       { id: 'bed', kind: 'bed_king', x: 1.4, z: 1.35, color: '#efe9df' },
       { id: 'wardrobe', kind: 'wardrobe', x: 3.4, z: 0.35, color: '#5b3a24' },
@@ -555,8 +563,17 @@ export interface OwnedPiece {
   qty?: number;
   /** B1: catalogue name (for the arrange list). */
   name?: string;
-  /** H2: 'starter' (came with the house: copy 1 can't be sold) or 'buy'. */
+  /** H2: 'starter', 'buy' or (H4) 'came_with_house'. */
   source?: string;
+  /** H4: how many copies came with a house (starter piece, a home's built-ins). They are the highest-numbered
+   * copies (qty - houseQty + 1 .. qty) and sell for furniture.included_resale_pct. */
+  houseQty?: number;
+}
+
+/** H4: copy n of a piece came with the house (the highest houseQty copies; see OwnedPiece.houseQty). */
+export function cameWithHouse(p: Pick<OwnedPiece, 'qty' | 'houseQty'>, copy: number): boolean {
+  const qty = Math.max(1, p.qty ?? 1);
+  return copy > qty - Math.max(0, Math.min(qty, p.houseQty ?? 0));
 }
 
 export interface SavedHomePosition {
@@ -582,8 +599,8 @@ export function furnitureIdOfKey(key: string): string {
 const SEATS = new Set<string>(['sofa', 'sofa_l', 'armchair', 'sofa_2', 'sofa_lux', 'recliner']);
 
 /**
- * The layout with the player's own furniture: the house's fixtures (FIXED_KINDS) stay, every other
- * piece is replaced by the owned pieces. `null` = the full default furnishing (dev page, before the
+ * The layout with the player's own furniture: the house's fixtures (FIXED_KINDS, `fixed`) stay, every other
+ * piece (including H4 `included` pieces, which the player owns as real copies) is replaced by the owned pieces. `null` = the full default furnishing (dev page, before the
  * furniture loads). Same rule as the server's bl_furniture_materialize (B1):
  * - a copy with a saved row stands at the row, or is in the inventory when the row is `stored`;
  * - a copy without a row (starter furniture never moved) takes its slot's default spot when this
@@ -595,6 +612,8 @@ export function furnishHome(base: HomeLayout, pieces: OwnedPiece[] | null, rows:
   const fixtures = base.furniture.filter(isFixture);
   const used = new Set<string>();
   const own: FurnitureItem[] = [];
+  // H4: pieces that came with the house go after the player's own, so a bought bed hosts sleep before the guest bed
+  const later: FurnitureItem[] = [];
   for (const p of pieces) {
     if (!(p.kind in KINDS)) continue;
     const qty = Math.max(1, p.qty ?? 1);
@@ -611,7 +630,7 @@ export function furnishHome(base: HomeLayout, pieces: OwnedPiece[] | null, rows:
         used.add(p.slot);
         at = slot;
       }
-      own.push({
+      (copy > 1 && cameWithHouse(p, copy) ? later : own).push({
         id,
         kind: p.kind as FurnitureKind,
         x: at[0],
@@ -623,7 +642,7 @@ export function furnishHome(base: HomeLayout, pieces: OwnedPiece[] | null, rows:
       });
     }
   }
-  return { ...base, furniture: [...fixtures, ...own] };
+  return { ...base, furniture: [...fixtures, ...own, ...later] };
 }
 
 /** The layout with the player's own furniture at their default slots (no saved positions). */

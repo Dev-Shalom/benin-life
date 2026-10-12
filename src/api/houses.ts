@@ -39,6 +39,8 @@ export interface HouseMoveResult {
   not_fit: number;
   /** Pieces waiting in My items (place them in Arrange). */
   in_items: number;
+  /** H4: pieces this home came with (now yours: move, store or sell them). */
+  came_with?: number;
   garage_left: string | null;
   spent: number;
   from_bank: number;

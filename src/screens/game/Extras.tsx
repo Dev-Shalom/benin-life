@@ -5,11 +5,11 @@ import { SHORTCUTS } from './shortcuts';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { useCatalog, type ShopFurniture } from '../../state/catalog';
-import { furnitureBuy, furnitureSell } from '../../api/furniture';
+import { furnitureBuy, furnitureSell, furnitureSellQuote, type FurnitureSellQuote } from '../../api/furniture';
 import { Thumb } from '../../art/thumbs/Thumb';
 import { getCfg } from '../../lib/config';
 import { errorMessage } from '../../lib/api';
-import { furnitureKey, type HomeLayout, type HomeLayoutId, type OwnedPiece, type SavedHomePosition } from '../../art/home3d/model';
+import { cameWithHouse, furnitureKey, type HomeLayout, type HomeLayoutId, type OwnedPiece, type SavedHomePosition } from '../../art/home3d/model';
 import { naira, nairaShort } from '../../lib/format';
 import { Button, Icon, Modal, Segmented, Sheet, toast } from '../../ui';
 
@@ -91,13 +91,19 @@ export interface BuyHome {
   layoutId: HomeLayoutId;
 }
 
-/** H2: what selling one piece pays (furniture.resale_pct of the price, rounded down to ₦100), like furniture_sell. */
-export function furniturePayout(price: number): number {
-  const pct = Math.max(0, Math.min(100, Number(getCfg('furniture.resale_pct', 45))));
+/** H2: what selling one piece pays (furniture.resale_pct of the price, rounded down to ₦100), like furniture_sell.
+ * H4: a piece that came with the house uses furniture.included_resale_pct (the server caps it; the dialog asks
+ * furniture_sell_quote for the real amount and shows this only while that loads). */
+export function furniturePayout(price: number, included = false): number {
+  const pct = Math.max(0, Math.min(100, Number(included ? getCfg('furniture.included_resale_pct', 25) : getCfg('furniture.resale_pct', 45))));
   return Math.floor((price * pct) / 100 / 100) * 100;
 }
 
-interface MineRow { key: string; id: string; kind: string; color: string | null; name: string; emoji: string; placed: boolean; price: number; canSell: boolean }
+interface MineRow {
+  key: string; id: string; kind: string; color: string | null; name: string; emoji: string; placed: boolean; price: number; canSell: boolean;
+  /** H4: came with the house (starter piece or one of the home's built-ins). */
+  included: boolean;
+}
 
 export function BuySheet({ tab, onTab, home, onBought, onSold, onArrange }: {
   tab: BuyTab;
@@ -124,6 +130,16 @@ export function BuySheet({ tab, onTab, home, onBought, onSold, onArrange }: {
   const [busy, setBusy] = useState<string | null>(null);
   const [selling, setSelling] = useState<MineRow | null>(null);
   const [sellBusy, setSellBusy] = useState(false);
+  // H4: the server's quote for the piece being sold (came-with-house pieces are capped)
+  const [quote, setQuote] = useState<FurnitureSellQuote | null>(null);
+  const sellingKey = selling?.key ?? null;
+  useEffect(() => {
+    setQuote(null);
+    if (!sellingKey) return;
+    let alive = true;
+    furnitureSellQuote(sellingKey).then((q) => { if (alive) setQuote(q); }).catch(() => {});
+    return () => { alive = false; };
+  }, [sellingKey]);
   const open = overlay === 'buy';
   useEffect(() => {
     if (open) void loadShop();
@@ -164,8 +180,9 @@ export function BuySheet({ tab, onTab, home, onBought, onSold, onArrange }: {
         rows.push({
           key, id: p.id, kind: p.kind, color: p.color ?? null, emoji: cat?.emoji ?? '🪑',
           name: (p.name ?? p.id) + (qty > 1 ? ` #${c}` : ''), placed: placed.has(key), price: cat?.price ?? 0,
-          // the free starter piece stays (server: starter_piece); a bought extra copy can go
-          canSell: (cat?.price ?? 0) > 0 && !(p.source === 'starter' && qty <= 1),
+          // H4: everything can be sold, including what came with the house (at furniture.included_resale_pct)
+          canSell: (cat?.price ?? 0) > 0,
+          included: cameWithHouse(p, c),
         });
       }
     }
@@ -262,7 +279,10 @@ export function BuySheet({ tab, onTab, home, onBought, onSold, onArrange }: {
                   <Thumb spec={{ type: 'furniture', kind: m.kind, color: m.color }} fallback={m.emoji} className="buy-mine__emoji" />
                   <span className="grow">
                     <span className="buy-mine__name">{m.name}</span>
-                    <span className={`buy-mine__state${m.placed ? '' : ' is-stored'}`}>{m.placed ? 'In the room' : 'In storage'}{m.canSell ? '' : ' · came with the house'}</span>
+                    <span className={`buy-mine__state${m.placed ? '' : ' is-stored'}`}>
+                      {m.placed ? 'In the room' : 'In storage'}
+                      {m.included && <span className="buy-mine__came"> · Came with the house</span>}
+                    </span>
                   </span>
                   {m.canSell && (
                     <button type="button" className="buy-mine__btn buy-mine__btn--sell" onClick={() => setSelling(m)}>Sell</button>
@@ -302,15 +322,32 @@ export function BuySheet({ tab, onTab, home, onBought, onSold, onArrange }: {
         actions={
           <>
             <Button variant="ghost" disabled={sellBusy} onClick={() => setSelling(null)}>Keep it</Button>
-            <Button variant="gold" loading={sellBusy} onClick={() => void sell()}>Sell for {selling ? naira(furniturePayout(selling.price)) : ''}</Button>
+            <Button variant="gold" loading={sellBusy} disabled={quote !== null && quote.payout <= 0} onClick={() => void sell()}>
+              {quote && quote.payout <= 0 ? 'Nobody will pay' : `Sell for ${selling ? naira(quote ? quote.payout : furniturePayout(selling.price, selling.included)) : ''}`}
+            </Button>
           </>
         }>
         {selling && (
           <div className="sell-dialog">
+            {selling.included && <p className="sell-dialog__came"><span aria-hidden>🏠</span> Came with the house</p>}
             <div className="sell-dialog__row"><span>Shop price</span><span>{naira(selling.price)}</span></div>
-            <div className="sell-dialog__row"><span>Fairly-used buyer pays</span><span>{Math.round(Number(getCfg('furniture.resale_pct', 45)))}%</span></div>
-            <div className="sell-dialog__row sell-dialog__row--total"><span>You get (cash)</span><b>{naira(furniturePayout(selling.price))}</b></div>
-            <p className="sell-dialog__note">{selling.placed ? 'It leaves the room for good.' : 'It leaves My items for good.'}</p>
+            <div className="sell-dialog__row">
+              <span>{selling.included ? 'Buyer pays (came with the house)' : 'Fairly-used buyer pays'}</span>
+              <span>{Math.round(quote ? quote.pct : Number(selling.included ? getCfg('furniture.included_resale_pct', 25) : getCfg('furniture.resale_pct', 45)))}%</span>
+            </div>
+            {quote?.capped && (
+              <div className="sell-dialog__row"><span>Landlord's limit left</span><span>{naira(Math.max(0, quote.left ?? 0))}</span></div>
+            )}
+            <div className="sell-dialog__row sell-dialog__row--total">
+              <span>You get (cash)</span><b>{naira(quote ? quote.payout : furniturePayout(selling.price, selling.included))}</b>
+            </div>
+            <p className="sell-dialog__note">
+              {quote?.capped
+                ? (quote.payout > 0
+                  ? 'The landlord takes the rest: selling what came with a home pays at most part of its move-in fee.'
+                  : 'You have already made the most you can from what came with your homes. Keep it or store it.')
+                : selling.placed ? 'It leaves the room for good.' : 'It leaves My items for good.'}
+            </p>
           </div>
         )}
       </Modal>
