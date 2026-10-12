@@ -14,7 +14,7 @@ export default function Setup() {
     <div className="center-screen">
       <div className="auth-card setup-card">
         <div className="setup-card__brand">
-          <Logo size={48} />
+          <Logo size={48} title="" />
           <div>
             <h1>Connect Supabase</h1>
             <p className="muted">Benin Life needs its backend before it can run. It takes four steps.</p>

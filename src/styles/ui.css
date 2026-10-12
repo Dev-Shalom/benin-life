@@ -214,19 +214,32 @@
 }
 .bl-loading__beads {
   position: relative;
-  width: 56px;
-  height: 56px;
+  display: grid;
+  place-items: center;
+  width: 128px;
+  height: 128px;
+}
+.bl-loading__logo {
+  filter: drop-shadow(0 6px 14px rgba(30, 20, 16, 0.25));
 }
 .bl-loading__beads span {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 10px;
-  height: 10px;
-  margin: -5px;
+  width: 8px;
+  height: 8px;
+  margin: -4px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #ff9b84, var(--coral) 55%, var(--coral-deep));
   animation: bl-pulse 0.96s ease-in-out infinite;
+}
+
+/* ---------- Logo (src/ui/Logo.tsx) ---------- */
+.bl-logo {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+  overflow: visible;
 }
 
 /* ---------- Money ---------- */

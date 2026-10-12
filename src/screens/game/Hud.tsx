@@ -19,7 +19,7 @@ import type { ClaimAllowanceResult, GameClock, GameState } from '../../lib/types
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { usePresenceStore } from '../../state/presence';
-import { Icon, toast } from '../../ui';
+import { Icon, Logo, toast } from '../../ui';
 import type { PlayerStatus } from './status';
 import { nearestWorkplace } from '../../api/careers';
 import { bestFood } from '../../api/shops';
@@ -326,7 +326,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
             <Icon name={clean ? 'chevronDown' : 'chevronUp'} size={13} stroke={2.6} />
             {clean ? 'Show HUD' : 'Clean screen'}
           </button>
-          {!clean && <span className="beta-badge beta-badge--hud" title="Benin Life is in beta: new features land often">Beta</span>}
+          {!clean && <span className="beta-badge beta-badge--hud" title="Benin Life is in beta: new features land often"><Logo size={14} title="" />Beta</span>}
         </div>
       )}
       <DailySheets />

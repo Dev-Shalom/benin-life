@@ -25,7 +25,7 @@ function LegalPage({ title, children }: { title: string; children: ReactNode }) 
       <Link to="/" className="auth__back"><Icon name="back" size={16} /> Back</Link>
       <div className="legal__inner">
         <header className="legal__brand">
-          <Logo size={44} />
+          <Logo size={48} title="" />
           <div>
             <p className="legal__eyebrow">Benin Life <span className="beta-badge">Beta</span></p>
             <h1 className="legal__title">{title}</h1>
