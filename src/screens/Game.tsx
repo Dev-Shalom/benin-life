@@ -60,6 +60,7 @@ import { DailySync, usePlaceGem } from './game/Daily';
 import { useShownAvatar, useWardrobe } from '../state/wardrobe';
 import { GarageSheet } from './game/GarageSheet';
 import { MoveHouseSheet } from './game/MoveHouseSheet';
+import { SpraySheet } from './game/SpraySheet';
 import { ReceiptSheet } from './game/ReceiptSheet';
 import { useGarage } from '../state/garage';
 import { garageHome, type GarageHome } from '../api/garage';
@@ -951,6 +952,7 @@ export default function Game() {
       />
       <GarageSheet />
       <MoveHouseSheet />
+      <SpraySheet state={state} />
       <ReceiptSheet />
       <ShortcutsSheet />
       <Phone state={state} clock={clock} />

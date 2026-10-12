@@ -24,6 +24,8 @@ import { placeEmoji } from '../../art/city3d';
 import { deriveStatus } from './status';
 import { queueTask } from './TaskRunner';
 import { useShrine } from '../../state/shrine';
+import { useSpray } from '../../state/spray';
+import { getCfg } from '../../lib/config';
 
 /** B2 offering icons for the shrine cards (same as the items' icons). */
 const OFFER_ICON: Record<string, string> = {
@@ -142,11 +144,15 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
   const [armed, setArmed] = useState(false);
   const p = state.profile;
   const shrine = a.kind === 'shrine';
-  const secs = shrine ? (a.seconds ?? null) : a.kind === 'activity' ? Math.round(activitySeconds({ game_minutes: a.game_minutes ?? 30, effects: a.effects ?? null, max_seconds: a.max_seconds, min_seconds: a.min_seconds, scale_by_need: a.scale_by_need }, p, cfg)) : null;
+  // SP1: the spray card opens the Spray money sheet (choose the amount); VIP section = VIP spray
+  const spray = a.kind === 'activity' && a.ref === 'spray_money';
+  const sprayVip = spray && zone.key === 'vip';
+  const sprayMin = Number(getCfg(sprayVip ? 'club.vip_spray_min' : 'club.spray_min', sprayVip ? 100000 : 1000)) || 1000;
+  const secs = spray ? null : shrine ? (a.seconds ?? null) : a.kind === 'activity' ? Math.round(activitySeconds({ game_minutes: a.game_minutes ?? 30, effects: a.effects ?? null, max_seconds: a.max_seconds, min_seconds: a.min_seconds, scale_by_need: a.scale_by_need }, p, cfg)) : null;
   const car = a.kind === 'shop' && a.category === 'vehicle';
   const cost = a.cost ?? 0;
   const money = car ? p.cash + p.bank : p.cash;
-  const broke = (a.kind === 'activity' || a.kind === 'shop' || shrine) && cost > money;
+  const broke = (a.kind === 'activity' || a.kind === 'shop' || shrine) && (spray ? sprayMin > money : cost > money);
   const owned = car && (a.owned ?? 0) > 0;
   // B2: a charm of that kind still works / offerings missing from the Bag
   const missing = shrine ? (a.missing ?? []) : [];
@@ -162,6 +168,10 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
   const go = () => {
     if (a.kind === 'panel') {
       select(locId, a.ref as PanelId);
+      return;
+    }
+    if (spray && (!lock || (broke && lock === 'Not enough cash'))) {
+      useSpray.getState().show(locId, sprayVip);
       return;
     }
     // B2: a locked shrine card opens Baba's tab on that service (what is missing, time left)
@@ -198,18 +208,19 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
   let price: React.ReactNode = null;
   if (a.kind === 'job') price = a.pay ? <span className="pc-act__earn">Earns {nairaShort(a.pay)}</span> : null;
   else if (a.kind === 'panel') price = null;
+  else if (spray) price = <span className="pc-act__price" title={`From ${naira(sprayMin)}`}>From {nairaShort(sprayMin)}</span>;
   else price = cost > 0 ? <span className="pc-act__price" title={naira(cost)}>{car || (shrine && cost >= 100000) ? nairaShort(cost) : naira(cost)}</span> : <span className="pc-act__free">Free</span>;
 
-  const verb = a.kind === 'panel' || (a.kind === 'job' && !a.mine) ? 'Choose' : armed ? `Tap again · ${nairaShort(cost)}` : idle ? null : 'Add to queue';
+  const verb = spray ? 'Choose amount' : a.kind === 'panel' || (a.kind === 'job' && !a.mine) ? 'Choose' : armed ? `Tap again · ${nairaShort(cost)}` : idle ? null : 'Add to queue';
   return (
     <button type="button" className={`pc-act${a.event ? ' is-event' : ''}${lock && a.kind !== 'panel' && !(a.kind === 'job' && !a.mine) ? ' is-locked' : ''}${armed ? ' is-armed' : ''}`} onClick={go}
-      aria-label={`${a.name}${secs ? `, ${secs} seconds` : ''}${cost ? `, ${naira(cost)}` : ''}${lock ? `, ${lock}` : ''}`}>
+      aria-label={`${a.name}${secs ? `, ${secs} seconds` : ''}${spray ? `, from ${naira(sprayMin)}` : cost ? `, ${naira(cost)}` : ''}${lock ? `, ${lock}` : ''}`}>
       <span className="pc-act__top">
         <span className="pc-act__icon" aria-hidden>{a.icon}</span>
         <span className="pc-act__meta">
           {secs !== null && <span className="pc-act__time"><Icon name="clock" size={11} /> {secs}s</span>}
           {a.risky && <span className="pc-act__risky">Risky</span>}
-          {a.weekend && cost > 0 && <span className="pc-act__weekend" title="Friday and Saturday nights cost more at the clubs">Weekend price</span>}
+          {a.weekend && cost > 0 && !spray && <span className="pc-act__weekend" title="Friday and Saturday nights cost more at the clubs">Weekend price</span>}
           {price}
         </span>
       </span>

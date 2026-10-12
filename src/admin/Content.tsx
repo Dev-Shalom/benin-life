@@ -249,11 +249,11 @@ const DEFS: TableDef[] = [
     newRow: { scene: 'market', days: 'all', from_hour: 7, to_hour: 12, npcs: 40, sort: 0, active: true },
   },
   {
-    id: 'hype', table: 'hype_templates', title: 'Hype lines', emoji: '🎤', blurb: 'What the club hype man (MC Lightning) says when a player spends big (P2/P3: the full-screen takeover). One line is picked at random per kind, and a place never hears the same line again until it has heard them all. vip_arrival = the calm "VIP has arrived" line (any place). Placeholders: {name} {place} {count} {bottles} {amount} {rank}. The ticker line is the app-wide strip for spends at or above Settings → hype.global_min (keep it short, under 60 characters).',
+    id: 'hype', table: 'hype_templates', title: 'Hype lines', emoji: '🎤', blurb: 'What the club hype man (MC Lightning) says when a player spends big (P2/P3: the full-screen takeover). One line is picked at random per kind, and a place never hears the same line again until it has heard them all. vip_arrival = the calm "VIP has arrived" line (any place). Placeholders: {name} {place} {count} {bottles} {amount} {rank}. SP1 custom spray: spray_<tier> pools by amount (Settings → club.spray_tier_*), spray_vip for VIP sprays; they also take {short} (₦2 TRILLION). The ticker line is the app-wide strip for spends at or above Settings → hype.global_min (keep it short, under 60 characters).',
     pk: ['id'], insert: true,
     titleOf: (r) => String(r.line), subOf: (r) => `${r.kind}${r.ticker ? ` · ticker: ${r.ticker}` : ''}${r.active ? '' : ' · off'}`,
     fields: [
-      { key: 'kind', label: 'Kind', type: 'text', help: 'vip | bottles | spray | shoutout | shutdown | vip_arrival' },
+      { key: 'kind', label: 'Kind', type: 'text', help: 'vip | bottles | spray | shoutout | shutdown | vip_arrival | spray_small | spray_nice | spray_big | spray_huge | spray_oga | spray_billionaire | spray_trillionaire | spray_vip' },
       { key: 'line', label: 'Club line (banner, bubble, chat)', type: 'long', help: 'e.g. Make una hail @{name}! E don pop {bottles} — {place} na una own tonight!' },
       { key: 'ticker', label: 'App-wide ticker line', type: 'text', help: 'e.g. 🔥 @{name} is shutting down {place}' },
       { key: 'sort', label: 'Sort order', type: 'int' }, { key: 'active', label: 'Active', type: 'bool' },

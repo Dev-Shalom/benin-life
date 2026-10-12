@@ -1,3 +1,5 @@
+-- Markets close at 8 PM since 20261012001550; this test buys offerings at Oba Market at any hour, so keep markets open here.
+update locations set open_hour = null, close_hour = null where scene = 'market';
 -- B2 Babalawo shrine (20261012001500_babalawo.sql). Rolled back. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/babalawo_test.sql
 -- Time moves with bl.test_offset_seconds; rolls are pinned with bl.test_rand (bl_rand).

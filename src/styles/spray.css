@@ -1,0 +1,113 @@
+/* SP1 spray sheet (src/screens/game/SpraySheet.tsx). VIP: gold on black. */
+.spray { display: flex; flex-direction: column; gap: 12px; padding-bottom: 4px; }
+
+.spray__vip {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font: 700 13px/1.35 var(--font-display);
+  color: #f7d774;
+  background: linear-gradient(100deg, #17110a, #2a1d0b 60%, #17110a);
+  border: 1px solid rgba(247, 215, 116, 0.45);
+}
+
+.spray__field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--chip-bg);
+  border: 2px solid transparent;
+  transition: border-color 160ms ease-out, background-color 160ms ease-out;
+}
+.spray__field:focus-within { border-color: var(--primary); background: var(--surface); }
+.spray__cur { font: 800 30px/1 var(--font-display); color: var(--muted); }
+.spray__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: 800 clamp(26px, 8vw, 36px)/1.1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.spray__input::placeholder { color: var(--line-strong); }
+
+.spray__preview { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 26px; }
+.spray__short { font: 800 15px/1.2 var(--font-display); letter-spacing: 0.06em; color: var(--text); }
+.spray__hint { font-size: 13px; color: var(--muted); }
+.spray__tier {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font: 800 11.5px/1.2 var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  background: #6c7a8c;
+}
+.spray__tier.t-nice { background: #2f8f4e; }
+.spray__tier.t-big { background: #1f7a3f; }
+.spray__tier.t-huge { background: #c8792f; }
+.spray__tier.t-oga { background: #9c1f19; }
+.spray__tier.t-billionaire { background: linear-gradient(100deg, #b0793a, #f3d28a, #b0793a); color: #2a160d; }
+.spray__tier.t-trillionaire { background: linear-gradient(100deg, #141634, #6b3fd1 40%, #f3d28a); }
+
+.spray__problem {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 9%, transparent);
+}
+
+.spray__chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.spray__chip {
+  min-height: 42px;
+  padding: 8px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font: 700 14px/1.1 var(--font-display);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 120ms ease-out, background-color 120ms ease-out, border-color 120ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+.spray__chip:active:not(:disabled) { transform: scale(0.96); }
+.spray__chip.is-on { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-strong); }
+.spray__chip:disabled { opacity: 0.42; cursor: not-allowed; }
+.spray__chip--all { grid-column: span 2; }
+
+.spray__foot { margin: 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+
+.spray-go {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 16px;
+  font: 800 17px/1 var(--font-display);
+  color: #fff;
+  background: var(--grad-primary);
+  box-shadow: 0 6px 18px rgba(13, 133, 77, 0.28);
+  cursor: pointer;
+  transition: transform 140ms ease-out, opacity 140ms ease-out;
+}
+.spray-go:active:not(:disabled) { transform: scale(0.98); }
+.spray-go:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.spray-go.is-vip { color: #1a1206; background: linear-gradient(180deg, #ffe49a, #d9a441 55%, #b0793a); box-shadow: 0 6px 18px rgba(176, 121, 58, 0.35); }
+
+/* VIP sheet: gold on black */
+.spray-sheet.is-vip .spray__field { background: #17110a; }
+.spray-sheet.is-vip .spray__field:focus-within { border-color: #d9a441; background: #1f170c; }
+.spray-sheet.is-vip .spray__input, .spray-sheet.is-vip .spray__cur { color: #f7d774; }
+.spray-sheet.is-vip .spray__chip.is-on { border-color: #d9a441; background: #fff6dc; color: #7a4d1f; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spray__chip, .spray-go, .spray__field { transition: none; }
+}

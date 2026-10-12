@@ -10,6 +10,7 @@ import type { PanelProps } from '../lib/types';
 import { Button, EmptyState, Icon } from '../ui';
 import { useTasks } from '../state/tasks';
 import { queueTask } from '../screens/game/TaskRunner';
+import { useSpray } from '../state/spray';
 import { deriveStatus } from '../screens/game/status';
 import { hasFurnitureFor, useCatalog } from '../state/catalog';
 
@@ -108,6 +109,12 @@ export default function ActivitiesPanel({ state, location, close }: PanelProps) 
   const idle = status.free && queued === 0;
   const blocked = status.traveling || status.jailLeft > 0 || status.hospLeft > 0 || state.profile.location_id !== location.id;
   const doIt = (a: Activity) => {
+    // SP1: spraying opens the Spray money sheet (the player picks the amount)
+    if (a.id === 'spray_money' && location.scene === 'club') {
+      close();
+      useSpray.getState().show(location.id, false);
+      return;
+    }
     const r = queueTask(a, location.id);
     if (r === 'now') close();
   };
@@ -135,7 +142,8 @@ export default function ActivitiesPanel({ state, location, close }: PanelProps) 
       {weekend && <p className="weekend-badge"><span aria-hidden>🥂</span> Weekend price tonight: club prices are higher on Friday and Saturday nights.</p>}
       {shown.map((a) => {
         const nightLocked = a.night_only && !clock.is_night;
-        const broke = a.cost > state.profile.cash;
+        const spray = a.id === 'spray_money' && location.scene === 'club';
+        const broke = !spray && a.cost > state.profile.cash;
         const disabled = nightLocked || broke || blocked;
         return (
           <article key={a.id} className={`act${disabled ? ' is-locked' : ''}`}>
@@ -145,14 +153,14 @@ export default function ActivitiesPanel({ state, location, close }: PanelProps) 
                 {a.description && <p className="act__desc">{a.description}</p>}
                 <div className="act__meta">
                   <span className="chip"><Icon name="clock" size={12} /> {secondsLabel(activitySeconds(a, state.profile, cfg))}</span>
-                  <span className="chip">{a.cost > 0 ? naira(a.cost) : 'Free'}</span>
-                  {a.weekend && a.cost > 0 && <span className="chip warn">Weekend price</span>}
+                  <span className="chip">{spray ? 'You choose the amount' : a.cost > 0 ? naira(a.cost) : 'Free'}</span>
+                  {a.weekend && a.cost > 0 && !spray && <span className="chip warn">Weekend price</span>}
                   {a.night_only && <span className="chip warn"><Icon name="moon" size={12} /> Night only</span>}
                 </div>
               </div>
               <Button size="sm" variant={a.cost > 0 ? 'primary' : 'green'}
                 disabled={disabled} onClick={() => doIt(a)}>
-                {nightLocked ? 'Night only' : broke ? 'Not enough cash' : idle ? 'Do it' : 'Add to queue'}
+                {nightLocked ? 'Night only' : broke ? 'Not enough cash' : spray ? 'Spray' : idle ? 'Do it' : 'Add to queue'}
               </Button>
             </div>
             <EffectChips effects={a.effects} />

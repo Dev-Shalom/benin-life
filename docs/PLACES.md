@@ -375,3 +375,6 @@ DJ booth, hype, crowd, chat, closed-place behaviour, the eject at closing):
 - Client: "Weekend price" badge on cards (`.pc-act__weekend`), a "Weekend prices tonight" note on the place card, a
   banner in the Shop and Activities tabs (`.weekend-badge`). The client never computes the price.
 - Event tickets (`place_events.ticket_price`) are not marked up (club nights are already Fri/Sat priced).
+
+## SP1 custom spray (migration `20261012001650_custom_spray.sql`, test `supabase/tests/custom_spray_test.sql`)
+In every club the Dance floor / DJ booth / VIP "Spray money" cards open a sheet where the player chooses the amount (₦1,000 to ₦10T, cash in hand only, 10 s cooldown). Tiers Small → Trillionaire each have their own MC lines and a bigger full-screen takeover with the amount shown big; VIP sprays get +25% hype and a gold-and-black VIP takeover. Full details: `docs/SPRAY.md`.

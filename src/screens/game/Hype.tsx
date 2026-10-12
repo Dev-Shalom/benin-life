@@ -7,7 +7,8 @@
 //  * HypeStrip: the app-wide strip for big spends elsewhere (~6 s, aura + shimmer); tap opens that place.
 // Motion is transforms + opacity only. prefers-reduced-motion: a calm fade, no particles, no beat loop.
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { dismissHypeBanner, dismissHypeTicker, hypeHoldMs, useHype, type Announcement } from '../../state/hype';
+import { dismissHypeBanner, dismissHypeTicker, hypeHoldMs, sprayLevel, useHype, type Announcement } from '../../state/hype';
+import { nairaWords } from '../../api/spray';
 import { useTier } from '../../art/feel/quality';
 import { naira } from '../../lib/format';
 import { preloadHypeFx, startHypeFx, type HypeTier } from './hypeFx';
@@ -15,7 +16,12 @@ import '../../styles/hype.css';
 
 const KIND_ICON: Record<string, string> = { vip: '👑', bottles: '🍾', spray: '💸', shoutout: '🎤', shutdown: '🔥', vip_arrival: '👑' };
 
-function tierOf(kind: string): HypeTier {
+const SPRAY_NAME = ['SMALL', 'NICE', 'BIG', 'HUGE', 'OGA', 'BILLIONAIRE', 'TRILLIONAIRE'];
+/** SP1: particles by spray tier (x the base pool). */
+const SPRAY_FX = [0.6, 0.8, 1, 1.35, 1.7, 2.1, 2.6];
+
+function tierOf(kind: string, vip?: boolean | null): HypeTier {
+  if (kind === 'spray' && vip) return 'vip';
   switch (kind) {
     case 'spray': return 'spray';
     case 'shoutout': return 'shout';
@@ -43,7 +49,11 @@ function labelOf(a: Announcement): string {
   switch (a.kind) {
     case 'vip': return 'VIP TABLE';
     case 'bottles': return `POPPED ${Math.max(1, a.qty)} BOTTLE${a.qty === 1 ? '' : 'S'}`;
-    case 'spray': return `SPRAYED ${nairaK(a.amount)}`;
+    case 'spray': {
+      const lv = sprayLevel(a);
+      if (lv < 0) return `SPRAYED ${nairaK(a.amount)}`;
+      return a.vip ? `VIP SPRAY · ${SPRAY_NAME[lv]}` : `${SPRAY_NAME[lv]} SPRAY`;
+    }
     case 'shoutout': return 'HYPE MAN SHOUT-OUT';
     case 'shutdown': return `SHUT DOWN ${placeOf(a).toUpperCase()}`;
     case 'vip_arrival': return 'VIP HAS ARRIVED';
@@ -54,6 +64,8 @@ function labelOf(a: Announcement): string {
 /** The strip's short kicker. */
 function kickerOf(a: Announcement): string {
   const k: Record<string, string> = { vip: 'VIP TABLE', bottles: 'BOTTLES', spray: 'NAIRA RAIN', shoutout: 'SHOUT-OUT', shutdown: 'CLUB SHUT DOWN' };
+  const lv = sprayLevel(a);
+  if (lv >= 0) return `${SPRAY_NAME[lv]} SPRAY · ${nairaWords(a.amount)}`;
   return `${k[a.kind] ?? 'BIG SPEND'}${a.amount > 0 ? ` · ${nairaK(a.amount)}` : ''}`;
 }
 
@@ -143,7 +155,7 @@ function NameMark({ name, id, tier }: { name: string; id: number; tier: HypeTier
   const w = Math.max(520, Math.round(label.length * fs * 0.6 + 80));
   const h = 150;
   const k = `hx${id}`;
-  const fill = tier === 'spray' ? ['#f4ffd8', '#b8f07e', '#f3c65a'] : tier === 'shout' ? ['#fff3ff', '#e2c4ff', '#f3c65a'] : ['#fffbe8', '#ffd97a', '#d79a2c'];
+  const fill = tier === 'vip' ? ['#fffbe8', '#f7d774', '#b0793a'] : tier === 'spray' ? ['#f4ffd8', '#b8f07e', '#f3c65a'] : tier === 'shout' ? ['#fff3ff', '#e2c4ff', '#f3c65a'] : ['#fffbe8', '#ffd97a', '#d79a2c'];
   const text = (props: Record<string, unknown>) => (
     <text x={w / 2} y={112} textAnchor="middle" fontSize={fs} fontWeight={800} fontFamily="Outfit, 'Segoe UI', system-ui, sans-serif" letterSpacing="-1" {...props}>{label}</text>
   );
@@ -206,13 +218,18 @@ export function HypeTakeover({ mcName }: { mcName: string }) {
   useEffect(() => { preloadHypeFx(); }, []);
 
   const hold = shown ? hypeHoldMs(shown) : 0;
-  const tier = shown ? tierOf(shown.kind) : 'gold';
+  const tier = shown ? tierOf(shown.kind, shown.vip) : 'gold';
+  const lv = shown ? sprayLevel(shown) : -1;
 
   useEffect(() => {
     if (!shown || reduced || !canvasRef.current) return;
     const base = gfx === 'low' ? 40 : 120;
-    const count = tier === 'calm' ? Math.round(base * 0.35) : base;
-    return startHypeFx(canvasRef.current, auraRef.current, { tier, count, emitMs: Math.max(1200, hold - 1100) });
+    let count = tier === 'calm' ? Math.round(base * 0.35) : base;
+    if (lv >= 0) count = Math.min(gfx === 'low' ? 110 : 320, Math.round(base * SPRAY_FX[lv] * (shown.vip ? 1.2 : 1)));
+    return startHypeFx(canvasRef.current, auraRef.current, {
+      tier, count, emitMs: Math.max(1200, hold - 1100),
+      goldNotes: !!shown.vip || lv >= 5, fireworks: lv >= 6 ? true : undefined,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown?.id, reduced, gfx]);
 
@@ -228,23 +245,29 @@ export function HypeTakeover({ mcName }: { mcName: string }) {
   const stepMs = Math.max(55, Math.min(120, (hold * 0.42) / Math.max(1, words)));
   const calm = shown.kind === 'vip_arrival';
   const who = calm ? (shown.qty > 0 ? `VIP #${shown.qty}` : 'VIP alert') : mcName;
+  // SP1: crown only for the top spray tiers (oga+) and VIP; the other kinds keep it
+  const crown = lv < 0 || lv >= 4 || !!shown.vip;
+  const amt = Math.max(0, Number(shown.amount) || 0);
+  const digits = String(Math.round(amt)).length;
   return (
-    <div className={`hx tier-${tier}${out ? ' is-out' : ''}${reduced ? ' is-reduced' : ''}`} key={shown.id}
-      style={{ ['--hold' as string]: `${hold}ms` }}>
+    <div className={`hx tier-${tier}${lv >= 0 ? ` sp-${lv}` : ''}${out ? ' is-out' : ''}${reduced ? ' is-reduced' : ''}`} key={shown.id}
+      style={{ ['--hold' as string]: `${hold}ms`, ['--amt-len' as string]: Math.max(6, digits + Math.floor((digits - 1) / 3) + 1) }}>
       <div className="hx-backdrop" aria-hidden />
       {tier === 'shout' && <div className="hx-spot" aria-hidden><i /><i /></div>}
-      {tier === 'shutdown' && <><div className="hx-edge" aria-hidden /><div className="hx-sweep" aria-hidden /></>}
+      {(tier === 'shutdown' || lv >= 5 || tier === 'vip') && <><div className="hx-edge" aria-hidden /><div className="hx-sweep" aria-hidden /></>}
       <div className="hx-aura" ref={auraRef} aria-hidden />
       {!reduced && <canvas className="hx-canvas" ref={canvasRef} aria-hidden />}
       <button type="button" className="hx-hit" onClick={dismissHypeBanner} aria-label={`${who}: ${shown.text}. Tap to skip`}>
         <span className="hx-stack">
           <span className="hx-mc"><span className="hx-mc__dot" aria-hidden />{who}{!calm && <span className="hx-mc__live">LIVE</span>}</span>
-          <Crown />
+          {shown.vip && <span className="hx-vipband" aria-hidden><i>👑</i>VIP<i>👑</i></span>}
+          {crown && <Crown />}
           <NameMark name={shown.username} id={shown.id} tier={tier} />
           <span className="hx-label"><span aria-hidden>{KIND_ICON[shown.kind] ?? '🎤'}</span>{labelOf(shown)}</span>
           {shown.amount > 0 && (
-            <span className="hx-amount"><RollUp to={shown.amount} delay={reduced ? 0 : 380} ms={tier === 'shutdown' ? 1800 : 1100} still={reduced} /></span>
+            <span className={`hx-amount${lv >= 0 ? ' is-spray' : ''}`}><RollUp to={shown.amount} delay={reduced ? 0 : 380} ms={tier === 'shutdown' || lv >= 4 ? 1800 : 1100} still={reduced} /></span>
           )}
+          {lv >= 0 && amt >= 1000 && <span className="hx-words">{nairaWords(amt)}</span>}
           <Caption text={shown.text} name={shown.username} stepMs={stepMs} still={reduced} />
         </span>
         <span className="hx-foot" aria-hidden>
@@ -262,7 +285,7 @@ export function HypeStrip({ top, onOpen }: { top: number; onOpen: (locationId: s
   const ticker = useHype((s) => s.ticker);
   const { shown, out } = useLeaving<Announcement>(ticker, 220);
   if (!shown || !shown.ticker) return null;
-  const tier = tierOf(shown.kind);
+  const tier = tierOf(shown.kind, shown.vip);
   return (
     <div className={`hx-strip-wrap${out ? ' is-out' : ''}`} style={{ top }} key={shown.id}>
       <button type="button" className={`hx-strip tier-${tier}`}
@@ -272,7 +295,7 @@ export function HypeStrip({ top, onOpen }: { top: number; onOpen: (locationId: s
         <span className="hx-strip__shine" aria-hidden />
         <span className="hx-strip__icon" aria-hidden>{KIND_ICON[shown.kind] ?? '🔥'}</span>
         <span className="hx-strip__main">
-          <span className="hx-strip__kicker">{kickerOf(shown)}</span>
+          <span className="hx-strip__kicker">{shown.vip && <span className="hx-strip__vip">VIP</span>}{kickerOf(shown)}</span>
           <span className="hx-strip__text">{shown.ticker}</span>
         </span>
         <span className="hx-strip__go">Go<span aria-hidden> ›</span></span>

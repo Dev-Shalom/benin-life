@@ -3,7 +3,7 @@
 // About 120 particles on High, 40 on Low. Reduced motion never starts this (the takeover just fades).
 import { readBeat } from '../../lib/sound';
 
-export type HypeTier = 'gold' | 'bottles' | 'spray' | 'shout' | 'shutdown' | 'calm';
+export type HypeTier = 'gold' | 'bottles' | 'spray' | 'shout' | 'shutdown' | 'calm' | 'vip';
 
 const NOTE_W = 120;
 const NOTE_H = 58;
@@ -22,18 +22,26 @@ const NOTE_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='${NOTE_W}' heig
 <text x='112' y='52' font-family='Arial,sans-serif' font-weight='900' font-size='8' text-anchor='end' fill='#f8eab0' fill-opacity='.8'>1000</text>
 </svg>`;
 
-let noteImg: HTMLImageElement | null = null;
-function note(): HTMLImageElement | null {
+// SP1: the gold note for VIP and billionaire+ sprays (same art, gold and black)
+const GOLD_NOTE_SVG = NOTE_SVG
+  .replace("'#5fbf78'", "'#fff1b8'").replace("'#2f8f52'", "'#e8b04a'").replace("'#1c6a3b'", "'#8a5a14'")
+  .replace("stroke='#d8eebf'", "stroke='#1a1206'").replace(/#103d22/g, '#1a1206').replace(/#f8eab0/g, '#1a1206')
+  .replace(/#eaf6d4/g, '#fff6d6').replace(/#f3dc8a/g, '#1a1206');
+
+const imgs: Record<'green' | 'gold', HTMLImageElement | null> = { green: null, gold: null };
+function note(kind: 'green' | 'gold' = 'green'): HTMLImageElement | null {
   if (typeof Image === 'undefined') return null;
-  if (!noteImg) {
-    noteImg = new Image();
-    noteImg.decoding = 'async';
-    noteImg.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(NOTE_SVG)}`;
+  let im = imgs[kind];
+  if (!im) {
+    im = new Image();
+    im.decoding = 'async';
+    im.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(kind === 'gold' ? GOLD_NOTE_SVG : NOTE_SVG)}`;
+    imgs[kind] = im;
   }
-  return noteImg.complete && noteImg.naturalWidth > 0 ? noteImg : null;
+  return im.complete && im.naturalWidth > 0 ? im : null;
 }
-/** Start decoding the note early (the takeover mounts it on the first announcement). */
-export function preloadHypeFx() { note(); }
+/** Start decoding the notes early (the takeover mounts them on the first announcement). */
+export function preloadHypeFx() { note('green'); note('gold'); }
 
 const PALETTE: Record<HypeTier, string[]> = {
   gold: ['#f7d774', '#e8b04a', '#fff1c1', '#c98a2b', '#ffe49a'],
@@ -42,6 +50,7 @@ const PALETTE: Record<HypeTier, string[]> = {
   shout: ['#a06bff', '#d7b8ff', '#f7d774', '#6b3fd1', '#ffe49a'],
   shutdown: ['#f7d774', '#ff5fa8', '#5fe0ff', '#ffffff', '#ffb547'],
   calm: ['#f7d774', '#fff1c1', '#e8b04a'],
+  vip: ['#f7d774', '#fff1c1', '#e8b04a', '#c98a2b', '#ffe49a'],
 };
 // share of the pool: [notes, confetti, sparks]
 const MIX: Record<HypeTier, [number, number, number]> = {
@@ -51,6 +60,7 @@ const MIX: Record<HypeTier, [number, number, number]> = {
   shout: [0.1, 0.5, 0.4],
   shutdown: [0.32, 0.3, 0.38],
   calm: [0, 0, 0.35],
+  vip: [0.58, 0.27, 0.15],
 };
 
 const NOTE = 0;
@@ -63,6 +73,10 @@ export interface HypeFxOptions {
   count: number;
   /** Emit new particles until this many ms, then let them fall out. */
   emitMs: number;
+  /** SP1: gold notes instead of green (VIP, billionaire+). */
+  goldNotes?: boolean;
+  /** SP1: fireworks over the rain (trillionaire); the shutdown always has them. */
+  fireworks?: boolean;
 }
 
 export function startHypeFx(canvas: HTMLCanvasElement, aura: HTMLElement | null, o: HypeFxOptions): () => void {
@@ -70,6 +84,7 @@ export function startHypeFx(canvas: HTMLCanvasElement, aura: HTMLElement | null,
   const n = Math.max(0, Math.round(o.count));
   const pal = PALETTE[o.tier];
   const mix = MIX[o.tier];
+  const fw = o.fireworks ?? o.tier === 'shutdown';
   const dpr = Math.min(n > 60 ? 1.5 : 1, window.devicePixelRatio || 1);
   let W = 0;
   let H = 0;
@@ -171,9 +186,9 @@ export function startHypeFx(canvas: HTMLCanvasElement, aura: HTMLElement | null,
   for (let i = 0; i < used; i++) {
     kind[i] = i < nNotes ? NOTE : i < nNotes + nConf ? CONF : SPARK;
     if (kind[i] === SPARK) {
-      if (o.tier === 'shutdown') life[i] = -1; // fireworks fill these
+      if (fw) life[i] = -1; // fireworks fill these
       else { spawnSpark(i); life[i] *= Math.random(); }
-    } else if (kind[i] === CONF && o.tier !== 'spray' && Math.random() < 0.4) spawnBurst(i);
+    } else if (kind[i] === CONF && (o.tier !== 'spray' || fw) && Math.random() < 0.4) spawnBurst(i);
     else spawnFall(i, true);
   }
 
@@ -196,7 +211,7 @@ export function startHypeFx(canvas: HTMLCanvasElement, aura: HTMLElement | null,
       aura.style.opacity = (0.72 + b.pulse * 0.28).toFixed(3);
     }
     // fireworks
-    if (o.tier === 'shutdown' && emitting && el > nextShell) {
+    if (fw && emitting && el > nextShell) {
       nextShell = el + rnd(520, 820);
       const cx = rnd(W * 0.15, W * 0.85);
       const cy = rnd(H * 0.12, H * 0.42);
@@ -206,12 +221,12 @@ export function startHypeFx(canvas: HTMLCanvasElement, aura: HTMLElement | null,
     if (!ctx) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const img = note();
+    const img = note(o.goldNotes ? 'gold' : 'green');
     for (let i = 0; i < used; i++) {
       const k = kind[i];
       if (k === SPARK) {
         if (life[i] <= 0) {
-          if (emitting && o.tier !== 'shutdown') spawnSpark(i);
+          if (emitting && !fw) spawnSpark(i);
           continue;
         }
         life[i] -= dt;

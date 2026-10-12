@@ -26,7 +26,18 @@ export interface Announcement {
   created_at: string;
   /** P3: the place's display name ("360 Signature"); older rows may not have it. */
   place?: string | null;
+  /** SP1 custom spray: the amount tier (small … trillionaire), a VIP spray, hype points. */
+  tier?: string | null;
+  vip?: boolean | null;
+  points?: number | null;
 }
+
+const SPRAY_TIERS = ['small', 'nice', 'big', 'huge', 'oga', 'billionaire', 'trillionaire'];
+/** SP1: 0 (small) … 6 (trillionaire) for a custom spray, -1 otherwise. */
+export function sprayLevel(a: Pick<Announcement, 'kind' | 'tier'>): number {
+  return a.kind === 'spray' && a.tier ? SPRAY_TIERS.indexOf(a.tier) : -1;
+}
+const SPRAY_HOLD = [3500, 4000, 4600, 5400, 6400, 7600, 9000];
 
 const TICKER_MS = 6000;
 
@@ -36,8 +47,10 @@ function devK(): number {
   return import.meta.env.DEV ? Number((window as { __blHypeHold?: number }).__blHypeHold) || 1 : 1;
 }
 
-export function hypeHoldMs(a: Pick<Announcement, 'kind' | 'amount'>): number {
+export function hypeHoldMs(a: Pick<Announcement, 'kind' | 'amount' | 'tier' | 'vip'>): number {
   const k = devK();
+  const lv = sprayLevel(a);
+  if (lv >= 0) return Math.round((SPRAY_HOLD[lv] + (a.vip ? 900 : 0)) * k);
   if (a.kind === 'shutdown') return 6000 * k;
   if (a.kind === 'vip_arrival') return 3000 * k;
   const amt = Math.max(10_000, Number(a.amount) || 0);
@@ -68,7 +81,7 @@ function showNext() {
   const next = queue[0] ?? null;
   useHype.setState({ banner: next, queue: queue.slice(1) });
   if (!next) return;
-  playHype(next.kind === 'vip_arrival' ? 'calm' : next.kind === 'shutdown' ? 'big' : 'club');
+  playHype(next.kind === 'vip_arrival' ? 'calm' : next.kind === 'shutdown' || sprayLevel(next) >= 3 || next.vip ? 'big' : 'club');
   // the hype man says it too (PlaceScene shows a bubble over him and he points + jumps)
   window.dispatchEvent(new CustomEvent('bl:hype', { detail: { text: next.text, kind: next.kind } }));
   bannerTimer = window.setTimeout(showNext, hypeHoldMs(next));
@@ -93,6 +106,11 @@ function onGlobalRow(a: Announcement) {
   useHype.setState({ ticker: a });
   playHype('global');
   tickerTimer = window.setTimeout(() => useHype.setState({ ticker: null }), TICKER_MS * devK());
+}
+
+/** SP1: show a row the server just returned (the sprayer sees their own takeover at once, even in poll mode). */
+export function pushHype(a: Announcement) {
+  onClubRow(a);
 }
 
 /** Hide the app-wide strip now (it was tapped). */
