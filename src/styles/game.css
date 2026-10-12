@@ -6542,3 +6542,10 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .charm-chip.is-calling small { color: var(--coral-deep); font-weight: 700; }
 .pc-act__offer { margin-top: 2px; }
 .shrine-deadline { font-size: 22px; color: var(--coral-deep); }
+
+/* Y1 Yahoo: rank badge (Sim sheet, player sheet) + laptop chips in the shop */
+.yahoo-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #121820; color: #f5c451; font: 700 11px/1.3 var(--font-display); white-space: nowrap; }
+.yahoo-badge span { font-family: var(--font-emoji); }
+
+.chip.chip--yahoo { background: #e6f7ee; color: #0a6e3f; }
+.item__icon--laptop { background: #e9eef5; }

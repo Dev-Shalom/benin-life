@@ -87,7 +87,7 @@ export const useCrime = create<CrimeStore>((set) => ({
   },
 }));
 
-const CRIME_EVENTS = new Set(['steal_caught', 'steal_success', 'police_release']);
+const CRIME_EVENTS = new Set(['steal_caught', 'steal_success', 'police_release', 'efcc_caught']);
 let started = false;
 
 /** Follow my crime state for the signed-in game. Returns a stop function. */

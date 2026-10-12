@@ -3,6 +3,9 @@ import { rpc } from '../lib/api';
 
 export interface JailCase {
   id: number;
+  /** Y1: 'efcc' = caught doing Yahoo work (EFCC copy, laptop seized, yahoo balance gone). */
+  kind?: 'police' | 'efcc';
+  meta?: { laptop?: string | null; laptop_name?: string | null; seized?: number; job_name?: string } | null;
   status: 'open' | 'bailed' | 'served' | 'escaped' | 'released';
   /** false = the "Police don catch you!" popup still waits for a choice. */
   decided: boolean;

@@ -1,5 +1,6 @@
 // V1-4 shared shop UI: item effect chips and the item card used by the Shop tab, the Bag and Chowdeck.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
 import { naira } from '../../lib/format';
 import { NEED_KEYS, NEED_META, type NeedKey } from '../../lib/pidgin';
 import type { ItemBase, ItemEffects } from '../../lib/types';
@@ -98,6 +99,7 @@ export function ItemCard({ item, price, priceNote, owned, kind, maxQty = 1, acti
         )}
       </div>
       <ItemEffectChips effects={item.effects} kind={kind} />
+      {item.category === 'laptop' && <LaptopChips id={item.id} />}
       {!action && note && <p className="item__note">{note}</p>}
       <div className="item__actions">
         {extra}
@@ -110,5 +112,44 @@ export function ItemCard({ item, price, priceNote, owned, kind, maxQty = 1, acti
         ) : null}
       </div>
     </article>
+  );
+}
+
+// Y1: what a laptop does for Yahoo work (laptop_specs, admin-editable), loaded once per session.
+interface LaptopSpec { item_id: string; label: string; tier: number; pay_bonus_pct: number; efcc_minus_pts: number; speed_pct: number }
+let specsCache: Promise<{ specs: Map<string, LaptopSpec>; bigTier: number }> | null = null;
+function loadSpecs() {
+  specsCache ??= (async () => {
+    const [s, j] = await Promise.all([
+      supabase.from('laptop_specs').select('item_id,label,tier,pay_bonus_pct,efcc_minus_pts,speed_pct'),
+      supabase.from('yahoo_jobs').select('min_tier').eq('active', true),
+    ]);
+    if (s.error) { specsCache = null; throw s.error; }
+    const tiers = (j.data ?? []).map((r) => Number(r.min_tier)).filter((t) => t > 0);
+    return { specs: new Map((s.data as LaptopSpec[]).map((r) => [r.item_id, r])), bigTier: tiers.length ? Math.max(...tiers) : 99 };
+  })();
+  return specsCache;
+}
+
+export function LaptopChips({ id }: { id: string }) {
+  const [spec, setSpec] = useState<{ s: LaptopSpec; big: boolean } | null>(null);
+  useEffect(() => {
+    let live = true;
+    loadSpecs().then(({ specs, bigTier }) => {
+      const s = specs.get(id);
+      if (live && s) setSpec({ s, big: s.tier >= bigTier });
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, [id]);
+  if (!spec) return null;
+  const { s, big } = spec;
+  return (
+    <div className="item__chips" data-testid="laptop-chips">
+      <span className="chip chip--yahoo">💻 {s.label}</span>
+      {s.pay_bonus_pct > 0 && <span className="chip chip--yahoo">+{s.pay_bonus_pct}% yahoo pay</span>}
+      {s.efcc_minus_pts > 0 && <span className="chip chip--yahoo">−{s.efcc_minus_pts} pts EFCC</span>}
+      {s.speed_pct > 0 && <span className="chip chip--yahoo">{s.speed_pct}% faster</span>}
+      <span className="chip chip--yahoo">{big ? 'Big job ✓' : 'No Big job'}</span>
+    </div>
   );
 }

@@ -1,0 +1,123 @@
+/* Y1 Yahoo app: dark "laptop screen" theme (docs/YAHOO.md). Scoped to .phone-app--yahoo / .yh. */
+.phone-app--yahoo {
+  --yh-bg: #0b0f14;
+  --yh-card: #131a22;
+  --yh-line: #223040;
+  --yh-ink: #e8f0f7;
+  --yh-ink-2: #8fa3b5;
+  --yh-green: #33e08f;
+  --yh-gold: #f5c451;
+  --yh-red: #ff5d5d;
+  background: var(--yh-bg);
+  color: var(--yh-ink);
+}
+.phone-app--yahoo .phone-app__bar { background: var(--yh-bg); }
+.phone-app--yahoo .phone-app__back { background: #1c2632; color: var(--yh-ink); }
+.phone-app--yahoo .phone-app__title { color: var(--yh-ink); }
+
+.yh { color: var(--yh-ink); }
+.yh b { font-weight: 700; }
+.yh small { display: block; color: var(--yh-ink-2); font-size: 12px; line-height: 1.35; }
+.yh .grow { flex: 1; min-width: 0; }
+
+.yh-skel { display: grid; gap: 10px; padding-top: 8px; }
+.yh-skel span { height: 64px; border-radius: 14px; background: linear-gradient(90deg, #131a22, #1b2531, #131a22); background-size: 200% 100%; animation: yh-shimmer 1.4s linear infinite; }
+@keyframes yh-shimmer { to { background-position: -200% 0; } }
+
+/* laptop screen */
+.yh-screen { margin: 2px 0 14px; }
+.yh-screen__glass {
+  position: relative;
+  padding: 12px 14px 14px;
+  border: 7px solid #1f262e;
+  border-bottom-width: 9px;
+  border-radius: 14px 14px 4px 4px;
+  background: radial-gradient(120% 90% at 20% 0%, #10331f 0%, #0a1510 55%, #070b09 100%);
+  box-shadow: inset 0 0 0 1px rgba(51, 224, 143, .18), 0 10px 24px rgba(0, 0, 0, .45);
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+.yh-screen__base {
+  height: 9px;
+  margin: 0 -8px;
+  border-radius: 0 0 12px 12px;
+  background: linear-gradient(#3a434d, #20262d);
+}
+.yh-screen__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--yh-ink-2); }
+.yh-screen__cam { width: 6px; height: 6px; border-radius: 50%; background: #2c3a46; box-shadow: 0 0 0 2px #151c23; }
+.yh-screen__where { white-space: nowrap; }
+.yh-rank {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(245, 196, 81, .14);
+  color: var(--yh-gold);
+  font: 700 11px/1.2 var(--font-display);
+  white-space: nowrap;
+}
+.yh-bal { margin: 12px 0 10px; }
+.yh-bal small { color: #7fd8a8; text-transform: uppercase; letter-spacing: .08em; font-size: 10.5px; }
+.yh-bal b {
+  display: block;
+  font-size: clamp(26px, 9vw, 34px);
+  line-height: 1.1;
+  color: var(--yh-green);
+  text-shadow: 0 0 18px rgba(51, 224, 143, .35);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.yh-bal span { display: block; margin-top: 4px; font-size: 11.5px; color: #8fb9a3; }
+.yh-rankbar__track { height: 6px; border-radius: 999px; background: #17241c; overflow: hidden; }
+.yh-rankbar__track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--yh-green), var(--yh-gold)); transition: width .4s cubic-bezier(.23, 1, .32, 1); }
+.yh-rankbar small { margin-top: 6px; font-size: 11px; color: #8fb9a3; }
+
+.yh-h { margin: 18px 2px 8px; font: 700 12px/1 var(--font-display); color: var(--yh-ink-2); text-transform: uppercase; letter-spacing: .08em; }
+
+/* running job */
+.yh-run { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: #10231a; border: 1px solid rgba(51, 224, 143, .35); }
+.yh-run__icon { font-family: var(--font-emoji); font-size: 22px; }
+.yh-run__bar { display: block; height: 5px; margin-top: 6px; border-radius: 999px; background: #1d3328; overflow: hidden; }
+.yh-run__bar span { display: block; height: 100%; background: var(--yh-green); transform-origin: 0 50%; transition: transform 1s linear; }
+.yh-last { margin: 0; padding: 9px 12px; border-radius: 12px; font-size: 13px; background: var(--yh-card); }
+.yh-last--caught { background: #2a1214; color: #ffb4b4; }
+.yh-last--paid, .yh-last--cashed { color: #b9f3d4; }
+
+/* gear */
+.yh-gear { display: grid; gap: 6px; }
+.yh-gear__row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--yh-card); border: 1px solid var(--yh-line); }
+.yh-gear__row.is-missing { border-style: dashed; }
+.yh-gear__row b { font-size: 14px; }
+.yh-gear__icon { font-family: var(--font-emoji); font-size: 20px; width: 26px; text-align: center; }
+.yh-where { margin: 8px 2px 0; font-size: 12.5px; color: #ffb4a8; }
+.yh-where.is-ok { color: #9ff0c6; }
+.yh-link { margin-left: 6px; padding: 0; border: 0; background: none; color: var(--yh-gold); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+
+/* jobs */
+.yh-jobs { display: grid; gap: 8px; }
+.yh-job { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 16px; background: var(--yh-card); border: 1px solid var(--yh-line); }
+.yh-job.is-locked { opacity: .8; }
+.yh-job__icon { font-family: var(--font-emoji); font-size: 24px; width: 30px; text-align: center; }
+.yh-job__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.yh-job__body b { font-size: 14.5px; }
+.yh-job .bl-btn { flex: none; max-width: 42%; white-space: normal; line-height: 1.15; }
+.yh-odds { align-self: flex-start; margin-top: 3px; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.yh-odds s { margin-left: 5px; opacity: .55; font-weight: 500; }
+.yh-odds.is-cool { background: rgba(51, 224, 143, .12); color: #7ff0b6; }
+.yh-odds.is-warm { background: rgba(245, 196, 81, .14); color: var(--yh-gold); }
+.yh-odds.is-hot { background: rgba(255, 93, 93, .15); color: #ff9a9a; }
+.yh-cash { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.yh-cash button { padding: 4px 9px; border-radius: 999px; border: 1px solid var(--yh-line); background: transparent; color: var(--yh-ink-2); font: 600 11.5px/1.2 inherit; cursor: pointer; }
+.yh-cash button.is-on { border-color: var(--yh-gold); color: var(--yh-gold); background: rgba(245, 196, 81, .1); }
+.yh-fine { margin: 8px 2px 0; font-size: 11.5px; color: var(--yh-ink-2); }
+
+/* ranks + laptops + history */
+.yh-ranks, .yh-laptops, .yh-ledger { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.yh-ranks li, .yh-laptops li, .yh-ledger li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; background: var(--yh-card); }
+.yh-ranks li > span:first-child { font-family: var(--font-emoji); font-size: 20px; }
+.yh-ranks li.is-on { outline: 1px solid var(--yh-gold); background: #1e1a0e; }
+.yh-ranks li.is-done:not(.is-on) { opacity: .7; }
+.yh-ranks em, .yh-laptops em { font-style: normal; font-weight: 700; font-size: 12.5px; color: var(--yh-gold); white-space: nowrap; }
+.yh-laptops li.is-owned { outline: 1px solid rgba(51, 224, 143, .45); }
+.yh-laptops li.is-owned em { color: var(--yh-green); }
+.yh-ledger li { font-size: 13px; }
+.yh-ledger .is-in { color: var(--yh-green); }
+.yh-ledger .is-out { color: var(--yh-red); }
+

@@ -3,6 +3,8 @@
 // unfinished Skills tab, Perks and Feelings previews are hidden; Wishes are today's D1 daily goals.
 // The Profile turntable is the only live 3D view while this sheet is open: Game suspends the 3D home.
 import { CharmChips } from './Shrine';
+import { YahooBadge } from './Yahoo';
+import { useYahoo } from '../../state/yahoo';
 import { useShrine } from '../../state/shrine';
 import { useLiveProfile } from '../../lib/live';
 import { useEffect, useState } from 'react';
@@ -40,6 +42,7 @@ function SheetHead({ state }: { state: GameState }) {
   const mood = moodOf(p);
   const tier = state.origin?.id ?? p.origin;
   const copy = tier ? originCopy(tier, state.origin?.name ?? tier, state.origin?.tagline ?? '') : null;
+  const yahooRank = useYahoo((s) => s.status?.rank);
   return (
     <div className="sim-head">
       <span className="sim-head__face"><AvatarPortrait config={p.avatar} size={56} /></span>
@@ -48,6 +51,7 @@ function SheetHead({ state }: { state: GameState }) {
         <div className="sim-head__sub">
           <span aria-hidden>{mood.emoji}</span> {mood.label}
           {copy && <span className={`origin-pill origin-pill--${tier === 'nepo' ? 'nepo' : 'lapo'}`}>{copy.emoji} {copy.badge}</span>}
+          <YahooBadge rank={yahooRank} />
         </div>
       </div>
     </div>

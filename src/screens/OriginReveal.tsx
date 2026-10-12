@@ -29,7 +29,7 @@ function originPerks(state: GameState): Perk[] {
   if (o.start_bank > 0) list.push({ emoji: '🏦', text: ORIGIN_UI.bank(naira(o.start_bank)) });
   for (const it of o.items ?? []) {
     list.push({
-      emoji: it.category === 'vehicle' ? '🚗' : it.category === 'gadget' ? '💻' : '🎁',
+      emoji: it.category === 'vehicle' ? '🚗' : it.category === 'gadget' || it.category === 'laptop' ? '💻' : '🎁',
       text: ORIGIN_UI.item(it.name),
     });
   }

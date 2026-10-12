@@ -74,7 +74,7 @@ begin
                            'items exist for ' || r.id);
   end loop;
   perform pg_temp.assert((select category from items where id = 'tokunbo_car') = 'vehicle', 'car is a vehicle');
-  perform pg_temp.assert((select category from items where id = 'laptop') = 'gadget', 'laptop is a gadget');
+  perform pg_temp.assert((select category from items where id = 'laptop') in ('gadget', 'laptop'), 'laptop is a gadget (Y1: Laptops section)');
   perform pg_temp.assert(bl_origin_items('nepo') = array['tokunbo_car','laptop'], 'nepo items parsed');
   perform pg_temp.assert(bl_origin_items('lapo') = '{}'::text[], 'lapo has no items');
   perform pg_temp.assert((select relrowsecurity from pg_class where oid = 'public.origin_tiers'::regclass), 'RLS on origin_tiers');

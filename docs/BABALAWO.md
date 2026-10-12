@@ -39,13 +39,13 @@ They are "keep" items (no Use button), sellable back at a market at 50%. A cow g
 | Home guard | ₦300,000 + 1 white cloth + 1 palm oil | thieves targeting you +50% more likely caught (`home_guard`, 50), capped at 95% | 7 days | 10% |
 | Attraction charm | ₦150,000 + 5 alligator pepper | dates say yes more often (`attraction`, 20) — stored for the coming dating life | 5 days | 10% |
 | Fame bath | ₦800,000 + 2 schnapps | +50% club hype (`fame_bath`, 50) | 3 days | 10% |
-| EFCC blindfold | ₦1,200,000 + 2 goats | Yahoo EFCC caught −15 points (`efcc_blindfold`, 15) — stored for the coming Yahoo life | 3 days | 10% |
+| EFCC blindfold | ₦1,200,000 + 2 goats | Yahoo EFCC caught −15 points (`efcc_blindfold`, 15) — used by Y1 Yahoo jobs (docs/YAHOO.md) | 3 days | 10% |
 | Money charm | ₦3,000,000 + 2 cows + 1 schnapps + 1 white cloth | cash on each return after 8+ h (see below) | 14 days | 10% |
 | Cleansing | ₦50,000 + 1 white chicken | removes curse, bad luck and madness | instant | never (0%) |
 
 - Fail chance: the service's `fail_pct`, or `shrine.fail_pct` (10) when empty. A failed charm keeps the money and offerings and shows Baba's `fail_line`.
 - One of each charm at a time (`already_active`); only one money charm ever active (also a unique index), even while its weekly call is open.
-- Attraction and EFCC blindfold cards say "Works with the dating life / Yahoo life (coming soon). Baba keeps it ready on you till then." Later features read them with `bl_charm_value(uid, 'attraction')` / `bl_charm_value(uid, 'efcc_blindfold')`.
+- The attraction card says "Works with the dating life (coming soon). Baba keeps it ready on you till then." The EFCC blindfold card now says it works on Yahoo jobs (Y1 rewrote that note). Features read them with `bl_charm_value(uid, 'attraction')` / `bl_charm_value(uid, 'efcc_blindfold')`.
 - Changes in Content apply to new charms; a bought charm keeps its value in `player_charms.data.value`.
 
 ## How a visit works

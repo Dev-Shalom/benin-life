@@ -17,6 +17,8 @@ import { startCrime, useCrime } from '../../state/crime';
 import { useGame } from '../../state/game';
 import { Button, Modal, Sheet, toast } from '../../ui';
 import { SocialPlayerButton } from './SocialPlayerButton';
+import { YahooBadge } from './Yahoo';
+import { rpc } from '../../lib/api';
 
 type Choice = 'bail' | 'jail' | 'escape';
 
@@ -84,11 +86,14 @@ function CaughtPopup({ c }: { c: JailCase | null }) {
   if (!c) return null;
   const afford = cash >= c.bail_amount;
   const again = c.escape_attempts > 0;
+  const efcc = c.kind === 'efcc';
+  const lost = efcc ? [c.meta?.laptop_name ? `your ${c.meta.laptop_name} was seized` : null,
+    c.meta?.seized ? `${naira(c.meta.seized)} yahoo balance confiscated` : null].filter(Boolean).join(' and ') : '';
   return (
     <Modal open dismissable={false} onClose={() => undefined} tone="bad"
-      art={<div className="bcast-art bcast-art--warning crime-art" aria-hidden>🚓</div>}
-      title={<span className="bcast-title"><small className="bcast-kicker">{again ? `Escape failed ×${c.escape_attempts}` : 'Caught in the act'}</small>
-        {again ? 'Dem catch you again!' : 'Police don catch you!'}</span>}
+      art={<div className={`bcast-art bcast-art--warning crime-art${efcc ? ' crime-art--efcc' : ''}`} aria-hidden>{efcc ? '🚨' : '🚓'}</div>}
+      title={<span className="bcast-title"><small className="bcast-kicker">{again ? `Escape failed ×${c.escape_attempts}` : efcc ? 'Yahoo work don cast' : 'Caught in the act'}</small>
+        {again ? 'Dem catch you again!' : efcc ? 'EFCC don catch you!' : 'Police don catch you!'}</span>}
       actions={
         <div className="crime-actions">
           <Button variant="gold" block disabled={!afford || busy !== null} loading={busy === 'bail'} onClick={() => void run('bail')}
@@ -105,7 +110,7 @@ function CaughtPopup({ c }: { c: JailCase | null }) {
         </div>
       }>
       <p className="bcast-body">
-        {c.reason}. {again
+        {c.reason}.{lost ? ` Omo, ${lost}.` : ''} {again
           ? `Your jail time is now ${countdown(c.jail_seconds)} and bail don rise to ${naira(c.bail_amount)}.`
           : 'Pay bail and walk free, sit your time in the cell, or try to run.'}
       </p>
@@ -151,6 +156,17 @@ export function PlacePlayerSheet({ person, metres, free, onClose }: {
   const cdLeft = useSecondsLeft(cooldownUntil);
   const [sending, setSending] = useState(false);
   const near = metres !== null && metres <= range;
+  // Y1: their Yahoo rank badge (G-boy and up)
+  const [rankOf, setRankOf] = useState<{ pid: string; rank: { id: string; name: string; icon: string } | null } | null>(null);
+  const pid = person?.id;
+  const rank = rankOf && rankOf.pid === pid ? rankOf.rank : null;
+  useEffect(() => {
+    if (!pid) return;
+    let live = true;
+    rpc<{ yahoo_rank?: { id: string; name: string; icon: string } | null }>('get_public_profile', { p_id: pid })
+      .then((r) => { if (live) setRankOf({ pid, rank: r.yahoo_rank ?? null }); }).catch(() => undefined);
+    return () => { live = false; };
+  }, [pid]);
 
   const steal = async () => {
     if (!person || sending) return;
@@ -179,7 +195,7 @@ export function PlacePlayerSheet({ person, metres, free, onClose }: {
     <div className="ix-head">
       <span className="ix-head__face">{person.avatar && <AvatarPortrait config={person.avatar} size={56} />}</span>
       <span className="ix-head__text">
-        <b>@{person.username}</b>
+        <b>@{person.username}<YahooBadge rank={rank} /></b>
         <small>{metres !== null ? `About ${Math.max(1, Math.round(metres))} m from you` : 'Here with you'}</small>
       </span>
     </div>

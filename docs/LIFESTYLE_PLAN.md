@@ -2,7 +2,7 @@
 
 Build order: 1. Babalawo shrine → 2. Yahoo lifestyle → 3. Hookup lifestyle → 4. Church / prophet (rival).
 
-Status: **1. Babalawo shrine BUILT (B2, 2026-10-12)**: migration `20261012001500_babalawo.sql`, test `babalawo_test.sql`, details in `docs/BABALAWO.md`. Attraction charm and EFCC blindfold are sold and stored; they start working when the dating / Yahoo lives read `bl_charm_value()`. 2–4 not started.
+Status: **1. Babalawo shrine BUILT (B2, 2026-10-12)**: migration `20261012001500_babalawo.sql`, test `babalawo_test.sql`, details in `docs/BABALAWO.md`. Attraction charm is stored until the dating life reads `bl_charm_value()`. **2. Yahoo lifestyle BUILT (Y1, 2026-10-12)**: migration `20261012001600_yahoo.sql`, test `yahoo_test.sql`, details in `docs/YAHOO.md` (the EFCC blindfold now works). 3–4 not started.
 Every price, chance, duration and effect below must be an admin-editable config/table value (Admin → Settings / Content).
 
 ## 1. Babalawo shrine ("Baba's shrine", fictional Baba, outskirts of Benin) — BUILT (docs/BABALAWO.md)
@@ -35,7 +35,7 @@ Services (cash + offerings consumed from the Bag):
 
 Catch: 10% of charms fail (money gone). Money charm demands a weekly goat + ₦300k; miss it → backfire: lose half cash, "madness" (can't work 1 game day), bad luck 3 days. Offerings are only kola/drinks/cloth/animals — nothing darker. Baba is fictional.
 
-## 2. Yahoo lifestyle (open to anyone who owns a laptop; phone assumed)
+## 2. Yahoo lifestyle (open to anyone who owns a laptop; phone assumed) — BUILT (docs/YAHOO.md)
 Gear: several real laptop brands at real Nigerian prices; better laptops give features (higher payout, lower EFCC chance, faster jobs). The only iPhone sold: iPhone 18 (Burgundy) ₦2,400,000 (status item). MiFi + data bundle ₦50,000 / week. Cybercafé desk near UNIBEN ₦5,000 / day.
 | Job | Time | Pays | EFCC caught |
 |---|---|---|---|
