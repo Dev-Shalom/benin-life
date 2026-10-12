@@ -3,7 +3,7 @@
 ## How the live site works
 | Piece | Where | How it updates |
 |---|---|---|
-| Website (React build) | **Vercel**, project serving https://benin-life.vercel.app | Every push to **`main`** builds (`npm run build` → `dist/`) and goes live. `vercel.json` rewrites every unknown path to `index.html` (SPA routes like `/play`, `/admin`); real files (`/assets/*`, icons, `manifest.webmanifest`) are served first. |
+| Website (React build) | **Vercel**, project serving https://playbeninlife.app | Every push to **`main`** builds (`npm run build` → `dist/`) and goes live. `vercel.json` rewrites every unknown path to `index.html` (SPA routes like `/play`, `/admin`); real files (`/assets/*`, icons, `manifest.webmanifest`) are served first. |
 | Backend | **Supabase cloud**, project `twwttirvesbwjvzjmenp` (Postgres, Auth, Realtime) | The site reads `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` from `.env.production` (committed; the anon key is public by design, RLS protects the data). |
 | Database schema + seed | `supabase/migrations/*.sql` | GitHub Action **"Supabase preview DB"** (`.github/workflows/supabase-deploy.yml`) runs `supabase db push --include-all` on every push to `main` that touches `supabase/migrations/**`. Needs repo secrets **`SUPABASE_ACCESS_TOKEN`** and **`SUPABASE_DB_PASSWORD`** (GitHub → Settings → Secrets and variables → Actions). Can also be run by hand: Actions → Supabase preview DB → Run workflow. |
 
@@ -15,7 +15,7 @@ Rules for migrations: **forward-only**. Never edit a migration that is already o
 1. Verify locally: all SQL suites (`bash scripts/sql-test.sh -- supabase/tests/*.sql`), `npm run build`.
 2. `git push origin HEAD:main`.
 3. Watch GitHub → Actions: "Supabase preview DB" must be green (only runs when migrations changed). Vercel dashboard → Deployments: the new build must say **Ready**.
-4. Open https://benin-life.vercel.app, log in, do one quick action.
+4. Open https://playbeninlife.app, log in, do one quick action.
 
 If a migration and a frontend change depend on each other, the DB job and the Vercel build run at the same time. Keep new SQL backward compatible with the old site (add, don't rename) so the order doesn't matter.
 
@@ -44,7 +44,7 @@ Vercel dashboard → project:
 | Settings → Environment Variables (Production) | `PAYSTACK_PUBLIC_KEY` (or `VITE_PAYSTACK_PUBLIC_KEY`) = your live `pk_live_…` key (a `pk_test_` key means test checkouts). `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` come from the committed `.env.production`, so leave them unset in Vercel or make sure they match. |
 | Settings → Deployment Protection | **Vercel Authentication off for Production** (otherwise players get a Vercel login page). |
 | Settings → Domains | `benin-life.vercel.app` (and your custom domain if you add one; then update Supabase Site URL + Redirect URLs). |
-| Deployments | The newest `main` deploy says **Ready**, and https://benin-life.vercel.app/version.json shows its commit SHA. |
+| Deployments | The newest `main` deploy says **Ready**, and https://playbeninlife.app/version.json shows its commit SHA. |
 | Settings → Functions / Usage | Hobby plan limits (bandwidth). Vercel Hobby is non-commercial; real-money top-ups and ads count as commercial use, so plan to move to **Pro** when you start selling. |
 
 ## Client errors (L1)
@@ -54,7 +54,7 @@ The app reports crashes to the database so you can see them without player scree
 - **Where you see it:** Admin → **Overview → App errors** (last 24 h / 3 days / 7 days, grouped by message, tap for the stack, user and browser). Switch it off with `errors.enabled`.
 
 ## Becoming admin
-- **Owner claim (easiest):** sign up on the live site with an email listed in `admin.bootstrap_emails` (currently dev.shalom1@gmail.com, code.devshalom@gmail.com), finish creating the Sim, open https://benin-life.vercel.app/admin and press **"I'm the owner: claim admin"**. Then in Admin → Settings → Admin, **clear the owner emails list**.
+- **Owner claim (easiest):** sign up on the live site with an email listed in `admin.bootstrap_emails` (currently dev.shalom1@gmail.com, code.devshalom@gmail.com), finish creating the Sim, open https://playbeninlife.app/admin and press **"I'm the owner: claim admin"**. Then in Admin → Settings → Admin, **clear the owner emails list**.
 - **SQL editor:** Supabase dashboard → SQL Editor → `update profiles set is_admin = true where username = '<your username>';`
 - Details: `docs/ADMIN.md`.
 
@@ -64,8 +64,8 @@ The app reports crashes to the database so you can see them without player scree
 | Setting | Value |
 |---|---|
 | Sign In / Providers → Email → **Confirm email** | v1 assumes **off** (players land straight in the creator). If you turn it on, sign-up shows "Check your email to confirm it, then come back and log in"; the confirmation link returns to the Site URL. Turning it on also blocks mass sign-ups and stops strangers from taking the owner emails. |
-| URL Configuration → **Site URL** | `https://benin-life.vercel.app` (not localhost, or email links point to localhost) |
-| URL Configuration → **Redirect URLs** | `https://benin-life.vercel.app/**` (covers the password reset link `…/auth?mode=reset`). Add `http://localhost:5173/**` only if you test locally against the cloud project. |
+| URL Configuration → **Site URL** | `https://playbeninlife.app` (not localhost, or email links point to localhost) |
+| URL Configuration → **Redirect URLs** | `https://playbeninlife.app/**` (covers the password reset link `…/auth?mode=reset`). Add `http://localhost:5173/**` only if you test locally against the cloud project. |
 | Email → SMTP | The built-in mailer has a very low hourly limit and is for testing only. Before many players use "Forgot password" (or if you turn Confirm email on), set up custom SMTP (Resend, Brevo, Mailgun, Amazon SES, …). |
 | Rate limits | Keep the defaults on (sign-ups / sign-ins per hour per IP). |
 | Password | Minimum length 6 matches the game's check; raise both together if you change it. |
@@ -79,8 +79,8 @@ refused, the new one works. Code: `src/screens/Auth.tsx` (`resetPasswordForEmail
 Nothing in the app needed fixing. On the **live** project check these, in order:
 
 1. **Authentication → URL Configuration**
-   - **Site URL** = `https://benin-life.vercel.app` (exactly; if it is localhost, every email link points to localhost).
-   - **Redirect URLs** must include `https://benin-life.vercel.app/**`. Without it Supabase ignores the app's
+   - **Site URL** = `https://playbeninlife.app` (exactly; if it is localhost, every email link points to localhost).
+   - **Redirect URLs** must include `https://playbeninlife.app/**`. Without it Supabase ignores the app's
      `redirectTo` and sends players to the Site URL root instead of the reset form. (Optional:
      `https://benin-life-*.vercel.app/**` for preview deploys.)
 2. **Custom SMTP (required before announcing).** The built-in sender allows only **2 emails per hour for the whole
@@ -133,3 +133,11 @@ Actions → **Supabase Edge Functions** (`.github/workflows/supabase-functions.y
 
 ## Config that must stay set after deploy
 `origin.force_next` = "nepo" (one-shot; the next new account is Nepo), `origin.nepo_pct` = 10, `time.real_seconds_per_game_minute` = 0.75, `clock.epoch` = "2026-10-05T00:00:00Z", `rent.enabled` = true. All editable in Admin → Settings.
+
+## Custom domain: playbeninlife.app (bought on Cloudflare, 2026-10-12)
+1. Vercel → Project → Settings → Domains → add `playbeninlife.app` and `www.playbeninlife.app` (set one to redirect to the other; apex as primary).
+2. Cloudflare → DNS: add exactly the records Vercel shows (apex `A 76.76.21.21`, `www CNAME cname.vercel-dns.com` — use Vercel's values). Set both to **DNS only (grey cloud)**, not proxied, so Vercel can issue the HTTPS certificate. `.app` is HTTPS-only (HSTS preload) — it will not load until the certificate is ready (a few minutes).
+3. Supabase → Authentication → URL Configuration: Site URL = `https://playbeninlife.app`; Redirect URLs add `https://playbeninlife.app/**` and `https://www.playbeninlife.app/**` (keep the vercel.app one).
+4. Paystack dashboard → Settings → API Keys & Webhooks: callback URL `https://playbeninlife.app/...` if you set one; the webhook URL stays the Supabase function URL.
+5. Edge functions accept requests from the new domain (CORS list in `supabase/functions/_shared/paystack.ts`), deployed by the functions workflow on push.
+6. Push alerts: on the new domain, open `/admin/ads` and tap **Notify me** again (subscriptions are per site).

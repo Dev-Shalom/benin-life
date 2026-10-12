@@ -11,6 +11,8 @@ export const TOPUP_REF = /^BL-[a-f0-9]{32}$/;
 export const AD_REF = /^BLAD-[a-f0-9]{32}$/;
 
 const ALLOWED_ORIGINS = [
+  'https://playbeninlife.app',
+  'https://www.playbeninlife.app',
   'https://benin-life.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',

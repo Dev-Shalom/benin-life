@@ -2,10 +2,10 @@
 
 Files: `supabase/migrations/20261005001100_admin.sql`, `supabase/tests/admin_test.sql`, `src/admin/*` (lazy chunk; entry `AdminApp.tsx`), door + claim button in `src/screens/AdminRoute.tsx`. Open it at **`/admin`**, or in the game: Sim sheet → Settings → **Open admin panel** (shown only to admins).
 
-## Becoming admin on the live site (https://benin-life.vercel.app)
+## Becoming admin on the live site (https://playbeninlife.app)
 **Option A, owner claim (easiest):**
 1. Sign up / log in on the site with **dev.shalom1@gmail.com** or **code.devshalom@gmail.com** and finish creating your Sim (choose a home).
-2. Go to `https://benin-life.vercel.app/admin`. You see "Admins only".
+2. Go to `https://playbeninlife.app/admin`. You see "Admins only".
 3. Press **"I'm the owner: claim admin"**. The page switches to the dashboard.
 4. Recommended: in Settings → Admin, clear **Owner emails** (`admin.bootstrap_emails`) once every owner is admin, so nobody else can ever use the list.
 

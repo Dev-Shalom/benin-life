@@ -33,7 +33,7 @@ This file is kept current after every step. The detailed live status is the STAT
 - **Push/deploy:** `742ece7` was fast-forwarded to `main` at the user's request. Social feature commit `edac975` is also on `main`; GitHub's hosted Supabase migration and Vercel Production deployment succeeded, and `/version.json` reported `edac975-mv040taw` at verification. Check the latest status before future releases.
 
 ### Historical snapshot (2026-10-06; superseded by current snapshot above)
-- **Live on main / https://benin-life.vercel.app:**
+- **Live on main / https://playbeninlife.app:**
   - v1: the 3D game, creator, jobs, shops, rent, bank, chat and admin.
   - **L1 real Benin time:** WAT clock; every action takes seconds (sleep ≤15 s scaled by tiredness, shift 18 s, travel ≤20 s, hospital 30 s, jail 45 s); live progress bars; "Action timing" in admin.
   - **Money format:** K/M/B/T/Q, plus admin Give/Take money with shorthand ("5B"), preview and confirmation.
@@ -72,13 +72,13 @@ This file is kept current after every step. The detailed live status is the STAT
   - 18+.
   - Keep the default numbers; the user tunes them in admin.
   - One agent at a time.
-- **User to do:** claim admin at https://benin-life.vercel.app/admin (see docs/ADMIN.md), then tune the numbers.
+- **User to do:** claim admin at https://playbeninlife.app/admin (see docs/ADMIN.md), then tune the numbers.
 
 ## WARNING for the local PC (2026-10-06)
 At 13:32 the PC pushed an old starter-homes version ("Latest Changes from map stylings", 212604e) and merged it into main with conflict markers in 10 files, which broke the build. The cloud restored the verified version (b5a9b1d). **Before working locally, always run `git fetch && git reset --hard origin/claude/kind-bell-e9reb8` (after saving anything you need), or `git pull`, and never commit files that contain `<<<<<<<`.** Never edit an applied migration such as 20261006000400.
 
 ## How it is deployed
-- **Preview / live site:** https://benin-life.vercel.app — Vercel deploys **`main`**. `.env.production` points at Supabase project `twwttirvesbwjvzjmenp`.
+- **Preview / live site:** https://playbeninlife.app — Vercel deploys **`main`**. `.env.production` points at Supabase project `twwttirvesbwjvzjmenp`.
 - **Database:** the GitHub Action "Supabase preview DB" runs `supabase db push` on every push that touches `supabase/migrations/**` (repo secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` are set). Migrations must be idempotent and safe on a non-empty DB. Never edit an applied migration — add a new one.
 - **Branches:** work happens on `claude/kind-bell-e9reb8`. Only VERIFIED steps are pushed to `main` too (`git push origin HEAD:main`, fast-forward). Work-in-progress snapshots go to the work branch only.
 - **Local run:** Docker Desktop on, then `powershell -ExecutionPolicy Bypass -File scripts\demo.ps1` (Windows) or `bash scripts/demo.sh` (Mac/Linux). It applies new migrations with `supabase migration up` (keeps accounts) and opens http://localhost:5173.
@@ -91,7 +91,7 @@ At 13:32 the PC pushed an old starter-homes version ("Latest Changes from map st
 ## The prompt
 ```
 You're continuing the "Benin Life" game project: https://github.com/Dev-Shalom/benin-life
-Start by checking `git status --short --branch`, the current branch and its upstream, and the current diffs. Do not blindly switch branches or discard local changes. `main` deploys to https://benin-life.vercel.app; only claim a push or deployment after checking the actual result.
+Start by checking `git status --short --branch`, the current branch and its upstream, and the current diffs. Do not blindly switch branches or discard local changes. `main` deploys to https://playbeninlife.app; only claim a push or deployment after checking the actual result.
 
 Before coding, read docs/CLOUD_PROMPT.md (this file), the latest STATUS LOG entries at the bottom of docs/HANDOFF.md, docs/LAGOS_LIFE_REFERENCE_PLAN.md Phase 0, and docs/SOCIAL.md. Read the code paths and migrations named there before changing the visit flow.
 

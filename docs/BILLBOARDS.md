@@ -115,7 +115,7 @@ The board's position (`x`, `y` in map space), its turn (`yaw`, keep within ±0.3
 4. The **public** key is already in the app (`src/lib/push.ts`, and `DEFAULT_VAPID_PUBLIC_KEY` in `_shared/push.ts`):
    `BLdPAJnlb5_3P_wOrtqveyTRo4flZj3qRxN13ga9KNSUNn4rAVMR5EpxANvF--aYhgIedHRrfYSd7EvfU02qssc`.
    If you ever make a new key pair, set `VITE_VAPID_PUBLIC_KEY` in Vercel and the `VAPID_PUBLIC_KEY` Supabase secret to the new public key, and `VAPID_PRIVATE_KEY` to the new private key.
-5. On your phone: open `https://benin-life.vercel.app/admin/ads` (iPhone: from the Home Screen app), tap **Notify me**, allow notifications, then **Send a test**.
+5. On your phone: open `https://playbeninlife.app/admin/ads` (iPhone: from the Home Screen app), tap **Notify me**, allow notifications, then **Send a test**.
 6. Payments must already work (docs/PAYMENTS.md: `PAYSTACK_SECRET_KEY` secret, public key in Vercel, `payments.enabled` on). Refunds use the same secret key. Paystack test mode refunds test payments.
 7. The migration deploys with the normal database workflow, which pushes `supabase/migrations` to the hosted project.
 
