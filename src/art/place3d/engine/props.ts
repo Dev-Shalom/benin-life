@@ -773,12 +773,12 @@ function mixCol(a: string, c: string): string {
   return `#${((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1)}`;
 }
 
-export function buildPlace(room: Room, zones: PlaceZone[], opts: { scene?: string; seed?: number; density?: number } = {}): BuiltPlace {
+export function buildPlace(room: Room, zones: PlaceZone[], opts: { scene?: string; seed?: number; density?: number; placeId?: string } = {}): BuiltPlace {
   const scene = opts.scene ?? '';
   const seed = opts.seed ?? 1;
   const density = opts.density ?? 1;
   const outdoor = room.kit.kind === 'outdoor';
-  const rig = rigFor(scene, outdoor);
+  const rig = rigFor(scene, outdoor, opts.placeId);
   const b = new HomeBuilder();
   buildShell(b, room, scene, seed, density);
   zones.forEach((z, i) => buildProp(b, z, room, i * 3 + z.key.length));

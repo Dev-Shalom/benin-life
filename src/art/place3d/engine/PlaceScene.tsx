@@ -55,6 +55,7 @@ import { buildCrowdRig, type CrowdRig } from '../../avatar3d/engine/crowd';
 import { poseCrowd } from './crowdPose';
 import { readBeat } from '../../../lib/sound';
 import { makeAgents, stepAgents, type Agent } from './wander';
+import { clubStyle } from '../../clubStyle';
 
 /** F1: camera height / distance (was 0.82): lower and more cinematic. */
 const CAM_ELEV = 0.68;
@@ -316,7 +317,7 @@ function Interior(props: PlaceSceneProps & {
 }) {
   const { zones, scene: sceneType, hour, view, actorRef, insetTop = 0, insetBottom = 0 } = props;
   const { gl, scene, camera, size, invalidate } = useThree();
-  const room: Room = useMemo(() => roomFor(sceneType, zones), [sceneType, zones]);
+  const room: Room = useMemo(() => roomFor(sceneType, zones, props.placeId), [sceneType, zones, props.placeId]);
   const cx = room.W / 2;
   const cz = room.D / 2;
   const grid = useMemo(() => buildPlaceGrid(room, zones), [room, zones]);
@@ -343,7 +344,7 @@ function Interior(props: PlaceSceneProps & {
   // ---- static room + props: 4 merged meshes
   const q = feelQuality(useTier());
   const seed = hashStr(props.placeName);
-  const built = useMemo(() => buildPlace(room, zones, { scene: sceneType, seed, density: q.clutter }), [room, zones, sceneType, seed, q.clutter]);
+  const built = useMemo(() => buildPlace(room, zones, { scene: sceneType, seed, density: q.clutter, placeId: props.placeId }), [room, zones, sceneType, seed, q.clutter, props.placeId]);
   const rig = built.rig;
   const rigClosed = useMemo(() => ({ ...rig, cycle: false }), [rig]);
   const feel = useMemo(() => makeFeelMats(q), [q.atlas]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -470,7 +471,7 @@ function Interior(props: PlaceSceneProps & {
     lights.sun.target.position.set(0, 0, 0);
     lights.sun.target.updateMatrixWorld();
     lights.lamp.intensity = kit.party ? (closed ? 0.6 : 1.5) : indoor ? 1.2 + lt.dark * 1.6 : lt.lamp * 0.6;
-    lights.lamp.color.set(kit.party && !closed ? '#f0a6d4' : '#ffcf8a');
+    lights.lamp.color.set(kit.party && !closed ? (clubStyle(props.placeId)?.lamp ?? '#f0a6d4') : '#ffcf8a');
     // F1 rig: contrast (less ambient), the room's light colour, the lamp, light pools by time of day
     lights.hemi.intensity *= closed && kit.party ? 0.9 : rig.ambient;
     if (indoor) lights.hemi.color.lerp(_tint.set(rig.tint), rig.tintMix * (kit.party && closed ? 0.3 : 1));
@@ -488,7 +489,7 @@ function Interior(props: PlaceSceneProps & {
     // P1: LED strips / lamps glow softer (the club's neon was too strong)
     mats.glow.color.set(kit.party ? '#a9a2b8' : mixHex('#d6d0c4', '#efebe4', lt.dark));
     invalidate();
-  }, [hourKey, lights, mats, room, closed, invalidate, rig, feel, q.fog, q.motion, gl, scene]);
+  }, [hourKey, lights, mats, room, closed, invalidate, rig, feel, q.fog, q.motion, gl, scene, props.placeId]);
 
   // ---- floor tap target + tap marker
   const floorGeo = useMemo(() => new PlaneGeometry(1, 1), []);

@@ -9,6 +9,7 @@ import type { NpcMotion, PlaceNpc, PlaceZone } from '../../api/places';
 import type { AvatarConfig, SceneType } from '../../lib/types';
 import { applyPreset, normalizeAvatar, skinTone } from '../avatar3d/catalog';
 import { blockRect, makeGrid, type NavGrid, type P2 } from '../sim/nav';
+import { clubStyle } from '../clubStyle';
 
 export type KitKind = 'indoor' | 'outdoor';
 
@@ -66,7 +67,12 @@ export const KITS: Record<string, Kit> = {
   home_flat: { ...HALL },
   home_duplex: { ...HALL, floor: '#e8dcc6' },
 };
-export const kitFor = (scene: SceneType | string): Kit => KITS[scene] ?? HALL;
+export const kitFor = (scene: SceneType | string, placeId?: string | null): Kit => {
+  const kit = KITS[scene] ?? HALL;
+  // K1: a club with its own identity gets its own sign colours (src/art/clubStyle.ts)
+  const cs = kit.party ? clubStyle(placeId) : null;
+  return cs ? { ...kit, signBg: cs.signBg, signInk: cs.signInk } : kit;
+};
 
 /** How the Sim uses a zone's prop. */
 export type ZonePose = 'stand' | 'sit' | 'dance' | 'lie' | 'swim';
@@ -153,7 +159,7 @@ export interface Room {
 }
 
 /** Size the room from the zones: every zone fits with a 1.2 m margin, plus a 1.8 m entrance strip at the front. */
-export function roomFor(scene: SceneType | string, zones: PlaceZone[]): Room {
+export function roomFor(scene: SceneType | string, zones: PlaceZone[], placeId?: string | null): Room {
   let maxX = 9;
   let maxZ = 7;
   for (const z of zones) {
@@ -162,7 +168,7 @@ export function roomFor(scene: SceneType | string, zones: PlaceZone[]): Room {
   }
   const W = Math.ceil((maxX + 1.2) * 2) / 2;
   const D = Math.ceil((maxZ + 1.8) * 2) / 2;
-  return { W, D, entry: [W / 2, D - 0.5], kit: kitFor(scene) };
+  return { W, D, entry: [W / 2, D - 0.5], kit: kitFor(scene, placeId) };
 }
 
 /** Facing of a zone's front: rot quarter turns, 0 = towards the camera (+z), 1 = +x, 2 = -z (back), 3 = -x. */

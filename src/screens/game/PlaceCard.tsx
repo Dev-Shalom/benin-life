@@ -191,6 +191,7 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
         <span className="pc-act__meta">
           {secs !== null && <span className="pc-act__time"><Icon name="clock" size={11} /> {secs}s</span>}
           {a.risky && <span className="pc-act__risky">Risky</span>}
+          {a.weekend && cost > 0 && <span className="pc-act__weekend" title="Friday and Saturday nights cost more at the clubs">Weekend price</span>}
           {price}
         </span>
       </span>
@@ -437,6 +438,7 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
       <PeopleSheet open={peopleOpen} onClose={() => setPeopleOpen(false)} total={peopleCount} players={players} npcs={npcs} me={me}
         placeName={name} onSheet={() => select(loc.id)} />
       {open && current?.note && <p className="place-card__note"><span aria-hidden>🎩</span> {current.note}</p>}
+      {open && data?.open && data.weekend_price && <p className="place-card__note"><span aria-hidden>🥂</span> Weekend prices tonight: Friday and Saturday nights cost more.</p>}
       {open && current && current.actions.length === 0 && (
         <p className="place-card__hint">Nothing to do here right now. Tap the floor to walk around.</p>
       )}

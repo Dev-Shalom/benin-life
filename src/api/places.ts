@@ -12,8 +12,10 @@ export interface ZoneAction {
   ref: string;
   name: string;
   icon: string;
-  /** Activities: price; shop: item price. */
+  /** Activities: price; shop: item price (server price: club weekend markup already applied). */
   cost?: number;
+  /** K1: this card costs more tonight (club Friday / Saturday night price). */
+  weekend?: boolean;
   effects?: Record<string, number> | null;
   game_minutes?: number;
   max_seconds?: number | null;
@@ -64,6 +66,8 @@ export interface PlaceInterior {
   /** "9 PM – 5 AM" or null (always open). */
   hours: string | null;
   night: boolean;
+  /** K1: club weekend prices are on here tonight (Fri / Sat night). */
+  weekend_price?: boolean;
   part: 'morning' | 'afternoon' | 'evening' | 'night';
   moods: { icon: string; line: string }[];
   /** L4: today's / LIVE events here (same shape as events_on_today). */

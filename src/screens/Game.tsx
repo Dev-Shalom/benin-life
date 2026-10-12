@@ -514,7 +514,7 @@ export default function Game() {
     select(want);
   }, [p, locations, select, setMapOpen]);
   const playersHere = usePlayersAt(showPlace && state ? state.location.id : null, p?.id ?? '');
-  const placeRoom = useMemo(() => (interior.data ? roomFor(interior.data.location.scene, interior.data.zones) : null), [interior.data]);
+  const placeRoom = useMemo(() => (interior.data ? roomFor(interior.data.location.scene, interior.data.zones, interior.data.location.id) : null), [interior.data]);
   const placeGrid = useMemo(() => (interior.data && placeRoom ? buildPlaceGrid(placeRoom, interior.data.zones) : null), [interior.data, placeRoom]);
   const crowdCap = Math.max(0, Math.min(30, Number(cfg('crowd.max_visible', 10)) || 0));
   const npcPerZone = Math.max(0, Math.min(6, Number(cfg('places.npc_per_zone', 2)) || 0));

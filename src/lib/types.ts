@@ -571,6 +571,8 @@ export interface ShopList {
   /** H2: set at car dealers. */
   dealer?: DealerInfo | null;
   cash: number;
+  /** K1: club weekend prices are on here tonight (prices already include them). */
+  weekend_price?: boolean;
   items: ShopItem[];
 }
 

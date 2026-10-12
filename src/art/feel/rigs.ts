@@ -3,6 +3,8 @@
 // fluorescent (with a flicker); market = sun patches + tarp shade; LAPO home = one yellow bulb; Nepo home
 // = warm POP downlights. Everything still follows the time of day (homeLight / daylight.ts).
 
+import { clubStyle } from '../clubStyle';
+
 export interface Rig {
   /** Hemisphere (ambient) multiplier: < 1 = darker corners and more contrast. */
   ambient: number;
@@ -57,6 +59,9 @@ export const RIGS: Record<string, Rig> = {
   home_nepo: { ...BASE, ambient: 0.92, tint: '#fff0dc', tintMix: 0.14, lamp: '#ffd9a8', lampDay: 0.5, lampNight: 1.9, pool: '#ffe2b8', poolDay: 0.03, poolNight: 0.38, exposure: 1.22 },
 };
 
-export function rigFor(scene: string, outdoor: boolean): Rig {
-  return RIGS[scene] ?? (outdoor ? OUT : BASE);
+export function rigFor(scene: string, outdoor: boolean, placeId?: string | null): Rig {
+  const rig = RIGS[scene] ?? (outdoor ? OUT : BASE);
+  // K1: a club with its own identity keeps the club rig but with its own room tint + lamp colour
+  const cs = rig.cycle ? clubStyle(placeId) : null;
+  return cs ? { ...rig, tint: cs.tint, tintMix: Math.max(rig.tintMix, 0.34), lamp: cs.lamp, pool: cs.pool } : rig;
 }

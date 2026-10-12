@@ -79,6 +79,7 @@ export default function ShopPanel({ state, location, refresh }: PanelProps) {
         <p className="shop__greet">{GREETING[location.scene] ?? 'Have a look around.'}</p>
         <span className="shop__cash" title={naira(p.cash)}>Cash <b>{nairaShort(p.cash)}</b></span>
       </div>
+      {list.weekend_price && <p className="weekend-badge"><span aria-hidden>🥂</span> Weekend price tonight: club prices are higher on Friday and Saturday nights.</p>}
       {groups.map((g) => (
         <section key={g.id} className="shop__group">
           <h4 className="shop__cat">{g.label}</h4>

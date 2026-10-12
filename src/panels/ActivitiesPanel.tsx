@@ -1,6 +1,7 @@
 // "Things to do": activities offered at this location's scene. P1-SHELL.
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { rpc } from '../lib/api';
 import { serverNow, useGameClock } from '../lib/clock';
 import { activitySeconds, secondsLabel, useActionConfig } from '../lib/live';
 import { naira } from '../lib/format';
@@ -52,8 +53,11 @@ function EffectChips({ effects }: { effects: Record<string, number> | null }) {
   );
 }
 
+interface ClubPrices { weekend: boolean; mult: number; activities: Record<string, { cost: number; base: number }> }
+
 export default function ActivitiesPanel({ state, location, close }: PanelProps) {
-  const [list, setList] = useState<Activity[] | null>(null);
+  const [list, setList] = useState<(Activity & { weekend?: boolean })[] | null>(null);
+  const [weekend, setWeekend] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const queued = useTasks((s) => (s.current ? 1 : 0) + s.queue.length);
   const { clock } = useGameClock(5000);
@@ -76,7 +80,22 @@ export default function ActivitiesPanel({ state, location, close }: PanelProps) 
         return;
       }
       // L2: some activities only happen at certain places (Mama Ebo's pepper rice)
-      setList(((data ?? []) as Activity[]).filter((a) => (!a.home_only || atHome) && (!a.location_ids?.length || a.location_ids.includes(location.id))));
+      let rows = ((data ?? []) as Activity[]).filter((a) => (!a.home_only || atHome) && (!a.location_ids?.length || a.location_ids.includes(location.id)));
+      // K1: clubs price by night (Friday / Saturday nights cost more): show the server's price for tonight
+      if (location.scene === 'club') {
+        try {
+          const cp = await rpc<ClubPrices>('club_prices', { p_location: location.id });
+          if (!alive) return;
+          setWeekend(Boolean(cp.weekend));
+          rows = rows.map((a) => {
+            const c = cp.activities?.[a.id];
+            return c ? { ...a, cost: c.cost, weekend: c.cost !== c.base } : a;
+          });
+        } catch {
+          /* keep the list prices; the server still charges the right price */
+        }
+      }
+      setList(rows);
     })();
     return () => {
       alive = false;
@@ -113,6 +132,7 @@ export default function ActivitiesPanel({ state, location, close }: PanelProps) 
 
   return (
     <div className="acts">
+      {weekend && <p className="weekend-badge"><span aria-hidden>🥂</span> Weekend price tonight: club prices are higher on Friday and Saturday nights.</p>}
       {shown.map((a) => {
         const nightLocked = a.night_only && !clock.is_night;
         const broke = a.cost > state.profile.cash;
@@ -126,6 +146,7 @@ export default function ActivitiesPanel({ state, location, close }: PanelProps) 
                 <div className="act__meta">
                   <span className="chip"><Icon name="clock" size={12} /> {secondsLabel(activitySeconds(a, state.profile, cfg))}</span>
                   <span className="chip">{a.cost > 0 ? naira(a.cost) : 'Free'}</span>
+                  {a.weekend && a.cost > 0 && <span className="chip warn">Weekend price</span>}
                   {a.night_only && <span className="chip warn"><Icon name="moon" size={12} /> Night only</span>}
                 </div>
               </div>

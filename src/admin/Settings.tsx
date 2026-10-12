@@ -30,6 +30,7 @@ const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: strin
   daily: { title: 'Daily reward & gem hunt', emoji: '🎁', blurb: 'D1: the 7-day daily reward and the daily gem hunt. Reward amounts: Content → Daily reward. Finds: Content → Gem finds. docs/DAILY.md.' },
   wardrobe: { title: 'Wardrobe (Benin Boutique)', emoji: '👗', blurb: 'W1: the boutique and outfit slots. Items and brands: Content → Wardrobe items / Wardrobe brands. docs/WARDROBE.md.' },
   leaderboard: { title: 'Leaderboards', emoji: '🏆', blurb: 'The phone Ranks app: Rich list and VIP list tiers.' },
+  club: { title: 'Clubs', emoji: '🪩', blurb: 'K1: weekend club prices. Friday and Saturday nights (a night runs until noon the next day) every club price is multiplied by club.weekend_price_mult, except the ids in club.weekend_exempt. Club hours: Content → Places.' },
   vip: { title: 'VIP perks', emoji: '👑', blurb: 'Arrival announcements for the top VIPs.' },
   admin: { title: 'Admin', emoji: '🛡️', blurb: 'Admin access. Hidden from players.' },
 };
@@ -54,6 +55,7 @@ const QUICK: { key: string; hint: string }[] = [
   { key: 'origin.nepo.allowance_daily', hint: 'Dad’s allowance per day for Nepo babies.' },
   { key: 'rent.enabled', hint: 'Turn weekly rent on or off for everyone.' },
   { key: 'life.restart_enabled', hint: 'Players can start a new life (new Sim, new origin roll). The old one is archived.' },
+  { key: 'club.weekend_price_mult', hint: 'Friday and Saturday nights every club price (entry, drinks, VIP table, bottles) is multiplied by this. 1 = same price every night.' },
   { key: 'crime.npc_base_pct', hint: 'Base chance of being robbed on a street trip.' },
   { key: 'crime.npc_max_pct', hint: 'Robbery chance never goes above this.' },
   { key: 'crime.steal_enabled', hint: 'Players can pickpocket another player standing near them at a public place.' },

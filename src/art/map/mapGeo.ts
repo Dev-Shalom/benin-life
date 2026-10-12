@@ -551,6 +551,9 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   ighodalo_cars: { short: 'Ighodalo Cars', tier: 2, side: 'l' },
   sdd_motors: { short: 'SDD Motors', tier: 2, side: 'r' },
   tokunbo_lot: { short: 'Tokunbo Lot', tier: 2, side: 'r' },
+  // K1 clubs (docs/PLACES.md "K1 new clubs")
+  club_raptor: { short: 'Club Raptor', tier: 2, side: 'l' },
+  patricia_nightlife: { short: 'Patricia Nightlife', tier: 2, side: 'r' },
 };
 
 export function shortName(id: string, name: string): string {

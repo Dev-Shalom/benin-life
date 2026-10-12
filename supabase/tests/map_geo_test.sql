@@ -61,7 +61,7 @@ begin
   -- the 40 MAP_GEO pins above + the L2 landmarks (20261006001300_places.sql), all checked for spacing in 3.
   perform pg_temp.assert(n = 40 + (select count(*) from locations where id in ('emotan_statue','kada_plaza','benin_city_mall','mama_ebo',
     'protea_hotel','golden_tulip','ogba_zoo','ogbemudia_stadium','club_360','club_de_medici','rome_club','cube_nightlife','versus_lounge',
-    'owambe_republic','ighodalo_cars','sdd_motors','tokunbo_lot')), format('expected 40 MAP_GEO + L2 landmark locations, got %s', n));
+    'owambe_republic','ighodalo_cars','sdd_motors','tokunbo_lot','club_raptor','patricia_nightlife')), format('expected 40 MAP_GEO + L2 landmark + K1 club locations, got %s', n));
   raise notice 'ok 1: all % pins at MAP_GEO.md positions', n;
 
   -- 2. real-world relations (north is up: smaller y = further north)

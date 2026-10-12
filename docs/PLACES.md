@@ -342,3 +342,36 @@ lines (they check the rendered line, not one fixed text).
 - **Players inside when it closes** are sent home: the client calls `place_closed_eject()` when its place is closed, and the server checks the place is closed and the Sim is not home, busy or travelling. It then moves them home and sends an alert ("The bouncers cleared the place…").
 - Migration 20261007000200_closed_places; test supabase/tests/closed_places_test.sql.
 
+
+## K1 new clubs + weekend club prices (migration `20261012001300_new_clubs.sql`, test `supabase/tests/new_clubs_test.sql`)
+Two real Benin City nightclubs, wired exactly like the other clubs (scene `club`: same zones, cards, bar, VIP,
+DJ booth, hype, crowd, chat, closed-place behaviour, the eject at closing):
+
+| id | Name | Where (source) | Map (x, y) | Confidence |
+|---|---|---|---|---|
+| `club_raptor` | Club Raptor | **60 Stadium Rd, Ogogugbo**, next to Samuel Ogbemudia Stadium (district `ekenwan`). Sources: ranked.ng / goafricaonline / naijabased / evendo / ilovit listings ("CLUB RAPTOR & LOUNGE, 60 Stadium Rd, Ogogugbo, Benin City 300102"), Guardian Nigeria news tag "Raptor Club and Lounge, Stadium Road" | 352, 562 (SW of the stadium pin, 36 units away) | Street: high (several directories + news agree). Exact pin: medium (Nominatim/OSM blocked from this container, so placed on the Stadium Rd side of the stadium by bearing, ≥ 34 units from every pin). |
+| `patricia_nightlife` | Patricia Nightlife | **35 Etete Rd, GRA** (district `gra`). Sources: TikTok posts "35, Etete Road, inside Metro Lounge GRA Benin City", Facebook page "Patricianightlife" (GRA Benin City); the same address is listed for Patricia Hotel and Suites (Expedia/Hotels.com) | 520, 686 (east of Golden Tulip, 23–27 Etete Rd) | Area: medium (social media only; no OSM/Google pin confirmed). Pin nudged east of Golden Tulip to keep ≥ 34 units spacing. |
+
+- **Hours:** 10 PM – 5 AM every night (`open_hour` 22, `close_hour` 5; the other clubs close at 5 AM). There is no
+  per-weekday schedule in `locations`, so they open nightly; Fri/Sat are busier through the existing weekend crowd
+  profiles and their weekly club nights (`raptor_saturday` Sat, `patricia_friday` Fri, 10 PM – 4 AM, ₦10k ticket).
+- **Same as the others:** bottles + Cold Star at the bar (`items.sold_at`), DJ Uyi (`npc_roster.location_ids`), two mood
+  lines each, the club zones/cards from the type. Map pill short names + emoji: `PIN_META` (🦖 Club Raptor, 🥂 Patricia
+  Nightlife in `ID_EMOJI`).
+- **Own identity:** `src/art/clubStyle.ts` (per place id). Raptor = acid-green neon on black, green/teal room light;
+  Patricia = champagne gold on deep plum, warm amber light. Used by the 3D sign (`kitFor(scene, placeId)`), the light rig
+  (`rigFor(scene, outdoor, placeId)`: room tint, party lamp and light-pool colour) and the header art neon (`club.tsx`, by name). Clubs not
+  listed keep the default look.
+
+### Weekend club prices (all clubs)
+- Friday and Saturday **nights** (Benin clock; a night belongs to the day it started and runs until
+  `club.night_rollover_hour`, default 12 = noon, so Sat 01:00 is still Friday night) every club price is multiplied by
+  **`club.weekend_price_mult`** (default 1.5, 1–5; 1 = off), rounded to ₦50 (₦10 under ₦1,000). Ids in
+  `club.weekend_exempt` (default `spray_money,ease_yourself`) keep their price. Admin → Settings → Clubs.
+- Server-side: `bl_club_weekend()`, `bl_club_price_mult(loc, ref)`, `bl_club_price(loc, ref, base)`,
+  `bl_club_weekend_on(loc)` (server-only). Charged in `do_activity` (also the hype amount) and `shop_buy`; shown by
+  `place_interior` (card `cost` + `weekend`, top-level `weekend_price`), `shop_list` (`price`, item `weekend`,
+  `weekend_price`) and the new `club_prices(p_location)` (Activities tab).
+- Client: "Weekend price" badge on cards (`.pc-act__weekend`), a "Weekend prices tonight" note on the place card, a
+  banner in the Shop and Activities tabs (`.weekend-badge`). The client never computes the price.
+- Event tickets (`place_events.ticket_price`) are not marked up (club nights are already Fri/Sat priced).

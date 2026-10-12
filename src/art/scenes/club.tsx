@@ -1,4 +1,5 @@
 import { CommonDefs, Finish, Glow, Haze, Person, Sky, Palm, Car, LampPost, Txt, PAL, rng } from './_sharedA';
+import { clubStyleByName } from '../clubStyle';
 
 const P = 'club';
 
@@ -52,10 +53,12 @@ function signOf(name?: string): { text: string; label: string; size: number; spa
 
 export default function ClubScene({ night, name }: { night: boolean; name?: string }) {
   const sign = signOf(name);
+  // K1: clubs with their own identity get their own neon colour (src/art/clubStyle.ts)
+  const neon = clubStyleByName(name)?.neon ?? '#ff4fc0';
   const r = rng(31);
   const dancers = Array.from({ length: 11 }, (_, i) => ({ x: 236 + i * 32 + r() * 10, s: 0.8 + r() * 0.25, up: r() > 0.45, flip: r() > 0.5 }));
   const bulbs = Array.from({ length: 22 }, (_, i) => i);
-  const bulbCol = ['#ff4fc0', '#ffd27a', '#3ff0e0', '#ffd27a'];
+  const bulbCol = [neon, '#ffd27a', '#3ff0e0', '#ffd27a'];
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" role="img" aria-label={`${sign.label} nightclub`}>
       <defs>
@@ -151,8 +154,8 @@ export default function ClubScene({ night, name }: { night: boolean; name?: stri
         ))}
         {/* sign fascia */}
         <rect x="232" y="112" width="348" height="54" rx="4" fill="#1a1224" />
-        <rect x="236" y="116" width="340" height="46" rx="3" fill="none" stroke={night ? '#ff4fc0' : '#8a4a7a'} strokeWidth="1.5" />
-        <Neon x={406} y={150 - (30 - sign.size) * 0.35} size={sign.size} spacing={sign.spacing} color="#ff4fc0" night={night}>{sign.text}</Neon>
+        <rect x="236" y="116" width="340" height="46" rx="3" fill="none" stroke={night ? neon : '#8a4a7a'} strokeWidth="1.5" />
+        <Neon x={406} y={150 - (30 - sign.size) * 0.35} size={sign.size} spacing={sign.spacing} color={neon} night={night}>{sign.text}</Neon>
         {/* upper terrace */}
         <rect x="232" y="176" width="348" height="34" fill="#2a2038" />
         {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -240,7 +243,7 @@ export default function ClubScene({ night, name }: { night: boolean; name?: stri
       {night && (
         <g>
           <Glow p={P} kind="pink" cx={406} cy={140} rx={240} ry={70} o={0.55} />
-          <Neon x={406} y={150 - (30 - sign.size) * 0.35} size={sign.size} spacing={sign.spacing} color="#ff4fc0" night>{sign.text}</Neon>
+          <Neon x={406} y={150 - (30 - sign.size) * 0.35} size={sign.size} spacing={sign.spacing} color={neon} night>{sign.text}</Neon>
           <rect x="236" y="116" width="340" height="46" rx="3" fill="none" stroke="#3ff0e0" strokeWidth="2" />
           <Glow p={P} kind="pink" cx={406} cy={300} rx={260} ry={80} o={0.5} />
           <Glow p={P} kind="teal" cx={406} cy={265} rx={70} ry={30} o={0.8} />

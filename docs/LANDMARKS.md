@@ -31,7 +31,9 @@ behind a config flag `world.real_brands` (default off → nod names).**
 |---|---|---|---|
 | Versus Lounge | 18 Guobadia Ave, off 1st Ugbor Rd, GRA | ~455,650 | lounge (night fun, social, street cred) |
 | Havana | 34 Adesuwa Rd, GRA | ~470,660 | club |
-| Club De Medici, Patricia Nightlife | GRA | GRA | club |
+| Club De Medici | GRA | GRA | club |
+| Patricia Nightlife (K1, seeded) | 35 Etete Rd, GRA (TikTok/Facebook) | 520,686 | club |
+| Club Raptor & Lounge (K1, seeded) | 60 Stadium Rd, Ogogugbo (directories + Guardian) | 352,562 | club |
 | Vibes Benin | 12 Ogbetuo Ave, off Ihama Rd, Oka | ~520,670 | club |
 | Cube Nightlife | 46 Ihama Rd, off Airport Rd | ~440,620 | club |
 | FJO Club & Lounge | off Ehaekpen St, Ekenwan Rd | ~360,560 | club |
@@ -119,3 +121,6 @@ bottle service ₦150,000, +3 street cred**, "VIP prices for your table"), sport
 brand-new Hilux ₦45M; paid bank first, then cash; one of each; any car unlocks the "Your car" ride mode.
 Not seeded yet: Chicken Republic, Mr Bigg's, Savealot Fun Park, Camplink, MOWAA, Government House, other
 clubs (Club Vibes, Havana, FJO), Otos Autos, Dominion Automobile, Mandilas Toyota.
+
+## Seeded in K1 (2026-10-12, `supabase/migrations/20261012001300_new_clubs.sql`)
+Club Raptor (`club_raptor`, 352,562, Stadium Rd) and Patricia Nightlife (`patricia_nightlife`, 520,686, Etete Rd GRA), club set, 10 PM – 5 AM. Sources and confidence: docs/PLACES.md "K1 new clubs".
