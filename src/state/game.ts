@@ -1,6 +1,6 @@
 // Game store — P1-SHELL. Session, GameState (via get_my_state), locations, events + realtime.
 import { create } from 'zustand';
-import type { RealtimeChannel, Session } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import { supabase, supabaseConfigured } from '../lib/supabase';
 import { startPresence, stopPresence } from './presence';
 import { useTasks } from './tasks';
@@ -8,6 +8,7 @@ import { playCue } from '../lib/sound';
 import { rpc, errorMessage, GameError, lastWriteAt } from '../lib/api';
 import { serverNow, syncServerTime } from '../lib/clock';
 import { ensureConfig } from '../lib/config';
+import { bindRealtime, isPollMode, startPoller, trackSubscribe } from '../lib/realtime';
 import { migrateAvatar } from '../art/avatar3d/catalog';
 import type { GameEvent, GameState, Location } from '../lib/types';
 import { toast, type ToastKind } from '../ui/Toast';
@@ -35,7 +36,12 @@ interface GameStore {
 
 const HEARTBEAT_MS = 60_000;
 
-let live: { uid: string; channel: RealtimeChannel; heartbeat: number; onVis: () => void } | null = null;
+let live: { uid: string; unbind: () => void; heartbeat: number; onVis: () => void } | null = null;
+/** F1: newest event id we know of (null until loadEvents ran), the cursor for the poll-mode events fetch. */
+let eventsCursor: number | null = null;
+/** F1 poll mode: own state every ~15–20 s, new events every ~30 s (visible tab only). */
+const POLL_STATE_MS = 17_500;
+const POLL_EVENTS_MS = 30_000;
 let inflight: Promise<void> | null = null;
 let refreshTimer: number | null = null;
 /** When the last get_my_state answer arrived (S1: skip the Realtime echo of its own last_seen bump). */
@@ -158,6 +164,7 @@ export const useGame = create<GameStore>((set, get) => ({
       return;
     }
     const events = (data ?? []) as GameEvent[];
+    eventsCursor = Math.max(eventsCursor ?? 0, events[0]?.id ?? 0);
     const lastRead = loadLastRead(uid);
     set({ events, lastReadEventId: lastRead, unread: events.filter((e) => e.id > lastRead && !e.read).length });
   },
@@ -191,46 +198,78 @@ function scheduleRefresh(ms = 300) {
   }, ms);
 }
 
+/** A new row in `events` for me (Realtime INSERT or the poll-mode fetch). Dedupes by id. */
+function onEventRow(ev: GameEvent) {
+  if (useGame.getState().events.some((e) => e.id === ev.id)) return;
+  eventsCursor = Math.max(eventsCursor ?? 0, ev.id);
+  playCue('alert');
+  useGame.setState((s) => ({
+    events: [ev, ...s.events.filter((e) => e.id !== ev.id)].slice(0, 80),
+    unread: s.unread + 1,
+  }));
+  // Street robbery already has its own modal (StatusBanners); hire/promotion already toast from the
+  // RPC result (job_apply / work_finish), and so do pay_rent (data.settle) and bank_transfer (transfer_out). The events stay in Alerts.
+  if (!['robbed', 'hired', 'promoted', 'transfer_out', 'house_interact'].includes(ev.kind) && !(ev.data as { settle?: boolean } | null)?.settle) toast(ev.body ? `${ev.title}${/[.!?…]$/.test(ev.title) ? '' : ':'} ${ev.body}` : ev.title, eventTone(ev.kind));
+  scheduleRefresh(600);
+}
+
+/** F1: events newer than the cursor (poll mode, and once when Realtime comes back). Small: usually []. */
+async function fetchNewEvents(uid: string) {
+  if (eventsCursor == null) return; // loadEvents hasn't run yet: it sets the cursor (no toast flood)
+  const { data, error } = await supabase.from('events').select('*').eq('user_id', uid).gt('id', eventsCursor)
+    .order('id', { ascending: true }).limit(20);
+  if (error || !live || live.uid !== uid) return;
+  for (const ev of (data ?? []) as GameEvent[]) onEventRow(ev);
+}
+
 function startLive(uid: string) {
   stopLive();
-  const channel = supabase
-    .channel(`me-${uid}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${uid}` }, (payload) => {
-      // S1 scaling: get_my_state bumps last_seen, and that UPDATE comes straight back here. Without this check every
-      // heartbeat cost two get_my_state calls. A real change in that window is picked up by the next heartbeat, and
-      // anything another player does to you also inserts an event (handled below).
-      const seen = Date.parse(String((payload.new as { last_seen?: string } | null)?.last_seen ?? ''));
-      if (Date.now() - lastStateAt < 3000 && lastWriteAt() < lastStateAt - 1000 && Number.isFinite(seen) && Math.abs(seen - serverNow()) < 5000) return;
-      scheduleRefresh();
-    })
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: `user_id=eq.${uid}` }, (payload) => {
-      const ev = payload.new as GameEvent;
-      playCue('alert');
-      useGame.setState((s) => ({
-        events: [ev, ...s.events.filter((e) => e.id !== ev.id)].slice(0, 80),
-        unread: s.unread + 1,
-      }));
-      // Street robbery already has its own modal (StatusBanners); hire/promotion already toast from the
-      // RPC result (job_apply / work_finish), and so do pay_rent (data.settle) and bank_transfer (transfer_out). The events stay in Alerts.
-      if (!['robbed', 'hired', 'promoted', 'transfer_out', 'house_interact'].includes(ev.kind) && !(ev.data as { settle?: boolean } | null)?.settle) toast(ev.body ? `${ev.title}${/[.!?…]$/.test(ev.title) ? '' : ':'} ${ev.body}` : ev.title, eventTone(ev.kind));
-      scheduleRefresh(600);
-    })
-    .subscribe();
+  let polled = false;
+  const unbind = bindRealtime((mode) => {
+    if (mode === 'poll') {
+      polled = true;
+      const st = startPoller(() => useGame.getState().refresh(), () => POLL_STATE_MS);
+      const ev = startPoller(() => fetchNewEvents(uid), () => POLL_EVENTS_MS);
+      return () => { st.stop(); ev.stop(); };
+    }
+    const channel = trackSubscribe(supabase
+      .channel(`me-${uid}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${uid}` }, (payload) => {
+        // S1 scaling: get_my_state bumps last_seen, and that UPDATE comes straight back here. Without this check every
+        // heartbeat cost two get_my_state calls. A real change in that window is picked up by the next heartbeat, and
+        // anything another player does to you also inserts an event (handled below).
+        const seen = Date.parse(String((payload.new as { last_seen?: string } | null)?.last_seen ?? ''));
+        if (Date.now() - lastStateAt < 3000 && lastWriteAt() < lastStateAt - 1000 && Number.isFinite(seen) && Math.abs(seen - serverNow()) < 5000) return;
+        scheduleRefresh();
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: `user_id=eq.${uid}` }, (payload) => onEventRow(payload.new as GameEvent)),
+    'me', (status) => {
+      // back from poll mode: catch up once (events dedupe by id)
+      if (status === 'SUBSCRIBED' && polled) {
+        polled = false;
+        void fetchNewEvents(uid);
+        scheduleRefresh(200);
+      }
+    });
+    return () => void supabase.removeChannel(channel);
+  });
   const heartbeat = window.setInterval(() => {
-    if (document.visibilityState === 'visible') void useGame.getState().refresh();
+    // F1: in poll mode the faster state poller replaces the heartbeat
+    if (document.visibilityState === 'visible' && !isPollMode()) void useGame.getState().refresh();
   }, HEARTBEAT_MS);
   const onVis = () => {
     if (document.visibilityState === 'visible') scheduleRefresh(50);
   };
   document.addEventListener('visibilitychange', onVis);
-  live = { uid, channel, heartbeat, onVis };
+  live = { uid, unbind, heartbeat, onVis };
   void useGame.getState().loadEvents();
 }
 
 function stopLive() {
   stopPresence();
+  eventsCursor = null;
   if (!live) return;
-  void supabase.removeChannel(live.channel);
+  live.unbind();
   window.clearInterval(live.heartbeat);
   document.removeEventListener('visibilitychange', live.onVis);
   live = null;

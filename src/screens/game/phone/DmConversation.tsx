@@ -16,6 +16,7 @@ import { errorMessage } from '../../../lib/api';
 import { useConfig } from '../../../lib/config';
 import { naira } from '../../../lib/format';
 import { supabase } from '../../../lib/supabase';
+import { startPoller, trackSubscribe, usePollMode } from '../../../lib/realtime';
 import type { GameState } from '../../../lib/types';
 import { useGame } from '../../../state/game';
 import { Button, EmptyState, Icon, Spinner, toast } from '../../../ui';
@@ -148,6 +149,7 @@ export function DmConversation({ state, friend, conversationId, invites, homeNow
   reload: () => Promise<void>; onClose: () => void; onGoHome: () => void;
 }) {
   const me = state.profile;
+  const pollMode = usePollMode(); // F1: Realtime full / off: poll this chat instead
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(true);
   const [hasOlder, setHasOlder] = useState(false);
@@ -221,28 +223,42 @@ export function DmConversation({ state, friend, conversationId, invites, homeNow
         if (alive) setMessagesLoading(false);
       }
     };
+    const onInsert = (raw: Omit<DirectMessage, 'sender_username' | 'mine'>) => {
+      if (messagesRef.current.some((m) => m.id === raw.id)) return;
+      const mine = raw.sender_id === me.id;
+      appendMessage({ ...raw, sender_username: mine ? me.username : friend.username, mine });
+      if (!mine) {
+        void socialMarkRead(conversationId).then(() => reload()).catch(() => undefined);
+        loadStreak();
+      }
+    };
+    if (pollMode) {
+      // F1 poll mode: new messages in this chat every ~10 s while it is open (visible tab only)
+      void loadLatest();
+      const poller = startPoller(async () => {
+        const after = messagesRef.current.reduce((m, x) => Math.max(m, x.id), 0);
+        if (!after) return;
+        const { data, error } = await supabase.from('player_messages').select('*')
+          .eq('conversation_id', conversationId).gt('id', after).order('id', { ascending: true }).limit(30);
+        if (!alive || error) return;
+        for (const row of (data ?? []) as Omit<DirectMessage, 'sender_username' | 'mine'>[]) onInsert(row);
+      }, () => 10_000);
+      return () => { alive = false; poller.stop(); };
+    }
     const channel: RealtimeChannel = supabase
       .channel(`dm-${conversationId}-${me.id}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'player_messages', filter: `conversation_id=eq.${conversationId}`,
-      }, (payload) => {
-        const raw = payload.new as Omit<DirectMessage, 'sender_username' | 'mine'>;
-        const mine = raw.sender_id === me.id;
-        appendMessage({ ...raw, sender_username: mine ? me.username : friend.username, mine });
-        if (!mine) {
-          void socialMarkRead(conversationId).then(() => reload()).catch(() => undefined);
-          loadStreak();
-        }
-      })
+      }, (payload) => onInsert(payload.new as Omit<DirectMessage, 'sender_username' | 'mine'>))
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'player_messages', filter: `conversation_id=eq.${conversationId}`,
-      }, (payload) => patchMessage(payload.new as DirectMessage))
-      .subscribe((status) => { if (status === 'SUBSCRIBED') void loadLatest(); });
+      }, (payload) => patchMessage(payload.new as DirectMessage));
+    trackSubscribe(channel, 'dm', (status) => { if (status === 'SUBSCRIBED') void loadLatest(); });
     return () => {
       alive = false;
       void supabase.removeChannel(channel);
     };
-  }, [conversationId, me.id, me.username, friend.username, appendMessage, patchMessage, reload, loadStreak]);
+  }, [conversationId, me.id, me.username, friend.username, appendMessage, patchMessage, reload, loadStreak, pollMode]);
 
   useEffect(() => {
     if (!recording) return;

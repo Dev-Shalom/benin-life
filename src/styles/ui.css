@@ -799,3 +799,6 @@
 }
 @keyframes bl-netbanner-pulse { 50% { opacity: 0.3; } }
 @media (prefers-reduced-motion: reduce) { .bl-netbanner-dot { animation: none; } }
+/* F1: polling instead of Realtime: informative, not an error */
+.bl-netbanner.is-calm { padding: 5px 12px; font-size: 12px; background: rgba(20, 20, 24, 0.78); }
+.bl-netbanner.is-calm .bl-netbanner-dot { width: 7px; height: 7px; background: #4aa3ff; animation: none; }

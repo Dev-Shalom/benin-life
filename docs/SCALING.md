@@ -6,8 +6,8 @@ owner must upgrade **before announcing**.
 ## TL;DR for the owner
 | Plan | Realtime connections (= players online at once) | What happens above that |
 |---|---|---|
-| **Free** (now) | **200** | New tabs can't open Realtime: chat, live alerts and live counts stop for them. The game still loads and plays (the 60 s heartbeat refreshes their Sim), but it feels broken. Also: the project pauses after about a week idle, no backups. |
-| **Pro, spend cap ON** (default on Pro) | **500** | Same as above, from player 501. |
+| **Free** (now) | **200** | F1: new tabs fall back to polling (chat, alerts, people here, house visits keep working, a few seconds slower; pill "Busy right now — live updates slowed"). Polling costs ~6× the requests/egress of a live player, so Free holds ~500 online for a few hours (see "Realtime fallback"). Also: the project pauses after about a week idle, no backups. |
+| **Pro, spend cap ON** (default on Pro) | **500** | Same fallback from player 501; ~1,300 online on Micro. |
 | **Pro, spend cap OFF** | **10,000** (2,500 msg/s) | Pay-as-you-go for extra Realtime use. Players are then limited by database CPU (see compute below). |
 
 **Before you announce to "thousands": do these in Supabase:**
@@ -33,6 +33,88 @@ connections / 100 msg/s / 100 joins/s; Pro 500 / 500 / 500; Pro without spend ca
 $10 (1 GB, 60 direct / 200 pooler connections), Small $15 (2 GB, 90 / 400), Medium $60 (4 GB, 120 / 600), Large $110
 (8 GB, 160 / 800). These numbers change; re-check https://supabase.com/docs/guides/realtime/limits and
 https://supabase.com/pricing.
+
+## Realtime fallback (F1, 2026-10-12): stay on a cheap plan
+When the plan's Realtime limit is full (Free 200 connections / 100 msg/s, Pro with spend cap 500 / 500), players over
+the limit no longer get a half-broken game: their tab **switches to polling** and everything keeps working, only slower
+(chat within ~8 s, house movement within ~4 s, alerts within ~30 s). Players already connected stay live.
+A small pill shows **"Busy right now — live updates slowed"** (not an error).
+
+**Owner switch:** Admin → Settings → Admin → `realtime.mode` (`auto` default, or `poll_only`). `poll_only` sends every
+open tab to polling within a second (seen over the live config channel) and keeps new tabs off Realtime: use it when
+Reports → Realtime shows the connection or message limit being hit. Back to `auto`: tabs return to live within ~90 s.
+
+### How a tab decides (src/lib/realtime.ts)
+- Every channel subscribes through `trackSubscribe()`, which reports its status and listens for server `system` errors.
+- **At once** when a join/system message says quota: `too_many_*`, `TooManyChannels`, `ConnectionRateLimitReached`,
+  `ChannelRateLimitReached`, `ClientJoinRateLimitReached`, "tenant events per second", "rate limit", "quota"…
+- **3 separate failure incidents within 90 s** (`CHANNEL_ERROR`, `TIMED_OUT`, socket heartbeat `timeout`/`error`; a burst
+  within 3 s counts once, so one network blip never flips the mode; any successful join resets the count).
+- **Watchdog:** channels exist but none has joined for 25 s (socket refused or unreachable; realtime-js reports that
+  only once per channel and then waits silently).
+- In poll mode every feature removes its channels, so the socket disconnects and **stops retrying**. A probe joins one
+  tiny channel every **2–5 min** (random; doubled up to 10 min after a quick relapse; never while the tab is hidden).
+  When it joins, the tab goes live again: features resubscribe and catch up once (`get_my_state`, events since the
+  last id, chat history merge), deduped by id, so nothing shows twice.
+- Mixed rooms work: a live player's place list adds polling players (only when `world_counts` says Presence is missing
+  someone: no cost otherwise); in a house, live tabs receive polling members' moves as Postgres Changes on the house
+  channel and then post their own moves too ("bridge").
+
+### What polls in poll mode (visible tab only, ±20 % jitter)
+| Feature | Live mode | Poll mode |
+|---|---|---|
+| Own state | Postgres Changes `me-<uid>` + 60 s heartbeat | `get_my_state` every ~17.5 s (+ after every action, as before) |
+| Alerts / DMs / friend requests / interaction asks (events) | Postgres Changes | `events?id=gt.<last>` every ~30 s (usually `[]`) |
+| People at my place | Presence `place:<id>` | new `players_here_ids` (ids + last_seen, no avatars) every ~25 s; names/avatars load only when the set changes |
+| Map counts / online pill | `world_counts` 60–75 s | unchanged |
+| Place + house chat | Postgres Changes | `chat_messages?id=gt.<last>` every ~8 s with the chat open, ~30 s closed (unread dot) |
+| Open DM conversation | Postgres Changes | `player_messages?id=gt.<last>` every ~10 s; Messages app list every 30 s (60 s live) |
+| House room (others' avatars) | broadcast + presence | `house_room_state` every ~4 s with others there, ~20 s alone; own moves via `house_room_move` on walk start / stop / pose change (≤ 1 per 2.5 s while walking) + 60 s keep-alive. Others walk the posted path (existing walk-to) |
+| House furniture | Postgres Changes | every ~60 s while at home |
+| Hype (club) / global ticker | Postgres Changes | `place_announcements?id=gt.<last>` every ~60 s in a club (~3 min elsewhere), global every ~3 min |
+| Game config | Postgres Changes | the `realtime.mode` row every ~90 s, everything every ~6 min |
+| Billboards, Daily, events calendar, admin | already polled | unchanged |
+
+Not live in poll mode (acceptable): chat "delete for everyone" tombstones and DM read ticks appear on the next open.
+
+### Cost of a polling player (counted + measured)
+Measured (Playwright, two players, websocket blocked, 2 min idle at Uselu Motor Park): 13.0 REST calls/min with chat
+closed (2 of them one-off place loads, so ~11 steady), 18.5 with chat open. Counted from the intervals:
+
+| Situation | Requests / min / player |
+|---|---|
+| Idle at a place, chat closed | **~12** (get_my_state 3.4, players_here_ids 2.4, events 2, chat 2, world_counts 0.9, hype 0.7, config 0.7) |
+| Chat open | ~17.5 |
+| In a house with visitors (walking now and then) | ~30 (+ house_room_state 15, moves 2–4) |
+| Alone at home | ~15 (+ house_room_state 3) |
+| Hidden tab | 0 |
+| Live player (for comparison) | ~2 |
+
+Database time (local Postgres 17, per call): get_my_state 3.0 ms, world_counts 0.6 ms, players_here(_ids) 0.25 ms,
+the `id > last` selects and house_room_state < 0.3 ms (indexed, usually 0 rows). ≈ **13 ms DB time per polling player
+per minute**, plus PostgREST/Kong overhead (~1–2 ms CPU a request) ≈ 0.6 ms CPU per second per polling player.
+
+Egress per polling player: get_my_state ≈ 4 KB (uncompressed), every other poll ≈ 0.3–0.5 KB with headers (empty
+arrays), so **~20 KB/min ≈ 1.2 MB per hour played** (≈ 0.25 MB/h when the API gzips). A live player ≈ 0.3 MB/h.
+
+### How many players each plan holds with the fallback (estimates)
+| Plan | Live (Realtime) | + polling on top | Real limit |
+|---|---|---|---|
+| **Free** (Nano compute, 5 GB egress / month) | 200 | **~300 more** at once (shared CPU; ~60 req/s) → **~500 online** | **Egress**: 5 GB ≈ 4,000 polling player-hours a month (≈ 130 h a day). Fine for a soft launch / a spike of a few hours; above that, upgrade. The project still pauses after a week idle. |
+| **Pro, spend cap ON** (Micro, 250 GB egress) | 500 | **~800 more** (~160 req/s on Micro) → **~1,300 online** | CPU first; egress 250 GB ≈ 200,000 polling player-hours / month. Small compute ($15) → ~1,500 pollers → ~2,000 online. |
+| Pro, spend cap OFF | 10,000 | rarely needed | see the table at the top |
+
+The numbers assume players mostly idle at places (the common case). Busy house parties cost ~2.5× an idle player.
+Watch Reports → Database CPU; when it stays above ~70 %, either scale compute or turn the cap off (live is ~6×
+cheaper per player than polling).
+
+**Files:** `src/lib/realtime.ts` (detector, probe, `bindRealtime`, `startPoller`, `trackSubscribe`), `src/state/net.ts`
+(heartbeat feeds it; no "Reconnecting…" while polling on purpose), `src/ui/NetBanner.tsx` (pill), `src/lib/config.ts`
+(switch + config polling), `src/state/{game,presence,chat,hype,houseRoom}.ts`, `src/screens/Game.tsx` (furniture),
+`src/screens/game/phone/{DmConversation,SocialApp}.tsx`, `src/admin/Settings.tsx` (quick knob),
+`supabase/migrations/20261012001000_realtime_fallback.sql` (config row, `house_room_positions` + RLS + publication +
+leave trigger, `house_room_move`, `house_room_state`, `players_here_ids`), test `supabase/tests/realtime_fallback_test.sql`.
+Dev: `window.__rt` (`store`, `fail(msg)`, `force(bool)`, `probe()`).
 
 ## What each player costs (measured / counted from the code)
 Idle = Sim standing at a place, phone and map closed, tab visible. Hidden = tab in the background.

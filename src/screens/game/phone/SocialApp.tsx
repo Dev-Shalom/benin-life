@@ -17,6 +17,7 @@ import { Button, Icon, Spinner, toast } from '../../../ui';
 import { SocialPlayerButton } from '../SocialPlayerButton';
 import ChatPanel from '../../../panels/ChatPanel';
 import { DmConversation, MiniSheet, MONEY_PREFIX } from './DmConversation';
+import { usePollMode } from '../../../lib/realtime';
 
 interface SocialAppProps {
   state: GameState;
@@ -79,6 +80,7 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
   const { cfg } = useConfig();
   const newsTitle = cfg('news.latest_title', '').trim();
   const newsBody = cfg('news.latest_body', '').trim();
+  const pollMode = usePollMode();
 
   const reload = useCallback(async () => {
     try {
@@ -95,9 +97,10 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
   useEffect(() => {
     void reload();
     // S1 scaling: requests/knocks/DMs already arrive via the events channel; this is only a safety net
-    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void reload(); }, 60_000);
+    // F1: every 30 s while the tab polls instead of using Realtime (the events poll still brings DMs/requests)
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void reload(); }, pollMode ? 30_000 : 60_000);
     return () => window.clearInterval(timer);
-  }, [reload]);
+  }, [reload, pollMode]);
   // Friend requests, knocks and new DMs arrive through the existing per-player events channel.
   useEffect(() => { if (eventsRevision) void reload(); }, [eventsRevision, reload]);
 

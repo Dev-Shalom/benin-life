@@ -25,7 +25,7 @@ const READ_RPC = new RegExp(
   '^(get_|players_|leaderboard_|world_counts$|place_people$|place_interior$|shop_list$|jobs_catalog$|travel_quote$|house_options$|' +
     'food_menu$|events_on_today$|creator_catalog$|wardrobe_state$|storyline_current$|gem_hunt_status$|daily_reward_status$|' +
     'bank_info$|bank_history$|bank_recipient$|chat_recent$|chat_history$|chat_blocked$|police_cases_list$|garage_home$|' +
-    'billboard_list$|billboard_my_ads$|feedback_mine$|social_(friends|friend_requests|house_invites|house_info|friend_status|' +
+    'billboard_list$|billboard_my_ads$|feedback_mine$|house_room_state$|social_(friends|friend_requests|house_invites|house_info|friend_status|' +
     'message_history|search_players|streak)$|admin_(stats|players|player_detail|payments|notifications|table_rows|config_list|' +
     'client_errors|chat_reports|billboard_queue|audit_list|feedback_list)$)',
 );

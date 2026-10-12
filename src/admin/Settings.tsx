@@ -36,6 +36,7 @@ const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: strin
 
 /** The knobs the owner touches most, with plain-English help. */
 const QUICK: { key: string; hint: string }[] = [
+  { key: 'realtime.mode', hint: 'auto = live updates, each player falls back to polling by itself when Realtime is full. poll_only = everyone polls (use during a spike when Realtime is over its plan limit). docs/SCALING.md.' },
   { key: 'payments.enabled', hint: 'Real-money top-ups with Paystack. Turn on only after the keys are set (docs/PAYMENTS.md).' },
   { key: 'clock.mode', hint: 'real = the game shows the real time in Benin City. accelerated = the old fast clock.' },
   { key: 'needs.decay_speed', hint: 'How fast needs drop with the real clock. 1 = hunger empties in about 25 real hours (2.5 = about 10).' },

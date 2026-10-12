@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { startPoller, trackSubscribe, usePollMode } from '../lib/realtime';
 import { playHype } from '../lib/sound';
 
 export interface Announcement {
@@ -111,13 +112,29 @@ let globalCh: RealtimeChannel | null = null;
 /** Mounted once by the game screen: `clubId` = the place you're at (null on the road), `uid` = signed in,
  *  `inClub` = that place is a club (all hype kinds); elsewhere only VIP arrivals (PAY) are shown. */
 export function useHypeLive(clubId: string | null, uid: string | null, inClub = true) {
+  const poll = usePollMode();
   useEffect(() => {
     if (!uid) return;
-    const ch = supabase
+    if (poll) {
+      // F1 poll mode: new global announcements every ~3 min (the ticker shows the newest one)
+      let cursor: number | null = null;
+      const p = startPoller(async () => {
+        let q = supabase.from('place_announcements').select('*').eq('global', true);
+        q = cursor == null ? q.order('id', { ascending: false }).limit(1) : q.gt('id', cursor).order('id', { ascending: true }).limit(5);
+        const { data } = await q;
+        const rows = (data ?? []) as Announcement[];
+        const first = cursor == null;
+        for (const a of rows) cursor = Math.max(cursor ?? 0, a.id);
+        if (first) { cursor ??= 0; return; } // just learning where we are: nothing is "new"
+        const last = rows[rows.length - 1];
+        if (last && Date.parse(last.created_at) > Date.now() - 5 * 60_000) onGlobalRow(last);
+      }, () => 180_000, { immediate: true });
+      return () => { p.stop(); window.clearTimeout(tickerTimer); useHype.setState({ ticker: null }); };
+    }
+    const ch = trackSubscribe(supabase
       .channel('hype-global')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'place_announcements', filter: 'global=eq.true' },
-        (p) => onGlobalRow(p.new as Announcement))
-      .subscribe();
+        (p) => onGlobalRow(p.new as Announcement)), 'hype-global');
     globalCh = ch;
     return () => {
       void supabase.removeChannel(ch);
@@ -125,7 +142,7 @@ export function useHypeLive(clubId: string | null, uid: string | null, inClub = 
       window.clearTimeout(tickerTimer);
       useHype.setState({ ticker: null });
     };
-  }, [uid]);
+  }, [uid, poll]);
 
   useEffect(() => {
     window.clearTimeout(bannerTimer);
@@ -142,18 +159,35 @@ export function useHypeLive(clubId: string | null, uid: string | null, inClub = 
       const merged = [...rows.reverse(), ...have.filter((x) => !(data ?? []).some((d: Announcement) => d.id === x.id))];
       useHype.setState({ recent: merged.sort((a, b) => a.id - b.id).slice(-20) });
     };
-    const ch = supabase
+    if (poll) {
+      // F1 poll mode: the club's new announcements every ~60 s (banner + hype man, like the live feed); elsewhere
+      // only VIP arrivals show, every ~3 min
+      let cursor: number | null = null;
+      const p = startPoller(async () => {
+        let q = supabase.from('place_announcements').select('*').eq('location_id', clubId);
+        q = cursor == null ? q.order('id', { ascending: false }).limit(1) : q.gt('id', cursor).order('id', { ascending: true }).limit(5);
+        const { data } = await q;
+        if (!alive || useHype.getState().locationId !== clubId) return;
+        const rows = (data ?? []) as Announcement[];
+        const first = cursor == null;
+        for (const a of rows) cursor = Math.max(cursor ?? 0, a.id);
+        if (first) { cursor ??= 0; return; }
+        for (const a of rows) onClubRow(a);
+      }, () => (inClub ? 60_000 : 180_000), { immediate: true });
+      void load();
+      return () => { alive = false; p.stop(); };
+    }
+    const ch = trackSubscribe(supabase
       .channel(`hype-${clubId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'place_announcements', filter: `location_id=eq.${clubId}` },
-        (p) => onClubRow(p.new as Announcement))
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') void load();
-      });
+        (p) => onClubRow(p.new as Announcement)), 'hype-club', (status) => {
+      if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') void load();
+    });
     clubCh = ch;
     return () => {
       alive = false;
       void supabase.removeChannel(ch);
       if (clubCh === ch) clubCh = null;
     };
-  }, [clubId, uid, inClub]);
+  }, [clubId, uid, inClub, poll]);
 }

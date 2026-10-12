@@ -37,7 +37,8 @@ begin
    where n.nspname = 'public' and p.proname like 'bl\_%'
      and has_function_privilege('authenticated', p.oid, 'execute')
      and p.proname not in ('bl_social_active_house_topic', 'bl_social_can_chat_voice', 'bl_social_can_use_conversation',
-                           'bl_social_can_view_owner_home', 'bl_social_can_view_private_home'); -- RLS policy helpers
+                           'bl_social_can_view_owner_home', 'bl_social_can_view_private_home',
+                           'bl_social_can_view_house_room'); -- RLS policy helpers
   perform pg_temp.assert(v is null, 'private bl_* callable by players: ' || coalesce(v, ''));
 
   select string_agg(c.relname, ', ') into v
