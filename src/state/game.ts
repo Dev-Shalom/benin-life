@@ -208,8 +208,8 @@ function onEventRow(ev: GameEvent) {
     unread: s.unread + 1,
   }));
   // Street robbery already has its own modal (StatusBanners); hire/promotion already toast from the
-  // RPC result (job_apply / work_finish), and so do pay_rent (data.settle) and bank_transfer (transfer_out). The events stay in Alerts.
-  if (!['robbed', 'hired', 'promoted', 'transfer_out', 'house_interact', 'steal_success', 'steal_caught'].includes(ev.kind) && !(ev.data as { settle?: boolean } | null)?.settle) toast(ev.body ? `${ev.title}${/[.!?…]$/.test(ev.title) ? '' : ':'} ${ev.body}` : ev.title, eventTone(ev.kind));
+  // RPC result (job_apply / work_finish), and so do pay_rent (data.settle) and bank_transfer (transfer_out), and link-ups (yes / partner toasts, break-up in the morning-after popup). The events stay in Alerts.
+  if (!['robbed', 'hired', 'promoted', 'transfer_out', 'house_interact', 'steal_success', 'steal_caught', 'linkup_yes', 'linkup_partner', 'linkup_breakup'].includes(ev.kind) && !(ev.data as { settle?: boolean } | null)?.settle) toast(ev.body ? `${ev.title}${/[.!?…]$/.test(ev.title) ? '' : ':'} ${ev.body}` : ev.title, eventTone(ev.kind));
   scheduleRefresh(600);
 }
 

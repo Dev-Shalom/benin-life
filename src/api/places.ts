@@ -2,7 +2,7 @@
 import { rpc } from '../lib/api';
 import type { SceneType } from '../lib/types';
 
-export type ZoneActionKind = 'activity' | 'job' | 'shop' | 'panel' | 'shrine';
+export type ZoneActionKind = 'activity' | 'job' | 'shop' | 'panel' | 'shrine' | 'linkup';
 
 export interface ZoneAction {
   /** zone_actions.id */
@@ -43,6 +43,9 @@ export interface ZoneAction {
   missing?: { item: string; name: string; icon: string | null; need: number; have: number }[];
   note?: string | null;
   charm_until?: string | null;
+  /** D2 link-up cards (kind 'linkup', ref = linkup_actions.id): who it's with now (current link-up / partner), what is
+   *  missing ('yes' = needs a link-up first, 'rank' = Yahoo rank too low) and, for Buy drinks, how many people are out here. */
+  linkup?: { with?: { id: string; name: string; age: number; partner: boolean } | null; needs?: 'yes' | 'rank' | null; rank_name?: string | null; here?: number } | null;
   /** Why it can't be done now ("Opens 9 PM", "Night only", "Only in your own home"), or null. */
   locked: string | null;
 }

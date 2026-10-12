@@ -6,6 +6,8 @@ import { CharmChips } from './Shrine';
 import { YahooBadge } from './Yahoo';
 import { useYahoo } from '../../state/yahoo';
 import { useShrine } from '../../state/shrine';
+import { useLinkups } from '../../state/linkups';
+import { WantPicker } from './Linkups';
 import { useLiveProfile } from '../../lib/live';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +18,7 @@ import { naira, titleCase } from '../../lib/format';
 import { moodOf, needValue } from '../../lib/mood';
 import { HUD_NEEDS, NEED_META, ORIGIN_UI, P, WEEKDAYS, originCopy, type NeedKey } from '../../lib/pidgin';
 import { usePrefs } from '../../lib/prefs';
+import { useConfig } from '../../lib/config';
 import type { AvatarConfig, BlockedPlayer, GameState } from '../../lib/types';
 import { useCatalog } from '../../state/catalog';
 import { useDaily } from '../../state/daily';
@@ -384,6 +387,8 @@ function CareerTab({ state }: { state: GameState }) {
 
 function SettingsTab({ state }: { state: GameState }) {
   const prefs = usePrefs();
+  const linkupsOn = useConfig().cfg<boolean>('linkup.enabled', true);
+  const linkupWant = useLinkups((x) => x.status?.want ?? 'anyone');
   const session = useGame((s) => s.session);
   const signOut = useGame((s) => s.signOut);
   const setOverlay = useUi((s) => s.setOverlay);
@@ -411,6 +416,15 @@ function SettingsTab({ state }: { state: GameState }) {
           </div>
         </div>
       </div>
+      {linkupsOn && (
+        <div className="settings-row" data-testid="settings-linkups">
+          <div>
+            <div>💞 Link-ups</div>
+            <div className="muted settings-row__hint">Who you meet at the clubs (adult NPCs only, never other players).</div>
+          </div>
+          <WantPicker want={linkupWant} />
+        </div>
+      )}
       <h4 className="settings-head">Account</h4>
       <div className="settings-row">
         <div>

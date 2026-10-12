@@ -1,7 +1,7 @@
 // The phone (R4): lock screen with the game clock -> app grid of fictional Benin apps.
 // Built: Bolt (S1 ride-hailing, renamed from Ride in H3: book keke/bus/drop/car with price, time and risk, lazy), Jobs (V1-3), Chowdeck + Houses (V1-4, lazy),
 // Billboards (H3: boards on the map + My ads),
-// Bank (V1-5), Ranks (PAY), Yahoo (Y1: gear, dirty balance, jobs, cash out, rank), Feedback (S1-D suggestion box), Messages (friend requests, private text/voice chat and house visits), Wallet, Alerts and Settings.
+// Bank (V1-5), Ranks (PAY), Yahoo (Y1: gear, dirty balance, jobs, cash out, rank), Link-ups (D2: NPC dating, fade to black), Feedback (S1-D suggestion box), Messages (friend requests, private text/voice chat and house visits), Wallet, Alerts and Settings.
 // Apps without working features stay hidden.
 // Esc closes the phone.
 import { useBroadcasts } from '../../state/broadcasts';
@@ -35,6 +35,7 @@ const PoliceApp = lazy(() => import('./phone/PoliceApp'));
 const BillboardsApp = lazy(() => import('./phone/BillboardsApp'));
 const FeedbackApp = lazy(() => import('./phone/FeedbackApp'));
 const YahooApp = lazy(() => import('./phone/YahooApp'));
+const LinkupsApp = lazy(() => import('./phone/LinkupsApp'));
 
 interface App {
   id: string;
@@ -58,6 +59,7 @@ const APPS: App[] = [
   { id: 'cars', name: 'Cars', emoji: '🚗', bg: 'linear-gradient(160deg,#4aa3ff,#1f62c9)', pitch: 'Buy a tokunbo or a brand-new ride. Fuel money not included.' },
   { id: 'billboards', name: 'Billboards', emoji: '📺', bg: 'linear-gradient(160deg,#ff6b78,#d93646)', pitch: '' },
   { id: 'yahoo', name: 'Yahoo', emoji: '💻', bg: 'linear-gradient(160deg,#1f2a36,#0b0f14)', pitch: '' },
+  { id: 'linkups', name: 'Link-ups', emoji: '💞', bg: 'linear-gradient(160deg,#ff7aa2,#c2255c)', pitch: '' },
   { id: 'police', name: 'Police', emoji: '🚓', bg: 'linear-gradient(160deg,#4f6bd8,#26388f)', pitch: 'Report a robbery, check your case file and pay bail.' },
   { id: 'wallet', name: 'Wallet', emoji: '👛', bg: 'linear-gradient(160deg,#34c77f,#0a6f40)', pitch: '' },
   { id: 'feedback', name: 'Feedback', emoji: '💡', bg: 'linear-gradient(160deg,#ffcf5a,#e8912a)', pitch: '' },
@@ -130,6 +132,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const wardrobeOn = useConfig().cfg<boolean>('wardrobe.enabled', true);
   const billboardsOn = useConfig().cfg<boolean>('billboards.enabled', true);
   const yahooOn = useConfig().cfg<boolean>('yahoo.enabled', true);
+  const linkupsOn = useConfig().cfg<boolean>('linkup.enabled', true);
   const { mounted, closing } = usePresence(open, 200);
   const [screen, setScreen] = useState<'lock' | 'home' | string>('lock');
   const [wasOpen, setWasOpen] = useState(open);
@@ -219,7 +222,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
           {screen === 'home' && (
             <div className="phone-home">
               <div className="phone-home__grid">
-                {APPS.filter((a) => (a.id !== 'boutique' || wardrobeOn) && (a.id !== 'billboards' || billboardsOn) && (a.id !== 'yahoo' || yahooOn)).map((a) => (
+                {APPS.filter((a) => (a.id !== 'boutique' || wardrobeOn) && (a.id !== 'billboards' || billboardsOn) && (a.id !== 'yahoo' || yahooOn) && (a.id !== 'linkups' || linkupsOn)).map((a) => (
                   <button key={a.id} type="button" className="app-icon" onClick={() => launch(a.id)}>
                     <span className="app-icon__tile" style={{ background: a.bg }} aria-hidden>
                       {a.emoji}
@@ -234,7 +237,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
             </div>
           )}
           {app && (
-            <div className={`phone-app${app.id === 'messages' ? ' phone-app--messages' : ''}${app.id === 'ride' ? ' phone-app--bolt' : ''}${app.id === 'yahoo' ? ' phone-app--yahoo' : ''}`}>
+            <div className={`phone-app${app.id === 'messages' ? ' phone-app--messages' : ''}${app.id === 'ride' ? ' phone-app--bolt' : ''}${app.id === 'yahoo' ? ' phone-app--yahoo' : ''}${app.id === 'linkups' ? ' phone-app--linkups' : ''}`}>
               {app.id !== 'messages' && <div className="phone-app__bar">
                 <button type="button" className="phone-app__back" onClick={() => setScreen('home')} aria-label="Back to apps">
                   <Icon name="back" size={20} stroke={2.6} />
@@ -244,9 +247,9 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp state={state} onGoHome={goHome} onBack={() => setScreen('home')} onOpenAlerts={() => setScreen('alerts')} alertsUnread={unread} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' ? (
+                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'linkups' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
-                        {app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
+                        {app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'linkups' ? <LinkupsApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
                           : app.id === 'billboards' ? <BillboardsApp key={bbTab} initialTab={bbTab} onOpenBoard={openBoard} />
                           : app.id === 'cars' ? <CarsApp state={state} onGo={goToPlace} />
                             : app.id === 'police' ? <PoliceApp state={state} onGo={goToPlace} />

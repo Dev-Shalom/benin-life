@@ -24,6 +24,7 @@ import { placeEmoji } from '../../art/city3d';
 import { deriveStatus } from './status';
 import { queueTask } from './TaskRunner';
 import { useShrine } from '../../state/shrine';
+import { useLinkups } from '../../state/linkups';
 
 /** B2 offering icons for the shrine cards (same as the items' icons). */
 const OFFER_ICON: Record<string, string> = {
@@ -142,11 +143,12 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
   const [armed, setArmed] = useState(false);
   const p = state.profile;
   const shrine = a.kind === 'shrine';
-  const secs = shrine ? (a.seconds ?? null) : a.kind === 'activity' ? Math.round(activitySeconds({ game_minutes: a.game_minutes ?? 30, effects: a.effects ?? null, max_seconds: a.max_seconds, min_seconds: a.min_seconds, scale_by_need: a.scale_by_need }, p, cfg)) : null;
+  const linkup = a.kind === 'linkup';
+  const secs = shrine || linkup ? (a.seconds ?? null) : a.kind === 'activity' ? Math.round(activitySeconds({ game_minutes: a.game_minutes ?? 30, effects: a.effects ?? null, max_seconds: a.max_seconds, min_seconds: a.min_seconds, scale_by_need: a.scale_by_need }, p, cfg)) : null;
   const car = a.kind === 'shop' && a.category === 'vehicle';
   const cost = a.cost ?? 0;
-  const money = car ? p.cash + p.bank : p.cash;
-  const broke = (a.kind === 'activity' || a.kind === 'shop' || shrine) && cost > money;
+  const money = car || linkup ? p.cash + p.bank : p.cash;
+  const broke = (a.kind === 'activity' || a.kind === 'shop' || shrine || linkup) && cost > money;
   const owned = car && (a.owned ?? 0) > 0;
   // B2: a charm of that kind still works / offerings missing from the Bag
   const missing = shrine ? (a.missing ?? []) : [];
@@ -162,6 +164,12 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
   const go = () => {
     if (a.kind === 'panel') {
       select(locId, a.ref as PanelId);
+      return;
+    }
+    // D2: a link-up card opens the pick sheet (who to buy drinks for / who you're going out with)
+    if (linkup) {
+      if (a.locked) { toast(a.locked, 'info'); return; }
+      useLinkups.getState().openSheet(a.ref);
       return;
     }
     // B2: a locked shrine card opens Baba's tab on that service (what is missing, time left)
@@ -200,7 +208,7 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
   else if (a.kind === 'panel') price = null;
   else price = cost > 0 ? <span className="pc-act__price" title={naira(cost)}>{car || (shrine && cost >= 100000) ? nairaShort(cost) : naira(cost)}</span> : <span className="pc-act__free">Free</span>;
 
-  const verb = a.kind === 'panel' || (a.kind === 'job' && !a.mine) ? 'Choose' : armed ? `Tap again · ${nairaShort(cost)}` : idle ? null : 'Add to queue';
+  const verb = a.kind === 'panel' || linkup || (a.kind === 'job' && !a.mine) ? 'Choose' : armed ? `Tap again · ${nairaShort(cost)}` : idle ? null : 'Add to queue';
   return (
     <button type="button" className={`pc-act${a.event ? ' is-event' : ''}${lock && a.kind !== 'panel' && !(a.kind === 'job' && !a.mine) ? ' is-locked' : ''}${armed ? ' is-armed' : ''}`} onClick={go}
       aria-label={`${a.name}${secs ? `, ${secs} seconds` : ''}${cost ? `, ${naira(cost)}` : ''}${lock ? `, ${lock}` : ''}`}>
@@ -219,6 +227,9 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
       {car && <span className="pc-act__sub">{owned ? 'In your Bag' : 'Unlocks "Your car" rides'}</span>}
       {a.kind === 'shop' && !car && (a.owned ?? 0) > 0 && <span className="pc-act__sub">{a.owned} in your Bag</span>}
       {shrine && a.effect && <span className="pc-act__sub">{a.effect} · {a.duration}</span>}
+      {linkup && a.linkup && <span className="pc-act__sub">{a.linkup.needs === 'rank' ? `${a.linkup.rank_name ?? 'Big Boy'}+ only`
+        : a.linkup.here != null ? `${a.linkup.here} ${a.linkup.here === 1 ? 'person' : 'people'} out tonight`
+          : a.linkup.with ? `With ${a.linkup.with.name}${a.linkup.with.partner ? ' 💑' : ''}` : 'Needs a link-up first'}</span>}
       {shrine && a.offerings && (
         <span className="pc-act__fx pc-act__offer" aria-label="Offerings">
           {Object.entries(a.offerings).map(([id, n]) => (
@@ -226,7 +237,7 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
           ))}
         </span>
       )}
-      <EffectChips effects={a.kind === 'activity' || (a.kind === 'shop' && !car) ? a.effects : null} />
+      <EffectChips effects={a.kind === 'activity' || linkup || (a.kind === 'shop' && !car) ? a.effects : null} />
       {lock && a.event?.state === 'ticket' ? <span className="pc-act__verb">Buy a ticket ({naira(a.event.price)}) <Icon name="chevronRight" size={12} /></span>
         : lock && a.kind !== 'panel' && !(a.kind === 'job' && !a.mine) ? <span className="pc-act__lock">{lock}</span>
         : verb ? <span className="pc-act__verb">{verb} <Icon name="chevronRight" size={12} /></span> : null}
