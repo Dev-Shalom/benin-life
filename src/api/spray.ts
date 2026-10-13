@@ -2,6 +2,7 @@
 // booking) and writes the hype man's shout-out; the client only picks the amount.
 import { rpc } from '../lib/api';
 import type { Announcement } from '../state/hype';
+import type { MoneyDrop } from './moneyPick';
 
 export type SprayTier = 'small' | 'nice' | 'big' | 'huge' | 'oga' | 'billionaire' | 'trillionaire';
 
@@ -40,6 +41,8 @@ export interface SprayResult {
   total_points: number;
   cooldown_s: number;
   hype: Announcement | null;
+  /** SP2: the notes this spray dropped for the club (null when the share is under one note). */
+  drop?: MoneyDrop | null;
 }
 
 export const sprayStatus = (location: string | null) => rpc<SprayStatus>('get_spray_status', { p_location: location });

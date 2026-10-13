@@ -8,6 +8,7 @@ import { errorMessage, GameError } from '../../lib/api';
 import { naira, nairaShort } from '../../lib/format';
 import type { GameState } from '../../lib/types';
 import { pushHype } from '../../state/hype';
+import { addDrop } from '../../state/moneyPick';
 import { useGame } from '../../state/game';
 import { useSpray } from '../../state/spray';
 import { Sheet, toast } from '../../ui';
@@ -81,6 +82,7 @@ export function SpraySheet({ state }: { state: GameState }) {
     try {
       const r = await sprayCustom(open.locationId, amount, vip);
       if (r.hype) pushHype(r.hype);
+      if (r.drop) addDrop(r.drop);
       toast(`${r.message} +${r.points} hype`, 'good');
       setCool(r.cooldown_s);
       setDigits('');

@@ -126,6 +126,21 @@ export function playCue(c: Cue) {
   }
 }
 
+/** SP2: a bright coin "ting" for each picked note (pitch steps up with the streak, never throttled). */
+let coinStep = 0;
+let coinAt = 0;
+export function playCoin() {
+  if (!sfxOn() || !ensureCtx() || ctx!.state !== 'running') return;
+  const now = ctx!.currentTime;
+  coinStep = now - coinAt < 0.6 ? Math.min(coinStep + 1, 7) : 0;
+  coinAt = now;
+  const base = 88 + [0, 2, 4, 5, 7, 9, 11, 12][coinStep];
+  const t = now + 0.005;
+  tone(hz(base), t, 0.05, { type: 'square', gain: 0.05, release: 0.06, cutoff: 5200 });
+  tone(hz(base + 7), t + 0.045, 0.22, { type: 'triangle', gain: 0.13, release: 0.24 });
+  tone(hz(base + 19), t + 0.05, 0.16, { type: 'sine', gain: 0.05, release: 0.18 });
+}
+
 // ---------- music ----------
 const CHORDS_DAY = [[60, 64, 67, 71], [57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 62, 65]];
 const CHORDS_NIGHT = [[57, 60, 64, 67], [53, 57, 60, 64], [50, 53, 57, 60], [52, 55, 59, 62]];
