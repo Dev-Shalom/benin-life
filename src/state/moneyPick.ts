@@ -52,9 +52,14 @@ interface PickStore {
   notices: PickNotice[];
   /** Counter visible until (Date.now ms); 0 = hidden. */
   counterUntil: number;
+  /** Players caught picking money: user id -> show the 🙈 tag over their head until (Date.now ms). */
+  shamed: Record<string, number>;
 }
 
-export const usePick = create<PickStore>(() => ({ drops: [], notices: [], counterUntil: 0 }));
+export const usePick = create<PickStore>(() => ({ drops: [], notices: [], counterUntil: 0, shamed: {} }));
+
+/** How long the 🙈 tag stays over a picker's head. */
+export const SHAME_MS = 15_000;
 
 const timers = new Map<number, number[]>();
 let gen = 0; // bumps on clear: late responses for an old club are ignored
@@ -181,9 +186,18 @@ export function pushPickNotice(a: Announcement) {
   if (usePick.getState().notices.some((n) => n.id === a.id)) return;
   const n: PickNotice = { id: a.id, kind: a.kind, username: a.username, amount: Number(a.amount) || 0, text: a.text, vip: !!a.vip };
   usePick.setState((s) => ({ notices: [...s.notices, n].slice(-3) }));
+  if (a.kind === 'pick' && a.user_id) {
+    const uid = a.user_id;
+    const until = Date.now() + SHAME_MS;
+    usePick.setState((s) => ({ shamed: { ...s.shamed, [uid]: until } }));
+    window.setTimeout(() => usePick.setState((s) => {
+      if ((s.shamed[uid] ?? 0) > Date.now()) return s;
+      const next = { ...s.shamed }; delete next[uid]; return { shamed: next };
+    }), SHAME_MS + 50);
+  }
   window.setTimeout(() => usePick.setState((s) => ({ notices: s.notices.filter((x) => x.id !== n.id) })), noticeMs());
 }
 
 export function noticeHeadline(n: PickNotice): string {
-  return n.kind === 'pick' ? `@${n.username} is picking money! 💸` : `@${n.username} picked ${naira(n.amount)}! 🏆`;
+  return n.kind === 'pick' ? `🙈 @${n.username} is picking money!` : `@${n.username} picked ${naira(n.amount)}! 🏆`;
 }

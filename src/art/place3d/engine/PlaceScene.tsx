@@ -56,6 +56,7 @@ import { poseCrowd } from './crowdPose';
 import { readBeat } from '../../../lib/sound';
 import { makeAgents, stepAgents, type Agent } from './wander';
 import { clubStyle } from '../../clubStyle';
+import { usePick } from '../../../state/moneyPick';
 
 /** F1: camera height / distance (was 0.82): lower and more cinematic. */
 const CAM_ELEV = 0.68;
@@ -1376,6 +1377,7 @@ export default function PlaceScene(props: PlaceSceneProps) {
   const bubbleRefs = useRef(new Map<string, HTMLSpanElement>());
   const gemRef = useRef<HTMLButtonElement | null>(null);
   const [gemTaken, setGemTaken] = useState(false);
+  const shamed = usePick((s) => s.shamed);
   const [bubbles, setBubbles] = useState<{ who: string; text: string; kind: 'npc' | 'player' | 'me' | 'hype'; n: number }[]>([]);
   const bubbleTimers = useRef(new Map<string, number>());
   const bubbleN = useRef(0);
@@ -1585,6 +1587,7 @@ export default function PlaceScene(props: PlaceSceneProps) {
             className={`place3d__pill${p.player ? ' is-player' : ' is-npc'}${p.seated && !p.player ? ' is-seated' : ''}`}
             title={p.role} onClick={() => onTapPerson(p.id)}>
             {p.player && <i className="place3d__dot" />}{p.name}
+            {p.player && shamed[p.id] ? <b className="place3d__shame" title="Caught picking money">🙈 picker</b> : null}
           </span>
         ))}
         {bubbles.map((b) => (
