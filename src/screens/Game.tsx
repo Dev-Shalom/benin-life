@@ -52,6 +52,7 @@ import { startPoller, trackSubscribe, usePollMode } from '../lib/realtime';
 import { IX_ROLE, loadInteractionTypes, type InteractionType } from '../api/interactions';
 import { HouseInteractSheet, InteractPrompts, type Prompt, type Waiting } from './game/HouseInteract';
 import { HypeStrip, HypeTakeover } from './game/Hype';
+import { MoneyPickLayer } from './game/MoneyPick';
 import { useHypeLive } from '../state/hype';
 import { useEventsLive } from '../state/events';
 import { EventBanner, useEventBadges } from './game/Events';
@@ -850,6 +851,7 @@ export default function Game() {
 
       {!clean && <TopPill state={state} clock={clock} />}
       <HypeTakeover mcName={people?.npcs.find((n) => n.motion === 'hype')?.name ?? 'MC Lightning'} />
+      <MoneyPickLayer />
       <HypeStrip top={insets.narrow ? 14 : 72}
         onOpen={(id) => { if (id !== state.location.id || state.travel) setMapOpen(true); select(id); }} />
       {!clean && (

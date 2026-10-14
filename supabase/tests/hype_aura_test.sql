@@ -35,11 +35,11 @@ begin
     perform pg_temp.assert((select count(*) from hype_templates where kind = r.k and active) >= 15,
       r.k || ' has >= 15 active lines: ' || (select count(*) from hype_templates where kind = r.k and active));
   end loop;
-  perform pg_temp.assert(not exists (select 1 from hype_templates where active and line not like '%{name}%'), 'every line names the player');
+  perform pg_temp.assert(not exists (select 1 from hype_templates where active and kind not in ('pick', 'pick_top') and line not like '%{name}%'), 'every line names the player');
   perform pg_temp.assert(not exists (select 1 from hype_templates where kind = 'bottles' and line not like '%{bottles}%'), 'every bottles line counts');
   perform pg_temp.assert(not exists (select 1 from hype_templates where ticker <> '' and (ticker not like '%{name}%' or ticker not like '%{place}%')), 'tickers have name + place');
   perform pg_temp.assert(not exists (select 1 from hype_templates where char_length(ticker) > 60), 'tickers are short');
-  perform pg_temp.assert(not exists (select 1 from hype_templates where kind <> 'vip_arrival' and active and ticker = ''), 'club lines have a ticker');
+  perform pg_temp.assert(not exists (select 1 from hype_templates where kind not in ('vip_arrival', 'pick', 'pick_top') and active and ticker = ''), 'club lines have a ticker');
   perform pg_temp.assert(not exists (select 1 from hype_templates where kind = 'vip_arrival' and (line not like '%@{name}%' or line not like '%{place}%')), 'arrival lines have @name + place');
   raise notice 'ok 1: >= 15 lines per kind';
 end $$;

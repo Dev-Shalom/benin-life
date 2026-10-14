@@ -11,6 +11,8 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { startPoller, trackSubscribe, usePollMode } from '../lib/realtime';
 import { playHype } from '../lib/sound';
+import { moneyDropsLive, type MoneyDrop } from '../api/moneyPick';
+import { addDrop, clearDrops, pushPickNotice } from './moneyPick';
 
 export interface Announcement {
   id: number;
@@ -92,6 +94,12 @@ function onClubRow(a: Announcement) {
   if (a.location_id !== s.locationId || s.recent.some((x) => x.id === a.id)) return;
   if (!s.inClub && a.kind !== 'vip_arrival') return;
   useHype.setState({ recent: [...s.recent, a].slice(-20) });
+  // SP2: "@name is picking money!" / the top picker: a small notice + the hype man's line, never a takeover
+  if (a.kind === 'pick' || a.kind === 'pick_top') {
+    pushPickNotice(a);
+    window.dispatchEvent(new CustomEvent('bl:hype', { detail: { text: a.text, kind: a.kind } }));
+    return;
+  }
   if (s.banner) useHype.setState({ queue: [...s.queue, a].slice(-3) });
   else {
     useHype.setState({ queue: [a] });
@@ -165,8 +173,18 @@ export function useHypeLive(clubId: string | null, uid: string | null, inClub = 
   useEffect(() => {
     window.clearTimeout(bannerTimer);
     useHype.setState({ locationId: clubId, inClub, recent: [], banner: null, queue: [] });
+    clearDrops(); // SP2: leaving the club stops picking
     if (!clubId || !uid) return;
     let alive = true;
+    // SP2: notes already on the floor when you walk in / reconnect
+    const loadDrops = async (): Promise<{ pollS: number; maxId: number }> => {
+      const none = { pollS: 3, maxId: 0 };
+      if (!inClub) return none;
+      const r = await moneyDropsLive(clubId).catch(() => null);
+      if (!alive || useHype.getState().locationId !== clubId || !r) return none;
+      if (r.enabled) for (const d of r.drops) addDrop(d);
+      return { pollS: Math.max(1, Number(r.poll_s) || 3), maxId: Math.max(0, ...r.drops.map((d) => d.id)) };
+    };
     const load = async () => {
       const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
       const { data } = await supabase.from('place_announcements').select('*')
@@ -193,17 +211,37 @@ export function useHypeLive(clubId: string | null, uid: string | null, inClub = 
         for (const a of rows) onClubRow(a);
       }, () => (inClub ? 60_000 : 180_000), { immediate: true });
       void load();
-      return () => { alive = false; p.stop(); };
+      // SP2 poll mode: check for notes every club.pick_poll_s (3 s) in a club; a new drop pulls the club's lines at
+      // once (the spray takeover) and again as it ends (who picked, the top picker)
+      let pollS = 3;
+      let seen = 0;
+      const dp = inClub ? startPoller(async () => {
+        const r = await loadDrops();
+        pollS = r.pollS;
+        if (r.maxId > seen) {
+          seen = r.maxId;
+          p.kick(0);
+          window.setTimeout(() => { if (alive) p.kick(0); }, 7000);
+        }
+      }, () => pollS * 1000, { immediate: true }) : null;
+      return () => { alive = false; p.stop(); dp?.stop(); clearDrops(); };
     }
-    const ch = trackSubscribe(supabase
+    let chan = supabase
       .channel(`hype-${clubId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'place_announcements', filter: `location_id=eq.${clubId}` },
-        (p) => onClubRow(p.new as Announcement)), 'hype-club', (status) => {
-      if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') void load();
+        (p) => onClubRow(p.new as Announcement));
+    // SP2: money drops on the same channel (no extra connection)
+    if (inClub) {
+      chan = chan.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'money_drops', filter: `location_id=eq.${clubId}` },
+        (p) => addDrop(p.new as MoneyDrop));
+    }
+    const ch = trackSubscribe(chan, 'hype-club', (status) => {
+      if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') { void load(); void loadDrops(); }
     });
     clubCh = ch;
     return () => {
       alive = false;
+      clearDrops();
       void supabase.removeChannel(ch);
       if (clubCh === ch) clubCh = null;
     };

@@ -71,4 +71,55 @@ Totals are kept in `player_spray` (server-only).
 - Cards: `src/screens/game/PlaceCard.tsx`, `src/panels/ActivitiesPanel.tsx`
 - Admin: Settings → Clubs (all numbers), Content → Hype lines (the pools)
 
-Not built yet: picking up the sprayed notes (a later task).
+# Pick the money (SP2)
+
+Every spray (normal and VIP) drops part of the money on the floor. Everyone else in the club taps the notes to put
+cash in their pocket.
+
+## Rules (all in Admin → Settings → Clubs)
+
+| Key | Default | Meaning |
+|---|---|---|
+| `club.pick_enabled` | on | Master switch. Off = sprays work, no drop, `money_pick` refuses. |
+| `club.pick_pct` | 20 | Share of the spray that falls. It comes **out of** the sprayed money: the sprayer pays nothing extra, the other 80 % and every unpicked note leave the economy. |
+| `club.pick_seconds` | 5 | Notes stay this long, then vanish. |
+| `club.pick_note` | 10,000 | Naira per tap, added to **cash**. A share under one note = no drop. |
+| `club.pick_grace_s` | 1.5 | A late batch still counts this long after expiry (network delay). |
+| `club.pick_max_taps_per_sec` | 12 | Anti-cheat: counted taps <= (seconds since the drop + 0.5) x this. |
+| `club.pick_max_per_player` | 50 | Most taps one player can count per drop (so at most ₦500k). |
+| `club.pick_self` | off | On = the sprayer can pick their own drop. |
+| `club.pick_summary` | on | When a drop ends the MC names the top picker. |
+| `club.pick_poll_s` | 3 | Slow-mode (poll fallback) check interval. |
+
+Example: ₦1M spray = ₦200k drop = 20 notes. ₦2T spray = ₦400B drop (40M notes), but a player still gets 50 taps at most.
+
+## Server
+
+- `spray_custom` creates the row in `money_drops` (`bl_money_drop_create`) and returns it as `drop` (patched by a
+  guarded replacement of the live function definition; the migration fails loudly if the anchor ever changes).
+- `money_pick(p_drop, p_taps)`: the client batches taps (~300 ms). The drop row is locked `FOR UPDATE`, so racing
+  pickers can never take `remaining` below zero. Checks: in that club now, not on the road / in a cell / in hospital,
+  not the sprayer (unless `pick_self`), not past expiry + grace (returns `expired`, no error, and settles the drop),
+  the rate allowance and the per-player cap. Credits `min(taps, allowance left, notes left)` x note to cash; ledger
+  reason `money_pick`, shown as "Picked money at <club>". All bigint arithmetic.
+- `money_drops_live(p_location)`: active drops with `ms_left` (server clock), for the poll fallback and players who
+  walk in mid-drop. `money_drops` is readable by players (RLS) and published for Realtime; `money_drop_picks` is server-only.
+- **Announcements:** a player's first pick in a drop writes `place_announcements` kind `pick`: "@username is picking
+  money! 💸" plus an MC line from the pool `pick` (12 lines, `{user}`, non-repeating via `bl_hype_pick`). At most once per
+  player per drop. When the drop is empty or ends, one `pick_top` line "@top picked ₦X" (pool `pick_top`).
+
+## Client
+
+- `src/screens/game/MoneyPick.tsx` + `src/styles/moneyPick.css`: falling notes (green, **gold for VIP**) on a layer at
+  z 86, above the hype takeover (z 80). The layer is `pointer-events: none`; only notes take taps (pointerdown), so the
+  takeover's "Tap to skip" and the notes never swallow each other. A live "+₦X" counter, a coin ting per tap. The
+  sprayer's own notes fall but cannot be tapped.
+- `src/state/moneyPick.ts`: drops, batched taps (one call per drop every 300 ms, one in flight), the counter, the pick
+  notices. `src/state/hype.ts` feeds drops from Realtime (INSERT on `money_drops`, same channel as the hype feed), the
+  poll fallback and the spray result; leaving the club clears everything.
+- Admin: Settings → Clubs (numbers), Content → Hype lines (kinds `pick`, `pick_top`).
+
+## Files
+
+`supabase/migrations/20261012001660_money_pick.sql`, `supabase/tests/money_pick_test.sql`, `src/api/moneyPick.ts`,
+`src/state/moneyPick.ts`, `src/screens/game/MoneyPick.tsx`, `src/styles/moneyPick.css`.
