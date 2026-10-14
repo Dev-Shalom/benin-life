@@ -1,3 +1,7 @@
+-- 20261014000500 made Yahoo fairer (lower catch chances, laptop seized 35 %, half the balance taken). This file pins
+-- the original Y1 numbers so its maths stays exact; group 14 at the end covers the fairer busts. Rolled back.
+update yahoo_jobs set caught_pct = case id when 'chat_client' then 20 when 'romance_job' then 25 when 'big_job' then 35 when 'cash_out' then 32 else caught_pct end;
+update game_config set value = '100' where key in ('yahoo.seize_laptop_pct', 'yahoo.confiscate_pct');
 -- Y1 Yahoo lifestyle (20261012001600_yahoo.sql). Rolled back. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/yahoo_test.sql
 -- Time moves with bl.test_offset_seconds; rolls are pinned with bl.test_rand (bl_rand).
@@ -511,4 +515,28 @@ begin
   perform pg_temp.login(b);
   perform pg_temp.assert(pg_temp.hint_of(format('select admin_yahoo_player(%L)', a)) <> 'ok', 'non-admin refused');
   raise notice 'ok 13: RLS / admin';
+end $$;
+
+-- 14 fairer busts (20261014000500): laptop seized only on its own roll, only part of the yahoo balance taken.
+do $$
+declare a uuid := current_setting('y1.c')::uuid; d bigint; r jsonb;
+begin
+  update game_config set value = '0' where key = 'yahoo.seize_laptop_pct';
+  update game_config set value = '50' where key = 'yahoo.confiscate_pct';
+  perform pg_temp.login(a);
+  perform pg_temp.advance(4000);
+  perform pg_temp.at(a);
+  perform pg_temp.laptop(a, 'elitebook_840');
+  perform bl_yahoo_row(a, true);
+  update yahoo_players set mifi_until = bl_now() + interval '30 days' where user_id = a;
+  perform pg_temp.run(a, 'chat_client', '0.99');
+  d := (select dirty from yahoo_players where user_id = a);
+  perform pg_temp.advance(400);
+  perform pg_temp.at(a);
+  r := pg_temp.run(a, 'romance_job', '0.0');
+  perform pg_temp.assert(r->>'status' = 'caught', 'fair: caught');
+  perform pg_temp.assert((r->>'seized')::bigint = floor(d * 0.5), 'fair: half the balance taken');
+  perform pg_temp.assert((select dirty from yahoo_players where user_id = a) = d - floor(d * 0.5), 'fair: half kept');
+  perform pg_temp.assert(pg_temp.qty(a, 'elitebook_840') = 1, 'fair: laptop kept when the seize roll misses');
+  raise notice 'ok 14: fairer EFCC busts';
 end $$;
