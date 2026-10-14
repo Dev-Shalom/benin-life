@@ -13,8 +13,10 @@ import { receiptDate, receiptKindEmoji } from '../ReceiptSheet';
 import { Button, toast } from '../../../ui';
 import { AmountBox } from '../../../panels/bank/BankUI';
 import { realWait, useBankInfo, useGoTo } from '../../../panels/bank/bankHooks';
+import { InvestTab, SaveTab } from './invest/InvestApp';
+import '../../../styles/invest.css';
 
-type Tab = 'send' | 'history' | 'receipts' | 'where';
+type Tab = 'send' | 'save' | 'invest' | 'history' | 'receipts' | 'where';
 
 function History({ active }: { active: boolean }) {
   const [rows, setRows] = useState<LedgerRow[] | null>(null);
@@ -153,7 +155,7 @@ export default function BankApp({ state }: { state: GameState }) {
       </div>
       <div className="bank-row"><span>Cash in pocket</span><b>{naira(p.cash)}</b></div>
       <div className="chop__tabs" role="tablist">
-        {([['send', '💸 Send'], ['history', '📜 History'], ['receipts', '🧾 Receipts'], ['where', '📍 Where']] as const).map(([id, label]) => (
+        {([['send', '💸 Send'], ['save', '🐷 Save'], ['invest', '📈 Invest'], ['history', '📜 History'], ['receipts', '🧾 Receipts'], ['where', '📍 Where']] as const).map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} className={`chop__tab${tab === id ? ' is-on' : ''}`}
             onClick={() => setTab(id)}>{label}</button>
         ))}
@@ -197,6 +199,9 @@ export default function BankApp({ state }: { state: GameState }) {
           </p>
         </div>
       ))}
+
+      {tab === 'save' && <SaveTab active={tab === 'save'} goWhere={() => setTab('where')} />}
+      {tab === 'invest' && <InvestTab active={tab === 'invest'} goWhere={() => setTab('where')} />}
 
       {tab === 'history' && <History active={tab === 'history'} />}
       {tab === 'receipts' && <Receipts active={tab === 'receipts'} />}

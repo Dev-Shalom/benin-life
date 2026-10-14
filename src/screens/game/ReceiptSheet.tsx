@@ -6,10 +6,10 @@ import { useUi } from '../../state/ui';
 import { Button, Logo, Modal } from '../../ui';
 
 const KIND_LABEL: Record<string, string> = {
-  furniture: 'Furniture', car: 'Vehicle', shop: 'Shop', garage: 'Garage build', house: 'House move-in', boutique: 'Boutique',
+  invest: 'Invest', furniture: 'Furniture', car: 'Vehicle', shop: 'Shop', garage: 'Garage build', house: 'House move-in', boutique: 'Boutique',
 };
 const KIND_EMOJI: Record<string, string> = {
-  furniture: '🛋️', car: '🚗', shop: '🛍️', garage: '🏗️', house: '🏠', boutique: '👗',
+  invest: '📈', furniture: '🛋️', car: '🚗', shop: '🛍️', garage: '🏗️', house: '🏠', boutique: '👗',
 };
 
 export function receiptKindEmoji(kind: string) {
