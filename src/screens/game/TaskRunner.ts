@@ -16,6 +16,8 @@ import { activityIcon, useTasks, type TaskKind } from '../../state/tasks';
 import { toast } from '../../ui';
 import { afterPurchase } from '../../state/garage';
 import { useShrine } from '../../state/shrine';
+import { hustleStart } from '../../api/hustles';
+import { useHustles } from '../../state/hustles';
 
 /** Walks to a task longer than this (real ms) give up and start anyway (e.g. the canvas went away). */
 const WALK_TIMEOUT_MS = 20_000;
@@ -110,6 +112,14 @@ export function useTaskRunner(state: GameState | null, homeLive: boolean, placeL
         type Res = { car?: boolean; item?: string; message?: string; busy_until?: string; used?: string[]; rent_penalty?: boolean; robbed?: { amount?: number } | null;
           visit_id?: number; service_id?: string };
         const kind = c.kind ?? 'activity';
+        // E2: a side hustle (its own timer; the hustle store rolls the outcome when it ends)
+        if (kind === 'hustle') {
+          const h = await hustleStart(c.id);
+          if (useTasks.getState().current?.uid === uid) useTasks.getState().patchCurrent({ phase: 'running', busyUntil: h.busy_until });
+          useHustles.getState().started({ id: h.run_id, hustle_id: h.hustle_id, name: h.name, icon: h.icon, started_at: h.started_at, resolve_at: h.resolve_at,
+            status: 'running', cost: h.cost, amount: 0, outcome: null });
+          return;
+        }
         const res =
           kind === 'shift'
             ? await rpc<Res>('work_shift')

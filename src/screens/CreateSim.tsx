@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { AvatarStage, defaultAvatar, randomAvatar } from '../art/avatar3d';
+import { claimStoredReferral } from '../lib/referral';
 import { chooseStartHome, createProfileV2, getCreatorCatalog, needsHome } from '../api/creator';
 import { errorMessage, GameError } from '../lib/api';
 import { CREATOR, P, WEEKDAYS, originCopy } from '../lib/pidgin';
@@ -108,6 +109,7 @@ export default function CreateSim() {
     try {
       const st = await createProfileV2({ username, gender: avatar.gender, avatar, traits, dream });
       try { window.localStorage.setItem('bl.journey.new-profile', st.profile.id); } catch { /* private browsing */ }
+      void claimStoredReferral(); // E2: the ?ref= code from the invite link (silent; the server decides)
       setFreshRoll(true);
       setStep(LOTTERY);
       applyState(st);

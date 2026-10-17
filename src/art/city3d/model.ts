@@ -58,6 +58,8 @@ const ID_EMOJI: Record<string, string> = {
   versus_lounge: '🍸',
   club_raptor: '🦖',
   patricia_nightlife: '🥂',
+  ikpoba_riverbank: '🎣',
+  mechanic_village: '🔧',
 };
 
 export const placeEmoji = (l: Pick<Location, 'id' | 'scene'>) => ID_EMOJI[l.id] ?? SCENE_EMOJI[l.scene] ?? '📍';

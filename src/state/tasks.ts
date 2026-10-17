@@ -8,7 +8,7 @@
 import { create } from 'zustand';
 import type { HomeGroup } from '../art/home3d/model';
 
-export type TaskKind = 'activity' | 'shift' | 'buy' | 'shrine';
+export type TaskKind = 'activity' | 'shift' | 'buy' | 'shrine' | 'hustle';
 
 export interface TaskItem {
   uid: string;

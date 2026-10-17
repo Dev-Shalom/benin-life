@@ -4,6 +4,9 @@
 -- real · 3 place_interior shape + merge · 4 club hours · 5 prices + effects + Mama Ebo sold out + Risky ·
 -- 6 car purchase unlocks own-car travel · 7 admin edits zones, players can't.
 
+-- Weekend club prices (x1.5 on Fri/Sat) would make the exact-price checks depend on the day the suite runs.
+update public.game_config set value = '1'::jsonb where key = 'club.weekend_price_mult';
+
 create or replace function pg_temp.pl_hint(p_sql text, p_hint text) returns text
 language plpgsql as $$
 declare v_h text; v_m text;

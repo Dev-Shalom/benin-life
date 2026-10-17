@@ -2,6 +2,7 @@
 // One white card on the sky: logo + tagline above, a segmented switch, filled pill inputs with helper text.
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { storedReferral } from '../lib/referral';
 import { supabase } from '../lib/supabase';
 import { authErrorMessage, randomGreeting } from '../lib/pidgin';
 import { useGame } from '../state/game';
@@ -109,7 +110,7 @@ export default function Auth() {
         const { data, error } = await supabase.auth.signUp({
           email: em,
           password,
-          options: { data: { age_confirmed: true, age_confirmed_at: new Date().toISOString() } },
+          options: { data: { age_confirmed: true, age_confirmed_at: new Date().toISOString(), ...(storedReferral() ? { referral_code: storedReferral() } : {}) } },
         });
         if (error) throw error;
         if (!data.session) {

@@ -24,6 +24,9 @@ import { placeEmoji } from '../../art/city3d';
 import { deriveStatus } from './status';
 import { queueTask } from './TaskRunner';
 import { useShrine } from '../../state/shrine';
+import { hustleBuy } from '../../api/hustles';
+import { useGame } from '../../state/game';
+import { useHustles } from '../../state/hustles';
 import { useSpray } from '../../state/spray';
 import { getCfg } from '../../lib/config';
 
@@ -144,21 +147,23 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
   const [armed, setArmed] = useState(false);
   const p = state.profile;
   const shrine = a.kind === 'shrine';
+  const hustle = a.kind === 'hustle';
   // SP1: the spray card opens the Spray money sheet (choose the amount); VIP section = VIP spray
   const spray = a.kind === 'activity' && a.ref === 'spray_money';
   const sprayVip = spray && zone.key === 'vip';
   const sprayMin = Number(getCfg(sprayVip ? 'club.vip_spray_min' : 'club.spray_min', sprayVip ? 100000 : 1000)) || 1000;
-  const secs = spray ? null : shrine ? (a.seconds ?? null) : a.kind === 'activity' ? Math.round(activitySeconds({ game_minutes: a.game_minutes ?? 30, effects: a.effects ?? null, max_seconds: a.max_seconds, min_seconds: a.min_seconds, scale_by_need: a.scale_by_need }, p, cfg)) : null;
+  const secs = spray ? null : shrine || (hustle && !a.instant) ? (a.seconds ?? null) : a.kind === 'activity' ? Math.round(activitySeconds({ game_minutes: a.game_minutes ?? 30, effects: a.effects ?? null, max_seconds: a.max_seconds, min_seconds: a.min_seconds, scale_by_need: a.scale_by_need }, p, cfg)) : null;
   const car = a.kind === 'shop' && a.category === 'vehicle';
   const cost = a.cost ?? 0;
-  const money = car ? p.cash + p.bank : p.cash;
-  const broke = (a.kind === 'activity' || a.kind === 'shop' || shrine) && (spray ? sprayMin > money : cost > money);
+  const money = car || hustle ? p.cash + p.bank : p.cash;
+  const broke = (a.kind === 'activity' || a.kind === 'shop' || shrine || hustle) && (spray ? sprayMin > money : cost > money);
   const owned = car && (a.owned ?? 0) > 0;
   // B2: a charm of that kind still works / offerings missing from the Bag
   const missing = shrine ? (a.missing ?? []) : [];
   const charmLock = shrine && a.charm_until ? (a.ref === 'money_charm' ? 'You carry one already' : 'Your charm is still working') : null;
   const lock = a.locked ?? (owned ? 'You own this one' : charmLock ?? (missing.length ? `Missing ${missing.map((m) => `${m.need - m.have} ${m.name.toLowerCase()}`).join(', ')}`
     : broke ? (car ? 'Not enough money' : 'Not enough cash') : null)) ?? blocked;
+  const cooling = hustle && a.cooldown_until && Date.parse(a.cooldown_until) > serverNow();
   useEffect(() => {
     if (!armed) return;
     const t = window.setTimeout(() => setArmed(false), 4000);
@@ -184,6 +189,13 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
       select(locId, 'jobs');
       return;
     }
+    // E2: stall rent / car service are instant buys; other hustles line up like any action
+    if (hustle && !lock) {
+      if (a.instant) {
+        void hustleBuy(a.ref).then((r) => { toast(r.message, 'good'); void useGame.getState().refresh(); void useHustles.getState().load(); }).catch((e) => toast(errorMessage(e), 'bad'));
+        return;
+      }
+    }
     if (lock) {
       // L4: an event card without a ticket opens the place sheet (On today → Buy ticket)
       if (a.event?.state === 'ticket') {
@@ -200,6 +212,7 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
     setArmed(false);
     const walkTo = WALK_LABEL(zone);
     if (shrine) queueTask({ id: a.ref, name: a.name }, locId, { kind: 'shrine', zone: zone.key, walkTo, icon: a.icon });
+    else if (hustle) queueTask({ id: a.ref, name: a.name }, locId, { kind: 'hustle', zone: zone.key, walkTo, icon: a.icon });
     else if (a.kind === 'job') queueTask({ id: a.ref, name: 'Work a shift' }, locId, { kind: 'shift', zone: zone.key, walkTo, icon: a.icon });
     else if (a.kind === 'shop') queueTask({ id: a.ref, name: `Buy ${a.name}` }, locId, { kind: 'buy', zone: zone.key, walkTo, icon: a.icon, qty: 1 });
     else queueTask({ id: a.ref, name: a.name, home_only: a.home_only }, locId, { zone: zone.key, walkTo, icon: a.icon });
@@ -208,10 +221,13 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
   let price: React.ReactNode = null;
   if (a.kind === 'job') price = a.pay ? <span className="pc-act__earn">Earns {nairaShort(a.pay)}</span> : null;
   else if (a.kind === 'panel') price = null;
+  else if (hustle) price = a.instant ? <span className="pc-act__price" title={naira(cost)}>{naira(cost)}</span>
+    : (a.pay_max ?? 0) > 0 ? <span className="pc-act__earn" title={`${naira(a.pay_min ?? 0)} to ${naira(a.pay_max ?? 0)}`}>Earns {nairaShort(a.pay_min ?? 0)}–{nairaShort(a.pay_max ?? 0)}</span>
+    : <span className="pc-act__earn">Catch fish</span>;
   else if (spray) price = <span className="pc-act__price" title={`From ${naira(sprayMin)}`}>From {nairaShort(sprayMin)}</span>;
   else price = cost > 0 ? <span className="pc-act__price" title={naira(cost)}>{car || (shrine && cost >= 100000) ? nairaShort(cost) : naira(cost)}</span> : <span className="pc-act__free">Free</span>;
 
-  const verb = spray ? 'Choose amount' : a.kind === 'panel' || (a.kind === 'job' && !a.mine) ? 'Choose' : armed ? `Tap again · ${nairaShort(cost)}` : idle ? null : 'Add to queue';
+  const verb = spray ? 'Choose amount' : a.kind === 'panel' || (a.kind === 'job' && !a.mine) ? 'Choose' : hustle && a.instant ? 'Tap to buy' : armed ? `Tap again · ${nairaShort(cost)}` : idle ? null : 'Add to queue';
   return (
     <button type="button" className={`pc-act${a.event ? ' is-event' : ''}${lock && a.kind !== 'panel' && !(a.kind === 'job' && !a.mine) ? ' is-locked' : ''}${armed ? ' is-armed' : ''}`} onClick={go}
       aria-label={`${a.name}${secs ? `, ${secs} seconds` : ''}${spray ? `, from ${naira(sprayMin)}` : cost ? `, ${naira(cost)}` : ''}${lock ? `, ${lock}` : ''}`}>
@@ -228,6 +244,10 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
       <span className="pc-act__name">{a.name}</span>
       {a.kind === 'job' && a.title && <span className="pc-act__sub">{a.mine ? a.title : `Start as ${a.title}`}</span>}
       {car && <span className="pc-act__sub">{owned ? 'In your Bag' : 'Unlocks "Your car" rides'}</span>}
+      {hustle && !a.instant && (cost > 0 || a.cap_left != null) && (
+        <span className="pc-act__sub">{cost > 0 ? `Costs ${naira(cost)}` : 'No cost'}{a.cap_left != null ? ` · ${a.cap_left} left today` : ''}{cooling ? ' · cooling down' : ''}</span>
+      )}
+      {hustle && a.note && !lock && <span className="pc-act__sub">{a.note}</span>}
       {a.kind === 'shop' && !car && (a.owned ?? 0) > 0 && <span className="pc-act__sub">{a.owned} in your Bag</span>}
       {shrine && a.effect && <span className="pc-act__sub">{a.effect} · {a.duration}</span>}
       {shrine && a.offerings && (

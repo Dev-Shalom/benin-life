@@ -2,7 +2,7 @@
 import { rpc } from '../lib/api';
 import type { SceneType } from '../lib/types';
 
-export type ZoneActionKind = 'activity' | 'job' | 'shop' | 'panel' | 'shrine';
+export type ZoneActionKind = 'activity' | 'job' | 'shop' | 'panel' | 'shrine' | 'linkup' | 'hustle';
 
 export interface ZoneAction {
   /** zone_actions.id */
@@ -43,6 +43,13 @@ export interface ZoneAction {
   missing?: { item: string; name: string; icon: string | null; need: number; have: number }[];
   note?: string | null;
   charm_until?: string | null;
+  /** E2 hustle cards (kind 'hustle', ref = hustles.id): pay range now, runs left today, cooldown end, instant buys (stall rent, car service). */
+  pay_min?: number;
+  pay_max?: number;
+  cap_left?: number | null;
+  cooldown_until?: string | null;
+  instant?: boolean;
+  hustle_kind?: string;
   /** Why it can't be done now ("Opens 9 PM", "Night only", "Only in your own home"), or null. */
   locked: string | null;
 }

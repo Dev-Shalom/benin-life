@@ -5,6 +5,9 @@
 -- gives cred, buys a round and always announces · 6 bottles count up · 7 non-club spends don't announce ·
 -- 8 publication + admin spec.
 
+-- Weekend club prices (x1.5 on Fri/Sat) would make the exact-price checks depend on the day the suite runs.
+update public.game_config set value = '1'::jsonb where key = 'club.weekend_price_mult';
+
 create or replace function pg_temp.hy_at_hour(p_hour int) returns void
 language plpgsql as $$
 declare c jsonb; cur numeric; delta numeric;

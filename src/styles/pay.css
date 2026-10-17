@@ -118,7 +118,7 @@
 .rk-tabs {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   padding: 3px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.08);
@@ -127,7 +127,7 @@
   min-height: 36px;
   border: 0;
   border-radius: 9px;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   color: rgba(243, 241, 234, 0.7);
   background: transparent;
@@ -300,3 +300,9 @@
   .rk-pod { animation: none; }
   .rk-refresh.is-spinning svg, .topup__spin { animation-duration: 1.6s; }
 }
+
+/* E2 weekly top earners */
+.rk-week { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; padding: 10px 12px; border-radius: 14px; background: rgba(243, 195, 90, 0.18); font-weight: 700; font-size: 13px; }
+.rk-week { color: #ffe9b0; }
+.rk-week small { flex-basis: 100%; font-weight: 500; font-size: 12px; color: rgba(255, 255, 255, 0.72); }
+.rk-week--last { display: grid; gap: 4px; background: rgba(120, 130, 145, 0.12); }

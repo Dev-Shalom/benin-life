@@ -26,7 +26,7 @@ export type AdminTable =
   | 'origin_tiers' | 'traits' | 'dreams' | 'start_homes' | 'career_tracks' | 'career_levels'
   | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture' | 'starter_furniture'
   | 'place_zones' | 'zone_actions' | 'place_moods' | 'npc_roster' | 'crowd_profiles' | 'hype_templates' | 'place_events' | 'topup_packs'
-  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'yahoo_ranks' | 'invest_products' | 'invest_markets';
+  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'yahoo_ranks' | 'invest_products' | 'invest_markets' | 'hustles' | 'hustle_car_classes' | 'hustle_fish';
 
 export interface PlayerRow {
   id: string;
@@ -102,6 +102,15 @@ export interface JailCaseRow {
   escape_attempts: number; jail_seconds: number; jail_until: string; created_at: string; place: string | null;
 }
 
+export interface EarnOverview {
+  referrals: { total: number; pending: number; rewarded: number; rejected: number; paid: number;
+    rows: { id: number; inviter: string; inviter_id: string; new_player: string; new_id: string; code: string; status: string; reason: string | null;
+            play_minutes: number; bonus_referrer: number; bonus_referred: number; created_at: string; rewarded_at: string | null }[] };
+  weeks: { week_start: string; settled_at: string; skipped: boolean; players: number; earned: number;
+           winners: { rank: number; username: string; total: number; prize: number }[] }[];
+  tips: { total: number; amount: number; rows: { id: number; from: string; to: string; amount: number; note: string | null; created_at: string }[] };
+}
+
 export const adminApi = {
   configList: () => rpc<ConfigRow[]>('admin_config_list'),
   configSet: (key: string, value: unknown) => rpc<Msg & { changed: boolean }>('admin_config_set', { p_key: key, p_value: value }),
@@ -133,6 +142,8 @@ export const adminApi = {
   setOrigin: (id: string, origin: string, applyPerks: boolean) =>
     rpc<Msg>('admin_set_origin', { p_user: id, p_origin: origin, p_apply_perks: applyPerks }),
   stats: () => rpc<Stats>('admin_stats'),
+  /** E2: referrals, weekly winners and tips (docs/HUSTLES.md). */
+  earnOverview: (limit = 100) => rpc<EarnOverview>('admin_earn_overview', { p_limit: limit }),
   audit: (limit = 150) => rpc<AuditEntry[]>('admin_audit_list', { p_limit: limit }),
   payments: (status: string | null, search: string | null) => rpc<PaymentsData>('admin_payments', { p_status: status, p_search: search, p_limit: 200 }),
   chatReports: () => rpc<ChatReport[]>('admin_chat_reports', { p_include_hidden: true }),

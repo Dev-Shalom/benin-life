@@ -556,6 +556,9 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   patricia_nightlife: { short: 'Patricia Nightlife', tier: 2, side: 'r' },
   // B2 Baba's Shrine (docs/BABALAWO.md), outskirts
   babas_shrine: { short: "Baba's Shrine", tier: 1, side: 'l' },
+  // E2 hustle places (docs/HUSTLES.md)
+  ikpoba_riverbank: { short: 'Ikpoba River', tier: 2, side: 'b' },
+  mechanic_village: { short: 'Mechanic Village', tier: 2, side: 'r' },
 };
 
 export function shortName(id: string, name: string): string {
