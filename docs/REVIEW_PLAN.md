@@ -23,13 +23,15 @@ The owner decided:
    - Also from the earlier queue: the HK Quarters map place and the Elon format job.
 9. **R7 Friends and the lounge:**
    - A Friends tab in Messages showing who is online, with invites to places and missions.
-   - A members' lounge open all day.
+   - A members' lounge open all day, with membership rules (a fee or level to join) and member perks.
+   - Challenges done with friends count towards the daily and weekly goals.
 10. **R8 House upgrade:** expand the house you own instead of buying a new one.
-11. **R9 Player trading:** sell items and cars to other players.
+11. **R9 Player trading:** sell items, cars, houses and land to other players.
 12. **R10 Own a business:** shop, bar or filling station with daily income and upgrades.
 13. **R11 Crime gangs:** create a crew, recruit players, do group jobs.
 14. **R12 Politics:**
     - Run for councillor or governor and campaign.
     - Players vote at polling units.
     - Winners get perks and duties for a term.
+    - The governor appoints players as ministers, each with a role and perks.
 15. **Later, from the earlier queue:** Link-ups, Church/prophet, Benin Gist.
