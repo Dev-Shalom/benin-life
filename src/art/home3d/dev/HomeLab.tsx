@@ -51,9 +51,16 @@ export default function HomeLab() {
   const [origin, setOrigin] = useState<string>(q.get('o') ?? '');
   const furnished = useMemo(() => (q.get('show') ? showroom() : furnishLayout(LAYOUTS[layout], SETS[origin] ?? null)), [layout, origin, q]);
   const avatar = useMemo(() => defaultAvatar(q.get('g') === 'female' ? 'female' : 'male'), [q]);
+  // ?cars=gwagon_g63,benz_c300&garage=garage:2 parks cars so the tap-to-name label can be checked
+  const parking = useMemo(() => {
+    const cars = (q.get('cars') ?? '').split(',').filter(Boolean);
+    if (!cars.length) return null;
+    const [style, cap] = (q.get('garage') ?? '').split(':');
+    return { cars, names: cars.map((c) => c.replace(/_/g, ' ')), garage: style ? { style: style as 'garage' | 'carport', capacity: Number(cap) || 1 } : null };
+  }, [q]);
   return (
     <div style={{ position: 'fixed', inset: 0 }}>
-      <HomeView layoutId={layout} layout={furnished} origin={origin === 'nepo' ? 'nepo' : origin === 'lapo' ? 'lapo' : undefined} avatar={avatar} hour={hour} busy={busy ? { group: busy, key: busy } : null}
+      <HomeView layoutId={layout} parking={parking} layout={furnished} origin={origin === 'nepo' ? 'nepo' : origin === 'lapo' ? 'lapo' : undefined} avatar={avatar} hour={hour} busy={busy ? { group: busy, key: busy } : null}
         selectedId={picked} onPick={(f) => setPicked(f.id)} fallbackScene="home_flat" insetTop={70} insetBottom={110} />
       <div style={{ position: 'fixed', left: 8, top: 8, display: 'flex', gap: 6, flexWrap: 'wrap', zIndex: 5 }}>
         {(Object.keys(LAYOUTS) as HomeLayoutId[]).map((l) => (

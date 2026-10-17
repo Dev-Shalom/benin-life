@@ -233,7 +233,7 @@ export default function Game() {
     return () => { alive = false; };
   }, [atHome, homeOwnerId, garageVersion, vehicleKey]);
   const parking = useMemo(() => garage && (garage.cars.length || garage.garage)
-    ? { cars: garage.cars.map((c) => c.id), garage: garage.garage ? { style: garage.garage.style, capacity: garage.garage.capacity } : null }
+    ? { cars: garage.cars.map((c) => c.id), names: garage.cars.map((c) => c.name), garage: garage.garage ? { style: garage.garage.style, capacity: garage.garage.capacity } : null }
     : null, [garage]);
   const houseRoomId = atHome && state ? state.location.id : null;
   const pollMode = usePollMode(); // F1: Realtime full / switched off: features poll instead

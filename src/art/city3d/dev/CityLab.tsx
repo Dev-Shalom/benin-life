@@ -1,7 +1,9 @@
 // Dev page for the 3D city: /dev/city?f=palace&h=21&cur=ekenwan_room&travel=ekenwan_room,ramat_park,0.4
 // f = a close-up preset (or x,y,zoom via ?x=&y=&z=), h = game hour, cur = "you are here",
 // travel = from,to,progress, sel = selected place. Dev server only.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../../../lib/supabase';
+import type { CityBoard } from '../engine/boards';
 import { CityView } from '../CityView';
 import { DEV_LOCATIONS } from './fixture';
 import type { CityFilter } from '../model';
@@ -30,6 +32,14 @@ export default function CityLab() {
   const initial = q.get('x') ? { x: Number(q.get('x')), y: Number(q.get('y')), zoom: Number(q.get('z') ?? 20) } : { ...preset, zoom: Number(q.get('z') ?? preset.zoom) };
   const tr = q.get('travel')?.split(',');
   const travel = tr ? { from: tr[0], to: tr[1], progress: Number(tr[2] ?? 0.4) } : null;
+  // ?boards=1 shows the billboards straight from the table (house ads only), to check their footing against the roads
+  const [boards, setBoards] = useState<CityBoard[] | undefined>(undefined);
+  useEffect(() => {
+    if (!q.has('boards')) return;
+    void supabase.from('billboards').select('id,name,kind,x,y,yaw').then(({ data }) => {
+      setBoards((data ?? []).map((b) => ({ id: b.id, name: b.name, kind: b.kind, x: Number(b.x), y: Number(b.y), yaw: Number(b.yaw), ads: [] })));
+    });
+  }, [q]);
   const night = hour >= 20 || hour < 6;
   return (
     <div className={`game${night ? ' is-night' : ''}`} style={{ position: 'fixed', inset: 0 }}>
@@ -42,6 +52,7 @@ export default function CityLab() {
         hour={hour}
         travel={travel}
         initial={initial}
+        boards={boards}
         hideChrome={q.has('bare')}
         initialFilters={(q.get('filters')?.split(',') as CityFilter[] | undefined) ?? undefined}
         insetTop={q.has('bare') ? 0 : 70}

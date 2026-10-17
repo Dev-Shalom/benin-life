@@ -21,6 +21,9 @@ export interface BuiltRoom {
   /** F1: where the ceiling fan / bulb hang (layout space), null = none. */
   fan: [number, number, number] | null;
   bulb: [number, number, number];
+  /** Parked vehicles (layout space, footprint centre + size) so the scene can make them tappable. `index` is the
+   * position in Parking.cars. */
+  vehicles: { index: number; id: string; x: number; z: number; w: number; d: number }[];
 }
 
 /** F1: LAPO-type layouts get cement + peeling plaster + louvres; flat/duplex get tiles + paint. */
@@ -62,6 +65,8 @@ function tiles(b: HomeBuilder, x0: number, z0: number, x1: number, z1: number, a
 /** G1: what parks at the home (docs/GARAGE.md): owned vehicles (item ids, most expensive first) and the garage. */
 export interface Parking {
   cars: string[];
+  /** Display names, same order as `cars` (shown when a car is tapped). */
+  names?: string[];
   garage: { style: 'carport' | 'garage'; capacity: number } | null;
 }
 
@@ -117,7 +122,7 @@ function parkingSpot(L: HomeLayout): [number, number, number] {
 
 /** G1: the pad, the carport / garage structure (cut-away like the house: no roof slab over the car) and the
  * parked vehicles. Returns the footprint [x0, z0, x1, z1] so the camera frames it with the lot. */
-function buildParking(b: HomeBuilder, L: HomeLayout, P: Parking, rich: boolean, density: number): [number, number, number, number] {
+function buildParking(b: HomeBuilder, L: HomeLayout, P: Parking, rich: boolean, density: number, vehicles: BuiltRoom['vehicles']): [number, number, number, number] {
   const g = P.garage;
   const cap = g ? Math.max(1, g.capacity) : 0;
   const bays = Math.max(1, cap);
@@ -166,9 +171,15 @@ function buildParking(b: HomeBuilder, L: HomeLayout, P: Parking, rich: boolean, 
   }
   // the cars: inside up to the capacity (no garage: one on the pad), then one more on the street if there is one
   const inside = P.cars.slice(0, Math.max(1, cap));
-  inside.forEach((id, i) => drawVehicle(b, id, x0 + BAY * (i + 0.5), zm + 0.1, 0));
+  inside.forEach((id, i) => {
+    drawVehicle(b, id, x0 + BAY * (i + 0.5), zm + 0.1, 0);
+    vehicles.push({ index: i, id, x: x0 + BAY * (i + 0.5), z: zm + 0.1, w: 2.2, d: 3.6 });
+  });
   const extra = P.cars[inside.length];
-  if (extra && density >= 1) drawVehicle(b, extra, x0 + W / 2, L.lot[3] + 3.95, Math.PI / 2);
+  if (extra && density >= 1) {
+    drawVehicle(b, extra, x0 + W / 2, L.lot[3] + 3.95, Math.PI / 2);
+    vehicles.push({ index: inside.length, id: extra, x: x0 + W / 2, z: L.lot[3] + 3.95, w: 3.6, d: 2.2 });
+  }
   else if (!P.cars.length) b.box(1.8, 0.012, 0.045, (x0 + x1) / 2, 0.02, zm, '#d7d1c5', { noOcc: true });
   return [x0 - 0.2, zb - 0.2, x1 + 0.2, zf + 0.1];
 }
@@ -198,9 +209,10 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
   b.box(lx1 - lx0 + 0.5, 0.02, lz1 - lz0 + 0.5, cx, -0.03, cz, L.yard?.colour ?? '#b98a5e', { mat: rich ? 'concrete' : 'ground' });
   if (L.id === 'duplex' && !doll) buildDuplexYard(b);
   let frame: [number, number, number, number] = [lx0, lz0, lx1, lz1];
+  const vehicles: BuiltRoom['vehicles'] = [];
   if (!doll && (opts.parking || L.id === 'duplex')) {
     // the duplex always shows its paved bay; other homes only once there is a car or a garage
-    const [px0, pz0, px1, pz1] = buildParking(b, L, opts.parking ?? { cars: [], garage: null }, rich, opts.density ?? 1);
+    const [px0, pz0, px1, pz1] = buildParking(b, L, opts.parking ?? { cars: [], garage: null }, rich, opts.density ?? 1, vehicles);
     frame = [Math.min(lx0, px0), Math.min(lz0, pz0), Math.max(lx1, px1), Math.max(lz1, pz1)];
   }
   if (L.yard?.fence) {
@@ -346,7 +358,7 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
     buildPools(b, { W: L.w, D: L.d, H: L.wallH, kind: rich ? 'home_nepo' : 'home_lapo', seed, spots: pools, rich });
   }
   const layers = b.finish();
-  return { layers, tris: b.tris, radius, rich, fan, bulb, frame };
+  return { layers, tris: b.tris, radius, rich, fan, bulb, frame, vehicles };
 }
 
 function mixCol(a: string, c: string): string {
