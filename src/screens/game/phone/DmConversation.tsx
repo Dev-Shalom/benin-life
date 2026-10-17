@@ -13,6 +13,7 @@ import {
   type DirectMessage, type HouseInvite, type SocialFriend, type SocialStreak,
 } from '../../../api/social';
 import { errorMessage } from '../../../lib/api';
+import { pushPromptAfterDm } from '../PushPrompt';
 import { useConfig } from '../../../lib/config';
 import { naira } from '../../../lib/format';
 import { supabase } from '../../../lib/supabase';
@@ -289,6 +290,7 @@ export function DmConversation({ state, friend, conversationId, invites, homeNow
     setSending(true);
     try {
       appendMessage(await socialSendMessage(conversationId, body, null, null, replyRef.current?.id ?? null));
+      pushPromptAfterDm(); // P1: the best moment to offer notifications (once per device)
       setReplyTo(null);
       scrollDown();
       loadStreak();

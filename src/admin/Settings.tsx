@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from '../ui';
 import { errorMessage } from '../lib/api';
 import { useConfig } from '../lib/config';
-import { adminApi, type ConfigRow, type Row } from './api';
+import { adminApi, type ConfigRow, type PushStats, type Row } from './api';
 import { Btn, JsonControl, LoadError, NumberControl, PageHead, Skeleton, Toggle } from './parts';
 import { fmtValue, timeShort, useLoad } from './util';
 
@@ -38,12 +38,14 @@ const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: strin
   leaderboard: { title: 'Leaderboards', emoji: '🏆', blurb: 'The phone Ranks app: Rich list and VIP list tiers.' },
   club: { title: 'Clubs', emoji: '🪩', blurb: 'K1: weekend club prices. Friday and Saturday nights (a night runs until noon the next day) every club price is multiplied by club.weekend_price_mult, except the ids in club.weekend_exempt. Club hours: Content → Places. SP1 custom spray (docs/SPRAY.md): club.spray_min / spray_max / spray_cooldown_s, the tier thresholds club.spray_tier_* (Nice, Big, Huge, Oga, Billionaire, Trillionaire: each tier has its own MC lines in Content → Hype lines, kind spray_<tier>), the quick chips, and VIP spray (club.vip_spray_min, club.vip_hype_bonus_pct, club.vip_spray_chips, booking rules). SP2 Pick the money: club.pick_pct of every spray falls as notes for 5 s (club.pick_seconds), each tap = club.pick_note to cash, anti-cheat caps club.pick_max_taps_per_sec / club.pick_max_per_player, late-tap grace club.pick_grace_s, club.pick_self, the top-picker shout-out club.pick_summary.' },
   vip: { title: 'VIP perks', emoji: '👑', blurb: 'Arrival announcements for the top VIPs.' },
+  push: { title: 'Push notifications', emoji: '🔔', blurb: 'P1 (docs/NOTIFICATIONS.md): pings to players\' phones. The first switch turns it all off; each category can be turned off for everyone. Rate limits: one push per chat per window (extra messages bundle as "3 new messages"), a cap per player per hour, and chat pushes are skipped for a player who is active in the game right now.' },
   admin: { title: 'Admin', emoji: '🛡️', blurb: 'Admin access. Hidden from players.' },
 };
 
 /** The knobs the owner touches most, with plain-English help. */
 const QUICK: { key: string; hint: string }[] = [
   { key: 'realtime.mode', hint: 'auto = live updates, each player falls back to polling by itself when Realtime is full. poll_only = everyone polls (use during a spike when Realtime is over its plan limit). docs/SCALING.md.' },
+  { key: 'push.enabled', hint: 'Push notifications to players. Off = nothing is queued or sent. Category switches and rate limits: Push notifications tab.' },
   { key: 'payments.enabled', hint: 'Real-money top-ups with Paystack. Turn on only after the keys are set (docs/PAYMENTS.md).' },
   { key: 'clock.mode', hint: 'real = the game shows the real time in Benin City. accelerated = the old fast clock.' },
   { key: 'needs.decay_speed', hint: 'How fast needs drop with the real clock. 1 = hunger empties in about 25 real hours (2.5 = about 10).' },
@@ -188,6 +190,32 @@ function ConfigItem({ row, draft, setDraft, onSave, onRevert, tiers, hint, card 
   );
 }
 
+/** P1: how the player push outbox is doing (sent / failed in the last 24 hours). */
+function PushOutbox() {
+  const [st, setSt] = useState<PushStats | null>(null);
+  const [err, setErr] = useState('');
+  const load = () => { adminApi.pushStats().then((s) => { setSt(s); setErr(''); }).catch((e) => setErr(errorMessage(e))); };
+  useEffect(() => {
+    load();
+    const t = window.setInterval(load, 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+  if (err) return <p className="adm-sub">Push counts: {err}</p>;
+  if (!st) return <Skeleton rows={1} />;
+  const cats = Object.entries(st.by_category).map(([k, n]) => `${k} ${n}`).join(' · ');
+  return (
+    <div className="adm-pushbox">
+      <div className="adm-stats">
+        <div className="adm-stat adm-stat--green"><span className="adm-kicker">Sent (24 h)</span><b className="adm-stat__value">{st.sent_24h}</b><span className="adm-stat__sub">{cats || 'nothing yet'}</span></div>
+        <div className={`adm-stat${st.failed_24h ? ' adm-stat--amber' : ''}`}><span className="adm-kicker">Failed (24 h)</span><b className="adm-stat__value">{st.failed_24h}</b><span className="adm-stat__sub">{st.last_error ?? 'no errors'}</span></div>
+        <div className="adm-stat"><span className="adm-kicker">Waiting</span><b className="adm-stat__value">{st.pending}</b><span className="adm-stat__sub">{st.oldest_pending_s > 120 ? `oldest due ${Math.round(st.oldest_pending_s / 60)} min ago: is the Cron job running?` : 'queued now'}</span></div>
+        <div className="adm-stat"><span className="adm-kicker">Players with a device</span><b className="adm-stat__value">{st.players}</b><span className="adm-stat__sub">{st.devices} devices · skipped (24 h) {st.skipped_24h}</span></div>
+      </div>
+      <p className="adm-sub">Log kept for {st.keep_days} days: {st.sent_total} sent, {st.failed_total} failed.</p>
+    </div>
+  );
+}
+
 export default function Settings() {
   const { data: rows, setData: setRows, error, loading, reload } = useLoad(() => adminApi.configList());
   const { data: tiers } = useLoad(() => adminApi.tableRows('origin_tiers'));
@@ -304,6 +332,7 @@ export default function Settings() {
                   <h2 className="adm-h2">{CATEGORY_META[c]?.emoji} {CATEGORY_META[c]?.title ?? c}</h2>
                   {CATEGORY_META[c] && <p className="adm-sub">{CATEGORY_META[c].blurb}</p>}
                 </div>
+                {c === 'push' && <PushOutbox />}
                 {list.map((r) => item(r))}
               </section>
             ))

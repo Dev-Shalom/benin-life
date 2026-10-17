@@ -425,6 +425,11 @@ verify_jwt = true
 [functions.admin-push]
 verify_jwt = true
 
+# P1 (docs/NOTIFICATIONS.md): called by Cron with a project key and by signed-in players; the function checks the caller
+# itself, so it also works with the new sb_secret / sb_publishable API keys.
+[functions.player-push]
+verify_jwt = false
+
 [functions.billboard-refund]
 verify_jwt = true
 

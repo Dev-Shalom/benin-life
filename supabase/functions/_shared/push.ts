@@ -8,7 +8,7 @@ export const DEFAULT_VAPID_PUBLIC_KEY =
   'BLdPAJnlb5_3P_wOrtqveyTRo4flZj3qRxN13ga9KNSUNn4rAVMR5EpxANvF--aYhgIedHRrfYSd7EvfU02qssc';
 
 export interface PushSub { endpoint: string; p256dh: string; auth: string }
-export interface PushMessage { title: string; body: string; url?: string; tag?: string; kind?: string }
+export interface PushMessage { title: string; body: string; url?: string; tag?: string; kind?: string; cat?: string; count?: number }
 export interface PushKeys { publicKey: string; privateKey: string; subject: string }
 
 const enc = new TextEncoder();
@@ -91,7 +91,7 @@ export async function encryptPayload(payload: Uint8Array, sub: Pick<PushSub, 'p2
 export type SendResult = { ok: true } | { ok: false; status: number; gone: boolean; error: string };
 
 /** Send one notification. `gone` = the subscription is dead (404/410): delete it. */
-export async function sendPush(sub: PushSub, msg: PushMessage, keys: PushKeys): Promise<SendResult> {
+export async function sendPush(sub: PushSub, msg: PushMessage, keys: PushKeys, ttl = 86400): Promise<SendResult> {
   try {
     const body = await encryptPayload(enc.encode(JSON.stringify(msg)), sub);
     const res = await fetch(sub.endpoint, {
@@ -100,7 +100,7 @@ export async function sendPush(sub: PushSub, msg: PushMessage, keys: PushKeys): 
         Authorization: await vapidAuthorization(sub.endpoint, keys),
         'Content-Encoding': 'aes128gcm',
         'Content-Type': 'application/octet-stream',
-        TTL: '86400',
+        TTL: String(ttl),
         Urgency: 'high',
       },
       body,

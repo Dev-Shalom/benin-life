@@ -25,6 +25,8 @@ import { useTier } from '../art/feel/quality';
 import { useGame } from '../state/game';
 import { usePresenceStore } from '../state/presence';
 import { useUi } from '../state/ui';
+import { runDeepLink, takeDeepLink } from '../lib/deeplink';
+import { PushPrompt } from './game/PushPrompt';
 import { Icon, LoadingScreen, toast } from '../ui';
 import { BuySheet, ShortcutsSheet } from './game/Extras';
 import { useGameShortcuts } from './game/shortcuts';
@@ -243,6 +245,25 @@ export default function Game() {
   const { avatar: shownAvatar } = useShownAvatar(state, now, atOwnHomeNow, Boolean(p && state && !state.travel && !atHome));
   const wardrobeUid = p?.id ?? null;
   useEffect(() => { if (wardrobeUid) void useWardrobe.getState().load(wardrobeUid); }, [wardrobeUid]);
+  // P1: a tapped notification opens the right screen (cold start: ?go= remembered by main.tsx; already open: the service worker tells us)
+  const simReady = Boolean(state);
+  useEffect(() => {
+    if (!simReady) return;
+    const go = takeDeepLink();
+    if (!go) return;
+    // no cleanup on purpose: React StrictMode runs this effect twice and the link is taken only once
+    window.setTimeout(() => runDeepLink(go), 400);
+  }, [simReady]);
+  useEffect(() => {
+    const sw = navigator.serviceWorker;
+    if (!sw) return;
+    const on = (e: MessageEvent) => {
+      const d = e.data as { type?: string; go?: string } | null;
+      if (d?.type === 'bl-go' && typeof d.go === 'string') runDeepLink(d.go);
+    };
+    sw.addEventListener('message', on);
+    return () => sw.removeEventListener('message', on);
+  }, []);
   const houseProfile = useMemo(() => (p && shownAvatar && shownAvatar !== p.avatar ? { ...p, avatar: shownAvatar } : p ?? null), [p, shownAvatar]);
   const { members: houseMembers, publish: publishHouseMove, publishPath: publishHousePath } = useHouseRoom(houseRoomId, houseProfile);
   useEffect(() => { if (houseRoomId) void loadInteractionTypes().then(setIxTypes); }, [houseRoomId]);
@@ -960,6 +981,7 @@ export default function Game() {
       <MoveHouseSheet />
       <SpraySheet state={state} />
       <ReceiptSheet />
+      <PushPrompt />
       <ShortcutsSheet />
       <Phone state={state} clock={clock} />
       {boardSheet && <Suspense fallback={null}><BillboardSheet state={state} /></Suspense>}

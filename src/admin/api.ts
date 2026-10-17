@@ -116,7 +116,14 @@ export interface ClubRow {
   open_now: boolean; inside: number; events: number;
 }
 
+export interface PushStats {
+  pending: number; sent_24h: number; failed_24h: number; skipped_24h: number; sent_total: number; failed_total: number;
+  oldest_pending_s: number; players: number; devices: number; by_category: Record<string, number>; last_error: string | null; keep_days: number;
+}
+
 export const adminApi = {
+  /** P1: player push outbox counts (docs/NOTIFICATIONS.md). */
+  pushStats: () => rpc<PushStats>('admin_push_stats'),
   configList: () => rpc<ConfigRow[]>('admin_config_list'),
   configSet: (key: string, value: unknown) => rpc<Msg & { changed: boolean }>('admin_config_set', { p_key: key, p_value: value }),
   configSetMany: (changes: Record<string, unknown>) => rpc<Msg & { changed: number }>('admin_config_set_many', { p_changes: changes }),

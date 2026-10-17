@@ -25,3 +25,4 @@ Do these in order on the live site, https://playbeninlife.app. Each step takes a
 16. **Announce.** Share the link. Watch Admin → Overview (online now, new players, App errors) and Admin → Ads for the first hours. If something breaks: Vercel → Deployments → last good one → **Promote to Production** (docs/DEPLOY.md "Rolling back").
 
 Optional soon after launch: turn on **Confirm email** (needs the custom SMTP from step 14), and move Vercel to Pro once you are selling top-ups and ads.
+16. **Player push notifications.** Actions → **Supabase Edge Functions** → Run workflow (deploys `player-push`). Then Supabase dashboard → Integrations → **Cron** → create a job `player-push`, every minute, type Supabase Edge Function. Step by step: docs/NOTIFICATIONS.md "Owner setup". Check Admin → Settings → Push notifications shows Sent going up.

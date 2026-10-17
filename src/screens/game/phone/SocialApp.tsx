@@ -13,6 +13,7 @@ import { errorMessage } from '../../../lib/api';
 import { useConfig } from '../../../lib/config';
 import type { GameState } from '../../../lib/types';
 import { useGame } from '../../../state/game';
+import { useUi } from '../../../state/ui';
 import { Button, Icon, Spinner, toast } from '../../../ui';
 import { SocialPlayerButton } from '../SocialPlayerButton';
 import ChatPanel from '../../../panels/ChatPanel';
@@ -103,6 +104,29 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
   }, [reload, pollMode]);
   // Friend requests, knocks and new DMs arrive through the existing per-player events channel.
   useEffect(() => { if (eventsRevision) void reload(); }, [eventsRevision, reload]);
+
+  // P1: a tapped notification asks for a screen: messages:dm:<conversation>, messages:house, messages:requests
+  const phoneApp = useUi((s) => s.phoneApp);
+  useEffect(() => {
+    if (!phoneApp?.startsWith('messages:')) return;
+    const want = phoneApp.slice('messages:'.length);
+    const done = () => useUi.setState({ phoneApp: 'messages' });
+    if (want === 'house') {
+      if (!state.travel) setView('group');
+      done();
+    } else if (want === 'requests') {
+      if (!requests || !invites) return; // wait for the lists
+      const waiting = requests.some((r) => r.direction === 'incoming') || invites.some((i) => (i.role === 'host' && i.status === 'knocking') || (i.role === 'guest' && i.status === 'invited'));
+      if (waiting) setView('requests');
+      done();
+    } else if (want.startsWith('dm:')) {
+      if (!friends) return;
+      const friend = friends.find((f) => f.conversation_id === Number(want.slice(3)));
+      done();
+      if (friend) void openConversation(friend);
+    } else done();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phoneApp, friends, requests, invites]);
 
   const homeNow = !state.travel && me.location_id === state.location.id
     && (me.location_id === me.home_location_id || Boolean(me.home_visit_host_id));

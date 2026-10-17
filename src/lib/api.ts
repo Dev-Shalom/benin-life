@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { noteReceipt } from '../state/receipts';
 import { netFailed, netOk } from '../state/net';
+import { POKE_RPC, pokePush } from './pushPoke';
 
 /** Error thrown by game RPCs. `message` is already player-facing Pidgin. */
 export class GameError extends Error {
@@ -24,9 +25,9 @@ export class GameError extends Error {
 const READ_RPC = new RegExp(
   '^(get_|players_|leaderboard_|world_counts$|money_drops_live$|place_people$|place_interior$|shop_list$|club_prices$|jobs_catalog$|travel_quote$|house_options$|' +
     'food_menu$|events_on_today$|creator_catalog$|wardrobe_state$|storyline_current$|gem_hunt_status$|daily_reward_status$|' +
-    'bank_info$|bank_history$|bank_recipient$|chat_recent$|chat_history$|chat_blocked$|police_cases_list$|garage_home$|' +
+    'push_state$|bank_info$|bank_history$|bank_recipient$|chat_recent$|chat_history$|chat_blocked$|police_cases_list$|garage_home$|' +
     'billboard_list$|billboard_my_ads$|feedback_mine$|house_room_state$|social_(friends|friend_requests|house_invites|house_info|friend_status|' +
-    'message_history|search_players|streak)$|admin_(stats|players|player_detail|payments|notifications|table_rows|config_list|' +
+    'message_history|search_players|streak)$|admin_(stats|push_stats|players|player_detail|payments|notifications|table_rows|config_list|' +
     'client_errors|chat_reports|billboard_queue|audit_list|feedback_list)$)',
 );
 const MAX_TRIES = 3;
@@ -67,6 +68,7 @@ async function call<T>(fn: string, args: Record<string, unknown>, read: boolean)
     if (!error) {
       netOk();
       noteReceipt(data); // H2: big purchases open the receipt sheet
+      if (POKE_RPC.test(fn)) pokePush(); // P1: deliver the push this action queued
       return data as T;
     }
     const st = Number(status ?? 0);

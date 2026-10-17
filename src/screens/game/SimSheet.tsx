@@ -24,6 +24,7 @@ import { useGame } from '../../state/game';
 import { useUi, type SimTab } from '../../state/ui';
 import { Button, EmptyState, Logo, Sheet, Switch, Tabs, toast } from '../../ui';
 import LookPanel from '../creator/LookPanel';
+import { NotificationsSettings } from './NotificationsSettings';
 import { JobCard, PerfBar, Promotion, ShiftStats } from '../../panels/careers/CareerUI';
 
 const TABS: { id: SimTab; label: string }[] = [
@@ -411,6 +412,7 @@ function SettingsTab({ state }: { state: GameState }) {
           </div>
         </div>
       </div>
+      <NotificationsSettings />
       <h4 className="settings-head">Account</h4>
       <div className="settings-row">
         <div>

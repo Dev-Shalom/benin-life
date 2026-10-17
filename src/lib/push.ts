@@ -12,6 +12,8 @@ export type PushSupport = 'ok' | 'unsupported' | 'ios_install' | 'denied';
 
 const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = () => matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+/** iPhone / iPad in Safari (not the Home Screen app): web push cannot work until the game is added to the Home Screen. */
+export const needsIosInstall = () => typeof window !== 'undefined' && isIos() && !standalone();
 
 export function pushSupport(): PushSupport {
   if (typeof window === 'undefined') return 'unsupported';
@@ -44,8 +46,8 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
   return reg ? reg.pushManager.getSubscription() : null;
 }
 
-/** Ask permission, subscribe and save it on the server (admins only). */
-export async function enablePush(): Promise<string> {
+/** Ask permission and subscribe this browser (shared by the admin "Notify me" and the players' Settings switch). */
+async function subscribeDevice(): Promise<{ endpoint?: string; keys?: { p256dh?: string; auth?: string } }> {
   const s = pushSupport();
   if (s === 'ios_install') throw new Error('On iPhone, add Benin Life to your Home Screen first (Share → Add to Home Screen), open it from there, then tap Notify me.');
   if (s === 'unsupported') throw new Error('This browser cannot show notifications. The red badge and sound on this page still work.');
@@ -74,12 +76,42 @@ export async function enablePush(): Promise<string> {
         : msg);
     }
   }
-  const j = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+  return sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+}
+
+/** Ask permission, subscribe and save it on the server (admins only). */
+export async function enablePush(): Promise<string> {
+  const j = await subscribeDevice();
   const r = await rpc<{ message: string }>('admin_push_subscribe', {
     p_endpoint: j.endpoint, p_p256dh: j.keys?.p256dh, p_auth: j.keys?.auth, p_user_agent: navigator.userAgent.slice(0, 200),
   });
   return r.message;
 }
+
+// ---- P1: push for every player (docs/NOTIFICATIONS.md) ----
+export type PushCategory = 'messages' | 'money' | 'friends' | 'events' | 'admin';
+export interface PushPrefs {
+  master: boolean; messages: boolean; money: boolean; friends: boolean; events: boolean; admin: boolean;
+  /** Devices this player has saved. */
+  devices: number;
+  /** Admin's global switches: a category that is off here is off for everyone. */
+  global: { enabled: boolean } & Record<PushCategory, boolean>;
+}
+
+export const pushState = () => rpc<PushPrefs>('push_state');
+export const setPushPrefs = (p: Partial<Record<'master' | PushCategory, boolean>>) => rpc<PushPrefs>('push_prefs_set', { p_prefs: p });
+
+/** Turn notifications on for this player: browser permission, save this device, master switch on. */
+export async function enablePlayerPush(): Promise<PushPrefs> {
+  const j = await subscribeDevice();
+  await rpc<PushPrefs>('push_subscribe', {
+    p_endpoint: j.endpoint, p_p256dh: j.keys?.p256dh, p_auth: j.keys?.auth, p_user_agent: navigator.userAgent.slice(0, 200),
+  });
+  return setPushPrefs({ master: true });
+}
+
+/** Master switch off: the server sends this player nothing. The device stays saved so turning it back on is instant. */
+export const disablePlayerPush = () => setPushPrefs({ master: false });
 
 export async function disablePush(): Promise<string> {
   const sub = await currentSubscription();
