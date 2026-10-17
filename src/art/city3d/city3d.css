@@ -492,3 +492,22 @@
 .c3-board .c3-dot {
   background: #17191f;
 }
+
+/* R2 club switch: a switched-off club stays on the map, greyed, with a "Closed for now" tag */
+.c3-place.is-off .c3-pill,
+.c3-place.is-off .c3-dot {
+  opacity: 0.72;
+  filter: grayscale(0.85);
+}
+.c3-pill__off {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  background: #6b7280;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}

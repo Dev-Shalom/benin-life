@@ -470,7 +470,9 @@ export default function Game() {
     ejectTried.current = key;
     placeClosedEject().then((r) => {
       if (!r.ejected) return;
-      toast(`${r.place} is closed. The bouncers cleared the place, so you headed home. It opens again at ${r.opens}.`, 'info');
+      toast(r.off
+        ? `${r.place} is closed for now. You headed home. Check back soon.`
+        : `${r.place} is closed. The bouncers cleared the place, so you headed home. It opens again at ${r.opens}.`, 'info');
       void useGame.getState().refresh();
     }).catch(() => { /* try again next minute */ });
   }, [showPlace, interior.data, atOwnHome, atLoc, state?.travel, busyActive]);

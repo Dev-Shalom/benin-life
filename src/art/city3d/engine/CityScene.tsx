@@ -933,6 +933,7 @@ const Labels = memo(function Labels(props: {
           isSel && 'is-selected',
           l.id === travelTo && 'is-dest',
           dangerNow && 'is-danger',
+          l.active === false && l.scene === 'club' && 'is-off',
           ev && `has-ev is-ev-${ev}`,
           anyFilter && (f ? 'is-match' : 'is-dim'),
         ]
@@ -940,11 +941,12 @@ const Labels = memo(function Labels(props: {
           .join(' ');
         return (
           <div key={l.id} ref={reg(l.id)} className={cls} data-s="hidden" style={f ? ({ '--c3-f': FILTER_COLOR[f] } as CSSProperties) : undefined}>
-            <button type="button" className="c3-pill" onClick={tap(() => onPick(l.id))} aria-label={l.name}>
+            <button type="button" className="c3-pill" onClick={tap(() => onPick(l.id))} aria-label={l.active === false && l.scene === 'club' ? `${l.name}, closed for now` : l.name}>
               {isCur && <span className="c3-pill__tag">You are here</span>}
               {l.id === travelTo && !isCur && <span className="c3-pill__tag c3-pill__tag--dest">Heading here</span>}
               <span className="c3-pill__emoji" aria-hidden>{placeEmoji(l)}</span>
               <span className="c3-pill__name">{shortName(l.id, l.name)}</span>
+              {l.active === false && l.scene === 'club' && <span className="c3-pill__off">Closed for now</span>}
               {dangerNow && <span className="c3-pill__warn" aria-label="Danger at night">⚠️</span>}
               {n > 0 && <span className="c3-pill__count" aria-label={`${n} players here`}>{n}</span>}
               {ev && <span className={`c3-pill__ev is-${ev}`} aria-label={ev === 'live' ? 'Event live now' : 'Event today'}>{ev === 'live' ? 'LIVE' : '🎟️'}</span>}

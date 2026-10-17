@@ -145,8 +145,9 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     const all = ((data ?? []) as Location[]).map((l) => ({ ...l, actions: l.actions ?? [] }));
     // F1 soft launch: hidden places get no pin and are not in Ride/search; byId keeps them for names.
+    // R2 club switch: a switched-off club keeps its pin, shown as "Closed for now".
     const home = get().state?.profile.home_location_id;
-    const locations = all.filter((l) => l.active !== false || l.id === home);
+    const locations = all.filter((l) => l.active !== false || l.id === home || l.scene === 'club');
     set({ locations, locationsById: Object.fromEntries(all.map((l) => [l.id, l])) });
   },
 

@@ -68,7 +68,7 @@ begin
     'baba_shrine','upper_sakponba','santana_market','sapele_pos','bronze_lounge','police_hq','bronze_bank','gra_duplex','kingdom_lounge',
     'benin_airport','siluko_rd','ekenwan_room','iguobazuwa_farm','uniben_hostel','uselu_selfcon','bronze_tech_hub')) = 40,
     'expected the 40 core locations, got ' || (select count(*) from locations));
-  perform set_config('bl.test_loc_count', (select count(*) from locations where private_home_owner_id is null and coalesce(active, true))::text, true);  -- public map (private homes + hidden places are not readable)
+  perform set_config('bl.test_loc_count', (select count(*) from locations where private_home_owner_id is null and (coalesce(active, true) or scene::text = 'club'))::text, true);  -- public map (private homes + hidden non-club places are not readable; R2: OFF clubs are)
   perform pg_temp.assert((select night_risk_mult from locations where id = 'upper_sakponba') = 3.0, 'upper_sakponba night x3');
   perform pg_temp.assert((select night_risk_mult from locations where id = 'third_east') = 3.0, 'third_east night x3');
   perform pg_temp.assert((select count(*) from locations where coalesce(blurb, '') = '') = 0, 'every location has blurb');

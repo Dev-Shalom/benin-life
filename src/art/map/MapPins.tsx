@@ -183,9 +183,10 @@ function Pin({ loc, ps, side, current, selected, night, count, onSelect }: PinPr
     <g
       className={`map-pin${selected ? ' is-selected' : ''}${current ? ' is-current' : ''}`}
       data-pin-id={loc.id}
+      data-off={loc.active === false && loc.scene === 'club' ? '1' : undefined}
       role="button"
       tabIndex={0}
-      aria-label={`${loc.name}${current ? ' — you are here' : ''}${count > 0 ? `, ${count} people` : ''}`}
+      aria-label={`${loc.name}${loc.active === false && loc.scene === 'club' ? ' — closed for now' : ''}${current ? ' — you are here' : ''}${count > 0 ? `, ${count} people` : ''}`}
       style={{ transform: `translate(${r1(loc.x)}px, ${r1(loc.y)}px) scale(${ps.toFixed(3)})` }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -245,7 +246,7 @@ function Pin({ loc, ps, side, current, selected, night, count, onSelect }: PinPr
           paintOrder="stroke"
           className="map-pin-label"
         >
-          {text}
+          {text}{loc.active === false && loc.scene === 'club' ? ' · Closed' : ''}
         </text>
       )}
     </g>
@@ -306,6 +307,7 @@ export function TravelLayer({ from, to, progress, zoom }: TravelProps) {
 
 export const MAP_CSS = `
 .map-pin{cursor:pointer;outline:none}
+.map-pin[data-off] .map-pin-body{filter:grayscale(.85);opacity:.7}
 .map-pin,.map-travel>g{transition:transform .22s cubic-bezier(.22,1,.36,1)}
 .map-pin-body{transition:transform .22s cubic-bezier(.34,1.4,.64,1)}
 .map-pin:focus-visible .map-pin-rim{stroke:#f3d28a;stroke-width:3.4}

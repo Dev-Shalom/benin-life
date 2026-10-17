@@ -111,6 +111,11 @@ export interface EarnOverview {
   tips: { total: number; amount: number; rows: { id: number; from: string; to: string; amount: number; note: string | null; created_at: string }[] };
 }
 
+export interface ClubRow {
+  id: string; name: string; district: string; on: boolean; open_hour: number | null; close_hour: number | null;
+  open_now: boolean; inside: number; events: number;
+}
+
 export const adminApi = {
   configList: () => rpc<ConfigRow[]>('admin_config_list'),
   configSet: (key: string, value: unknown) => rpc<Msg & { changed: boolean }>('admin_config_set', { p_key: key, p_value: value }),
@@ -138,6 +143,9 @@ export const adminApi = {
   ban: (id: string, banned: boolean, reason = '') => rpc<Msg>('admin_ban', { p_id: id, p_banned: banned, p_reason: reason }),
   mute: (id: string, minutes: number) => rpc<Msg>('admin_mute', { p_id: id, p_minutes: minutes }),
   setAdmin: (id: string, isAdmin: boolean) => rpc<Msg>('admin_set_admin', { p_id: id, p_is_admin: isAdmin }),
+  /** R2: the club list and its on/off switch (docs/CLUBS.md). */
+  clubList: () => rpc<ClubRow[]>('admin_club_list'),
+  clubSet: (id: string, on: boolean) => rpc<Msg & { on: boolean; moved: number; changed: boolean }>('admin_club_set', { p_id: id, p_on: on }),
   setTransferTrusted: (id: string, on: boolean) => rpc<Msg>('admin_set_transfer_trusted', { p_id: id, p_on: on }),
   setOrigin: (id: string, origin: string, applyPerks: boolean) =>
     rpc<Msg>('admin_set_origin', { p_user: id, p_origin: origin, p_apply_perks: applyPerks }),

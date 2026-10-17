@@ -8,7 +8,7 @@ The owner decided:
 
 ## Order (one step at a time; each step is built, tested and documented)
 1. **R1 Bugs (DONE):** a table blocks a bed in the top house, tapping a garage car shows its name, and a wall sticks onto the road at Ugbowo WiFi Junction.
-2. **R2 Club switch:** each club can be turned on or off in Admin, so players gather in 2 clubs while numbers are small.
+2. **R2 Club switch (DONE):** each club can be turned on or off in Admin, so players gather in 2 clubs while numbers are small.
 3. **Sound fix** (from the earlier queue).
 4. **Push notifications** for all players, with an on/off toggle (earlier queue).
 5. **R3 Skills:**

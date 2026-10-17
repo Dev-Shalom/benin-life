@@ -950,7 +950,51 @@ function CareersSection() {
   );
 }
 
+/** R2 club switch (docs/CLUBS.md): every nightclub with an on/off switch. Off = "Closed for now". Audited. */
+function ClubsSection() {
+  const clubs = useLoad(() => adminApi.clubList());
+  const [busy, setBusy] = useState<string | null>(null);
+  if (clubs.error) return <LoadError error={clubs.error} onRetry={() => void clubs.reload()} />;
+  if (!clubs.data) return <Skeleton rows={6} />;
+  const onCount = clubs.data.filter((c) => c.on).length;
+  const flip = async (id: string, on: boolean) => {
+    setBusy(id);
+    try {
+      const r = await adminApi.clubSet(id, on);
+      toast(r.message, 'good');
+      await clubs.reload();
+    } catch (e) { toast(errorMessage(e), 'bad'); } finally { setBusy(null); }
+  };
+  return (
+    <div>
+      <p className="adm-sub adm-inline-hint">
+        {onCount} of {clubs.data.length} clubs are ON. A club that is OFF shows as "Closed for now" on the map and its place card, nobody can
+        enter or spend there, and its events and banners are hidden. Players inside are sent home. Each switch is saved in the Audit log.
+      </p>
+      <div className="adm-card adm-rows" data-testid="club-switches">
+        {clubs.data.map((c) => (
+          <div key={c.id} className={`adm-row${c.on ? '' : ' is-off'}`}>
+            <div className="adm-row__main adm-row__main--static">
+              <span className="adm-row__title">{c.name} {!c.on && <Badge>Closed for now</Badge>}</span>
+              <span className="adm-row__sub">
+                {districtLabel(c.district)} · {c.open_hour === null ? 'always open' : `${hourLabel(c.open_hour)} – ${hourLabel(c.close_hour)}`}
+                {' · '}{c.inside} inside · {c.events} event{c.events === 1 ? '' : 's'}
+              </span>
+            </div>
+            <label className={`adm-rowtoggle${c.on ? ' is-on' : ''}`}>
+              <span className="adm-rowtoggle__cap">{c.on ? 'ON' : 'OFF'}</span>
+              <Toggle checked={c.on} label={`${c.name} is ${c.on ? 'on' : 'off'}`} onChange={(on) => { if (busy !== c.id) void flip(c.id, on); }} />
+            </label>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+const districtLabel = (d: string) => d.replace(/_/g, ' ').replace(/^./, (x) => x.toUpperCase());
+
 const SECTIONS = [
+  { id: 'clubs', title: 'Clubs', emoji: '🪩', blurb: 'Switch each nightclub on or off. Keep one or two open while the player base is small so they feel full.' },
   ...DEFS.slice(0, 3).map((d) => ({ id: d.id, title: d.title, emoji: d.emoji, blurb: d.blurb })),
   { id: 'careers', title: 'Careers', emoji: '💼', blurb: 'Tracks and their level ladders: titles, pay, shift length, XP and requirements.' },
   ...DEFS.slice(3).map((d) => ({ id: d.id, title: d.title, emoji: d.emoji, blurb: d.blurb })),
@@ -968,7 +1012,7 @@ export default function Content() {
           <button key={s.id} type="button" className={`adm-chip${sec === s.id ? ' is-on' : ''}`} onClick={() => setSec(s.id)}>{s.emoji} {s.title}</button>
         ))}
       </nav>
-      {sec === 'careers' ? <CareersSection /> : def && <GenericSection key={def.id} def={def} />}
+      {sec === 'clubs' ? <ClubsSection /> : sec === 'careers' ? <CareersSection /> : def && <GenericSection key={def.id} def={def} />}
     </div>
   );
 }

@@ -16,7 +16,7 @@ function useKm(state: GameState, locations: Location[]) {
   return useMemo(() => {
     const here = locations.find((l) => l.id === state.location.id) ?? state.location;
     return locations
-      .filter((l) => l.id !== here.id)
+      .filter((l) => l.id !== here.id && l.active !== false)
       .map((l) => ({ l, km: (Math.hypot(l.x - here.x, l.y - here.y) / 1000) * 18 + (l.remote_km || 0) }))
       .sort((a, b) => a.km - b.km);
   }, [state.location, locations]);
