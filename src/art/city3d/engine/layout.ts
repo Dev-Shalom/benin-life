@@ -440,6 +440,37 @@ function build(): CityLayout {
     }
   }
 
+  /* ---------- keep roofs off the carriageway ----------
+   * The placement rules above look at the footprint centre, so a long or turned house (or a real OSM footprint
+   * next to a narrow street) could still poke onto the tarmac. Drop any whose outline gets within 0.6 map units
+   * of a road's edge. Done after placement so the seeded layout of everything else stays the same. */
+  {
+    const OFF = 0.6;
+    const clearOf = (px: number, py: number) => roadHash.edge(px, py, 6) >= OFF;
+    const rectClear = (b: Building) => {
+      const c = Math.cos(b.a);
+      const sn = Math.sin(b.a);
+      for (let i = 0; i <= 6; i++)
+        for (let j = 0; j <= 6; j++) {
+          const u = (i / 3 - 1) * (b.w / 2);
+          const v = (j / 3 - 1) * (b.d / 2);
+          if (!clearOf(b.x + u * c - v * sn, b.y + u * sn + v * c)) return false;
+        }
+      return true;
+    };
+    const ringClear = (ring: Pt[]) => {
+      for (let i = 0; i < ring.length; i++) {
+        const a = ring[i];
+        const b = ring[(i + 1) % ring.length];
+        const n = Math.max(1, Math.ceil(dist(a[0], a[1], b[0], b[1]) / 2));
+        for (let k = 0; k < n; k++) if (!clearOf(a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n)) return false;
+      }
+      return true;
+    };
+    for (let i = buildings.length - 1; i >= 0; i--) if (!rectClear(buildings[i])) buildings.splice(i, 1);
+    for (let i = osmBuildings.length - 1; i >= 0; i--) if (!ringClear(osmBuildings[i].ring)) osmBuildings.splice(i, 1);
+  }
+
   /* ---------- trees and palms ---------- */
   const trees: Tree[] = [];
   const treeOcc = new Grid(12);

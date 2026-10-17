@@ -629,6 +629,7 @@ function House(props: HomeSceneProps & {
 
   // ---- pick boxes for interactive furniture (invisible, one shared box geometry)
   const pickGeo = useMemo(() => new BoxGeometry(1, 1, 1), []);
+  const parkNames = props.parking?.names ?? [];
   const picks = useMemo(() => {
     const g = new Group();
     for (const f of L.furniture) {
@@ -642,8 +643,17 @@ function House(props: HomeSceneProps & {
       m.userData.item = f;
       g.add(m);
     }
+    // parked cars: tapping one shows its name (the same hint bubble as other taps)
+    for (const v of room.vehicles) {
+      const m = new Mesh(pickGeo, mats.pick);
+      m.scale.set(v.w, 1.5, v.d);
+      m.position.set(v.x, 0.75, v.z);
+      m.userData.car = parkNames[v.index] ?? 'Car';
+      g.add(m);
+    }
     return g;
-  }, [L, pickGeo, mats.pick, props.editableFurniture]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [L, room, parkNames.join('|'), pickGeo, mats.pick, props.editableFurniture]);
   useEffect(() => () => pickGeo.dispose(), [pickGeo]);
 
   // ---- B1 arrange ghost: the selected piece as its own small mesh, moved by a transform
@@ -1376,6 +1386,11 @@ function House(props: HomeSceneProps & {
   const onClick = (e: ThreeEvent<MouseEvent>) => {
     if (!isTap(e)) return; // it was a drag
     e.stopPropagation();
+    const car = e.object.userData.car as string | undefined;
+    if (car) {
+      hint(e, car);
+      return;
+    }
     const item = e.object.userData.item as FurnitureItem | undefined;
     if (!item) return;
     if (props.editableFurniture) {

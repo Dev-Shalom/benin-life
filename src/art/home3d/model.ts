@@ -488,9 +488,9 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
       { id: 'ac1', kind: 'ac', x: 1.4, z: 0.15, included: 'ac_split' },
       { id: 'ac2', kind: 'ac', x: 0.15, z: 5.2, rot: 1 * Q, included: 'ac_split' },
       { id: 'chand', kind: 'chandelier', x: 2.2, z: 6.9, included: 'chandelier' },
-      { id: 'cfan', kind: 'fan_ceiling', x: 8.8, z: 6.4, included: 'fan_ceiling' },
-      // dining
-      { id: 'dining', kind: 'dining6', x: 8.8, z: 6.4, color: '#5b3a24', included: 'dining_6' },
+      { id: 'cfan', kind: 'fan_ceiling', x: 8.2, z: 6.4, included: 'fan_ceiling' },
+      // dining (kept clear of the guest bedroom door at x 10.4, z 6.2-7.2: at x 8.8 it left a 0.27 m squeeze)
+      { id: 'dining', kind: 'dining6', x: 8.2, z: 6.4, color: '#5b3a24', included: 'dining_6' },
       // guest bedroom (furnished)
       { id: 'gbed', kind: 'bed_double', x: 13.4, z: 7.6, rot: 3 * Q, color: '#e8dccb', included: 'bed_double' },
       { id: 'gside', kind: 'bedside', x: 13.9, z: 6.2, included: 'bedside' },
