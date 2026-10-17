@@ -8,15 +8,26 @@
 // Rules: nothing starts before the first user gesture (autoplay policy); SFX follow Settings "Sound
 // effects", music + ambience follow "Music"; the HUD mute silences all. The context is suspended while
 // the tab is hidden. Music/ambience only play inside the game (setSoundScene from Game.tsx).
+// See docs/SOUND.md for the lifecycle rules (one context, one soundtrack, voice cap, limiter, tab ownership).
 import { usePrefs } from './prefs';
-import { CLUB_BPM, Engine, cheerOn, makeTrack, renderOffline, softCueOn, stingerOn, type Track, type TrackKind } from './music';
+import { CLUB_BPM, Engine, cheerOn, makeTrack, renderOffline, softCueOn, stingerOn, track, voiceStats, type Track, type TrackKind } from './music';
 
 export type Cue = 'click' | 'money' | 'done' | 'alert' | 'error';
 
 const VOL = { master: 0.6, sfx: 0.35, music: 0.11, amb: 0.07 };
 
+/** Max simultaneous one-shot voices (cues, coins, stingers, cheers, ambience). Music is bounded by its look-ahead. */
+const SFX_VOICE_CAP = 64;
+const voiceFree = (n = 1) => voiceStats.sfx + n <= SFX_VOICE_CAP;
+
+// dev-only counters (window.__blSound.stats()), used by scripts/sound-check.mjs
+const dbg = { ctxCreated: 0, intervals: 0, buses: 0, engines: 0, hypeSkipped: 0 };
+function setIv(fn: () => void, ms: number): number { dbg.intervals++; return window.setInterval(fn, ms); }
+function clearIv(id: number) { dbg.intervals--; window.clearInterval(id); }
+
 let ctx: AudioContext | null = null;
 let master: GainNode;
+let limiter: DynamicsCompressorNode;
 let sfxBus: GainNode;
 let musicBus: GainNode;
 let ambBus: GainNode;
@@ -34,10 +45,19 @@ function ensureCtx(): AudioContext | null {
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
+    dbg.ctxCreated++;
     master = ctx.createGain();
-    master.gain.value = VOL.master;
-    master.connect(ctx.destination);
-    sfxBus = bus(VOL.sfx);
+    master.gain.value = prefs().muted ? 0 : VOL.master;
+    // a master limiter: several stingers + cheers + groove stack up without clipping or pumping the whole mix
+    limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -12;
+    limiter.knee.value = 10;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.2;
+    master.connect(limiter).connect(ctx.destination);
+    sfxBus = bus(prefs().sfx ? VOL.sfx : 0);
+    ctx.addEventListener('statechange', onState);
     musicBus = bus(0);
     ambBus = bus(0);
     noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -66,6 +86,8 @@ const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 interface ToneOpts { type?: OscillatorType; gain?: number; attack?: number; release?: number; dest?: AudioNode; glide?: number; cutoff?: number }
 function tone(freq: number, at: number, dur: number, o: ToneOpts = {}) {
   if (!ctx) return;
+  const cat = o.dest === musicBus ? 'music' : 'sfx';
+  if (cat === 'sfx' && !voiceFree()) { voiceStats.dropped++; return; }
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
   osc.type = o.type ?? 'sine';
@@ -89,16 +111,22 @@ function tone(freq: number, at: number, dur: number, o: ToneOpts = {}) {
   out.connect(o.dest ?? sfxBus);
   osc.start(at);
   osc.stop(at + a + r + 0.05);
+  track(osc, ctx, cat);
 }
 
 // ---------- SFX ----------
 const PRIORITY: Record<Cue, number> = { click: 0, alert: 1, done: 2, error: 3, money: 4 };
 let lastCue = { p: -1, t: 0 };
+let lastClick = 0;
 
 /** Play a short cue (ignored when SFX are off, or a cue as important played a moment ago). */
 export function playCue(c: Cue) {
   if (!sfxOn() || !ensureCtx() || ctx!.state !== 'running') return;
   const now = ctx!.currentTime;
+  if (c === 'click') {
+    if (now - lastClick < 0.04) return; // a finger drumming on the screen is one click, not a buzz
+    lastClick = now;
+  }
   const p = PRIORITY[c];
   if (c !== 'click' && now - lastCue.t < 0.7 && lastCue.p >= p) return;
   if (c !== 'click') lastCue = { p, t: now };
@@ -141,6 +169,14 @@ export function playCoin() {
   tone(hz(base + 19), t + 0.05, 0.16, { type: 'sine', gain: 0.05, release: 0.18 });
 }
 
+/** The admin page's new-ad chime, on the shared context (it used to open a fresh AudioContext each time). */
+export function playChime() {
+  if (!sfxOn() || !ensureCtx() || ctx!.state !== 'running') return;
+  const t = ctx!.currentTime + 0.01;
+  tone(880, t, 0.35, { gain: 0.25, attack: 0.02, release: 0.35 });
+  tone(1320, t + 0.16, 0.35, { gain: 0.25, attack: 0.02, release: 0.35 });
+}
+
 // ---------- music ----------
 const CHORDS_DAY = [[60, 64, 67, 71], [57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 62, 65]];
 const CHORDS_NIGHT = [[57, 60, 64, 67], [53, 57, 60, 64], [50, 53, 57, 60], [52, 55, 59, 62]];
@@ -158,6 +194,11 @@ function scheduleMusic() {
   const chords = night ? CHORDS_NIGHT : CHORDS_DAY;
   const pluck = night ? PLUCK_NIGHT : PLUCK_DAY;
   const cutoff = night ? 650 : 1100;
+  // fell behind (main thread stalled, throttled timer): jump to the next bar line instead of dumping every missed note at once
+  if (nextAt < ctx.currentTime - 0.25) {
+    step = Math.ceil(step / 8) * 8;
+    nextAt = ctx.currentTime + 0.05;
+  }
   while (nextAt < ctx.currentTime + 0.5) {
     const bar = Math.floor(step / 8);
     const s = step % 8;
@@ -195,6 +236,7 @@ function softShaker(at: number, level: number) {
   gain.connect(musicBus);
   src.start(at);
   src.stop(at + 0.06);
+  track(src, ctx, 'music');
 }
 
 // ---------- ambience ----------
@@ -234,6 +276,9 @@ export type PlaceSound = 'club' | 'buka' | 'bank' | 'market' | 'generator' | 'st
 const PLACE_LEVEL: Record<string, number> = { club: 0.12, buka: 0.1, market: 0.24, stadium: 0.2, cinema: 0.14, lounge: 0.09, motorpark: 0.28, dance: 0.14 };
 let placeSound: PlaceSound = null;
 let placeTimer: number | null = null;
+let leaveTimer: number | null = null;
+let lastStingerAt = -1e9;
+let cheerUntil = 0;
 let placeBus: GainNode | null = null;
 let placeEngine: Engine | null = null;
 let placeTrack: Track | null = null;
@@ -283,18 +328,28 @@ function startDrone(freqs: number[], type: OscillatorType, cutoff: number, gain:
 }
 
 function stopPlace() {
-  if (placeTimer !== null) window.clearInterval(placeTimer);
+  if (placeTimer !== null) clearIv(placeTimer);
   placeTimer = null;
   placeTrack?.stop();
   placeTrack = null;
   if (placeBus && ctx) {
     const b = placeBus;
-    b.gain.cancelScheduledValues(ctx.currentTime);
-    b.gain.setTargetAtTime(0, ctx.currentTime, 0.25);
-    window.setTimeout(() => { try { b.disconnect(); } catch { /* gone */ } }, 1500);
+    const eng = placeEngine;
+    const t = ctx.currentTime;
+    b.gain.cancelScheduledValues(t);
+    b.gain.setValueAtTime(b.gain.value, t);
+    b.gain.setTargetAtTime(0, t, 0.25);
+    // long tails (cinema pad ~4.6 s) are silent by now; cut the graph so nothing accumulates
+    window.setTimeout(() => {
+      try { eng?.out.disconnect(); b.disconnect(); } catch { /* gone */ }
+      dbg.buses--;
+      dbg.engines--;
+    }, 2500);
   }
   placeBus = null;
   placeEngine = null;
+  cheerUntil = 0;
+  duckUntil = 0;
   if (fileAudio) {
     fileAudio.pause();
     fileAudio.src = '';
@@ -303,7 +358,7 @@ function stopPlace() {
   if (placeDrone && ctx) {
     const d = placeDrone;
     d.g.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
-    window.setTimeout(() => { for (const o of d.osc) try { o.stop(); } catch { /* stopped */ } }, 1200);
+    window.setTimeout(() => { for (const o of d.osc) try { o.stop(); o.disconnect(); } catch { /* stopped */ } try { d.g.disconnect(); } catch { /* gone */ } }, 2000);
   }
   placeDrone = null;
 }
@@ -321,6 +376,7 @@ function applyPlace() {
   const level = PLACE_LEVEL[placeSound];
   if (level) {
     placeBus = ctx.createGain();
+    dbg.buses++;
     placeBus.gain.setValueAtTime(0, ctx.currentTime);
     placeBus.gain.linearRampToValueAtTime(level, ctx.currentTime + 1.5);
     placeBus.connect(master);
@@ -329,21 +385,23 @@ function applyPlace() {
         fileAudio = new Audio(clubTrackUrl);
         fileAudio.loop = true;
         fileAudio.volume = Math.min(1, level * 2.5 * VOL.master);
-        void fileAudio.play().catch(() => {});
+        if (!document.hidden && !yielded) void fileAudio.play().catch(() => {});
       } catch { fileAudio = null; }
     }
     if (!fileAudio) {
       placeEngine = new Engine(ctx, placeBus);
+      dbg.engines++;
       placeTrack = makeTrack(placeSound === 'dance' ? 'afrobeats' : placeSound as TrackKind, placeEngine, ctx.currentTime + 0.15);
     }
   }
   placeTick = 0;
-  placeTimer = window.setInterval(schedulePlace, 100);
+  placeTimer = setIv(schedulePlace, 100);
   schedulePlace();
 }
 
 /** Game.tsx: the soundtrack of the place you're in (null = just the city / home bed). */
 export function setSoundPlace(k: PlaceSound) {
+  cancelLeave();
   if (k === placeSound) return;
   placeSound = k;
   if (unlocked && ensureCtx()) applyPlace();
@@ -392,33 +450,43 @@ export function playHype(kind: 'club' | 'global' | 'big' | 'calm') {
   if (!unlocked || !ensureCtx() || ctx!.state !== 'running') return;
   const t = ctx!.currentTime + 0.03;
   if (kind === 'global') {
-    if (sfxOn()) softCueOn(ctx!, sfxBus, t);
+    if (sfxOn() && voiceFree(2)) softCueOn(ctx!, sfxBus, t);
     return;
   }
   if (kind === 'calm') {
-    if (sfxOn()) softCueOn(ctx!, sfxBus, t);
-    if (placeBus && musicOn()) cheerOn(ctx!, placeBus, t + 0.35, 0.5);
+    if (sfxOn() && voiceFree(2)) softCueOn(ctx!, sfxBus, t);
+    if (placeBus && musicOn() && t + 0.35 > cheerUntil && voiceFree(8)) { cheerOn(ctx!, placeBus, t + 0.35, 0.5); cheerUntil = t + 1.9; }
     return;
   }
   const big = kind === 'big';
+  // hype spam: one stinger at a time (a new one inside 0.6 s of the last is folded into it), and never past the voice cap
+  const stingerOk = t - lastStingerAt > 0.6 && voiceFree(big ? 34 : 17);
   if (sfxOn()) {
-    stingerOn(ctx!, sfxBus, t, big ? 1.9 : 1.5);
-    if (big) stingerOn(ctx!, sfxBus, t + 0.42, 0.9);
+    if (stingerOk) {
+      lastStingerAt = t;
+      stingerOn(ctx!, sfxBus, t, big ? 1.9 : 1.5);
+      if (big) stingerOn(ctx!, sfxBus, t + 0.42, 0.9);
+    } else dbg.hypeSkipped++;
   }
   if (placeBus && musicOn() && placeSound === 'club') {
     // duck the groove under the stinger, then the crowd cheers
     const lvl = PLACE_LEVEL.club;
     const hold = big ? 2.4 : 1.3;
-    if (t > duckUntil) {
+    if (t > duckUntil && stingerOk) {
+      const cur = placeBus.gain.value; // may still be fading in: never jump
       placeBus.gain.cancelScheduledValues(t);
-      placeBus.gain.setValueAtTime(lvl, t);
+      placeBus.gain.setValueAtTime(cur, t);
       placeBus.gain.linearRampToValueAtTime(lvl * 0.45, t + 0.12);
       placeBus.gain.setValueAtTime(lvl * 0.45, t + hold);
       placeBus.gain.linearRampToValueAtTime(lvl, t + hold + 0.9);
       duckUntil = t + hold + 0.9;
     }
-    cheerOn(ctx!, placeBus, t + 1.0, big ? 1.35 : 1.1);
-    if (big) cheerOn(ctx!, placeBus, t + 2.3, 1.1);
+    // crowd: one cheer at a time (they last ~1.5 s), so a burst of announcements is one roar, not a pile of them
+    if (stingerOk && t + 1.0 > cheerUntil && voiceFree(8)) {
+      cheerOn(ctx!, placeBus, t + 1.0, big ? 1.35 : 1.1);
+      cheerUntil = t + 2.5;
+      if (big && voiceFree(8)) { cheerOn(ctx!, placeBus, t + 2.3, 1.1); cheerUntil = t + 3.8; }
+    }
   }
 }
 
@@ -433,12 +501,15 @@ function fade(g: GainNode, v: number, secs = 1.2) {
 
 function apply() {
   if (!unlocked || !ensureCtx()) return;
-  sfxBus.gain.value = VOL.sfx;
+  // mute / Sound effects: ramp (a hard jump clicks) and cut stingers already in flight, not just future ones
+  const now0 = ctx!.currentTime;
+  master.gain.setTargetAtTime(prefs().muted ? 0 : VOL.master, now0, 0.03);
+  sfxBus.gain.setTargetAtTime(prefs().sfx ? VOL.sfx : 0, now0, 0.03);
   if (musicOn()) {
     if (musicTimer === null) {
       step = 0;
       nextAt = ctx!.currentTime + 0.1;
-      musicTimer = window.setInterval(scheduleMusic, 150);
+      musicTimer = setIv(scheduleMusic, 150);
       scheduleMusic();
     }
     if (!ambSrc) {
@@ -450,7 +521,7 @@ function apply() {
       ambSrc.connect(ambFilter).connect(ambBus);
       ambSrc.start();
       tuneAmbience();
-      ambTimer = window.setInterval(() => { if (Math.random() < 0.35) ambienceEvent(); }, 2500);
+      ambTimer = setIv(() => { if (Math.random() < 0.35) ambienceEvent(); }, 2500);
     }
     fade(musicBus, VOL.music);
     fade(ambBus, VOL.amb);
@@ -460,23 +531,74 @@ function apply() {
     fade(musicBus, 0, 0.6);
     fade(ambBus, 0, 0.6);
     const src = ambSrc;
-    if (musicTimer !== null) window.clearInterval(musicTimer);
-    if (ambTimer !== null) window.clearInterval(ambTimer);
+    const flt = ambFilter;
+    if (musicTimer !== null) clearIv(musicTimer);
+    if (ambTimer !== null) clearIv(ambTimer);
     musicTimer = null;
     ambTimer = null;
     ambSrc = null;
     ambFilter = null;
-    window.setTimeout(() => { try { src?.stop(); } catch { /* already stopped */ } }, 700);
+    window.setTimeout(() => { try { src?.stop(); src?.disconnect(); flt?.disconnect(); } catch { /* already stopped */ } }, 900);
   }
   if (!musicOn()) stopPlace();
 }
 
 /** Game.tsx: music/ambience only inside the game; day/night picks the mood. */
 export function setSoundScene(inGame: boolean, night: boolean) {
+  cancelLeave();
   const changedNight = night !== scene.night;
   scene = { inGame, night };
   apply();
   if (changedNight) tuneAmbience();
+}
+
+// ---------- lifecycle: leaving the game, tab ownership, resume ----------
+function cancelLeave() {
+  if (leaveTimer !== null) { window.clearTimeout(leaveTimer); leaveTimer = null; }
+}
+
+/** Game.tsx unmount. Deferred a beat so a StrictMode remount (or a quick route change back) keeps the music
+ *  playing instead of stopping and restarting it; any setSoundScene/setSoundPlace in between cancels it. */
+export function leaveGameSound() {
+  cancelLeave();
+  leaveTimer = window.setTimeout(() => {
+    leaveTimer = null;
+    scene = { inGame: false, night: false };
+    placeSound = null;
+    apply();
+  }, 150);
+}
+
+// Only one tab plays: a hidden tab suspends its context, and of two visible windows the one you touched last
+// wins (BroadcastChannel); the other yields until its next tap.
+const tabId = Math.random().toString(36).slice(2);
+let yielded = false;
+let chan: BroadcastChannel | null = null;
+
+function pauseAudio() {
+  if (!ctx) return;
+  if (ctx.state !== 'suspended') void ctx.suspend().catch(() => {});
+  fileAudio?.pause();
+}
+
+function claimTab() {
+  yielded = false;
+  try { chan?.postMessage({ id: tabId }); } catch { /* closed */ }
+}
+
+/** Bring the sound back if this tab should be playing (visible, not yielded). Safe to call any time. */
+function wake() {
+  if (!ctx || !unlocked || yielded || document.hidden) return;
+  if (ctx.state !== 'running') void ctx.resume().then(apply).catch(() => {});
+  if (fileAudio) void fileAudio.play().catch(() => {});
+}
+
+function onState() {
+  if (!ctx || !unlocked) return;
+  if (ctx.state === 'running') {
+    if (document.hidden || yielded) pauseAudio();
+    else apply();
+  }
 }
 
 let installed = false;
@@ -484,16 +606,31 @@ let installed = false;
 export function initSound() {
   if (installed || typeof window === 'undefined') return;
   installed = true;
-  const unlock = () => {
-    if (unlocked) return;
+  try {
+    // iOS: play through the speaker even with the ringer switch on silent (Safari 16.4+)
+    const as = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    if (as) as.type = 'playback';
+  } catch { /* unsupported */ }
+  try {
+    chan = new BroadcastChannel('bl-sound');
+    chan.onmessage = (e) => {
+      if (e.data?.id === tabId || !ctx || !unlocked) return;
+      yielded = true;
+      pauseAudio();
+    };
+  } catch { chan = null; }
+  // Every gesture: first one unlocks; later ones bring a suspended / iOS "interrupted" context back (after a call,
+  // the lock screen, an app switch). iOS only honours resume() from touchend / click, so listen to those too.
+  const gesture = () => {
     if (!ensureCtx()) return;
+    const first = !unlocked;
     unlocked = true;
-    void ctx!.resume().then(apply).catch(() => {});
-    window.removeEventListener('pointerdown', unlock, true);
-    window.removeEventListener('keydown', unlock, true);
+    if (first || yielded || ctx!.state !== 'running') {
+      claimTab();
+      void ctx!.resume().then(apply).catch(() => {});
+    }
   };
-  window.addEventListener('pointerdown', unlock, true);
-  window.addEventListener('keydown', unlock, true);
+  for (const ev of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'] as const) window.addEventListener(ev, gesture, true);
   document.addEventListener('click', (e) => {
     const el = (e.target as Element | null)?.closest?.('button, [role="button"], a.bl-btn');
     if (!el || (el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') return;
@@ -501,14 +638,29 @@ export function initSound() {
   }, true);
   document.addEventListener('visibilitychange', () => {
     if (!ctx || !unlocked) return;
-    if (document.visibilityState === 'hidden') {
-      void ctx.suspend().catch(() => {});
-      fileAudio?.pause();
-    } else {
-      void ctx.resume().catch(() => {});
-      if (fileAudio) void fileAudio.play().catch(() => {});
-    }
+    if (document.visibilityState === 'hidden') pauseAudio();
+    else { claimTab(); wake(); }
   });
+  window.addEventListener('pagehide', () => { if (ctx && unlocked) pauseAudio(); });
+  window.addEventListener('pageshow', () => { if (ctx && unlocked && !document.hidden) { claimTab(); wake(); } });
+  window.addEventListener('focus', () => wake());
   usePrefs.subscribe(apply);
-  if (import.meta.env.DEV) (window as unknown as { __blSound?: unknown }).__blSound = { render: renderOffline, playHype, readBeat, setPlaceTrack };
+  if (import.meta.env.DEV) {
+    (window as unknown as { __blSound?: unknown }).__blSound = {
+      render: renderOffline, playHype, readBeat, setPlaceTrack,
+      /** Live counters for scripts/sound-check.mjs. */
+      stats: () => ({
+        ...voiceStats,
+        ...dbg,
+        state: ctx?.state ?? 'none',
+        place: placeSound,
+        trackActive: placeTrack ? 1 : 0,
+        busActive: placeBus ? 1 : 0,
+        musicTimer: musicTimer !== null,
+        hidden: document.hidden,
+        yielded,
+        unlocked,
+      }),
+    };
+  }
 }

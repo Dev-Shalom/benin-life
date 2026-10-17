@@ -14,7 +14,7 @@ import { adImageUrl, noteAdView, useBillboards } from '../lib/billboards';
 import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
 import { serverNow, useGameClock } from '../lib/clock';
 import { devHourOverride, looksNight } from '../lib/daylight';
-import { setPlaceTrack, setSoundPlace, setSoundScene, type PlaceSound } from '../lib/sound';
+import { leaveGameSound, setPlaceTrack, setSoundPlace, setSoundScene, type PlaceSound } from '../lib/sound';
 import { useConfig } from '../lib/config';
 import { simPosture } from '../lib/mood';
 import { randomGreeting } from '../lib/pidgin';
@@ -173,7 +173,7 @@ export default function Game() {
   useEffect(() => {
     setSoundScene(true, skyNight);
   }, [skyNight]);
-  useEffect(() => () => { setSoundScene(false, false); setSoundPlace(null); }, []);
+  useEffect(() => () => leaveGameSound(), []);
 
   useEffect(() => {
     void loadActivities();

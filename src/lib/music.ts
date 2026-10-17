@@ -8,6 +8,39 @@
 // A hit = one AudioBufferSourceNode (+ a gain node only where the velocity / envelope needs one).
 
 type Ctx = BaseAudioContext;
+
+// ---- voice accounting (dev + safety): every source node is counted until it ends, then disconnected so the
+// graph never grows over a long session. 'music' = the scheduler's own notes (bounded by the look-ahead),
+// 'sfx' = cues, stingers, cheers and ambience (capped by sound.ts, see voiceFree()).
+export const voiceStats = { music: 0, sfx: 0, peakMusic: 0, peakSfx: 0, started: 0, dropped: 0 };
+export type VoiceCat = 'music' | 'sfx';
+export function track(o: AudioScheduledSourceNode, c: Ctx, cat: VoiceCat): void {
+  if ('startRendering' in c) return; // offline renders are not live voices
+  const k = cat === 'music' ? 'music' : 'sfx';
+  voiceStats[k]++;
+  voiceStats.started++;
+  if (k === 'music') voiceStats.peakMusic = Math.max(voiceStats.peakMusic, voiceStats.music);
+  else voiceStats.peakSfx = Math.max(voiceStats.peakSfx, voiceStats.sfx);
+  o.addEventListener('ended', () => {
+    voiceStats[k]--;
+    try { o.disconnect(); } catch { /* already gone */ }
+  }, { once: true });
+}
+
+// decoded buffers are cached per context (a place change / a hype stinger must not copy the banks again)
+const bufCache = new WeakMap<object, Map<Float32Array, AudioBuffer>>();
+function ctxBuf(c: Ctx, d: Float32Array): AudioBuffer {
+  let m = bufCache.get(c);
+  if (!m) { m = new Map(); bufCache.set(c, m); }
+  let b = m.get(d);
+  if (!b) {
+    b = c.createBuffer(1, d.length, c.sampleRate);
+    b.getChannelData(0).set(d);
+    m.set(d, b);
+  }
+  return b;
+}
+
 export const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 
 // ---------------------------------------------------------------- tiny DSP
@@ -245,7 +278,8 @@ export class Engine {
   readonly c: Ctx;
   readonly out: GainNode;
   readonly bank: Bank;
-  private bufs = new Map<Float32Array, AudioBuffer>();
+  /** Voice class for the accounting above. */
+  cat: VoiceCat = 'music';
   constructor(c: Ctx, dest: AudioNode) {
     this.c = c;
     this.out = c.createGain();
@@ -253,13 +287,7 @@ export class Engine {
     this.bank = getBank(c.sampleRate);
   }
   buf(d: Float32Array): AudioBuffer {
-    let b = this.bufs.get(d);
-    if (!b) {
-      b = this.c.createBuffer(1, d.length, this.c.sampleRate);
-      b.getChannelData(0).set(d);
-      this.bufs.set(d, b);
-    }
-    return b;
+    return ctxBuf(this.c, d);
   }
   /** One hit. `gate` = cut the tail after this many seconds (a short release), `slide` = [rate, secs]. */
   hit(d: Float32Array, at: number, gain = 1, rate = 1, dest: AudioNode = this.out, gate = 0, slide?: [number, number]) {
@@ -281,6 +309,7 @@ export class Engine {
       s.connect(dest);
       s.start(at);
     }
+    track(s, this.c, this.cat);
   }
   tone(freq: number, at: number, dur: number, o: { type?: OscillatorType; gain?: number; attack?: number; glide?: number; cutoff?: number; dest?: AudioNode } = {}) {
     const osc = this.c.createOscillator();
@@ -304,6 +333,7 @@ export class Engine {
     out.connect(o.dest ?? this.out);
     osc.start(at);
     osc.stop(at + a + dur + 0.05);
+    track(osc, this.c, this.cat);
   }
 }
 
@@ -532,6 +562,7 @@ function loopBed(e: Engine, d: Float32Array, gain: number, at: number, cutoff = 
   }
   node.connect(g).connect(e.out);
   s.start(at);
+  track(s, e.c, e.cat);
   return () => {
     try {
       const t = e.c.currentTime;
@@ -557,7 +588,7 @@ function events(e: Engine, t0: number, tickEvery: number, onTick: (at: number, r
   return {
     bpm: 0, t0,
     schedule(until: number) {
-      if (next < e.c.currentTime - 1) next = e.c.currentTime;
+      if (next < e.c.currentTime - 0.3) next = e.c.currentTime; // stalled: skip, do not burst
       while (next < until) {
         onTick(next, r);
         next += tickEvery;
@@ -676,14 +707,13 @@ export function stingerOn(c: Ctx, dest: AudioNode, at: number, gain = 1) {
       o.connect(f).connect(g).connect(out);
       o.start(t);
       o.stop(t + len + 0.05);
+      track(o, c, 'sfx');
     }
   });
   // whoosh: noise through a band rising 300 Hz -> 6 kHz
   const bank = getBank(c.sampleRate);
   const ns = c.createBufferSource();
-  const nb = c.createBuffer(1, bank.noise.length, c.sampleRate);
-  nb.getChannelData(0).set(bank.noise);
-  ns.buffer = nb;
+  ns.buffer = ctxBuf(c, bank.noise);
   const bp = c.createBiquadFilter();
   bp.type = 'bandpass';
   bp.Q.value = 1.6;
@@ -696,6 +726,7 @@ export function stingerOn(c: Ctx, dest: AudioNode, at: number, gain = 1) {
   ns.connect(bp).connect(ng).connect(out);
   ns.start(at);
   ns.stop(at + 1.4);
+  track(ns, c, 'sfx');
   // air-horn-ish swell: three detuned saws, the pitch leaning up, a filter opening
   const hs = at + 0.45;
   const hf = c.createBiquadFilter();
@@ -717,6 +748,7 @@ export function stingerOn(c: Ctx, dest: AudioNode, at: number, gain = 1) {
     o.connect(hf);
     o.start(hs);
     o.stop(hs + 1.1);
+    track(o, c, 'sfx');
   }
 }
 
@@ -732,6 +764,7 @@ export function softCueOn(c: Ctx, dest: AudioNode, at: number) {
     o.connect(g).connect(dest);
     o.start(at + d);
     o.stop(at + d + 0.55);
+    track(o, c, 'sfx');
   }
 }
 
@@ -770,17 +803,17 @@ export function cheerOn(c: Ctx, dest: AudioNode, at: number, gain = 1) {
     o.connect(f2);
     o.start(at + r() * 0.08);
     o.stop(at + 1.55);
+    track(o, c, 'sfx');
   }
   const bank = getBank(c.sampleRate);
   const ns = c.createBufferSource();
-  const nb = c.createBuffer(1, bank.crowd.length, c.sampleRate);
-  nb.getChannelData(0).set(bank.crowd);
-  ns.buffer = nb;
+  ns.buffer = ctxBuf(c, bank.crowd);
   const ng = c.createGain();
   ng.gain.value = 0.8;
   ns.connect(ng).connect(out);
   ns.start(at);
   ns.stop(at + 1.55);
+  track(ns, c, 'sfx');
 }
 
 // ---------------------------------------------------------------- offline render (checks)

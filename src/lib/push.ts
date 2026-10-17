@@ -1,6 +1,7 @@
 // H3 admin Web Push (docs/BILLBOARDS.md): the owner's phone gets a notification when an ad is paid and needs
 // approval, goes live, is reported, ends, or a refund fails. public/sw.js shows it; the admin-push Edge Function
 // sends it (VAPID private key = Supabase secret). The public key below is public by design.
+import { playChime } from './sound';
 import { rpc } from './api';
 import { supabase } from './supabase';
 
@@ -101,24 +102,7 @@ export function flushAdminPush() {
   void supabase.functions.invoke('admin-push', { body: {} }).catch(() => {});
 }
 
-/** A short two-tone chime (Web Audio) for the in-page fallback. */
+/** A short two-tone chime for the in-page fallback (plays on the game's one shared AudioContext). */
 export function chime() {
-  try {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new Ctx();
-    const t = ctx.currentTime;
-    for (const [f, d] of [[880, 0], [1320, 0.16]] as const) {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = 'sine';
-      o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t + d);
-      g.gain.exponentialRampToValueAtTime(0.25, t + d + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.35);
-      o.connect(g).connect(ctx.destination);
-      o.start(t + d);
-      o.stop(t + d + 0.4);
-    }
-    window.setTimeout(() => void ctx.close(), 900);
-  } catch { /* no audio */ }
+  playChime();
 }
