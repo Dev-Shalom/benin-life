@@ -15,6 +15,7 @@ import { CREATOR, P, WEEKDAYS, originCopy } from '../lib/pidgin';
 import type { AvatarConfig, CreatorCatalog } from '../lib/types';
 import { useGame } from '../state/game';
 import { markWelcomed } from '../lib/welcome';
+import { playIntro, useIntro } from '../onboarding/introStore';
 import { Button, Icon, LoadingScreen, toast } from '../ui';
 import ErrorScreen from './ErrorScreen';
 import OriginReveal from './OriginReveal';
@@ -58,6 +59,7 @@ export default function CreateSim() {
   const sheetRef = useRef<HTMLDivElement>(null);
 
   const committed = needsHome(state);
+  const introOn = useIntro((s) => s.playing); // the intro changes the route itself, once the screen is white
   // A Sim that exists but has no home can only be on the lottery or home step.
   const cur: Step = committed && step < LOTTERY ? HOME : step;
 
@@ -82,7 +84,7 @@ export default function CreateSim() {
     if (committed) void import('./Game');
   }, [committed]);
 
-  if (status === 'ready' && state && !committed) return <Navigate to="/play" replace />;
+  if (status === 'ready' && state && !committed && !introOn) return <Navigate to="/play" replace />;
   if (session && (status === 'loading' || status === 'idle')) return <LoadingScreen text={P.loading} />;
   if (session && status === 'error') return <ErrorScreen message={gameError ?? P.somethingWrong} />;
 
@@ -108,7 +110,6 @@ export default function CreateSim() {
     setBusy(true);
     try {
       const st = await createProfileV2({ username, gender: avatar.gender, avatar, traits, dream });
-      try { window.localStorage.setItem('bl.journey.new-profile', st.profile.id); } catch { /* private browsing */ }
       void claimStoredReferral(); // E2: the ?ref= code from the invite link (silent; the server decides)
       setFreshRoll(true);
       setStep(LOTTERY);
@@ -138,14 +139,9 @@ export default function CreateSim() {
       const res = await chooseStartHome(home);
       applyState(res);
       void useGame.getState().refresh();
-      try {
-        if (window.localStorage.getItem('bl.journey.new-profile') === res.profile.id) {
-          window.localStorage.setItem(`bl.journey.pending.${res.profile.id}`, '1');
-          window.localStorage.removeItem('bl.journey.new-profile');
-        }
-      } catch { /* private browsing */ }
       markWelcomed(res.profile.id); // S2: a brand-new Sim goes straight into the game
-      nav('/play', { replace: true });
+      // the cinematic intro fades to white over this screen, then we move to the game under the cover; the tour follows
+      playIntro(() => nav('/play', { replace: true }));
     } catch (e) {
       const msg = errorMessage(e);
       setErr(msg);

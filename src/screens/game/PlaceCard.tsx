@@ -461,7 +461,7 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
 
   const name = loc.name.replace(/\s*\(.*\)\s*$/, '');
   return (
-    <section className={`place-card${open ? ' is-open' : ''}`} aria-label={`Inside ${loc.name}`}>
+    <section className={`place-card${open ? ' is-open' : ''}`} aria-label={`Inside ${loc.name}`} data-tour="place-card">
       <header className="place-card__head">
         <span className="place-card__emoji" aria-hidden>{placeEmoji(loc)}</span>
         <div className="place-card__title">
@@ -473,7 +473,7 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
           </p>
         </div>
         <div className="place-card__btns">
-          <button type="button" className="pc-iconbtn pc-iconbtn--say" onClick={() => setSayOpen((o) => !o)} aria-label="Say something out loud" aria-expanded={sayOpen} title="Say something"><Icon name="chat" size={17} /></button>
+          <button type="button" className="pc-iconbtn pc-iconbtn--say" data-tour="place-say" onClick={() => setSayOpen((o) => !o)} aria-label="Say something out loud" aria-expanded={sayOpen} title="Say something"><Icon name="chat" size={17} /></button>
           <button type="button" className="pc-iconbtn" onClick={() => void share()} aria-label="Share this place" title="Share"><Icon name="mail" size={17} /></button>
           <button type="button" className="pc-iconbtn" onClick={onMap} aria-label="Open the map" title="Map"><Icon name="map" size={17} /></button>
           <button type="button" className="pc-iconbtn" onClick={onHome} aria-label={atHome ? 'Home' : 'Go home'} title="Home"><Icon name="home" size={17} /></button>
@@ -481,7 +481,7 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
       </header>
 
       {open && (
-        <form className={`place-card__say${sayOpen ? ' is-open' : ''}`} onSubmit={(e) => { e.preventDefault(); void send(); }}>
+        <form className={`place-card__say${sayOpen ? ' is-open' : ''}`} data-tour="place-say-box" onSubmit={(e) => { e.preventDefault(); void send(); }}>
           <input value={say} autoFocus={sayOpen} onChange={(e) => setSay(e.target.value)} maxLength={280} enterKeyHint="send"
             placeholder={peopleCount > 1 ? `Say something to the ${peopleCount} people here…` : 'Say something out loud…'} aria-label="Say something out loud" />
           <button type="submit" className="pc-send" disabled={!say.trim() || sending} aria-label="Send"><Icon name="chevronRight" size={18} /></button>
@@ -496,7 +496,7 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
           <span className="pc-event__go">{evAct ? `${evAct.icon} ${evZone?.label}` : 'Tickets'} <Icon name="chevronRight" size={12} /></span>
         </button>
       )}
-      <div className="place-card__chips" ref={chipsRef} role="tablist" aria-label="Zones">
+      <div className="place-card__chips" ref={chipsRef} role="tablist" aria-label="Zones" data-tour="place-zones">
         <button type="button" className="pc-fold" onClick={() => setOpen((o) => !o)} aria-label={open ? 'Fold the card' : 'Show the actions'} aria-expanded={open}>
           <Icon name={open ? 'chevronDown' : 'chevronUp'} size={16} />
         </button>
@@ -515,7 +515,7 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
       </div>
 
       {open && current && (
-        <div className="place-card__acts" key={current.key}>
+        <div className="place-card__acts" key={current.key} data-tour="place-acts">
           {current.actions.map((a) => (
             <ActionCard key={a.id} a={a} zone={current} state={state} locId={loc.id} idle={idle} blocked={blocked} />
           ))}

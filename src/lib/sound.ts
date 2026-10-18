@@ -180,6 +180,20 @@ export function playChime() {
   tone(1320, t + 0.16, 0.35, { gain: 0.25, attack: 0.02, release: 0.35 });
 }
 
+/**
+ * Onboarding: a soft, warm chord swell for the "Welcome to Benin Life" intro (about 4 s, slow attack, long tail).
+ * Silent when audio is not unlocked yet, when muted or when sound effects are off.
+ */
+export function playSwell() {
+  if (!sfxOn() || !ensureCtx() || ctx!.state !== 'running') return;
+  const t = ctx!.currentTime + 0.05;
+  // C major 9 spread over two octaves; each voice blooms slowly then fades
+  [48, 55, 60, 64, 67, 71].forEach((m, i) => {
+    tone(hz(m), t + i * 0.07, 3.4, { type: 'sine', gain: 0.1 - i * 0.008, attack: 1.6, release: 2.0, cutoff: 1800 });
+  });
+  tone(hz(84), t + 1.4, 1.2, { type: 'triangle', gain: 0.05, attack: 0.05, release: 1.4, cutoff: 5200 });
+}
+
 // ---------- music ----------
 const CHORDS_DAY = [[60, 64, 67, 71], [57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 62, 65]];
 const CHORDS_NIGHT = [[57, 60, 64, 67], [53, 57, 60, 64], [50, 53, 57, 60], [52, 55, 59, 62]];

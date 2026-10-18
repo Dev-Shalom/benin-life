@@ -82,7 +82,7 @@ export function TopPill({ state, clock }: { state: GameState; clock: GameClock }
         </>
       )}
       <span className="grow" />
-      <button type="button" className="pill-bar__mute" onClick={() => toggle('muted')} aria-pressed={muted}
+      <button type="button" className="pill-bar__mute" data-tour="mute" onClick={() => toggle('muted')} aria-pressed={muted}
         aria-label={muted ? 'Sound is off. Turn it on' : 'Sound is on. Mute'} title={muted ? 'Unmute' : 'Mute'}>
         <SpeakerIcon muted={muted} />
       </button>
@@ -103,7 +103,7 @@ function CashPill({ cash, onOpen }: { cash: number; onOpen: () => void }) {
   }, [full, cash]);
   const whole = naira(cash);
   return (
-    <span className={`pill-bar__cash${full && shortened ? ' is-full' : ''}`}>
+    <span className={`pill-bar__cash${full && shortened ? ' is-full' : ''}`} data-tour="cash">
       <button type="button" className="pill-bar__amount" title={shortened ? whole : undefined}
         aria-label={shortened ? `Cash ${whole}. Tap to ${full ? 'shorten' : 'show the full amount'}` : `Cash ${whole}. Open wallet`}
         onClick={() => (shortened ? setFull((v) => !v) : onOpen())}>
@@ -254,7 +254,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
     <div className={`left-rail${clean ? ' is-clean' : ''}${compact ? ' is-compact' : ''}`}>
       <TaskPill state={state} status={status} />
       {!clean && count > 0 && (
-        <div className={`today${open ? ' is-open' : ''}`} ref={todayRef}>
+        <div className={`today${open ? ' is-open' : ''}`} ref={todayRef} data-tour="today">
           <button type="button" className={`today-pill${ready ? ' is-ready' : ''}`} onClick={toggle} aria-expanded={open}
             aria-controls="today-list" aria-label={`Today: ${count} tip${count === 1 ? '' : 's'}${ready ? ', something to collect' : ''}. ${open ? 'Hide' : 'Show'}`}>
             <span className="today-pill__label">Today</span>
@@ -345,7 +345,7 @@ export function NeedsCard({ state }: { state: GameState }) {
   const tier = origin?.id ?? p.origin;
   const badge = tier ? originCopy(tier, origin?.name ?? tier, origin?.tagline ?? '').badge : null;
   return (
-    <button type="button" className="needs-card" onClick={() => openSim('needs')} aria-label="Your Sim: needs and profile">
+    <button type="button" className="needs-card" data-tour="needs" onClick={() => openSim('needs')} aria-label="Your Sim: needs and profile">
       <span className="needs-card__face">
         <AvatarPortrait config={p.avatar} size={56} />
         {badge && (
@@ -384,7 +384,7 @@ export function Dock({ active, unread, onPick }: { active: DockId | null; unread
   return (
     <nav className="dock" aria-label="Game menu">
       {items.map((it) => (
-        <button key={it.id} type="button" className={`dock__btn${active === it.id ? ' is-active' : ''}`} onClick={() => onPick(it.id)}
+        <button key={it.id} type="button" className={`dock__btn${active === it.id ? ' is-active' : ''}`} onClick={() => onPick(it.id)} data-tour={`dock-${it.id}`}
           aria-current={active === it.id ? 'page' : undefined}
           aria-label={it.id === 'phone' && unread > 0 ? `Phone, ${unread} unread` : undefined}>
           <span className="dock__icon">

@@ -26,6 +26,7 @@ import { Button, EmptyState, Logo, Sheet, Switch, Tabs, toast } from '../../ui';
 import { SkillsTab } from './Skills';
 import { CertificatesCard } from './School';
 import LookPanel from '../creator/LookPanel';
+import { startTour } from '../../onboarding/tourStore';
 import { NotificationsSettings } from './NotificationsSettings';
 import { JobCard, PerfBar, Promotion, ShiftStats } from '../../panels/careers/CareerUI';
 
@@ -425,6 +426,8 @@ function SettingsTab({ state }: { state: GameState }) {
         </div>
       </div>
       <div className="stack" style={{ marginTop: 16 }}>
+        <Button variant="ghost" block data-tour="replay-tour" onClick={() => { setOverlay(null); startTour(); }}>🧭 Replay the tour</Button>
+        <Button variant="ghost" block onClick={() => openPhone('help')}>🛟 Help and guides</Button>
         <Button variant="ghost" block onClick={() => openPhone('feedback')}>💡 Send feedback or report a bug</Button>
         {state.profile.is_admin && (
           <Button variant="gold" icon="crown" block onClick={() => nav('/admin')}>Open admin panel</Button>
@@ -461,7 +464,7 @@ export function SimSheet({ state }: { state: GameState }) {
       header={
         <div className="sim-sheet__head">
           <SheetHead state={state} />
-          <Tabs value={tab} onChange={(t) => openSim(t as SimTab)} tabs={TABS} className="sim-tabs" />
+          <Tabs value={tab} onChange={(t) => openSim(t as SimTab)} tabs={TABS} className="sim-tabs" tourPrefix="sim-tab" />
         </div>
       }>
       {tab === 'profile' && <ProfileTab state={state} onEditLook={() => setOverlay('look')} onWardrobe={() => setOverlay('boutique')} />}

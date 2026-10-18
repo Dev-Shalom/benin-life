@@ -37,6 +37,7 @@ const FeedbackApp = lazy(() => import('./phone/FeedbackApp'));
 const YahooApp = lazy(() => import('./phone/YahooApp'));
 const HustlesApp = lazy(() => import('./phone/HustlesApp'));
 const SchoolApp = lazy(() => import('./phone/SchoolApp'));
+const HelpApp = lazy(() => import('./phone/HelpApp'));
 
 interface App {
   id: string;
@@ -64,6 +65,7 @@ const APPS: App[] = [
   { id: 'yahoo', name: 'Yahoo', emoji: '💻', bg: 'linear-gradient(160deg,#1f2a36,#0b0f14)', pitch: '' },
   { id: 'police', name: 'Police', emoji: '🚓', bg: 'linear-gradient(160deg,#4f6bd8,#26388f)', pitch: 'Report a robbery, check your case file and pay bail.' },
   { id: 'wallet', name: 'Wallet', emoji: '👛', bg: 'linear-gradient(160deg,#34c77f,#0a6f40)', pitch: '' },
+  { id: 'help', name: 'Help', emoji: '🛟', bg: 'linear-gradient(160deg,#ff8a6b,#c0392b)', pitch: 'Short guides for everything in Benin Life, with a Show me button.' },
   { id: 'feedback', name: 'Feedback', emoji: '💡', bg: 'linear-gradient(160deg,#ffcf5a,#e8912a)', pitch: '' },
   { id: 'alerts', name: 'Alerts', emoji: '🔔', bg: 'linear-gradient(160deg,#ff9d5c,#e2552c)', pitch: '' },
   { id: 'settings', name: 'Settings', emoji: '⚙️', bg: 'linear-gradient(160deg,#a9b2bf,#6b7686)', pitch: '' },
@@ -120,6 +122,7 @@ function JobsApp({ state, onGo }: { state: GameState; onGo: (id: string) => void
 export function Phone({ state, clock }: { state: GameState; clock: GameClock }) {
   const overlay = useUi((s) => s.overlay);
   const phoneApp = useUi((s) => s.phoneApp);
+  const phoneNonce = useUi((s) => s.phoneNonce);
   const setOverlay = useUi((s) => s.setOverlay);
   const openPanel = useUi((s) => s.openPanel);
   const openSim = useUi((s) => s.openSim);
@@ -137,10 +140,12 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const { mounted, closing } = usePresence(open, 200);
   const [screen, setScreen] = useState<'lock' | 'home' | string>('lock');
   const [wasOpen, setWasOpen] = useState(open);
+  const [seenNonce, setSeenNonce] = useState(phoneNonce);
   const [bbTab, setBbTab] = useState<'boards' | 'mine'>('boards');
   const touch = useRef<number | null>(null);
-  if (open !== wasOpen) {
+  if (open !== wasOpen || (open && phoneNonce !== seenNonce)) {
     setWasOpen(open);
+    setSeenNonce(phoneNonce);
     if (open) {
       setScreen((phoneApp ?? 'lock').replace(/:.*$/, ''));
       setBbTab(phoneApp === 'billboards:mine' ? 'mine' : 'boards');
@@ -224,7 +229,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
             <div className="phone-home">
               <div className="phone-home__grid">
                 {APPS.filter((a) => (a.id !== 'boutique' || wardrobeOn) && (a.id !== 'billboards' || billboardsOn) && (a.id !== 'yahoo' || yahooOn)).map((a) => (
-                  <button key={a.id} type="button" className="app-icon" onClick={() => launch(a.id)}>
+                  <button key={a.id} type="button" className="app-icon" data-tour={`app-${a.id}`} onClick={() => launch(a.id)}>
                     <span className="app-icon__tile" style={{ background: a.bg }} aria-hidden>
                       {a.emoji}
                       {a.id === 'alerts' && unread > 0 && <span className="app-icon__badge">{unread > 99 ? '99+' : unread}</span>}
@@ -248,9 +253,9 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp state={state} onGoHome={goHome} onBack={() => setScreen('home')} onOpenAlerts={() => setScreen('alerts')} alertsUnread={unread} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' ? (
+                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
-                        {app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
+                        {app.id === 'help' ? <HelpApp /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
                           : app.id === 'billboards' ? <BillboardsApp key={bbTab} initialTab={bbTab} onOpenBoard={openBoard} />
                           : app.id === 'cars' ? <CarsApp state={state} onGo={goToPlace} />
                             : app.id === 'police' ? <PoliceApp state={state} onGo={goToPlace} />

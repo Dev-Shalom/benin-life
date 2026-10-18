@@ -28,6 +28,8 @@ interface UiStore {
   homePick: { id: string | null; group: HomeGroup; activities?: string[] } | null;
   /** Phone app to open with the phone (e.g. 'alerts'). */
   phoneApp: string | null;
+  /** Bumps on every openPhone() so an open phone can jump to another app (guided tour, Help deep links). */
+  phoneNonce: number;
   select: (id: string | null, tab?: PanelId | null) => void;
   openPanel: (id: PanelId, params?: Record<string, unknown>, locationId?: string) => void;
   closePanel: () => void;
@@ -49,12 +51,13 @@ export const useUi = create<UiStore>((set) => ({
   mapOpen: false,
   homePick: null,
   phoneApp: null,
+  phoneNonce: 0,
   select: (id, tab = null) => set({ selectedId: id, selectedTab: tab }),
   openPanel: (id, params, locationId) => set({ panel: { id, params, locationId } }),
   closePanel: () => set({ panel: null }),
   setOverlay: (overlay) => (overlay === 'settings' ? set({ overlay: 'sim', simTab: 'settings' }) : set({ overlay })),
   openSim: (tab) => set((s) => ({ overlay: 'sim', simTab: tab ?? s.simTab })),
-  openPhone: (app = null) => set({ overlay: 'phone', phoneApp: app }),
+  openPhone: (app = null) => set((s) => ({ overlay: 'phone', phoneApp: app, phoneNonce: s.phoneNonce + 1 })),
   setMapOpen: (mapOpen) => set({ mapOpen }),
   pickHome: (homePick) => set({ homePick }),
   closeAll: () => set({ selectedId: null, panel: null, overlay: null, homePick: null }),

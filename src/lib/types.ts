@@ -734,3 +734,8 @@ export interface Profile {
   job_shift_pay?: number | null;
   job_shift_xp?: number | null;
 }
+
+// Guided tour (migration 20261018000600_tour.sql): when the player finished or dismissed it (null = not yet).
+export interface Profile {
+  tour_done_at?: string | null;
+}

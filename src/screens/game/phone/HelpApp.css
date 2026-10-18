@@ -1,0 +1,28 @@
+/* Help phone app (src/screens/game/phone/HelpApp.tsx). Scoped to .help. Inputs are 16px (docs/MOBILE_INPUT.md). */
+.help { display: grid; gap: 12px; align-content: start; color: var(--ink, #131a24); }
+.help-search { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 14px; border-radius: 999px; background: var(--surface, #fff); border: 1px solid var(--line, #dfe5ec); box-shadow: 0 1px 2px rgba(17, 32, 56, 0.05); }
+.help-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 500 16px/1.2 var(--font-body, system-ui, sans-serif); color: inherit; }
+.help-search:focus-within { border-color: #c0392b; box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.15); }
+.help-tours { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.help-tour { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 14px; background: #fff1ec; color: #9c1f19; font: 700 14px/1 var(--font-display, system-ui, sans-serif); cursor: pointer; transition: transform 140ms ease-out; }
+.help-tour:active { transform: scale(0.97); }
+.help-group__h { margin: 6px 2px 6px; font: 700 12px/1 var(--font-display, system-ui, sans-serif); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3, #5f6b7d); }
+.help-list { display: grid; gap: 6px; }
+.help-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 10px 12px; text-align: left; border: 1px solid var(--line, #dfe5ec); border-radius: 14px; background: var(--surface, #fff); cursor: pointer; color: inherit; transition: transform 140ms ease-out, background 140ms; }
+.help-row:active { transform: scale(0.985); background: #faf6ee; }
+.help-row__main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.help-row__t { font: 700 14px/1.25 var(--font-display, system-ui, sans-serif); }
+.help-row__s { font: 500 12px/1.35 var(--font-body, system-ui, sans-serif); color: var(--ink-3, #5f6b7d); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.help-row__chev { font-size: 22px; color: #b0793a; }
+.help-empty { text-align: center; padding: 16px 0; display: grid; gap: 10px; justify-items: center; color: var(--ink-3, #5f6b7d); }
+.help-article { gap: 8px; }
+.help-back { justify-self: start; min-height: 40px; padding: 0 4px; border: 0; background: none; font: 700 14px/1 var(--font-display, system-ui, sans-serif); color: #c0392b; cursor: pointer; }
+.help-article__topic { font: 700 12px/1 var(--font-display, system-ui, sans-serif); letter-spacing: 0.06em; text-transform: uppercase; color: #a07224; }
+.help-article__title { margin: 0; font: 800 22px/1.15 var(--font-display, system-ui, sans-serif); }
+.help-article__sum { margin: 0; font: 500 15px/1.5 var(--font-body, system-ui, sans-serif); color: var(--ink-2, #435064); }
+.help-h { margin: 10px 0 2px; font: 700 12px/1 var(--font-display, system-ui, sans-serif); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3, #5f6b7d); }
+.help-steps, .help-tips { margin: 0; padding-left: 20px; display: grid; gap: 6px; font: 500 14px/1.45 var(--font-body, system-ui, sans-serif); }
+.help-tips { list-style: disc; }
+.help-where { margin: 0; padding: 10px 12px; border-radius: 12px; background: #fbf3e4; font: 500 14px/1.45 var(--font-body, system-ui, sans-serif); }
+.help-show { margin-top: 12px; min-height: 48px; border: 0; border-radius: 999px; font: 800 16px/1 var(--font-display, system-ui, sans-serif); color: #fff; background: linear-gradient(180deg, #ef5b45, #c0392b); box-shadow: 0 8px 18px -8px rgba(192, 57, 43, 0.7); cursor: pointer; transition: transform 140ms ease-out; }
+.help-show:active { transform: scale(0.97); }

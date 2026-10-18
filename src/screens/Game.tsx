@@ -63,7 +63,7 @@ import { MoneyPickLayer } from './game/MoneyPick';
 import { useHypeLive } from '../state/hype';
 import { useEventsLive } from '../state/events';
 import { EventBanner, useEventBadges } from './game/Events';
-import JourneyGuide from './game/JourneyGuide';
+import OnboardingHost from '../onboarding/OnboardingHost';
 import { DailySync, usePlaceGem } from './game/Daily';
 import { LoungeHost } from './game/Lounge';
 import { ChallengeSync } from './game/Challenges';
@@ -912,7 +912,7 @@ export default function Game() {
           )}
           {!clean && !state.travel && !showHome && !showPlace && (
             <div className="where-row">
-              <button type="button" className="where-chip" onClick={() => select(here.id)}>
+              <button type="button" className="where-chip" data-tour="home-things" onClick={() => select(here.id)}>
                 <span className="where-chip__dot" />
                 <span className="grow">
                   <span className="where-chip__label">You're at</span>
@@ -929,7 +929,7 @@ export default function Game() {
           )}
           {!clean && showHome && (
             <div className="home-chip-row">
-              <button type="button" className="home-chip" onClick={() => select(here.id)}>
+              <button type="button" className="home-chip" data-tour="home-things" onClick={() => select(here.id)}>
                 <span aria-hidden>🏠</span> <span className="home-chip__name">{here.name.replace(/ \(.*\)$/, '')}</span>
                 <span className="home-chip__go">Things to do <Icon name="chevronUp" size={13} /></span>
               </button>
@@ -999,7 +999,7 @@ export default function Game() {
       <Phone state={state} clock={clock} />
       {boardSheet && <Suspense fallback={null}><BillboardSheet state={state} /></Suspense>}
       {overlay === 'boutique' && <Suspense fallback={null}><Boutique state={state} /></Suspense>}
-      <JourneyGuide state={state} onFinish={(explore) => { if (explore) setMapOpen(true); }} />
+      <OnboardingHost />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import Landing from './screens/Landing';
 import Auth from './screens/Auth';
 import Setup from './screens/Setup';
 import ErrorScreen from './screens/ErrorScreen';
+import Intro from './onboarding/Intro';
 
 // Heavier screens load on demand to keep the first load small on mobile data.
 const CreateSim = lazy(() => import('./screens/CreateSim'));
@@ -146,6 +147,7 @@ export default function App() {
         </Routes>
       </Suspense>
       <Toaster />
+      <Intro />
       <UpdateNotice />
       <NetBanner />
     </BrowserRouter>
