@@ -216,6 +216,8 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
 
           <PlayerLounge id={id} />
 
+          <PlayerHouseUpgrades id={id} />
+
           <PlayerCertificates id={id} />
 
           <PlayerCharms id={id} />
@@ -517,6 +519,36 @@ function PlayerLounge({ id }: { id: string }) {
         <ConfirmButton tone="primary" confirmText="Tap again: grant free" disabled={busy || !pick}
           onConfirm={() => act(() => adminApi.loungeGrant(id, pick, hours.trim() === '' ? null : Math.max(1, Math.floor(Number(hours)))))}>Grant membership</ConfirmButton>
         {m && <ConfirmButton tone="ghost" confirmText="Tap again: remove" disabled={busy} onConfirm={() => act(() => adminApi.loungeRevoke(id))}>Remove</ConfirmButton>}
+      </div>
+    </section>
+  );
+}
+
+/** R8: a player's house upgrades (done / building) with a free, instant, audited Grant (house_upgrade_grant). */
+function PlayerHouseUpgrades({ id }: { id: string }) {
+  const { data, reload } = useLoad(() => adminApi.houseUpgradeGet(id), [id]);
+  const [busy, setBusy] = useState(false);
+  const [pick, setPick] = useState('');
+  const choice = pick || data?.options?.[0]?.id || '';
+  const act = async () => {
+    setBusy(true);
+    try { const r = await adminApi.houseUpgradeGrant(id, choice); toast(r.message, 'good'); setPick(''); await reload(); } catch (e) { toast(errorMessage(e), 'bad'); } finally { setBusy(false); }
+  };
+  return (
+    <section className="adm-box" data-testid="adm-house-upgrades">
+      <h3 className="adm-h3">🏗️ House upgrades</h3>
+      {data && <p className="adm-note">Home type: <b>{data.kind.replace('_', ' ')}</b>{data.start_home ? ` (${data.start_home})` : ''}</p>}
+      {data && data.rows.length === 0 && <p className="adm-empty">No upgrades built.</p>}
+      {(data?.rows ?? []).map((r) => (
+        <p key={r.id} className="adm-note">
+          {r.emoji} <b>{r.name}</b> · {r.state === 'done' ? `done ${r.done_at ? timeShort(r.done_at) : ''}` : `builders working, ready ${timeShort(r.ready_at)}`} · {r.source === 'admin' ? 'gift from admin' : `paid ${naira(r.paid)}`}
+        </p>
+      ))}
+      <div className="adm-btnrow">
+        <select className="adm-input" aria-label="Upgrade to grant" value={choice} onChange={(e) => setPick(e.target.value)} disabled={!data?.options?.length}>
+          {(data?.options ?? []).map((o) => <option key={o.id} value={o.id}>{o.emoji} {o.name}</option>)}
+        </select>
+        <ConfirmButton tone="primary" confirmText="Tap again: grant free" disabled={busy || !choice} onConfirm={act}>Grant upgrade</ConfirmButton>
       </div>
     </section>
   );

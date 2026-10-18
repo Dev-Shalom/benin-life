@@ -26,7 +26,7 @@ export type AdminTable =
   | 'origin_tiers' | 'traits' | 'dreams' | 'start_homes' | 'career_tracks' | 'career_levels'
   | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture' | 'starter_furniture'
   | 'place_zones' | 'zone_actions' | 'place_moods' | 'npc_roster' | 'crowd_profiles' | 'hype_templates' | 'place_events' | 'topup_packs'
-  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'group_missions' | 'yahoo_ranks' | 'invest_products' | 'invest_markets' | 'hustles' | 'hustle_car_classes' | 'hustle_fish' | 'skills' | 'skill_curve' | 'skill_sources' | 'courses' | 'certificates' | 'challenge_templates' | 'challenge_template_stats' | 'lounge_tiers';
+  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'group_missions' | 'yahoo_ranks' | 'invest_products' | 'invest_markets' | 'hustles' | 'hustle_car_classes' | 'hustle_fish' | 'skills' | 'skill_curve' | 'skill_sources' | 'courses' | 'certificates' | 'challenge_templates' | 'challenge_template_stats' | 'lounge_tiers' | 'house_upgrades';
 
 export interface PlayerRow {
   id: string;
@@ -195,5 +195,12 @@ export const adminApi = {
   }>('admin_lounge_get', { p_user: userId }),
   loungeGrant: (userId: string, tier: string, hours: number | null) => rpc<Msg & { tier: string; expires_at: string }>('admin_lounge_grant', { p_user: userId, p_tier: tier, p_hours: hours }),
   loungeRevoke: (userId: string) => rpc<Msg>('admin_lounge_revoke', { p_user: userId }),
+  /** R8: a player's house upgrades (built / building) and the ones that could be granted; grant is free, instant and audited (house_upgrade_grant). */
+  houseUpgradeGet: (userId: string) => rpc<{
+    kind: string; start_home: string | null;
+    rows: { id: string; name: string; emoji: string; state: 'done' | 'building'; paid: number; ready_at: string; done_at: string | null; source: string }[];
+    options: { id: string; name: string; emoji: string }[];
+  }>('admin_house_upgrade_get', { p_user: userId }),
+  houseUpgradeGrant: (userId: string, upgrade: string) => rpc<Msg & { upgrade: string }>('admin_house_upgrade_grant', { p_user: userId, p_upgrade: upgrade }),
   charmClear: (userId: string, charmId: number | null) => rpc<Msg & { cleared: number }>('admin_charm_clear', { p_user: userId, p_charm: charmId }),
 };

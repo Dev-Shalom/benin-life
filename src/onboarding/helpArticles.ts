@@ -227,6 +227,27 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tour: ['buy'],
     keywords: 'furniture arrange move rotate decorate room layout',
   },
+  {
+    id: 'house-upgrades',
+    topic: 'home',
+    title: 'Upgrade your home',
+    summary: 'Expand or improve the home you live in, instead of moving.',
+    steps: [
+      'Open Phone, then Houses, and scroll to Upgrade your home.',
+      'Tap an upgrade to see what it costs, how long it takes and what you will get.',
+      'Tap Start building. The builders work for real minutes and a scaffold shows on your house.',
+      'You get a message when they finish. New rooms are free floor: use Buy and Arrange to furnish them.',
+    ],
+    where: 'Phone, then Houses. A builders pill on your home screen shows the progress.',
+    tips: [
+      'You can add rooms, a garage or an extra car space, power, a borehole, a compound wall and gate, and a better finish.',
+      'The big one turns your home into the next size at the same address. Your furniture and garage stay.',
+      'The landlord must agree, so each job has a consent fee. If you ever move, you get part of the upgrade money back.',
+      'Hostel rooms belong to UNIBEN and cannot be upgraded. Prices and times can change: check the app.',
+    ],
+    tour: ['houses'],
+    keywords: 'upgrade extension extra room bedroom garage generator solar borehole fence gate paint tiles boys quarters builders renovate expand',
+  },
 
   // ---- Buying ----------------------------------------------------------------------------------------------------
   {

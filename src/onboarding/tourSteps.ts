@@ -198,6 +198,18 @@ export const TOUR_STEPS: TourStep[] = [
     before: toGame,
   },
   {
+    id: 'houses',
+    target: '[data-tour="app-houses"]',
+    title: 'Upgrade the home you have',
+    body: 'No need to move to get more space. Open Houses to add a room, a garage, power, water, a wall and gate, a fresh finish, or even turn your room into a bigger home at the same address.',
+    points: [
+      'Builders work for real minutes. A scaffold shows on your house until they finish.',
+      'Furniture stays where it is. Fill the new space from Buy.',
+    ],
+    isNew: true,
+    before: () => toPhone('home'),
+  },
+  {
     id: 'help',
     target: '[data-tour="app-help"]',
     title: 'Help is on your phone',

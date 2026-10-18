@@ -13,6 +13,7 @@ import { useGame } from '../../../state/game';
 import { useMove } from '../../../state/move';
 import { useUi } from '../../../state/ui';
 import { Button, toast } from '../../../ui';
+import HouseUpgrades from './HouseUpgrades';
 
 export default function HousesApp({ state }: { state: GameState }) {
   const refresh = useGame((s) => s.refresh);
@@ -106,6 +107,7 @@ export default function HousesApp({ state }: { state: GameState }) {
           : enabled ? `Rent is collected every ${WEEKDAYS[catalog?.rent_weekday ?? 5]} at midnight, from your bank first, then cash. If you can't cover it, the rest becomes rent owed.`
             : 'Rent collection is paused right now.'}
       </p>
+      <HouseUpgrades state={state} />
       {opts && (
         <section className="move-list" aria-label="Move house">
           <div className="move-list__title">Move house</div>

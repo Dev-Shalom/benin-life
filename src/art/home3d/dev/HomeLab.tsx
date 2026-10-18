@@ -1,9 +1,12 @@
 // Dev page for the 3D home: /dev/home?l=flat&h=21.5&busy=bed (dev server only).
 // l = hostel | face_me | self_contain | flat | duplex, h = game hour, busy = a HomeGroup,
 // o = lapo | nepo (the seeded starter furniture set; omit for the full default furnishing).
+// R8: up = finished upgrades (comma list of upgrade ids, e.g. up=ext_bedroom,paint_fresh,finish_pop,fence_wall,gate_security,gen_house),
+// build = upgrades the builders are on (scaffolding), e.g. build=ext_guest_wing.
 import { useMemo, useState } from 'react';
 import { defaultAvatar } from '../../avatar3d';
 import { HomeView } from '../HomeView';
+import { applyUpgrades } from '../upgrades';
 import { furnishLayout, KINDS, LAYOUTS, type FurnitureItem, type FurnitureKind, type HomeGroup, type HomeLayout, type HomeLayoutId, type OwnedPiece } from '../model';
 
 /** B1: ?show=1 lays every furniture kind out in rows on the duplex lot (model check). */
@@ -49,7 +52,13 @@ export default function HomeLab() {
   const [busy, setBusy] = useState<HomeGroup | null>((q.get('busy') as HomeGroup) || null);
   const [picked, setPicked] = useState<string | null>(null);
   const [origin, setOrigin] = useState<string>(q.get('o') ?? '');
-  const furnished = useMemo(() => (q.get('show') ? showroom() : furnishLayout(LAYOUTS[layout], SETS[origin] ?? null)), [layout, origin, q]);
+  // R8: ?up= / ?build= show house upgrades (the finish / security levels the server's effect json carries)
+  const upgraded = useMemo(() => {
+    const info = (id: string) => ({ id, effect: ({ paint_fresh: { finish: 1 }, finish_pop: { finish: 2 }, finish_premium: { finish: 3 }, fence_wall: { security: 1 }, gate_security: { security: 2 } } as Record<string, Record<string, number>>)[id] ?? null });
+    const ids = (k: string) => (q.get(k) ?? '').split(',').filter(Boolean).map(info);
+    return applyUpgrades(LAYOUTS[layout], ids('up'), ids('build'));
+  }, [layout, q]);
+  const furnished = useMemo(() => (q.get('show') ? showroom() : furnishLayout(upgraded, SETS[origin] ?? null)), [upgraded, origin, q]);
   const avatar = useMemo(() => defaultAvatar(q.get('g') === 'female' ? 'female' : 'male'), [q]);
   // ?cars=gwagon_g63,benz_c300&garage=garage:2 parks cars so the tap-to-name label can be checked
   const parking = useMemo(() => {

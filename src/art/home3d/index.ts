@@ -3,3 +3,4 @@
 export * from './model';
 export { HomeView, type HomeViewProps } from './HomeView';
 export * from './arrange';
+export * from './upgrades';

@@ -35,9 +35,15 @@ export function rectOf(kind: string, x: number, z: number, rot: number): Rect {
 const overlaps = (a: Rect, b: Rect) => Math.min(a[2], b[2]) - Math.max(a[0], b[0]) > EPS && Math.min(a[3], b[3]) - Math.max(a[1], b[1]) > EPS;
 const inside = (a: Rect, b: Rect) => a[0] >= b[0] - 1e-6 && a[1] >= b[1] - 1e-6 && a[2] <= b[2] + 1e-6 && a[3] <= b[3] + 1e-6;
 
+/** R8: a layout id (the plain layout) or an upgraded layout (applyUpgrades: extension rooms, yard buildings). */
+export type LayoutRef = HomeLayoutId | HomeLayout;
+const layoutOf = (ref: LayoutRef): HomeLayout => (typeof ref === 'string' ? LAYOUTS[ref] : ref);
+
 export interface HomeBlocks {
   w: number;
   d: number;
+  /** R8: extension rooms (floor you may furnish) next to the house rectangle. */
+  rooms: Rect[];
   lot: Rect;
   /** Where solid pieces may not go (fixtures, partitions, door zones). */
   blocks: Rect[];
@@ -46,8 +52,8 @@ export interface HomeBlocks {
 }
 
 /** The fixed obstacles of a layout (the server stores the same numbers in home_layouts). */
-export function homeBlocks(id: HomeLayoutId): HomeBlocks {
-  const L: HomeLayout = LAYOUTS[id];
+export function homeBlocks(ref: LayoutRef): HomeBlocks {
+  const L: HomeLayout = layoutOf(ref);
   const r2 = (n: number) => Math.round(n * 100) / 100;
   const R = (a: Rect): Rect => a.map(r2) as Rect;
   const blocks: Rect[] = [];
@@ -64,20 +70,30 @@ export function homeBlocks(id: HomeLayoutId): HomeBlocks {
   for (const [side, a0, a1] of L.doors) {
     doors.push(R(side === 'e' ? [L.w - 0.8, a0, L.w + 0.8, a1] : [a0, L.d - 0.8, a1, L.d + 0.8]));
   }
-  return { w: L.w, d: L.d, lot: L.lot, blocks: [...blocks, ...doors], doors };
+  // R8: the wall between the house and an extension room (doorway left open) and the yard buildings
+  const rooms: Rect[] = [];
+  for (const r of L.rooms ?? []) {
+    const [x0, z0, x1] = r.rect;
+    rooms.push(R(r.rect));
+    if (r.door[0] > x0) blocks.push(R([x0, z0 - 0.06, r.door[0], z0 + 0.06]));
+    if (r.door[1] < x1) blocks.push(R([r.door[1], z0 - 0.06, x1, z0 + 0.06]));
+    doors.push(R([r.door[0], z0 - 0.8, r.door[1], z0 + 0.8]));
+  }
+  for (const st of L.structs ?? []) blocks.push(R(st.rect));
+  return { w: L.w, d: L.d, rooms, lot: L.lot, blocks: [...blocks, ...doors], doors };
 }
 
 /**
  * Why `item` can't stand where it is (null = fine). `others` = the rest of the room's own pieces.
  * Messages are the same Pidgin-light lines the server raises.
  */
-export function placementIssue(layoutId: HomeLayoutId, item: Pick<FurnitureItem, 'id' | 'kind' | 'x' | 'z' | 'rot'>, others: FurnitureItem[]): string | null {
+export function placementIssue(layoutId: LayoutRef, item: Pick<FurnitureItem, 'id' | 'kind' | 'x' | 'z' | 'rot'>, others: FurnitureItem[]): string | null {
   const hb = homeBlocks(layoutId);
   const r = rectOf(item.kind, item.x, item.z, item.rot ?? 0);
   const house: Rect = [0, 0, hb.w, hb.d];
   const place = placementOf(item.kind);
-  const inHouse = inside(r, house);
-  const inYard = inside(r, hb.lot) && !overlaps(r, house) ;
+  const inHouse = inside(r, house) || hb.rooms.some((rm) => inside(r, rm));
+  const inYard = inside(r, hb.lot) && !overlaps(r, house) && !hb.rooms.some((rm) => overlaps(r, rm));
   if (place === 'in' && !inHouse) return 'This one must stay inside the house.';
   if (place === 'out' && !inYard) return 'This one belongs outside in the compound.';
   if (place === 'any' && !inHouse && !inYard) return 'Keep it fully inside the house or fully in the compound.';
@@ -96,10 +112,13 @@ export function placementIssue(layoutId: HomeLayoutId, item: Pick<FurnitureItem,
 }
 
 /** A free starting spot for a newly bought / unstored piece: scan the area on the grid. */
-export function findFreeSpot(layoutId: HomeLayoutId, kind: string, others: FurnitureItem[], prefer?: { x: number; z: number }): { x: number; z: number; rot: number } | null {
+export function findFreeSpot(layoutId: LayoutRef, kind: string, others: FurnitureItem[], prefer?: { x: number; z: number }): { x: number; z: number; rot: number } | null {
   const hb = homeBlocks(layoutId);
   const place = placementOf(kind);
-  const area: Rect = place === 'out' ? hb.lot : [0, 0, hb.w, hb.d];
+  // R8: indoors the scan covers the house plus the extension rooms (their bounding box; the checks reject the gaps)
+  const area: Rect = place === 'out' ? hb.lot
+    : hb.rooms.length ? [0, 0, Math.max(hb.w, ...hb.rooms.map((rm) => rm[2])), Math.max(hb.d, ...hb.rooms.map((rm) => rm[3]))]
+    : [0, 0, hb.w, hb.d];
   const cands: { x: number; z: number; rot: number; s: number }[] = [];
   const cx = prefer?.x ?? hb.w / 2;
   const cz = prefer?.z ?? hb.d / 2;
