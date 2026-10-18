@@ -1,6 +1,7 @@
 // E2 More ways to earn (docs/HUSTLES.md): typed wrappers for the hustle, referral, weekly leaderboard and tip RPCs.
 // The server rolls every outcome and holds every naira; the client only shows it.
 import { rpc } from '../lib/api';
+import type { SkillCard } from './skills';
 
 export type HustleKind = 'bolt' | 'pos' | 'vending' | 'dj' | 'mc' | 'tutor' | 'fishing' | 'mechanic' | 'job' | 'pass' | 'service';
 
@@ -41,6 +42,7 @@ export interface Hustle {
   here_why: HustleWhy | null;
   /** Requirement problems that are not about the place (null = I could start it at the right place). */
   locked: HustleWhy | null;
+  skill?: SkillCard | null;
 }
 
 export interface HustleRun { id: number; hustle_id: string; name: string; icon: string; started_at: string; resolve_at: string; status: string; cost: number; amount: number; outcome: string | null }

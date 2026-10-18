@@ -11,7 +11,7 @@ The owner decided:
 2. **R2 Club switch (DONE):** each club can be turned on or off in Admin, so players gather in 2 clubs while numbers are small.
 3. **Sound fix (DONE)** (from the earlier queue).
 4. **Push notifications (DONE)** for all players, with an on/off toggle (earlier queue).
-5. **R3 Skills:**
+5. **R3 Skills (DONE):**
    - XP and levels for Yahoo, driving, cooking, music, teaching, fishing, mechanic and business.
    - The Yahoo level lowers the EFCC chance.
    - Hustles pay more at higher levels, and some jobs need a minimum level.

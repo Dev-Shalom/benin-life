@@ -6610,3 +6610,6 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .notif-cats .bl-switch-row:last-child { border-bottom: 0; }
 .notif-cats.is-off { opacity: 0.5; }
 .notif-global { font-size: 12px; color: var(--ink-3); }
+
+/* R3: "+15% from skill" on hustle cards */
+.pc-act__skill { color: var(--green-600, #14733e); font-weight: 600; }

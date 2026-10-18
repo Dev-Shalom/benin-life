@@ -172,6 +172,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
           const reason = !s.enabled ? 'Switched off'
             : j.locked === 'no_laptop' ? 'Need a laptop'
               : j.locked === 'laptop_too_weak' ? `Need ${j.min_laptop ?? 'a better laptop'}+`
+              : j.locked === 'skill_level' ? `Needs Yahoo lvl ${j.min_skill_level ?? 1}`
                 : cash && s.dirty <= 0 ? 'Nothing to cash'
                   : !s.where.ok ? (s.where.hint === 'no_mifi' ? 'Need MiFi' : s.where.hint === 'no_desk' ? 'Need a desk' : 'Home or cybercafe')
                     : cd > 0 ? `Wait ${countdown(cd)}`
@@ -184,8 +185,8 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
                 <small>
                   {j.seconds}s · {cash ? 'moves yahoo balance to cash' : `${nairaShort(j.pay_min)}–${nairaShort(j.pay_max)}`}
                 </small>
-                <span className={`yh-odds ${oddsTone(j.caught_pct)}`} title={`Base ${j.base_caught_pct}%`}>
-                  🚨 EFCC {Math.round(j.caught_pct)}%{j.caught_pct !== j.base_caught_pct ? <s>{j.base_caught_pct}%</s> : null}
+                <span className={`yh-odds ${oddsTone(j.caught_pct)}`} title={`Base ${j.base_caught_pct}%${j.skill?.caught_cut_pct ? ` · Yahoo lvl ${j.skill.level} cuts it ${j.skill.caught_cut_pct}%` : ''}`}>
+                  🚨 EFCC {Math.round(j.skill_caught_pct ?? j.caught_pct)}%{(j.skill_caught_pct ?? j.caught_pct) !== j.base_caught_pct ? <s>{j.base_caught_pct}%</s> : null}
                 </span>
                 {cash && s.dirty > 0 && (
                   <span className="yh-cash" role="radiogroup" aria-label="How much to cash out">
@@ -203,7 +204,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
         })}
       </div>
       <p className="yh-fine">
-        Caught = EFCC case: bail from {nairaShort(s.prices.bail)}, escape {100 - s.prices.escape_caught_pct}% chance, laptop seized and the whole yahoo balance gone.
+        Caught = EFCC case: bail from {nairaShort(s.prices.bail)}, escape {100 - s.prices.escape_caught_pct}% chance, your laptop may be seized and part of your yahoo balance taken.
       </p>
 
       {/* ranks */}

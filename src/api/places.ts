@@ -4,6 +4,8 @@ import type { SceneType } from '../lib/types';
 
 export type ZoneActionKind = 'activity' | 'job' | 'shop' | 'panel' | 'shrine' | 'linkup' | 'hustle';
 
+import type { SkillCard } from './skills';
+
 export interface ZoneAction {
   /** zone_actions.id */
   id: string;
@@ -28,6 +30,8 @@ export interface ZoneAction {
   /** Shop: item category ('vehicle' = a car) and how many the player owns. */
   category?: string;
   owned?: number;
+  /** R3: hustle cards: the skill, its level and the pay boost from it. */
+  skill?: SkillCard | null;
   /** Job: is it the player's own job, title and pay per shift. */
   mine?: boolean;
   title?: string | null;

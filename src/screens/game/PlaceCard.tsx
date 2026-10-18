@@ -247,6 +247,7 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
       {hustle && !a.instant && (cost > 0 || a.cap_left != null) && (
         <span className="pc-act__sub">{cost > 0 ? `Costs ${naira(cost)}` : 'No cost'}{a.cap_left != null ? ` · ${a.cap_left} left today` : ''}{cooling ? ' · cooling down' : ''}</span>
       )}
+      {hustle && !a.instant && !lock && a.skill && a.skill.pay_boost_pct > 0 && <span className="pc-act__sub pc-act__skill">{a.skill.icon} +{Math.round(a.skill.pay_boost_pct)}% from skill</span>}
       {hustle && a.note && !lock && <span className="pc-act__sub">{a.note}</span>}
       {a.kind === 'shop' && !car && (a.owned ?? 0) > 0 && <span className="pc-act__sub">{a.owned} in your Bag</span>}
       {shrine && a.effect && <span className="pc-act__sub">{a.effect} · {a.duration}</span>}

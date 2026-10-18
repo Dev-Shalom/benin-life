@@ -7,6 +7,7 @@ import { CrimeHost, PlacePlayerSheet } from './game/Crime';
 import { ShrineHost } from './game/Shrine';
 import { YahooHost } from './game/Yahoo';
 import { HustleHost } from './game/Hustles';
+import { SkillHost } from './game/Skills';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HomeView, KINDS, LAYOUTS, activityGroup, findFreeSpot, furnishHome, furnitureIdOfKey, homeLayoutFor, itemGroup, placementIssue, type FurnitureItem, type FurnitureKind, type SavedHomePosition } from '../art/home3d';
 import { CityView, type CityBoard } from '../art/city3d';
@@ -955,6 +956,7 @@ export default function Game() {
       <ShrineHost />
       <YahooHost />
       <HustleHost />
+      <SkillHost />
       {showPlace && (
         <PlacePlayerSheet
           person={placePlayer ? playersHere.find((pl) => pl.id === placePlayer.id) ?? null : null}

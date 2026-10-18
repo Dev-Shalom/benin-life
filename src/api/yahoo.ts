@@ -2,6 +2,7 @@
 // dirty "yahoo balance"; the client only shows it.
 import { rpc } from '../lib/api';
 import type { JailCase } from './crime';
+import type { SkillCard } from './skills';
 
 export interface YahooLaptop {
   item_id: string;
@@ -33,7 +34,11 @@ export interface YahooJob {
   base_caught_pct: number;
   min_tier: number;
   min_laptop: string | null;
-  locked: 'no_laptop' | 'laptop_too_weak' | null;
+  locked: 'no_laptop' | 'laptop_too_weak' | 'skill_level' | null;
+  /** R3: EFCC chance after my Yahoo level (the base and laptop numbers stay in caught_pct). */
+  skill_caught_pct?: number;
+  min_skill_level?: number;
+  skill?: SkillCard | null;
   cooldown_until: string | null;
 }
 

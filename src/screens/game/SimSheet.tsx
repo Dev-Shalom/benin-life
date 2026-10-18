@@ -23,6 +23,7 @@ import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
 import { useUi, type SimTab } from '../../state/ui';
 import { Button, EmptyState, Logo, Sheet, Switch, Tabs, toast } from '../../ui';
+import { SkillsTab } from './Skills';
 import LookPanel from '../creator/LookPanel';
 import { NotificationsSettings } from './NotificationsSettings';
 import { JobCard, PerfBar, Promotion, ShiftStats } from '../../panels/careers/CareerUI';
@@ -31,6 +32,7 @@ const TABS: { id: SimTab; label: string }[] = [
   { id: 'profile', label: 'Profile' },
   { id: 'needs', label: 'Needs' },
   { id: 'goals', label: 'Goals' },
+  { id: 'skills', label: 'Skills' },
   { id: 'people', label: 'People' },
   { id: 'career', label: 'Career' },
   { id: 'settings', label: 'Settings' },
@@ -446,7 +448,6 @@ export function SimSheet({ state }: { state: GameState }) {
   const setOverlay = useUi((s) => s.setOverlay);
   const loadCatalog = useCatalog((s) => s.loadCatalog);
   const open = overlay === 'sim';
-  // the Skills tab was removed at launch: an old 'skills' tab falls back to Profile
   const tab = TABS.some((t) => t.id === rawTab) ? rawTab : 'profile';
 
   useEffect(() => {
@@ -464,6 +465,7 @@ export function SimSheet({ state }: { state: GameState }) {
       {tab === 'profile' && <ProfileTab state={state} onEditLook={() => setOverlay('look')} onWardrobe={() => setOverlay('boutique')} />}
       {tab === 'needs' && <NeedsTab state={state} />}
       {tab === 'goals' && <GoalsTab state={state} />}
+      {tab === 'skills' && <SkillsTab />}
       {tab === 'people' && <PeopleTab />}
       {tab === 'career' && <CareerTab state={state} />}
       {tab === 'settings' && <SettingsTab state={state} />}

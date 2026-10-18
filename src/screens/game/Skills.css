@@ -1,0 +1,36 @@
+/* R3 skills: Sim sheet tab + level-up toast */
+.sk-intro { margin: 0; font-size: 13px; }
+.sk-card { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line, rgba(0,0,0,.1)); border-radius: 14px; background: var(--surface, #fff); }
+.sk-card__top { display: flex; align-items: center; gap: 10px; }
+.sk-card__icon { font-size: 26px; }
+.sk-card__main { flex: 1; min-width: 0; display: grid; }
+.sk-card__main small { color: var(--ink-2, #666); font-size: 12px; line-height: 1.3; }
+.sk-lvl { display: grid; place-items: center; min-width: 46px; padding: 4px 8px; border-radius: 12px; background: var(--green-500, #1f9d55); color: #fff; font-family: var(--font-display); font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; }
+.sk-lvl small { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
+.sk-bar { height: 10px; border-radius: 99px; background: rgba(0,0,0,.09); overflow: hidden; }
+.sk-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #1f9d55, #f2b705); transition: width 500ms cubic-bezier(.2,.8,.2,1); }
+.sk-xp { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2, #666); font-variant-numeric: tabular-nums; }
+.sk-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sk-chips:empty { display: none; }
+.sk-chip { padding: 2px 8px; border-radius: 99px; font-size: 11px; background: rgba(0,0,0,.06); }
+.sk-chip.is-ok { background: rgba(31,157,85,.15); color: #14733e; }
+.sk-next, .sk-train { margin: 0; font-size: 12.5px; line-height: 1.35; }
+.sk-train { color: var(--ink-2, #666); }
+.sk-skel { height: 150px; border-radius: 14px; background: rgba(0,0,0,.06); animation: sk-pulse 1.2s ease-in-out infinite; }
+@keyframes sk-pulse { 50% { opacity: .5; } }
+
+.sk-up { position: fixed; z-index: 90; left: 50%; top: calc(var(--hud-bottom, 72px) + 10px); transform: translateX(-50%); width: min(92vw, 360px);
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 0; border-radius: 16px; text-align: left; cursor: pointer;
+  background: linear-gradient(135deg, #14733e, #1f9d55); color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.35); animation: sk-in 420ms cubic-bezier(.2,1.2,.3,1) both; }
+.sk-up__icon { font-size: 34px; }
+.sk-up__text { display: grid; min-width: 0; }
+.sk-up__text small { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #ffd84d; }
+.sk-up__text b { font-family: var(--font-display); font-size: 17px; }
+.sk-up__text em { font-style: normal; font-size: 12px; opacity: .92; }
+@keyframes sk-in { from { opacity: 0; transform: translate(-50%, -16px) scale(.92); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+.sk-up__confetti { position: absolute; inset: 0 0 auto; height: 0; pointer-events: none; }
+.sk-up__confetti i { position: absolute; left: 50%; top: 20px; width: 7px; height: 11px; border-radius: 2px; background: hsl(calc(var(--i) * 47deg) 90% 60%);
+  --a: calc(var(--i) * 16.4deg); animation: sk-pop 1100ms cubic-bezier(.2,.8,.3,1) forwards; }
+@keyframes sk-pop { 0% { opacity: 1; transform: translate(-50%, 0) rotate(0); }
+  100% { opacity: 0; transform: translate(calc(-50% + cos(var(--a)) * 170px), calc(sin(var(--a)) * 110px + 30px)) rotate(calc(var(--i) * 70deg)); } }
+@media (prefers-reduced-motion: reduce) { .sk-up, .sk-up__confetti i, .sk-bar i, .sk-skel { animation: none; transition: none; } }
