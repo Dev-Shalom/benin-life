@@ -559,6 +559,8 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   // E2 hustle places (docs/HUSTLES.md)
   ikpoba_riverbank: { short: 'Ikpoba River', tier: 2, side: 'b' },
   mechanic_village: { short: 'Mechanic Village', tier: 2, side: 'r' },
+  // R6 HK Quarters (docs/YAHOO.md), Uselu / Ugbowo
+  hk_quarters: { short: 'HK Quarters', tier: 2, side: 'l' },
 };
 
 export function shortName(id: string, name: string): string {

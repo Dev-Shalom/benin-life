@@ -1,5 +1,6 @@
 // Y1 Yahoo app (docs/YAHOO.md): a dark "laptop screen" with the gear (laptop, MiFi, cybercafe desk, status phone), the dirty
-// yahoo balance, the jobs with their real odds, Cash out, the rank ladder and the yahoo balance history.
+// yahoo balance, the jobs with their real odds, Cash out (R6: a sheet with three options and their real numbers), R6 group
+// missions with friends, the rank ladder and the yahoo balance history.
 // Satire only: the jobs are abstract buttons; nothing explains how any real scam works.
 import { useEffect, useState } from 'react';
 import { yahooBuyPass, yahooJobStart, type YahooJob, type YahooStatus } from '../../../api/yahoo';
@@ -10,6 +11,8 @@ import type { GameState } from '../../../lib/types';
 import { useGame } from '../../../state/game';
 import { useYahoo } from '../../../state/yahoo';
 import { Button, toast } from '../../../ui';
+import { CashOutSheet } from './YahooCashOut';
+import YahooGroups from './YahooGroups';
 import './YahooApp.css';
 
 function left(iso: string | null, now: number): string {
@@ -31,7 +34,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
   const refresh = useGame((x) => x.refresh);
   const now = useNow(1000);
   const [busy, setBusy] = useState<string | null>(null);
-  const [cashAmt, setCashAmt] = useState<'all' | 'half'>('all');
+  const [cashOpen, setCashOpen] = useState(false);
 
   useEffect(() => { void useYahoo.getState().load(); }, [state.profile.location_id]);
 
@@ -51,10 +54,10 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
   };
 
   const start = async (j: YahooJob) => {
+    if (j.kind === 'cashout') { setCashOpen(true); return; }
     setBusy(j.id);
     try {
-      const amount = j.kind === 'cashout' ? (cashAmt === 'half' ? Math.floor(s.dirty / 2) : s.dirty) : null;
-      const r = await yahooJobStart(j.id, amount);
+      const r = await yahooJobStart(j.id, null);
       toast(r.message, 'info');
       useYahoo.getState().started({ id: r.run_id, job_id: r.job_id, name: r.name, icon: j.icon, started_at: new Date(now).toISOString(),
         resolve_at: r.resolve_at, status: 'running', caught_pct: r.caught_pct, amount: r.amount });
@@ -65,7 +68,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
   const rankPct = s.next_rank
     ? Math.min(100, Math.max(0, ((s.total_earned - s.rank.min_earned) / Math.max(1, s.next_rank.min_earned - s.rank.min_earned)) * 100))
     : 100;
-  const cafe = s.cafes[0];
+  const cafeNames = s.cafes.map((c) => c.name).join(' / ') || 'cybercafe';
 
   return (
     <div className="phone-app__body yh" data-testid="yahoo-app">
@@ -75,7 +78,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
           <div className="yh-screen__top">
             <span className="yh-rank" data-testid="yahoo-rank">{s.rank.icon} {s.rank.name}</span>
             <span className="yh-screen__cam" aria-hidden />
-            <span className="yh-screen__where">{s.where.ok ? (s.where.place === 'home' ? '🏠 Home · MiFi' : '🖥️ Cybercafe desk') : 'Offline'}</span>
+            <span className="yh-screen__where">{s.where.ok ? (s.where.place === 'home' ? '🏠 Home · MiFi' : state.profile.location_id === 'hk_quarters' ? '🧢 HK Quarters desk' : '🖥️ Cybercafe desk') : 'Offline'}</span>
           </div>
           <div className="yh-bal">
             <small>Yahoo balance</small>
@@ -99,7 +102,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
       {!run && last && last.status !== 'none' && (
         <p className={`yh-last yh-last--${last.status}`}>
           {last.status === 'paid' ? `✅ ${last.name}: +${naira(last.amount)} into your yahoo balance.`
-            : last.status === 'cashed' ? `💸 Cashed out ${naira(last.amount)} into your pocket.`
+            : last.status === 'cashed' ? `💸 Cashed out ${naira(last.amount - (last.fee ?? 0))} into your pocket${last.fee ? ` (${naira(last.fee)} fee)` : ''}.`
               : `🚨 EFCC caught you.${last.laptop_seized ? ` ${last.laptop_seized} seized.` : ''}${last.seized ? ` ${naira(last.seized)} confiscated.` : ''}`}
         </p>
       )}
@@ -131,7 +134,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
           <span className="yh-gear__icon" aria-hidden>🖥️</span>
           <span className="grow">
             <b>Cybercafe desk</b>
-            <small>{s.desk_until ? `${left(s.desk_until, now)} · ${cafe?.name ?? 'cybercafe'}` : `${naira(s.prices.desk)} / day · ${cafe?.name ?? 'cybercafe'} by UNIBEN`}</small>
+            <small>{s.desk_until ? `${left(s.desk_until, now)} · ${cafeNames}` : `${naira(s.prices.desk)} / day · ${cafeNames}`}</small>
           </span>
           <Button size="sm" variant={s.desk_until ? 'ghost' : 'gold'} loading={busy === 'desk'} disabled={busy !== null} onClick={() => void buy('desk')}
             data-testid="yahoo-buy-desk">{s.desk_until ? 'Extend' : 'Rent'}</Button>
@@ -158,9 +161,9 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
       </div>
       <p className={`yh-where${s.where.ok ? ' is-ok' : ''}`} data-testid="yahoo-where">
         {s.where.ok ? '🟢 ' : '🔴 '}{s.where.message}
-        {!s.where.ok && cafe && state.profile.location_id !== cafe.id && (
-          <button type="button" className="yh-link" onClick={() => onGo(cafe.id)}>Go to {cafe.name}</button>
-        )}
+        {!s.where.ok && s.cafes.filter((c) => c.id !== state.profile.location_id).map((c) => (
+          <button key={c.id} type="button" className="yh-link" onClick={() => onGo(c.id)}>Go to {c.name}</button>
+        ))}
       </p>
 
       {/* jobs */}
@@ -175,7 +178,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
               : j.locked === 'skill_level' ? `Needs Yahoo lvl ${j.min_skill_level ?? 1}`
               : j.locked === 'cert' ? (j.cert_short ?? 'Needs a certificate')
                 : cash && s.dirty <= 0 ? 'Nothing to cash'
-                  : !s.where.ok ? (s.where.hint === 'no_mifi' ? 'Need MiFi' : s.where.hint === 'no_desk' ? 'Need a desk' : 'Home or cybercafe')
+                  : !s.where.ok ? (s.where.hint === 'no_mifi' ? 'Need MiFi' : s.where.hint === 'no_desk' ? 'Need a desk' : 'Home or a work spot')
                     : cd > 0 ? `Wait ${countdown(cd)}`
                       : !free ? 'Busy' : null;
           return (
@@ -184,29 +187,26 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
               <span className="yh-job__body">
                 <b>{j.name}</b>
                 <small>
-                  {j.seconds}s · {cash ? 'moves yahoo balance to cash' : `${nairaShort(j.pay_min)}–${nairaShort(j.pay_max)}`}
+                  {j.seconds}s · {cash ? 'moves yahoo balance to cash' : `${nairaShort(j.pay_min)}–${nairaShort(j.pay_max)}`}{!cash && j.min_skill_level && j.min_skill_level > 1 ? ` · Yahoo lvl ${j.min_skill_level}+` : ''}
                 </small>
                 <span className={`yh-odds ${oddsTone(j.caught_pct)}`} title={`Base ${j.base_caught_pct}%${j.skill?.caught_cut_pct ? ` · Yahoo lvl ${j.skill.level} cuts it ${j.skill.caught_cut_pct}%` : ''}`}>
                   🚨 EFCC {Math.round(j.skill_caught_pct ?? j.caught_pct)}%{(j.skill_caught_pct ?? j.caught_pct) !== j.base_caught_pct ? <s>{j.base_caught_pct}%</s> : null}
                 </span>
-                {cash && s.dirty > 0 && (
-                  <span className="yh-cash" role="radiogroup" aria-label="How much to cash out">
-                    {(['all', 'half'] as const).map((k) => (
-                      <button key={k} type="button" role="radio" aria-checked={cashAmt === k} className={cashAmt === k ? 'is-on' : ''}
-                        onClick={() => setCashAmt(k)}>{k === 'all' ? `All ${nairaShort(s.dirty)}` : `Half ${nairaShort(Math.floor(s.dirty / 2))}`}</button>
-                    ))}
-                  </span>
-                )}
+                {cash && s.dirty > 0 && <span className="yh-cash-hint">Full, half, or launder through a contact. See the odds first.</span>}
               </span>
               <Button size="sm" variant={cash ? 'gold' : 'green'} disabled={Boolean(reason) || busy !== null} loading={busy === j.id}
-                onClick={() => void start(j)} data-testid={`yahoo-start-${j.id}`}>{reason ?? (cash ? 'Cash out' : 'Start')}</Button>
+                onClick={() => void start(j)} data-testid={`yahoo-start-${j.id}`}>{reason ?? (cash ? 'Cash out…' : 'Start')}</Button>
             </div>
           );
         })}
       </div>
       <p className="yh-fine">
         Caught = EFCC case: bail from {nairaShort(s.prices.bail)}, escape {100 - s.prices.escape_caught_pct}% chance, your laptop may be seized and part of your yahoo balance taken.
+        Cash out in full, in half, or launder through a contact for a fee: less risk, longer wait. In a group mission everybody in the crew gets the case.
       </p>
+
+      <YahooGroups onGo={onGo} locationId={state.profile.location_id} />
+      <CashOutSheet open={cashOpen} onClose={() => setCashOpen(false)} />
 
       {/* ranks */}
       <h4 className="yh-h">Rank</h4>
@@ -257,7 +257,7 @@ function RunBar({ run, now }: { run: NonNullable<YahooStatus['run']>; now: numbe
     <div className="yh-run" role="status" data-testid="yahoo-run">
       <span className="yh-run__icon" aria-hidden>{run.icon}</span>
       <span className="grow">
-        <b>{run.name}…</b>
+        <b>{run.name}{run.mode ? ` · ${run.mode === 'launder' ? 'Launder' : run.mode === 'half' ? 'Half' : 'Full'}` : ''}…</b>
         <small>{Math.max(0, Math.ceil((end - now) / 1000))}s · EFCC {Math.round(run.caught_pct)}%</small>
         <span className="yh-run__bar"><span style={{ transform: `scaleX(${frac})` }} /></span>
       </span>

@@ -149,6 +149,10 @@ export const PROPS: Record<string, PropMeta> = {
   car_lot: P(true, 'front', 'stand', 1.4),
   tokunbo_cars: P(true, 'front', 'stand', 1.4),
   tokunbo_yard: P(true, 'front', 'stand', 1.3),
+  // R6 HK Quarters: couches (sit), a generator and a Wi-Fi router
+  couches: P(false, 'centre', 'sit', 0.9),
+  generator: P(true, 'front', 'stand', 1),
+  router: P(true, 'front', 'stand', 1.2),
   lane: P(false, 'centre', 'stand', 0.3),
   none: P(false, 'centre', 'stand', 0.5),
 };

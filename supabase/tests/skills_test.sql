@@ -185,7 +185,7 @@ begin
   perform pg_temp.assert((select count(*) from skill_curve) = 10 and bl_skill_max_level() = 10, 'curve has 10 levels');
   perform pg_temp.assert((select min_skill_level from yahoo_jobs where id = 'big_job') = 3, 'Big job needs Yahoo 3');
   perform pg_temp.assert((select min_skill_level from hustles where id = 'mech_engine') = 2, 'Engine job needs Mechanic 2');
-  perform pg_temp.assert((select count(*) from hustles where min_skill_level > 1) = 1 and (select count(*) from yahoo_jobs where min_skill_level > 1) = 1,
+  perform pg_temp.assert((select count(*) from hustles where min_skill_level > 1) = 1 and (select count(*) from yahoo_jobs where min_skill_level > 1 and id <> 'elon_format') = 1,   -- R6 gates the Elon format (Yahoo 4) too: yahoo_strategy_test
                          'only those two are gated');
   perform pg_temp.assert((select min_skill_level from hustles where id = 'dj_set') = 1, 'DJ without a controller still allowed (no gate)');
   perform pg_temp.assert((select caught_pct_per_level from skills where id = 'yahoo') = 4 and (select caught_cap_pct from skills where id = 'yahoo') = 36, 'yahoo -4 % per level, cap 36');

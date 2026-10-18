@@ -2,12 +2,13 @@
 //   go=dm:<conversation id>  that DM          go=house        the house chat       go=friends   friend requests / invites
 //   go=bank                  the Bank app     go=alerts       the Alerts app       go=ranks     the Ranks app
 //   go=hustles               Hustles app      go=place:<id>   a place on the map
+//   go=yahoo                 the Yahoo app (a group mission invite)
 // Cold start: main.tsx captures ?go= (it survives the login redirect in sessionStorage) and the game runs it once the
 // Sim is ready. Game already open: the service worker posts { type: 'bl-go', go } and the same code runs.
 import { useUi } from '../state/ui';
 
 const KEY = 'bl.go';
-const SAFE = /^(dm:\d{1,12}|house|friends|bank|alerts|ranks|hustles|school|place:[a-z0-9_]{1,40})$/;
+const SAFE = /^(dm:\d{1,12}|house|friends|bank|alerts|ranks|hustles|school|yahoo|place:[a-z0-9_]{1,40})$/;
 
 /** Remember ?go= from the address bar and clean the URL. Call once at startup. */
 export function captureDeepLink(): void {

@@ -103,9 +103,7 @@
 .yh-odds.is-cool { background: rgba(51, 224, 143, .12); color: #7ff0b6; }
 .yh-odds.is-warm { background: rgba(245, 196, 81, .14); color: var(--yh-gold); }
 .yh-odds.is-hot { background: rgba(255, 93, 93, .15); color: #ff9a9a; }
-.yh-cash { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-.yh-cash button { padding: 4px 9px; border-radius: 999px; border: 1px solid var(--yh-line); background: transparent; color: var(--yh-ink-2); font: 600 11.5px/1.2 inherit; cursor: pointer; }
-.yh-cash button.is-on { border-color: var(--yh-gold); color: var(--yh-gold); background: rgba(245, 196, 81, .1); }
+.yh-cash-hint { margin-top: 4px; font-size: 11.5px; color: var(--yh-ink-2); }
 .yh-fine { margin: 8px 2px 0; font-size: 11.5px; color: var(--yh-ink-2); }
 
 /* ranks + laptops + history */
@@ -121,3 +119,69 @@
 .yh-ledger .is-in { color: var(--yh-green); }
 .yh-ledger .is-out { color: var(--yh-red); }
 
+
+/* R6 cash-out sheet: dark, outside the phone app (it is a portal) */
+.bl-sheet.yh-sheet {
+  --surface: #0b0f14; --text: #e8f0f7; --muted: #8fa3b5; --line: #223040;
+  --yh-card: #131a22; --yh-line: #223040; --yh-ink: #e8f0f7; --yh-ink-2: #8fa3b5; --yh-green: #33e08f; --yh-gold: #f5c451; --yh-red: #ff5d5d;
+  background: var(--surface); color: var(--text);
+}
+.yh-sheet .bl-sheet__grab span { background: #34465a; }
+.yh-sheet small { display: block; color: var(--yh-ink-2); font-size: 12px; line-height: 1.35; }
+.yh-sheet .yh-fine { margin: 10px 2px 0; font-size: 11.5px; color: var(--yh-ink-2); }
+.yh-sheet .yh-skel { display: grid; gap: 10px; padding-top: 8px; }
+.yh-sheet .yh-skel span { height: 84px; border-radius: 14px; background: linear-gradient(90deg, #131a22, #1b2531, #131a22); background-size: 200% 100%; animation: yh-shimmer 1.4s linear infinite; }
+.yh-co { display: grid; gap: 10px; padding-top: 4px; }
+.yh-co__opt { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: 16px; border: 1px solid var(--yh-line); background: var(--yh-card); color: inherit; text-align: left; font: inherit; cursor: pointer; transition: border-color .15s, background .15s; }
+.yh-co__opt.is-on { border-color: var(--yh-gold); background: #1e1a0e; }
+.yh-co__opt:disabled { opacity: .5; cursor: not-allowed; }
+.yh-co__icon { font-family: var(--font-emoji); font-size: 24px; width: 30px; text-align: center; }
+.yh-co__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.yh-co__main b { font-size: 14.5px; }
+.yh-co__nums { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: 12px; color: var(--yh-ink-2); }
+.yh-co__nums b { color: var(--yh-ink); font-size: 12.5px; }
+.yh-co__why { color: #ffb4a8; }
+.yh-co__foot { display: grid; gap: 8px; }
+.yh-co__sum { margin: 0; font-size: 12.5px; color: var(--yh-ink-2); text-align: center; }
+.yh-co__sum b { color: var(--yh-ink); }
+.yh-sheet .yh-odds { align-self: flex-start; flex: none; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.yh-sheet .yh-odds s { margin-left: 5px; opacity: .55; font-weight: 500; }
+.yh-sheet .yh-odds.is-cool { background: rgba(51, 224, 143, .12); color: #7ff0b6; }
+.yh-sheet .yh-odds.is-warm { background: rgba(245, 196, 81, .14); color: var(--yh-gold); }
+.yh-sheet .yh-odds.is-hot { background: rgba(255, 93, 93, .15); color: #ff9a9a; }
+
+/* R6 group missions */
+.yh-gm { display: grid; gap: 8px; margin-bottom: 10px; padding: 12px; border-radius: 16px; background: var(--yh-card); border: 1px solid var(--yh-line); }
+.yh-gm--running { border-color: rgba(51, 224, 143, .45); background: #10231a; }
+.yh-gm--invite { border-color: rgba(245, 196, 81, .5); }
+.yh-gm--caught { background: #2a1214; border-color: rgba(255, 93, 93, .4); }
+.yh-gm--paid { border-color: rgba(51, 224, 143, .4); }
+.yh-gm__head { display: flex; align-items: flex-start; gap: 10px; }
+.yh-gm__icon { font-family: var(--font-emoji); font-size: 24px; width: 30px; text-align: center; }
+.yh-gm__head b { font-size: 14.5px; }
+.yh-gm__members { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.yh-gm__members li { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); font-size: 13px; }
+.yh-gm__members li small { display: inline; margin-left: 6px; }
+.yh-gm__members em { font-style: normal; font-weight: 700; font-size: 12px; color: var(--yh-ink-2); white-space: nowrap; }
+.yh-gm__members li.is-accepted em { color: var(--yh-green); }
+.yh-gm__members li.is-declined, .yh-gm__members li.is-dropped, .yh-gm__members li.is-expired { opacity: .6; }
+.yh-gm__members em.is-in { color: var(--yh-green); }
+.yh-gm__members em.is-out { color: var(--yh-red); }
+.yh-gm__btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.yh-gm .yh-run__bar { margin-top: 0; }
+.yh-gm__missions { display: grid; gap: 6px; }
+.yh-gm__mission { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--yh-line); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.yh-gm__mission > span:first-child { font-family: var(--font-emoji); font-size: 22px; width: 28px; text-align: center; }
+.yh-gm__mission.is-on { border-color: var(--yh-gold); background: rgba(245, 196, 81, .08); }
+.yh-gm__mission.is-locked { opacity: .75; }
+.yh-gm__sub { margin: 4px 2px 0; font: 700 11.5px/1 var(--font-display); color: var(--yh-ink-2); text-transform: uppercase; letter-spacing: .06em; }
+.yh-gm__friends { display: flex; flex-wrap: wrap; gap: 6px; }
+.yh-gm__friend { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--yh-line); background: transparent; color: var(--yh-ink); font: 600 12.5px/1.2 inherit; cursor: pointer; }
+.yh-gm__friend small { display: inline; font-weight: 500; }
+.yh-gm__friend.is-on { border-color: var(--yh-green); background: rgba(51, 224, 143, .12); }
+.yh-gm__friend:disabled { opacity: .5; cursor: not-allowed; }
+.yh-dot { width: 8px; height: 8px; border-radius: 50%; background: #4a5663; }
+.yh-dot.is-online { background: var(--yh-green); box-shadow: 0 0 0 3px rgba(51, 224, 143, .18); }
+.yh-fine--top { margin-top: 0; }
+/* the phone sits at --z-modal: the cash-out sheet opens above it */
+.bl-sheet-root:has(.yh-sheet-host) { z-index: calc(var(--z-modal) + 5); }

@@ -53,7 +53,7 @@ const CLUTTER: Record<string, ClutterKind> = {
   police: 'office', airport: 'hall', hospital: 'clinic', campus: 'hall', market: 'market', motorpark: 'market', street: 'market', pos: 'market',
 };
 
-const WARM_PROPS = new Set(['tables', 'counter', 'bar', 'food_stall', 'grill', 'kiosk', 'checkout', 'desk', 'salon_chairs', 'stall', 'fire_pit', 'shrine_hut', 'altar']);
+const WARM_PROPS = new Set(['couches', 'generator', 'tables', 'counter', 'bar', 'food_stall', 'grill', 'kiosk', 'checkout', 'desk', 'salon_chairs', 'stall', 'fire_pit', 'shrine_hut', 'altar']);
 const PARTY_PROPS = new Set(['dance_floor', 'bar', 'dj_booth', 'vip', 'stage']);
 const STEAM_PROPS = new Set(['food_stall', 'grill', 'counter', 'kiosk']);
 
@@ -754,6 +754,39 @@ function buildProp(b: B, z: PlaceZone, room: Room, seed: number) {
       b.box(lw, 0.012, ld, 0, 0.004, 0, '#4a4f56');
       for (let i = 0; i < Math.round(ld / 0.8); i++) b.box(0.1, 0.006, 0.4, 0, 0.018, -hd + 0.4 + i * 0.8, WHITE);
       for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) b.cyl(0.08, 0.12, 0.4, sx * (hw - 0.1), 0, -hd + 0.4 + i * (ld / 3), i % 2 ? WHITE : CORAL, { seg: 6 });
+      return;
+    }
+    // R6 HK Quarters: couches, a never-resting generator and a Wi-Fi router (existing box/cylinder parts only)
+    case 'couches': {
+      const n = Math.max(1, Math.round(lw / 1.7));
+      const cw = lw / n;
+      for (let i = 0; i < n; i++) {
+        const x = -hw + (i + 0.5) * cw;
+        const c = pick(['#2f6fb3', '#6d4aa0', '#0b625a', '#d9a441'], i);
+        b.box(cw - 0.12, 0.34, ld * 0.62, x, 0, -hd * 0.25, c);
+        b.box(cw - 0.12, 0.5, 0.22, x, 0.2, -hd * 0.25 - ld * 0.31 + 0.1, c);
+        for (const sx of [-1, 1]) b.box(0.16, 0.5, ld * 0.62, x + sx * (cw / 2 - 0.14), 0, -hd * 0.25, c);
+      }
+      b.box(Math.min(1.1, lw * 0.4), 0.05, 0.5, 0, 0.36, hd * 0.55, WOOD_L);
+      b.cyl(0.05, 0.07, 0.36, 0, 0, hd * 0.55, METAL_D, { seg: 6 });
+      return;
+    }
+    case 'generator': {
+      b.box(Math.min(1.1, lw), 0.7, Math.min(0.7, ld), 0, 0.12, 0, '#c8372d');
+      b.box(Math.min(0.9, lw - 0.2), 0.3, 0.04, 0, 0.3, Math.min(0.7, ld) / 2 + 0.01, BLACK);
+      b.cyl(0.06, 0.06, 0.45, hw * 0.55, 0.82, -hd * 0.3, METAL_D, { seg: 8 });
+      b.cyl(0.14, 0.14, 0.34, -hw * 0.55, 0, hd * 0.8, '#e0a21e', { seg: 8 });   // fuel can
+      b.box(0.1, 0.05, 0.04, -hw * 0.35, 0.62, Math.min(0.7, ld) / 2 + 0.03, '#7dff9a', { layer: 'glow' });
+      return;
+    }
+    case 'router': {
+      b.box(lw, 0.05, ld, 0, 0.82, 0, WOOD_L);
+      for (const sx of [-1, 1]) b.cyl(0.04, 0.05, 0.82, sx * (hw - 0.1), 0, 0, METAL_D, { seg: 5 });
+      b.box(0.5, 0.08, 0.3, 0, 0.87, 0, '#f4f2ee');
+      for (const sx of [-1, 1]) b.box(0.03, 0.34, 0.03, sx * 0.18, 0.95, -0.08, BLACK);
+      for (let i = 0; i < 4; i++) b.box(0.04, 0.02, 0.02, -0.12 + i * 0.08, 0.915, 0.15, i % 2 ? '#7dff9a' : '#ffd24a', { layer: 'glow' });
+      b.box(0.9, 0.36, 0.04, 0, 1.55, -hd + 0.05, '#252886');
+      b.box(0.6, 0.06, 0.02, 0, 1.58, -hd + 0.08, '#9ad3ff', { layer: 'glow' });
       return;
     }
     default:

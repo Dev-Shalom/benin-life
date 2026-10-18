@@ -22,7 +22,7 @@ The owner decided:
    - Spotify or YouTube links are not possible (licensing and API).
 6. **R4 School (DONE):** UNIBEN classes and short courses that give certificates. Certificates unlock better jobs and give XP. Players choose between time spent learning and money earned now.
 7. **R5 Challenges (DONE):** daily and weekly goals that pay cash and XP (docs/CHALLENGES.md).
-8. **R6 Yahoo strategy:**
+8. **R6 Yahoo strategy (DONE, docs/YAHOO.md):**
    - Cash-out choices: full (high risk), half (lower risk), or laundered (fee, much lower risk).
    - Group Yahoo missions with friends: more risk, more reward.
    - Also from the earlier queue: the HK Quarters map place and the Elon format job.
