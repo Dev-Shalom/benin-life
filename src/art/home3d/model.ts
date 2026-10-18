@@ -277,6 +277,33 @@ export interface HomeLayout {
   furniture: FurnitureItem[];
   /** Where each furniture-set slot goes [x, z, rot quarter turns] (see furnishLayout). */
   slots: Record<string, [number, number, number]>;
+  // ---- R8 house upgrades (see upgrades.ts applyUpgrades; absent on a plain layout)
+  /** Extension rooms built onto the south wall (docs/HOUSE_UPGRADES.md). */
+  rooms?: HomeRoom[];
+  /** Yard buildings: boys' quarters, generator house, solar rack, borehole tank. */
+  structs?: HomeStruct[];
+  /** Finish level 0..3 (bare, fresh paint, POP + tiles, premium). */
+  finish?: number;
+  /** Security level 0..2 (compound wall, gate + CCTV). */
+  security?: number;
+  /** Builders at work: scaffolding drawn here. `at` = a spot with no fixed rect. */
+  scaffold?: { rect?: [number, number, number, number]; at?: 'house' | 'parking' }[];
+}
+
+/** R8: a room added to the south side of the house (rect starts at z = house depth; door = gap in the shared wall). */
+export interface HomeRoom {
+  id: string;
+  rect: [number, number, number, number];
+  door: [number, number];
+}
+
+export type StructKind = 'bq' | 'genhouse' | 'solar' | 'borehole';
+
+/** R8: a building in the yard (blocks walking and solid furniture). */
+export interface HomeStruct {
+  id: string;
+  kind: StructKind;
+  rect: [number, number, number, number];
 }
 
 const Q = 1; // quarter turn

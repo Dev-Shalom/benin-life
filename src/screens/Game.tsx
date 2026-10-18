@@ -11,7 +11,7 @@ import { SkillHost } from './game/Skills';
 import { SchoolHost } from './game/School';
 import { useSchool } from '../state/school';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { HomeView, KINDS, LAYOUTS, activityGroup, findFreeSpot, furnishHome, furnitureIdOfKey, homeLayoutFor, itemGroup, placementIssue, type FurnitureItem, type FurnitureKind, type SavedHomePosition } from '../art/home3d';
+import { HomeView, KINDS, LAYOUTS, activityGroup, applyUpgrades, findFreeSpot, furnishHome, furnitureIdOfKey, homeLayoutFor, itemGroup, placementIssue, type FurnitureItem, type FurnitureKind, type SavedHomePosition } from '../art/home3d';
 import { CityView, type CityBoard } from '../art/city3d';
 import { adImageUrl, noteAdView, useBillboards } from '../lib/billboards';
 import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
@@ -74,6 +74,9 @@ import { SpraySheet } from './game/SpraySheet';
 import { ReceiptSheet } from './game/ReceiptSheet';
 import { useGarage } from '../state/garage';
 import { garageHome, type GarageHome } from '../api/garage';
+import { houseUpgradeHome, type UpgradeHome } from '../api/upgrades';
+import { useUpgradeWatcher, useUpgrades } from '../state/upgrades';
+import { BuildersPill } from './game/BuildersPill';
 
 const Boutique = lazy(() => import('./game/Boutique'));
 const BillboardSheet = lazy(() => import('./game/BillboardSheet'));
@@ -243,6 +246,16 @@ export default function Game() {
   const parking = useMemo(() => garage && (garage.cars.length || garage.garage)
     ? { cars: garage.cars.map((c) => c.id), names: garage.cars.map((c) => c.name), garage: garage.garage ? { style: garage.garage.style, capacity: garage.garage.capacity } : null }
     : null, [garage]);
+  // R8: house upgrades (extension rooms, yard buildings, finish, scaffolding) of the home owner (the host's when visiting)
+  useUpgradeWatcher(Boolean(p));
+  const upgradeVersion = useUpgrades((s) => s.version);
+  const [upgradeHome, setUpgradeHome] = useState<UpgradeHome | null>(null);
+  useEffect(() => {
+    if (!atHome || !homeOwnerId) { setUpgradeHome(null); return; }
+    let alive = true;
+    houseUpgradeHome(homeOwnerId).then((u) => { if (alive) setUpgradeHome(u); }).catch(() => { if (alive) setUpgradeHome(null); });
+    return () => { alive = false; };
+  }, [atHome, homeOwnerId, upgradeVersion, p?.housing_id]);
   const houseRoomId = atHome && state ? state.location.id : null;
   const pollMode = usePollMode(); // F1: Realtime full / switched off: features poll instead
   // W1: the 3D Sim wears the outfit for the context (sleep / home / work / party / gym / everyday).
@@ -600,7 +613,12 @@ export default function Game() {
   }, []);
 
   const layoutId = p ? homeLayoutFor(p.housing_id, (state && byId[state.location.id]?.scene) ?? state?.location.scene) : 'face_me';
-  const furnished = useMemo(() => furnishHome(LAYOUTS[layoutId], furniture, housePositions), [layoutId, furniture, housePositions]);
+  // R8: the plan with the finished upgrades built in (and scaffolding where the builders are); furniture keeps its spots
+  const baseLayout = useMemo(
+    () => applyUpgrades(LAYOUTS[layoutId], upgradeHome?.done ?? [], upgradeHome?.building ?? []),
+    [layoutId, upgradeHome],
+  );
+  const furnished = useMemo(() => furnishHome(baseLayout, furniture, housePositions), [baseLayout, furniture, housePositions]);
 
   // ---- B1 arrange (inside Buy): the selected piece is drawn live as the scene's ghost
   const arrangeOn = useArrange((s) => s.active);
@@ -625,7 +643,7 @@ export default function Game() {
     const base = pieceItem(selKey);
     return base ? { ...base, x: arrSel.x, z: arrSel.z, rot: arrSel.rot } : null;
   }, [selKey, arrSel, pieceItem]);
-  const arrIssue = ghostItem ? placementIssue(layoutId, ghostItem, sceneLayout.furniture) : null;
+  const arrIssue = ghostItem ? placementIssue(baseLayout, ghostItem, sceneLayout.furniture) : null;
   const ghost = useMemo(() => (ghostItem ? { item: ghostItem, invalid: Boolean(arrIssue) } : null), [ghostItem, arrIssue]);
   const selName = selKey ? (furniture?.find((f) => f.id === furnitureIdOfKey(selKey))?.name ?? KINDS[ghostItem?.kind ?? 'stool']?.label ?? 'Furniture') : null;
   // close arrange mode when leaving home / visiting
@@ -647,11 +665,11 @@ export default function Game() {
       return;
     }
     const others = furnished.furniture;
-    const spot = findFreeSpot(layoutId, piece.kind, others, { x: LAYOUTS[layoutId].home[0], z: LAYOUTS[layoutId].home[1] })
+    const spot = findFreeSpot(baseLayout, piece.kind, others, { x: LAYOUTS[layoutId].home[0], z: LAYOUTS[layoutId].home[1] })
       ?? { x: LAYOUTS[layoutId].w / 2, z: LAYOUTS[layoutId].d / 2, rot: 0 };
     useArrange.getState().select({ key: arrPending, x: spot.x, z: spot.z, rot: spot.rot, fromStore: true });
-    if (!findFreeSpot(layoutId, piece.kind, others)) toast('No free space for this one. Store something first or move things around.', 'bad');
-  }, [arrActive, arrPending, furniture, furnished, layoutId]);
+    if (!findFreeSpot(baseLayout, piece.kind, others)) toast('No free space for this one. Store something first or move things around.', 'bad');
+  }, [arrActive, arrPending, furniture, furnished, layoutId, baseLayout]);
 
   const arrangeDone = useCallback(async () => {
     const sel = useArrange.getState().sel;
@@ -842,6 +860,7 @@ export default function Game() {
             onAdView={noteAdView}
           />
         )}
+        {showHome && !arrActive && <BuildersPill />}
       </div>
 
       {arrActive && (

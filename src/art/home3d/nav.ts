@@ -26,11 +26,31 @@ export function toLayout(f: FurnitureItem, lx: number, lz: number): P2 {
   return [f.x + lx * c + lz * s, f.z - lx * s + lz * c];
 }
 
-/** All wall segments (outer walls minus door gaps, plus partitions). */
+/** R8: the walls of extension rooms. `outer` = the room's own outside walls (the west one at x = 0 is a tall back wall),
+ * `shared` = the wall between the house and the room, with the doorway left open. */
+export function roomWalls(L: HomeLayout): { outer: Seg[]; shared: Seg[] } {
+  const outer: Seg[] = [];
+  const shared: Seg[] = [];
+  for (const r of L.rooms ?? []) {
+    const [x0, z0, x1, z1] = r.rect;
+    outer.push([x0, z0, x0, z1], [x0, z1, x1, z1], [x1, z0, x1, z1]);
+    const [a, b] = r.door;
+    if (a > x0) shared.push([x0, z0, a, z0]);
+    if (b < x1) shared.push([b, z0, x1, z0]);
+  }
+  return { outer, shared };
+}
+
+/** All wall segments (outer walls minus door gaps, plus partitions, plus extension rooms). */
 export function wallSegments(L: HomeLayout): Seg[] {
   const segs: Seg[] = [[0, 0, L.w, 0], [0, 0, 0, L.d], ...L.partitions];
+  const rooms = (L.rooms ?? []).map((r) => [r.rect[0], r.rect[2]] as const);
   const cut = (side: 's' | 'e', len: number): Seg[] => {
-    const gaps = L.doors.filter((g) => g[0] === side).map((g) => [g[1], g[2]] as const).sort((a, b) => a[0] - b[0]);
+    // entrances, plus the span an extension room covers (its shared wall replaces the house wall there)
+    const gaps = [
+      ...L.doors.filter((g) => g[0] === side).map((g) => [g[1], g[2]] as const),
+      ...(side === 's' ? rooms : []),
+    ].sort((a, b) => a[0] - b[0]);
     const out: Seg[] = [];
     let at = 0;
     for (const [a, b] of gaps) {
@@ -40,7 +60,8 @@ export function wallSegments(L: HomeLayout): Seg[] {
     if (at < len) out.push(side === 's' ? [at, L.d, len, L.d] : [L.w, at, L.w, len]);
     return out;
   };
-  return [...segs, ...cut('s', L.w), ...cut('e', L.d)];
+  const rw = roomWalls(L);
+  return [...segs, ...cut('s', L.w), ...cut('e', L.d), ...rw.outer, ...rw.shared];
 }
 
 export function buildGrid(L: HomeLayout): NavGrid {
@@ -51,6 +72,9 @@ export function buildGrid(L: HomeLayout): NavGrid {
     const [a, b, c, d] = footprint(f);
     blockRect(g, a, b, c, d, PAD);
   }
+  // R8: yard buildings (boys' quarters, generator house, solar rack, borehole tank) and builders' scaffolding
+  for (const st of L.structs ?? []) blockRect(g, st.rect[0], st.rect[1], st.rect[2], st.rect[3], PAD);
+  for (const sc of L.scaffold ?? []) if (sc.rect) blockRect(g, sc.rect[0], sc.rect[1], sc.rect[2], sc.rect[3], PAD);
   return g;
 }
 

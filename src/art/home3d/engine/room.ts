@@ -2,7 +2,7 @@
 // furniture. Returns merged geometries per layer (see build.ts) in layout space; the scene centres it.
 import type { BufferGeometry } from 'three';
 import { KINDS, type HomeLayout } from '../model';
-import { footprint, wallSegments } from '../nav';
+import { footprint, roomWalls, wallSegments } from '../nav';
 import { buildClutter, buildOutside, buildPools, hashStr, type Rect } from '../../feel/kit';
 import type { Mat } from '../../feel/atlas';
 import { HomeBuilder, type Layer } from './build';
@@ -188,7 +188,8 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
   const doll = Boolean(opts.dollhouse);
   // A NEPO player keeps the brighter painted/tiled finish even in a modest self-contain.
   // The house tier still upgrades any player's home independently of origin.
-  const rich = opts.origin === 'nepo' || RICH_LAYOUTS.has(L.id);
+  const finish = L.finish ?? 0;
+  const rich = opts.origin === 'nepo' || RICH_LAYOUTS.has(L.id) || finish >= 2;
   const b = new HomeBuilder();
   const [lx0, lz0, lx1, lz1] = L.lot;
   const cx = (lx0 + lx1) / 2;
@@ -215,7 +216,8 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
     const [px0, pz0, px1, pz1] = buildParking(b, L, opts.parking ?? { cars: [], garage: null }, rich, opts.density ?? 1, vehicles);
     frame = [Math.min(lx0, px0), Math.min(lz0, pz0), Math.max(lx1, px1), Math.max(lz1, pz1)];
   }
-  if (L.yard?.fence) {
+  if (L.security && L.security > 0) buildSecurity(b, L, doll);
+  else if (L.yard?.fence) {
     // low block fence round the compound, open where the house is
     b.box(lx1 - lx0 + 0.5, 0.5, 0.12, cx, -0.01, lz0 - 0.25, '#c9c2b6', { mat: 'block', uv: 1.2 });
     b.box(0.12, 0.5, lz1 - lz0 + 0.5, lx0 - 0.25, -0.01, cz, '#c9c2b6', { mat: 'block', uv: 1.2 });
@@ -233,13 +235,19 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
   const floorMat: Mat = rich || L.id === 'self_contain' ? 'tiles' : 'concrete';
   tiles(b, 0, 0, L.w, L.d, L.floor.a, L.floor.b, L.floor.tile ?? 0.6, -0.01, floorMat);
   for (const [x0, z0, x1, z1, a, bc, size] of L.patches ?? []) tiles(b, x0, z0, x1, z1, a, bc, size ?? 0.4, 0.008, 'tiles');
+  // R8: extension rooms: slab + floor (the patches above carry the room's tint), a tall back wall where it meets x = 0
+  for (const rm of L.rooms ?? []) {
+    const [rx0, rz0, rx1, rz1] = rm.rect;
+    b.box(rx1 - rx0 + T, 0.12, rz1 - rz0, (rx0 + rx1) / 2, -0.12, (rz0 + rz1) / 2, shadeHex(L.wall, 1.25), { mat: 'concrete' });
+    tiles(b, rx0, rz0, rx1, rz1, L.floor.a, L.floor.b, L.floor.tile ?? 0.6, -0.01, floorMat);
+  }
 
   // walls
   const H = doll ? DOLL : L.wallH;
   const inner = L.wallInner;
   const outer = L.wall;
-  const skirt = shadeHex(inner, 0.82);
-  b.mat = rich ? 'paint' : 'plaster';
+  const skirt = finish >= 3 ? '#c9a24a' : shadeHex(inner, 0.82);
+  b.mat = rich || finish >= 1 ? 'paint' : 'plaster';
   // north wall (z = 0) and west wall (x = 0): full height, coloured inside, dark cap on top
   b.box(L.w + T, H, T, L.w / 2 - T / 2, 0, -T / 2, inner);
   b.box(L.w + T, 0.04, T + 0.02, L.w / 2 - T / 2, H, -T / 2, outer);
@@ -247,6 +255,13 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
   b.box(T + 0.02, 0.04, L.d, -T / 2, H, L.d / 2, outer);
   b.box(L.w, 0.1, 0.02, L.w / 2, 0, 0.01, skirt);
   b.box(0.02, 0.1, L.d, 0.01, 0, L.d / 2, skirt);
+  for (const rm of L.rooms ?? []) {
+    const [rx0, rz0, , rz1] = rm.rect;
+    if (rx0 !== 0) continue;
+    b.box(T, H, rz1 - rz0, -T / 2, 0, (rz0 + rz1) / 2, shadeHex(inner, 0.94));
+    b.box(T + 0.02, 0.04, rz1 - rz0, -T / 2, H, (rz0 + rz1) / 2, outer);
+    b.box(0.02, 0.1, rz1 - rz0, 0.01, 0, (rz0 + rz1) / 2, skirt);
+  }
   // windows on the back walls: frame, glass, sill, curtains (not in the low dollhouse walls)
   for (const [side, a0, a1] of doll ? [] : L.windows) {
     const w = a1 - a0;
@@ -290,12 +305,16 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
   }
 
   // low cut-away walls (south, east) with door gaps, and interior partitions
-  b.mat = rich ? 'paint' : 'plaster';
+  b.mat = rich || finish >= 1 ? 'paint' : 'plaster';
+  const rw = roomWalls(L);
+  const key = (g: number[]) => g.join(',');
+  const roomOuter = new Set(rw.outer.map(key));
+  const roomShared = new Set(rw.shared.map(key));
   for (const [x1, z1, x2, z2] of wallSegments(L)) {
     const isNorth = z1 === 0 && z2 === 0;
     const isWest = x1 === 0 && x2 === 0;
     if (isNorth || isWest) continue;
-    const outerWall = (z1 === L.d && z2 === L.d) || (x1 === L.w && x2 === L.w);
+    const outerWall = roomOuter.has(key([x1, z1, x2, z2])) || (!roomShared.has(key([x1, z1, x2, z2])) && ((z1 === L.d && z2 === L.d) || (x1 === L.w && x2 === L.w)));
     const h = doll ? (outerWall ? DOLL : Math.min(HALF, DOLL)) : outerWall ? LOW : HALF;
     const col = outerWall ? shadeHex(L.wall, 1.4) : inner;
     if (z1 === z2) {
@@ -316,6 +335,13 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
     const m = (a0 + a1) / 2;
     if (side === 'e') b.box(0.5, 0.015, Math.min(0.9, a1 - a0 - 0.1), L.w + 0.45, 0, m, '#6b4f3a');
     else b.box(Math.min(0.9, a1 - a0 - 0.1), 0.015, 0.5, m, 0, L.d + 0.45, '#6b4f3a');
+  }
+
+  // R8: yard buildings and the builders' scaffolding
+  for (const st of L.structs ?? []) buildStruct(b, st.kind, st.rect, rich);
+  for (const sc of L.scaffold ?? []) {
+    const rect: Rect = sc.rect ?? (sc.at === 'parking' ? parkingRect(L, opts.parking) : [0, 0, L.w, L.d]);
+    buildScaffold(b, rect, sc.at === 'house' && !sc.rect);
   }
 
   // furniture
@@ -409,4 +435,144 @@ function nepoCurtains(b: HomeBuilder, side: 'n' | 'w', a0: number, a1: number, y
       for (let i = -1; i <= 1; i++) b.box(0.06, hh + 0.12, 0.018, 0.12, y0 - 0.01, z + i * panel * 0.22, '#ad9b83', { mat: 'fabric' });
     }
   }
+}
+
+/** R8: where the parking pad / garage stands (the scaffold for a garage upgrade goes there). */
+function parkingRect(L: HomeLayout, P?: Parking | null): Rect {
+  const [x0, zb, zf] = parkingSpot(L);
+  const bays = Math.max(1, P?.garage?.capacity ?? 1);
+  return [x0, zb, x0 + bays * BAY, zf];
+}
+
+/** R8: builders at work: wooden scaffold poles and planks round a rect, a block pile and a mixing bucket.
+ * `house` = the whole house: only the south and east edges (the camera side) so the dollhouse stays readable. */
+function buildScaffold(b: HomeBuilder, r: Rect, house: boolean) {
+  const [x0, z0, x1, z1] = r;
+  const wood = '#9b7a49';
+  const H = house ? 2.2 : 2.7;
+  const px: number[] = [];
+  const pz: number[] = [];
+  for (let x = x0; x <= x1 + 0.01; x += Math.max(1.2, (x1 - x0) / Math.max(1, Math.round((x1 - x0) / 1.4)))) px.push(x);
+  for (let z = z0; z <= z1 + 0.01; z += Math.max(1.2, (z1 - z0) / Math.max(1, Math.round((z1 - z0) / 1.4)))) pz.push(z);
+  const edge = (x: number, z: number) => !house || z >= z1 - 0.01 || x >= x1 - 0.01;
+  const poles: [number, number][] = [];
+  for (const x of px) for (const z of [z0, z1]) if (edge(x, z)) poles.push([x, z]);
+  for (const z of pz) for (const x of [x0, x1]) if (edge(x, z) && !poles.some((p) => p[0] === x && p[1] === z)) poles.push([x, z]);
+  for (const [x, z] of poles) b.box(0.08, H, 0.08, x, 0, z, wood, { mat: 'wood' });
+  for (const y of [0.9, 1.8]) {
+    if (!house) {
+      b.box(x1 - x0, 0.05, 0.08, (x0 + x1) / 2, y, z0, wood, { mat: 'wood' });
+      b.box(0.08, 0.05, z1 - z0, x0, y, (z0 + z1) / 2, wood, { mat: 'wood' });
+    }
+    b.box(x1 - x0, 0.05, 0.08, (x0 + x1) / 2, y, z1, wood, { mat: 'wood' });
+    b.box(0.08, 0.05, z1 - z0, x1, y, (z0 + z1) / 2, wood, { mat: 'wood' });
+  }
+  // green safety net on the front, a plank walkway, hard-hat orange bucket, block pile
+  b.box(x1 - x0, H * 0.45, 0.02, (x0 + x1) / 2, 0.9, z1 + 0.03, '#4f8a4b', { mat: 'fabric' });
+  b.box(1.1, 0.05, 0.3, x1 + 0.5, 0.02, z1 - 0.4, wood, { mat: 'wood' });
+  for (let i = 0; i < 6; i++) b.box(0.4, 0.2, 0.2, x1 + 0.9 + (i % 3) * 0.42, 0.02 + Math.floor(i / 3) * 0.2, z1 + 0.3, '#b0a79a', { mat: 'concrete' });
+  b.cyl(0.18, 0.15, 0.3, x0 - 0.5, 0.02, z1 + 0.4, '#e8892b', { seg: 10 });
+}
+
+/** R8: yard buildings. Colours follow the finish of the house (rich = painted block). */
+function buildStruct(b: HomeBuilder, kind: string, r: Rect, rich: boolean) {
+  const [x0, z0, x1, z1] = r;
+  const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const wall = rich ? '#efe9dd' : '#cfc7b8';
+  const m = rich ? 'paint' : 'plaster';
+  if (kind === 'bq') {
+    // boys' quarters: a small block house, flat zinc roof, door and louvre window on the front (south)
+    const H = 2.3;
+    b.box(w, 0.1, d, cx, -0.1, cz, '#a9a69c', { mat: 'concrete' });
+    b.box(w, H, 0.2, cx, 0, z0 + 0.1, wall, { mat: m });
+    b.box(0.2, H, d, x0 + 0.1, 0, cz, shadeHex(wall, 0.94), { mat: m });
+    b.box(0.2, H, d, x1 - 0.1, 0, cz, shadeHex(wall, 1.04), { mat: m });
+    b.box(w, H, 0.2, cx, 0, z1 - 0.1, shadeHex(wall, 1.04), { mat: m });
+    b.box(w + 0.5, 0.1, d + 0.5, cx, H, cz, '#7c8185', { mat: 'zinc' });
+    b.box(0.85, 1.9, 0.06, x0 + w * 0.3, 0, z1 + 0.01, '#4a6a8a', { mat: 'metal' });
+    b.box(0.9, 0.7, 0.05, x0 + w * 0.7, 1.1, z1 + 0.01, '#9aa3ab', { mat: 'metal' });
+    b.box(0.8, 0.6, 0.03, x0 + w * 0.7, 1.12, z1 + 0.04, '#000', { layer: 'glass' });
+    b.cyl(0.05, 0.035, 0.1, x0 + w * 0.3, H - 0.4, z1 + 0.12, '#fff3c4', { layer: 'glow', seg: 8 });
+    return;
+  }
+  if (kind === 'genhouse') {
+    const H = 1.3;
+    b.box(w, H, d, cx, 0, cz, wall, { mat: m });
+    b.box(w + 0.2, 0.08, d + 0.2, cx, H, cz, '#7c8185', { mat: 'zinc' });
+    for (let i = 0; i < 5; i++) b.box(w * 0.6, 0.03, 0.03, cx, 0.4 + i * 0.13, z1 + 0.01, '#4a4f55', { mat: 'metal' });
+    b.cyl(0.05, 0.05, 0.9, x1 - 0.2, H, z0 + 0.2, '#3b3f44', { seg: 8, mat: 'metal' });
+    b.box(0.5, 0.35, 0.02, cx, 0.4, z1 + 0.02, '#e8c13a');
+    return;
+  }
+  if (kind === 'solar') {
+    // two tilted panels on a steel rack + the inverter box
+    b.box(0.06, 0.8, 0.06, x0 + 0.2, 0, z1 - 0.1, '#5d646b', { mat: 'metal' });
+    b.box(0.06, 0.8, 0.06, x1 - 0.2, 0, z1 - 0.1, '#5d646b', { mat: 'metal' });
+    b.box(0.06, 1.3, 0.06, x0 + 0.2, 0, z0 + 0.1, '#5d646b', { mat: 'metal' });
+    b.box(0.06, 1.3, 0.06, x1 - 0.2, 0, z0 + 0.1, '#5d646b', { mat: 'metal' });
+    for (let i = 0; i < 2; i++) {
+      const px = x0 + (w / 2) * (i + 0.5);
+      b.box(w / 2 - 0.08, 0.05, d - 0.1, px, 1.0, cz, '#1d3557', { rx: -0.45, mat: 'metal' });
+      b.box(w / 2 - 0.2, 0.01, d - 0.28, px, 1.03, cz, '#274b7a', { rx: -0.45, layer: 'glass' });
+    }
+    return;
+  }
+  if (kind === 'borehole') {
+    // pump house + overhead tank on a four-leg steel stand
+    b.box(w * 0.55, 0.9, d * 0.55, x0 + w * 0.3, 0, z1 - d * 0.3, wall, { mat: m });
+    b.box(w * 0.55 + 0.1, 0.06, d * 0.55 + 0.1, x0 + w * 0.3, 0.9, z1 - d * 0.3, '#7c8185', { mat: 'zinc' });
+    for (const dx of [-0.35, 0.35]) for (const dz of [-0.35, 0.35]) b.box(0.07, 2.0, 0.07, cx + w * 0.15 + dx, 0, cz - d * 0.1 + dz, '#5d646b', { mat: 'metal' });
+    b.cyl(0.55, 0.55, 0.9, cx + w * 0.15, 2.0, cz - d * 0.1, '#2f6fb3', { seg: 14, mat: 'plain' });
+    b.cyl(0.58, 0.58, 0.05, cx + w * 0.15, 2.9, cz - d * 0.1, '#1f4f87', { seg: 14 });
+    b.cyl(0.03, 0.03, 1.6, cx + w * 0.15 - 0.3, 0.4, cz - d * 0.1 + 0.3, '#3b3f44', { seg: 6, mat: 'metal' });
+  }
+}
+
+/** R8: compound wall (level 1) and gate pillars, sliding gate and a CCTV mast (level 2). Low enough that the
+ * dollhouse camera still sees in; open where the path from the front door leaves the compound. */
+function buildSecurity(b: HomeBuilder, L: HomeLayout, doll: boolean) {
+  if (doll) return;
+  const [x0, z0, x1, z1] = L.lot;
+  const door = L.doors[0];
+  const gapSide = door?.[0] ?? 'e';
+  const g0 = (door?.[1] ?? 2) - 0.2;
+  const g1 = (door?.[2] ?? 3) + 0.4;
+  const col = '#cfc6b6';
+  const hN = 1.0, hS = 0.55;
+  const wallSeg = (ax: number, az: number, bx: number, bz: number, h: number) => {
+    const horiz = az === bz;
+    const len = horiz ? Math.abs(bx - ax) : Math.abs(bz - az);
+    if (len < 0.05) return;
+    if (horiz) { b.box(len, h, 0.16, (ax + bx) / 2, -0.01, az, col, { mat: 'block', uv: 1.2 }); b.box(len + 0.06, 0.06, 0.22, (ax + bx) / 2, h - 0.01, az, '#9c958a', { mat: 'concrete' }); }
+    else { b.box(0.16, h, len, ax, -0.01, (az + bz) / 2, col, { mat: 'block', uv: 1.2 }); b.box(0.22, 0.06, len + 0.06, ax, h - 0.01, (az + bz) / 2, '#9c958a', { mat: 'concrete' }); }
+  };
+  wallSeg(x0 - 0.2, z0 - 0.2, x1 + 0.2, z0 - 0.2, hN);
+  wallSeg(x0 - 0.2, z0 - 0.2, x0 - 0.2, z1 + 0.2, hN);
+  if (gapSide === 'e') {
+    wallSeg(x1 + 0.2, z0 - 0.2, x1 + 0.2, g0, hS);
+    wallSeg(x1 + 0.2, g1, x1 + 0.2, z1 + 0.2, hS);
+    wallSeg(x0 - 0.2, z1 + 0.2, x1 + 0.2, z1 + 0.2, hS);
+  } else {
+    wallSeg(x1 + 0.2, z0 - 0.2, x1 + 0.2, z1 + 0.2, hS);
+    wallSeg(x0 - 0.2, z1 + 0.2, g0, z1 + 0.2, hS);
+    wallSeg(g1, z1 + 0.2, x1 + 0.2, z1 + 0.2, hS);
+  }
+  if ((L.security ?? 0) < 2) return;
+  // gate: two pillars with lamps, a sliding steel gate half open, CCTV mast with a red light
+  const gx = gapSide === 'e' ? x1 + 0.2 : 0;
+  const gz = gapSide === 'e' ? 0 : z1 + 0.2;
+  const along = (t: number): [number, number] => (gapSide === 'e' ? [gx, t] : [t, gz]);
+  for (const t of [g0, g1]) {
+    const [px, pz] = along(t);
+    b.box(0.34, 1.5, 0.34, px, -0.01, pz, '#d8d0c2', { mat: 'block' });
+    b.box(0.4, 0.08, 0.4, px, 1.49, pz, '#9c958a', { mat: 'concrete' });
+    b.cyl(0.08, 0.08, 0.14, px, 1.57, pz, '#fff3c4', { layer: 'glow', seg: 8 });
+  }
+  const [sx, sz] = along((g0 + g1) / 2 + (g1 - g0) * 0.25);
+  if (gapSide === 'e') b.box(0.06, 1.25, (g1 - g0) * 0.5, sx + 0.05, 0.05, sz, '#2c3036', { mat: 'metal' });
+  else b.box((g1 - g0) * 0.5, 1.25, 0.06, sx, 0.05, sz + 0.05, '#2c3036', { mat: 'metal' });
+  const [mx, mz] = along(g0 - 0.5);
+  b.box(0.07, 2.2, 0.07, mx, 0, mz, '#5d646b', { mat: 'metal' });
+  b.box(0.3, 0.14, 0.14, mx, 2.2, mz, '#cfd3d6', { mat: 'metal' });
+  b.cyl(0.03, 0.03, 0.03, mx + 0.12, 2.24, mz, '#ff3b30', { layer: 'glow', seg: 6 });
 }
