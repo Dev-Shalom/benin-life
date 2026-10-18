@@ -235,6 +235,19 @@ export const TOUR_STEPS: TourStep[] = [
     before: () => toPhone('home'),
   },
   {
+    id: 'politics',
+    target: '[data-tour="app-politics"]',
+    title: 'Run for office, or vote',
+    body: 'Benin Votes is the city election. Declare for Councillor, Chairman or Governor, campaign with rallies and posters, and vote at your ward polling unit on voting day. All parties are made up.',
+    points: [
+      'Winners get a title next to their name (Hon., Gov.), a daily salary and small powers.',
+      'Polling units open on voting day only. Check the app for the dates and the fees.',
+      'Vote buying is not allowed: there is a report button.',
+    ],
+    isNew: true,
+    before: () => toPhone('home'),
+  },
+  {
     id: 'help',
     target: '[data-tour="app-help"]',
     title: 'Help is on your phone',

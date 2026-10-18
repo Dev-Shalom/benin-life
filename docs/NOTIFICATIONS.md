@@ -18,6 +18,7 @@ Every player can get phone notifications (Web Push) with a master switch and fiv
 | Money | `ledger` rows `transfer_in`, `tip_in`, `admin_gift` | "Money don land" / "₦5,000 from @ada" (a tip's note is never included) | Bank app |
 | Friends | `events`: friend_request, friend_accepted, house_invite, house_knock | "New friend request" / "@ada wan add you as friend" | Messages (requests if any) |
 | Game events | `events`: weekly_prize, referral_bonus | the game's own title and body | Ranks / Hustles app |
+| Game events | Benin Votes (docs/POLITICS.md): registration open, voting day, results are out (to every player with a device; winners get their own "You won" push) | "Benin Votes: voting day!" / "The polling units are open..." | Benin Votes app |
 | Game events | club event starts (`bl_push_tick`) | "Amapiano Night is starting" / "At 360 Signature. Come join!" | that place |
 | Game events | hype (`place_announcements`) to the others in that club | "🔥 Kingdom" / first 100 chars | that place |
 | Announcements | Admin -> Broadcast messages (everyone / LAPO / Nepo / joined after / online now) | the broadcast title and first 100 chars | Alerts app |

@@ -16,3 +16,4 @@ export { usePresence } from './presence';
 export { ProgressRing, type ProgressRingProps } from './ProgressRing';
 export { Switch } from './Switch';
 export { CrewTag } from './CrewTag';
+export { OfficeTag } from './OfficeTag';

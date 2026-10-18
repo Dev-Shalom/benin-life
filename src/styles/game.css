@@ -6661,3 +6661,8 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .builders-pill__bar > span { display: block; height: 100%; background: #e8892b; }
 .builders-pill span[aria-hidden] { font-family: var(--font-emoji); font-size: 18px; }
 .msg-bubble__meta .cr-tag-inline { color: var(--gold-600, #b8860b); font-weight: 800; }
+.msg-bubble__meta .office-tag-inline { color: #a16a00; font-weight: 800; background: linear-gradient(180deg,#ffe9a8,#f2c85b); padding: 0 5px; border-radius: 6px; margin-right: 2px; }
+
+/* the election-day banner (game screen) */
+.banner--vote { cursor: pointer; text-align: left; width: 100%; border: 0; font: inherit; color: inherit; }
+.banner--vote .banner__icon { font-size: 18px; font-family: var(--font-emoji); }

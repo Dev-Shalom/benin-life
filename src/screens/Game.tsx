@@ -42,6 +42,7 @@ import { GlobalPanelSheet } from './game/PanelHost';
 import { Phone } from './game/Phone';
 import { LookSheet, SimSheet } from './game/SimSheet';
 import { StatusBanners } from './game/StatusBanners';
+import { ElectionBanner, PoliticsHost } from './game/PollingStrip';
 import { deriveStatus } from './game/status';
 import { useTaskRunner } from './game/TaskRunner';
 import { useTasks } from '../state/tasks';
@@ -917,6 +918,7 @@ export default function Game() {
 
       <div className={`game__bottom${arrActive ? ' is-arranging' : ''}`} ref={bottomRef}>
         <div className="game__banners">
+          {!clean && <ElectionBanner />}
           <StatusBanners state={state} status={status} />
           {!clean && !state.travel && chatUnread > 0 && (
             <button type="button" className="chat-chip" onClick={() => select(here.id, 'chat')}
@@ -982,6 +984,7 @@ export default function Game() {
       <ShrineHost />
       <YahooHost />
       <CrewHost />
+      <PoliticsHost />
       <HustleHost />
       <SkillHost />
       <LoungeHost />

@@ -563,6 +563,15 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   mechanic_village: { short: 'Mechanic Village', tier: 2, side: 'r' },
   // R6 HK Quarters (docs/YAHOO.md), Uselu / Ugbowo
   hk_quarters: { short: 'HK Quarters', tier: 2, side: 'l' },
+  // R12 polling units (docs/POLITICS.md): open on voting day only
+  pu_ugbowo: { short: 'Ugbowo Poll Unit', tier: 2, side: 'r' },
+  pu_uselu: { short: 'Uselu Poll Unit', tier: 2, side: 'l' },
+  pu_ring_road: { short: 'Ring Rd Poll Unit', tier: 2, side: 'r' },
+  pu_gra: { short: 'GRA Poll Unit', tier: 2, side: 'l' },
+  pu_sapele_rd: { short: 'Sapele Poll Unit', tier: 2, side: 'r' },
+  pu_new_benin: { short: 'New Benin Poll Unit', tier: 2, side: 'r' },
+  pu_ikpoba_hill: { short: 'Ikpoba Poll Unit', tier: 2, side: 'r' },
+  pu_airport_rd: { short: 'Airport Poll Unit', tier: 2, side: 'l' },
 };
 
 export function shortName(id: string, name: string, owner?: string | null): string {

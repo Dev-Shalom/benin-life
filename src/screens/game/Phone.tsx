@@ -11,6 +11,7 @@ import { clockTime } from '../../lib/format';
 import { WEEKDAYS } from '../../lib/pidgin';
 import type { GameClock, GameState } from '../../lib/types';
 import { useChat } from '../../state/chat';
+import { usePolitics } from '../../state/politics';
 import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { Button, Icon, toast, usePresence } from '../../ui';
@@ -41,6 +42,7 @@ const HelpApp = lazy(() => import('./phone/HelpApp'));
 const MarketApp = lazy(() => import('./phone/MarketApp'));
 const BusinessApp = lazy(() => import('./phone/BusinessApp'));
 const CrewApp = lazy(() => import('./phone/CrewApp'));
+const PoliticsApp = lazy(() => import('./phone/PoliticsApp'));
 
 interface App {
   id: string;
@@ -65,6 +67,7 @@ const APPS: App[] = [
   { id: 'market', name: 'Market', emoji: '🏷️', bg: 'linear-gradient(160deg,#2fb7a6,#127a6e)', pitch: 'Buy and sell cars, land, furniture and gadgets with other players.' },
   { id: 'business', name: 'Business', emoji: '🏪', bg: 'linear-gradient(160deg,#f0b43a,#b86a12)', pitch: 'Own a shop, a buka, a bar or a filling station. Collect takings, restock, hire and upgrade.' },
   { id: 'crew', name: 'Crew', emoji: '🤝', bg: 'linear-gradient(160deg,#3b3f58,#16182a)', pitch: 'Found a crew, recruit players and pull group jobs for big loot. The police can catch everybody.' },
+  { id: 'politics', name: 'Benin Votes', emoji: '🗳️', bg: 'linear-gradient(160deg,#2f9e6b,#0e5a3a)', pitch: 'Run for councillor, chairman or governor, campaign, and vote at your ward polling unit. Fictional parties only.' },
   { id: 'billboards', name: 'Billboards', emoji: '📺', bg: 'linear-gradient(160deg,#ff6b78,#d93646)', pitch: '' },
   { id: 'hustles', name: 'Hustles', emoji: '💪', bg: 'linear-gradient(160deg,#ffb347,#e2552c)', pitch: '' },
   { id: 'school', name: 'School', emoji: '🎓', bg: 'linear-gradient(160deg,#9b72f0,#4a2aa0)', pitch: '' },
@@ -140,6 +143,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const lastReadEventId = useGame((s) => s.lastReadEventId);
   const socialUnread = events.filter((e) => ['friend_request', 'house_invite', 'house_knock', 'private_message', 'place_invite', 'lounge_guest'].includes(e.kind) && e.id > lastReadEventId).length;
   const open = overlay === 'phone';
+  const polBadge = usePolitics((s) => Boolean(s.status?.cycle && ((s.status.cycle.voting_open && s.status.me.voted.length < 3) || (s.status.cycle.status === 'registration' && !s.status.me.candidacy))));
   const wardrobeOn = useConfig().cfg<boolean>('wardrobe.enabled', true);
   const billboardsOn = useConfig().cfg<boolean>('billboards.enabled', true);
   const yahooOn = useConfig().cfg<boolean>('yahoo.enabled', true);
@@ -241,6 +245,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                       {a.id === 'alerts' && unread > 0 && <span className="app-icon__badge">{unread > 99 ? '99+' : unread}</span>}
                       {a.id === 'messages' && chatUnread + socialUnread > 0 && <span className="app-icon__badge">{chatUnread + socialUnread > 9 ? '9+' : chatUnread + socialUnread}</span>}
                       {a.id === 'houses' && (state.rent?.owed ?? 0) > 0 && <span className="app-icon__badge">!</span>}
+                      {a.id === 'politics' && polBadge && <span className="app-icon__badge">!</span>}
                     </span>
                     <span className="app-icon__name">{a.name}</span>
                   </button>
@@ -259,9 +264,9 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp state={state} onGoHome={goHome} onBack={() => setScreen('home')} onOpenAlerts={() => setScreen('alerts')} alertsUnread={unread} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' || app.id === 'market' || app.id === 'business' || app.id === 'crew' ? (
+                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' || app.id === 'market' || app.id === 'business' || app.id === 'crew' || app.id === 'politics' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
-                        {app.id === 'help' ? <HelpApp /> : app.id === 'crew' ? <CrewApp onGo={goToPlace} /> : app.id === 'market' ? <MarketApp /> : app.id === 'business' ? <BusinessApp state={state} onGo={goToPlace} /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
+                        {app.id === 'help' ? <HelpApp /> : app.id === 'politics' ? <PoliticsApp onGo={goToPlace} /> : app.id === 'crew' ? <CrewApp onGo={goToPlace} /> : app.id === 'market' ? <MarketApp /> : app.id === 'business' ? <BusinessApp state={state} onGo={goToPlace} /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
                           : app.id === 'billboards' ? <BillboardsApp key={bbTab} initialTab={bbTab} onOpenBoard={openBoard} />
                           : app.id === 'cars' ? <CarsApp state={state} onGo={goToPlace} />
                             : app.id === 'police' ? <PoliceApp state={state} onGo={goToPlace} />

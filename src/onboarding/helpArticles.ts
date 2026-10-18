@@ -33,6 +33,7 @@ export const HELP_TOPICS = [
   { id: 'babalawo', label: 'Babalawo', icon: '🪔' },
   { id: 'billboards', label: 'Billboards', icon: '📺' },
   { id: 'crime', label: 'Crime & jail', icon: '🚓' },
+  { id: 'politics', label: 'Politics & elections', icon: '🗳️' },
   { id: 'music', label: 'Music', icon: '🎵' },
   { id: 'safety', label: 'Safety & reporting', icon: '🛡️' },
   { id: 'contact', label: 'Contact', icon: '✉️' },
@@ -622,6 +623,50 @@ export const HELP_ARTICLES: HelpArticle[] = [
     where: 'The speaker icon in the top bar, and Sim sheet, then Settings.',
     tips: ['On a phone, sound starts after your first tap. That is how browsers work.'],
     keywords: 'music sound mute radio dj playlist volume audio',
+  },
+
+  // ---- Politics --------------------------------------------------------------------------------------------------
+  {
+    id: 'politics',
+    topic: 'politics',
+    title: 'Benin Votes: run for office',
+    summary: 'Run for Councillor, Chairman or Governor, campaign, and win a title, a daily salary and small powers. All parties are made up: no real parties or politicians.',
+    steps: [
+      'Open Phone, then Benin Votes. The top bar shows the phase: registration, campaign or voting day, with a countdown.',
+      'During registration open the Elections tab and declare. Pick an office, write a short promise and choose a party (or run as an independent). Each office has a fee and requirements, so check the app: account age, Charisma level, no jail and no recent EFCC case. The Governor also needs a degree or a high career level. A Councillor runs in the ward where they live.',
+      'During the campaign hold rallies at busy public places, put up posters, and ask players and crews to back you. A rally costs money and trains your Charisma, and every player standing there adds points. Momentum shows who is rising: it is not votes.',
+      'You can found your own fictional party. Real party names and real politicians are refused.',
+      'Vote buying is not allowed. If you see it, tap Report vote buying on the candidate. An admin reviews it and can disqualify.',
+      'Winners are sworn in when voting closes. You get a title next to your name (Hon., Chairman, Gov.), a salary for every day of the term, and your term runs for a while before the next election.',
+    ],
+    where: 'Phone, then Benin Votes: Government, Elections, Vote and Results tabs.',
+    tips: [
+      'The Governor appoints six Commissioners, posts one government announcement a day, and sets ONE small policy for the term (cheaper keke on a day of the week, a lower council levy, a Fitness XP boost, slower hygiene decay).',
+      'A Councillor can send one ward notice per term.',
+      'Fees, windows, salaries and requirements can change. Check the app for the current numbers.',
+    ],
+    tour: ['politics'],
+    keywords: 'politics election vote votes governor chairman councillor commissioner party campaign rally poster candidate endorse salary title hon gov policy announcement ward benin votes',
+  },
+  {
+    id: 'vote',
+    topic: 'politics',
+    title: 'How to vote',
+    summary: 'On voting day go to your ward polling unit and vote once for each office. Your ballot is secret.',
+    steps: [
+      'Open Benin Votes, then the Vote tab. It shows your ward and your polling unit.',
+      'Polling units are places on the map. They open on voting day only, so you cannot travel there before then. Tap Go to your polling unit.',
+      'At the unit, pick one candidate in each race (your ward Councillor, the Chairman and the Governor) and tap Cast my vote.',
+      'You vote once per office. The counts are public only after voting closes. Results show on the Results tab.',
+    ],
+    where: 'Phone, then Benin Votes, then Vote. The polling desk at the unit has a Vote here card too.',
+    tips: [
+      'New accounts cannot vote: the account must be a few days old. Check the app for how many.',
+      'You cannot vote while in jail or on the road.',
+      'Low turnout is fine. A race with one candidate is still won, even with zero votes.',
+    ],
+    tour: ['politics'],
+    keywords: 'vote voting polling unit ballot election day results secret turnout ward',
   },
 
   // ---- Safety ----------------------------------------------------------------------------------------------------

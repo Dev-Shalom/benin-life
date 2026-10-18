@@ -62,6 +62,8 @@ const ID_EMOJI: Record<string, string> = {
   ikpoba_riverbank: '🎣',
   mechanic_village: '🔧',
   hk_quarters: '🧢',
+  // R12 polling units (docs/POLITICS.md)
+  pu_ugbowo: '🗳️', pu_uselu: '🗳️', pu_ring_road: '🗳️', pu_gra: '🗳️', pu_sapele_rd: '🗳️', pu_new_benin: '🗳️', pu_ikpoba_hill: '🗳️', pu_airport_rd: '🗳️',
 };
 
 export const placeEmoji = (l: Pick<Location, 'id' | 'scene'>) => ID_EMOJI[l.id] ?? SCENE_EMOJI[l.scene] ?? '📍';

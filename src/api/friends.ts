@@ -19,6 +19,8 @@ export interface FriendCard {
   username: string;
   /** R11: crew tag, colour and emblem. */
   crew?: { tag: string; color: string; emblem: string } | null;
+  /** R12: office title (Hon., Gov. ...). */
+  title?: string | null;
   avatar: AvatarConfig | null;
   online: boolean;
   last_seen: string | null;
