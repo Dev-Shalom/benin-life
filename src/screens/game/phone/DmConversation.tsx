@@ -531,7 +531,7 @@ export function DmConversation({ state, friend, conversationId, invites, homeNow
         {menu && <MessageMenu m={menu} actions={menuActions(menu)} onClose={() => setMenu(null)} />}
       </div>
       {recording && <div className="social-recording" role="status"><span className="social-recording__dot" /> Recording voice note · {durationLabel(recordSeconds)}</div>}
-      <div className="social-composer dm-composer">
+      <div className="social-composer dm-composer kb-composer">
         {replyTo && <ReplyBar reply={previewOf(replyTo)} onClear={() => setReplyTo(null)} />}
         <div className="dm-quick" role="group" aria-label="Quick replies">
           {quick.map((line) => (
@@ -553,7 +553,7 @@ export function DmConversation({ state, friend, conversationId, invites, homeNow
             <textarea ref={draftRef} value={draft} rows={1} placeholder={`Message @${friend.username}…`} aria-label="Private message" enterKeyHint="send"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendText(); } }}
               onFocus={() => setEmojiOpen(false)}
-              disabled={sending || recording || audioBusy} onChange={(e) => setDraft(e.target.value)} />
+              readOnly={sending || recording || audioBusy} onChange={(e) => setDraft(e.target.value)} />
           </div>
           <Button type={hasText ? 'submit' : 'button'} className={`social-compose__primary dm-compose__primary${recording ? ' is-recording' : ''}`} variant="green"
             aria-label={recording ? `Send voice note, ${durationLabel(recordSeconds)}` : hasText ? 'Send message' : 'Record voice message'}

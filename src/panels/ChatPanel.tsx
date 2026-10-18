@@ -83,7 +83,7 @@ export default function ChatPanel({ state, location }: PanelProps) {
     hasOlder, loadingOlder, loadOlder: () => void loadOlder(),
   });
   // In a scrolling sheet, bring the composer into view when the tab opens.
-  useEffect(() => { rootRef.current?.scrollIntoView({ block: 'end' }); }, []);
+  useEffect(() => { rootRef.current?.scrollIntoView({ block: 'nearest' }); }, []);
 
   useEffect(() => { replyRef.current = replyTo; }, [replyTo]);
 
@@ -329,12 +329,12 @@ export default function ChatPanel({ state, location }: PanelProps) {
       </div>
       {note && <p className="chat__note" role="status">{note}</p>}
       {recording && <div className="chat__recording" role="status"><span className="social-recording__dot" /> Recording voice message</div>}
-      <div className="chat__composer">
+      <div className="chat__composer kb-composer">
         {replyTo && <ReplyBar reply={previewOf(replyTo)} onClear={() => setReplyTo(null)} />}
         <form className="chat__form" onSubmit={(e) => { e.preventDefault(); void send(); }}>
           <textarea ref={inputRef} className="chat__input" value={text} rows={1} enterKeyHint="send" autoComplete="off"
             placeholder={enabled ? `Message people at ${location.name}…` : 'Chat is switched off for now'}
-            disabled={!enabled || recording || recordingBusy || sending} aria-label="Message"
+            disabled={!enabled} readOnly={recording || recordingBusy || sending} aria-label="Message"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
             }}
