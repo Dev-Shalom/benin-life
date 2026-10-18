@@ -1,5 +1,7 @@
 -- L1 (20261006000100_real_time.sql): this file pins the pre-L1 behaviour (accelerated clock +
 -- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
+-- Pin the LAPO starting cash to the old default; the live value (₦85,000, 20261018000700) is owner-tunable.
+update public.game_config set value = '5000'::jsonb where key = 'origin.lapo.start_cash';
 update game_config set value = '"accelerated"' where key = 'clock.mode';
 update game_config set value = '"game_minutes"' where key = 'action.mode';
 
