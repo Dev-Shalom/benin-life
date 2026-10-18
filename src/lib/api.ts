@@ -24,11 +24,11 @@ export class GameError extends Error {
 // (429 Too Many Requests, 503 Service Unavailable), so a transfer or purchase can never run twice.
 const READ_RPC = new RegExp(
   '^(get_|players_|leaderboard_|world_counts$|money_drops_live$|place_people$|place_interior$|shop_list$|club_prices$|jobs_catalog$|travel_quote$|house_options$|' +
-    'food_menu$|events_on_today$|creator_catalog$|wardrobe_state$|storyline_current$|gem_hunt_status$|daily_reward_status$|' +
+    'food_menu$|events_on_today$|club_music_for$|creator_catalog$|wardrobe_state$|storyline_current$|gem_hunt_status$|daily_reward_status$|' +
     'push_state$|bank_info$|bank_history$|bank_recipient$|chat_recent$|chat_history$|chat_blocked$|police_cases_list$|garage_home$|' +
     'billboard_list$|billboard_my_ads$|feedback_mine$|house_room_state$|social_(friends|friend_requests|house_invites|house_info|friend_status|' +
     'message_history|search_players|streak)$|admin_(stats|push_stats|players|player_detail|payments|notifications|table_rows|config_list|' +
-    'client_errors|chat_reports|billboard_queue|audit_list|feedback_list)$)',
+    'client_errors|chat_reports|billboard_queue|audit_list|feedback_list|music_overview)$)',
 );
 const MAX_TRIES = 3;
 const inflight = new Map<string, Promise<unknown>>();

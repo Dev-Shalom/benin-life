@@ -14,6 +14,7 @@ import { adImageUrl, noteAdView, useBillboards } from '../lib/billboards';
 import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
 import { serverNow, useGameClock } from '../lib/clock';
 import { devHourOverride, looksNight } from '../lib/daylight';
+import { useClubMusic } from '../lib/clubMusic';
 import { leaveGameSound, setPlaceTrack, setSoundPlace, setSoundScene, type PlaceSound } from '../lib/sound';
 import { useConfig } from '../lib/config';
 import { simPosture } from '../lib/mood';
@@ -515,6 +516,8 @@ export default function Game() {
   // P2: a licensed club track (admin) replaces the synthesized amapiano groove
   const clubTrackUrl = String(cfg('music.club_track_url', '') ?? '');
   useEffect(() => { setPlaceTrack(clubTrackUrl); }, [clubTrackUrl]);
+  // M1: the club's playlist (live event > club > default) plays as a server-clock radio
+  useClubMusic(state && !state.travel ? state.location.id : null, placeSound === 'club');
   // P2: club hype (server announcements over Realtime): the club channel while inside a club, the ticker always
   const inClub = showPlace && placeScene === 'club';
   // PAY: the place channel runs at every place (not on the road) so VIP arrivals reach everyone there

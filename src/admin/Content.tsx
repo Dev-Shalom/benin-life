@@ -8,6 +8,8 @@ import { naira } from '../lib/format';
 import { adminApi, type AdminTable, type Row } from './api';
 import { Badge, Btn, DetailPane, JsonControl, LoadError, PageHead, Skeleton, Toggle } from './parts';
 import { useLoad } from './util';
+import { musicApi } from './musicApi';
+import { PlaylistSelect } from './Music';
 
 type FieldType = 'text' | 'long' | 'int' | 'money' | 'num' | 'bool' | 'json' | 'list' | 'intnull' | 'numnull' | 'textnull' | 'time';
 interface Field { key: string; label: string; type: FieldType; help?: string }
@@ -953,6 +955,7 @@ function CareersSection() {
 /** R2 club switch (docs/CLUBS.md): every nightclub with an on/off switch. Off = "Closed for now". Audited. */
 function ClubsSection() {
   const clubs = useLoad(() => adminApi.clubList());
+  const music = useLoad(() => musicApi.overview()); // M1: the playlist picker on each club
   const [busy, setBusy] = useState<string | null>(null);
   if (clubs.error) return <LoadError error={clubs.error} onRetry={() => void clubs.reload()} />;
   if (!clubs.data) return <Skeleton rows={6} />;
@@ -981,6 +984,12 @@ function ClubsSection() {
                 {' · '}{c.inside} inside · {c.events} event{c.events === 1 ? '' : 's'}
               </span>
             </div>
+            {music.data && (
+              <PlaylistSelect label={`Playlist for ${c.name}`} value={music.data.clubs.find((m) => m.id === c.id)?.playlist_id ?? null} playlists={music.data.playlists}
+                onChange={async (pl) => {
+                  try { toast((await musicApi.assign('club', c.id, pl)).message, 'good'); await music.reload(); } catch (e) { toast(errorMessage(e), 'bad'); }
+                }} />
+            )}
             <label className={`adm-rowtoggle${c.on ? ' is-on' : ''}`}>
               <span className="adm-rowtoggle__cap">{c.on ? 'ON' : 'OFF'}</span>
               <Toggle checked={c.on} label={`${c.name} is ${c.on ? 'on' : 'off'}`} onChange={(on) => { if (busy !== c.id) void flip(c.id, on); }} />

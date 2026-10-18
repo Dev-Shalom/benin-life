@@ -10,6 +10,9 @@
 // the tab is hidden. Music/ambience only play inside the game (setSoundScene from Game.tsx).
 // See docs/SOUND.md for the lifecycle rules (one context, one soundtrack, voice cap, limiter, tab ownership).
 import { usePrefs } from './prefs';
+import { serverNow } from './clock';
+import { ClubRadio, primeRadioDecks } from './clubRadio';
+import { radioClockInfo, radioNow, samePlaylist, type RadioPlaylist } from './radio';
 import { CLUB_BPM, Engine, cheerOn, makeTrack, renderOffline, softCueOn, stingerOn, track, voiceStats, type Track, type TrackKind } from './music';
 
 export type Cue = 'click' | 'money' | 'done' | 'alert' | 'error';
@@ -288,6 +291,9 @@ let duckUntil = 0;
 // a licensed club track (admin: music.club_track_url) replaces the synth groove when set
 let clubTrackUrl = '';
 let fileAudio: HTMLAudioElement | null = null;
+// M1: the resolved club playlist (src/lib/clubMusic.ts) plays as a server-clock radio through the shared context
+let radioPl: RadioPlaylist | null = null;
+let radio: ClubRadio | null = null;
 
 function placeVoices() {
   // a murmur of talk: a few short low saw 'syllables' through a lowpass
@@ -355,6 +361,8 @@ function stopPlace() {
     fileAudio.src = '';
     fileAudio = null;
   }
+  radio?.dispose();
+  radio = null;
   if (placeDrone && ctx) {
     const d = placeDrone;
     d.g.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
@@ -380,7 +388,12 @@ function applyPlace() {
     placeBus.gain.setValueAtTime(0, ctx.currentTime);
     placeBus.gain.linearRampToValueAtTime(level, ctx.currentTime + 1.5);
     placeBus.connect(master);
-    if (placeSound === 'club' && clubTrackUrl) {
+    if (placeSound === 'club' && radioPl) {
+      radio = new ClubRadio(ctx, placeBus, radioPl, () => radioNow(serverNow()));
+      if (!radio.start()) radio = null;
+      else if (yielded || document.hidden) radio.pause();
+    }
+    if (!radio && placeSound === 'club' && clubTrackUrl) {
       try {
         fileAudio = new Audio(clubTrackUrl);
         fileAudio.loop = true;
@@ -388,7 +401,7 @@ function applyPlace() {
         if (!document.hidden && !yielded) void fileAudio.play().catch(() => {});
       } catch { fileAudio = null; }
     }
-    if (!fileAudio) {
+    if (!fileAudio && !radio) {
       placeEngine = new Engine(ctx, placeBus);
       dbg.engines++;
       placeTrack = makeTrack(placeSound === 'dance' ? 'afrobeats' : placeSound as TrackKind, placeEngine, ctx.currentTime + 0.15);
@@ -412,6 +425,14 @@ export function setPlaceTrack(url: string | null) {
   const u = (url ?? '').trim();
   if (u === clubTrackUrl) return;
   clubTrackUrl = u;
+  if (placeSound === 'club' && unlocked && ensureCtx()) applyPlace();
+}
+
+/** M1: the club's resolved playlist (null = none): it plays as a radio and replaces the synth groove / the single
+ *  licensed file. The same playlist (id, anchor, tracks) again is a no-op, so polling never restarts the music. */
+export function setPlaceRadio(pl: RadioPlaylist | null) {
+  if (samePlaylist(pl, radioPl)) return;
+  radioPl = pl;
   if (placeSound === 'club' && unlocked && ensureCtx()) applyPlace();
 }
 
@@ -579,11 +600,13 @@ function pauseAudio() {
   if (!ctx) return;
   if (ctx.state !== 'suspended') void ctx.suspend().catch(() => {});
   fileAudio?.pause();
+  radio?.pause();
 }
 
 function claimTab() {
   yielded = false;
   try { chan?.postMessage({ id: tabId }); } catch { /* closed */ }
+  radio?.resume();
 }
 
 /** Bring the sound back if this tab should be playing (visible, not yielded). Safe to call any time. */
@@ -591,6 +614,7 @@ function wake() {
   if (!ctx || !unlocked || yielded || document.hidden) return;
   if (ctx.state !== 'running') void ctx.resume().then(apply).catch(() => {});
   if (fileAudio) void fileAudio.play().catch(() => {});
+  radio?.resume(); // resync to the club's current moment
 }
 
 function onState() {
@@ -625,6 +649,7 @@ export function initSound() {
     if (!ensureCtx()) return;
     const first = !unlocked;
     unlocked = true;
+    if (first) primeRadioDecks(ctx!); // iOS: unlock the two radio <audio> elements from a tap
     if (first || yielded || ctx!.state !== 'running') {
       claimTab();
       void ctx!.resume().then(apply).catch(() => {});
@@ -647,7 +672,9 @@ export function initSound() {
   usePrefs.subscribe(apply);
   if (import.meta.env.DEV) {
     (window as unknown as { __blSound?: unknown }).__blSound = {
-      render: renderOffline, playHype, readBeat, setPlaceTrack,
+      render: renderOffline, playHype, readBeat, setPlaceTrack, setPlaceRadio,
+      /** M1: what the club radio is doing (track, expected vs actual position) for the Playwright sync proof. */
+      radio: () => (radio ? { ...radio.info(), seeks: radio.seeks, swaps: radio.swaps, ...radioClockInfo(), gameSkewMs: serverNow() - Date.now() } : null),
       /** Live counters for scripts/sound-check.mjs. */
       stats: () => ({
         ...voiceStats,
@@ -655,6 +682,7 @@ export function initSound() {
         state: ctx?.state ?? 'none',
         place: placeSound,
         trackActive: placeTrack ? 1 : 0,
+        radioActive: radio ? 1 : 0,
         busActive: placeBus ? 1 : 0,
         musicTimer: musicTimer !== null,
         hidden: document.hidden,

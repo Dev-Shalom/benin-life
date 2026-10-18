@@ -15,7 +15,7 @@ The owner decided:
    - XP and levels for Yahoo, driving, cooking, music, teaching, fishing, mechanic and business.
    - The Yahoo level lowers the EFCC chance.
    - Hustles pay more at higher levels, and some jobs need a minimum level.
-5b. **M1 Club music (owner request):**
+5b. **M1 Club music (DONE):**
    - The admin uploads MP3s into playlists and sets a playlist per club and per event. The event playlist wins while the event is on.
    - Shuffle or in order, looping forever.
    - Radio-style sync from the server clock: everyone hears the same moment, and leaving and coming back continues where the club is now.

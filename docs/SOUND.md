@@ -24,6 +24,9 @@ Everything is synthesized with WebAudio (no audio files). Code: `src/lib/sound.t
 | Clicks | `sfxBus.gain.value =` hard set; hype ducking jumped from 0 while the bus was still fading in; mute only affected new sounds | `setTargetAtTime` ramps; ducking starts from the current value; mute/SFX-off ramp the master/sfx gains so in-flight stingers are cut too |
 | Stale duck / cheer state across places | `duckUntil` survived a place change, so the next club skipped its duck | reset in `stopPlace` |
 
+## Club radio (M1)
+A club playlist from the admin (docs/MUSIC.md) plays as a server-clock radio: two `<audio>` elements -> `MediaElementSource` -> the club's place bus, on the same single context, so mute, the Music setting, the limiter and the hype ducking apply. Hidden or yielded tabs pause it, and `wake()` / `claimTab()` resync it to the club's current moment. With no playable playlist the old paths run unchanged (`music.club_track_url` single file, then the synth groove). `readBeat()` uses its silent clock while a file plays.
+
 ## Dev check
 `window.__blSound.stats()` (DEV only) returns the live voice counters (`music`, `sfx`, peaks, `dropped`), `ctxCreated`, live `intervals`, `buses`, `engines`, `trackActive`, `state`. `scripts/sound-check.mjs` drives the real app with Playwright (travel x6, hide/show, a 4 s main-thread stall, an 80-call hype spam, Music off/on) and asserts one context, one soundtrack, bounded voices and no burst:
 
