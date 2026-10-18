@@ -25,6 +25,7 @@ import { nearestWorkplace } from '../../api/careers';
 import { bestFood } from '../../api/shops';
 import { TaskPill } from './TaskPill';
 import { DailyChips, DailySheets, useDailyChipIcons } from './Daily';
+import { ChallengeChip, ChallengeSheet, useChallengeChip } from './Challenges';
 
 /** Players online (S1 scaling): world_counts() polled once a minute by state/presence.ts; null hides the pill. */
 function usePlayersOnline(): number | null {
@@ -192,8 +193,9 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   const workAt = job && status.free && !job.pending && job.shifts_today < job.max_shifts_per_day ? nearestWorkplace(state, byId) : null;
   const bankAt = useBankTip(state, status.free);
   const dailyIcons = useDailyChipIcons();
-  const count = tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0) + (bankAt ? 1 : 0) + dailyIcons.length;
-  const ready = dadReady || dailyIcons.includes('🎁');
+  const chal = useChallengeChip();
+  const count = tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0) + (bankAt ? 1 : 0) + dailyIcons.length + (chal.show ? 1 : 0);
+  const ready = dadReady || dailyIcons.includes('🎁') || chal.ready;
   const open = !clean && count > 0 && (mode === 'open' || (mode === 'auto' && roomy && !compact));
 
   useEffect(() => {
@@ -245,7 +247,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
     else select(p.location_id);
   };
 
-  const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...dailyIcons, ...(protectedNow ? ['🛡️'] : [])];
+  const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...dailyIcons, ...(chal.show ? ['🏆'] : []), ...(protectedNow ? ['🛡️'] : [])];
   const shown = icons.slice(0, 4);
 
   return (
@@ -307,6 +309,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
                 </button>
               )}
               <DailyChips onPick={fold} />
+              <ChallengeChip onPick={fold} />
               {protectedNow && (
                 <div className="wish-chip wish-chip--protect" title="New player protection: nobody can rob you yet">
                   <span className="wish-chip__icon" aria-hidden>🛡️</span>
@@ -330,6 +333,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
         </div>
       )}
       <DailySheets />
+      <ChallengeSheet />
     </div>
   );
 }

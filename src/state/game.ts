@@ -1,5 +1,6 @@
 // Game store — P1-SHELL. Session, GameState (via get_my_state), locations, events + realtime.
 import { showLevelUp } from './skills';
+import { useChallenges } from './challenges';
 import { showGraduation } from './school';
 import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
@@ -214,6 +215,13 @@ function onEventRow(ev: GameEvent) {
   // RPC result (job_apply / work_finish), and so do pay_rent (data.settle) and bank_transfer (transfer_out). The events stay in Alerts.
   if (ev.kind === 'skill_up') {
     showLevelUp(ev.data as Record<string, unknown>, ev.title);
+    scheduleRefresh(600);
+    return;
+  }
+  if (ev.kind === 'challenge_done') {
+    // R5: a small toast, then refresh the challenge list (the HUD chip and sheet)
+    toast(ev.title, 'good');
+    void useChallenges.getState().load();
     scheduleRefresh(600);
     return;
   }

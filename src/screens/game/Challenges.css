@@ -1,0 +1,48 @@
+/* R5: daily and weekly challenges (docs/CHALLENGES.md) */
+.wish-chip--chal { position: relative; }
+.wish-chip--chal .wish-chip__icon { background: var(--amber-50); }
+
+.chal-sheet .bl-tabs { margin: 2px 0 10px; }
+.chal-period { display: grid; gap: 10px; padding-bottom: 6px; }
+.chal-time { margin: 0; font-size: 13px; color: var(--ink-2); }
+.chal-time b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.chal-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+
+.chal-card { display: grid; gap: 8px; padding: 12px; border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); animation: chal-in 240ms var(--ease-out) both; }
+.chal-card.is-done { box-shadow: inset 0 0 0 2px var(--amber-500), 0 6px 16px -10px rgba(238, 164, 26, 0.8); background: linear-gradient(160deg, var(--surface), var(--amber-50)); }
+.chal-card.is-claimed { background: var(--green-50); box-shadow: inset 0 0 0 1px var(--green-100); }
+.chal-card__top { display: flex; align-items: center; gap: 10px; }
+.chal-card__icon { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--surface-2); font-family: var(--font-emoji); font-size: 21px; }
+.chal-card.is-claimed .chal-card__icon { background: var(--green-500); color: #fff; font-family: var(--font-body); font-weight: 800; font-size: 18px; }
+.chal-card__main { display: grid; min-width: 0; gap: 1px; }
+.chal-card__main b { font-family: var(--font-display); font-size: 15px; color: var(--ink); line-height: 1.25; }
+.chal-card__main small { font-size: 12.5px; line-height: 1.35; color: var(--ink-2); }
+.chal-friends { margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: var(--blue-50); color: var(--blue-500); font-family: var(--font-body); font-size: 10.5px; font-style: normal; font-weight: 700; letter-spacing: 0.02em; vertical-align: 1px; }
+.chal-bar { height: 10px; border-radius: 99px; background: var(--surface-3, rgba(0, 0, 0, 0.08)); overflow: hidden; }
+.chal-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--green-500), var(--amber-500)); transition: width 500ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.chal-card.is-claimed .chal-bar i { background: var(--green-500); }
+.chal-card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.chal-count { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-2); margin-right: auto; }
+.chal-rewards { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.chal-chip { padding: 2px 8px; border-radius: 99px; background: var(--surface-2); font-size: 11.5px; color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
+.chal-chip.is-cash { background: var(--green-50); color: var(--green-700); font-weight: 700; box-shadow: inset 0 0 0 1px var(--green-100); }
+.chal-claimed { font-size: 12px; font-weight: 700; color: var(--green-700); }
+.chal-swap { padding: 3px 9px; border: 0; border-radius: 99px; background: transparent; color: var(--ink-3); font-size: 11.5px; cursor: pointer; box-shadow: inset 0 0 0 1px var(--line); }
+.chal-swap:hover:not(:disabled) { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.chal-note { margin: 0; font-size: 12px; color: var(--ink-3); }
+
+.chal-chest { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--r-md); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.chal-chest.is-ready { background: linear-gradient(160deg, #fff6df, #ffe9b8); box-shadow: inset 0 0 0 2px var(--amber-500), 0 8px 20px -10px rgba(238, 164, 26, 0.9); animation: chal-glow 1.8s ease-in-out infinite; }
+.chal-chest.is-claimed { background: var(--green-50); box-shadow: inset 0 0 0 1px var(--green-100); }
+.chal-chest.is-weekly { border-radius: calc(var(--r-md) + 2px); }
+.chal-chest__icon { flex: none; font-size: 32px; font-family: var(--font-emoji); }
+.chal-chest__main { display: grid; gap: 3px; min-width: 0; flex: 1; }
+.chal-chest__main b { font-family: var(--font-display); font-size: 15px; color: var(--ink); }
+.chal-chest__main small { font-size: 12.5px; color: var(--ink-2); line-height: 1.3; }
+.chal-chest__dots { display: inline-flex; gap: 5px; }
+.chal-chest__dots i { width: 22px; height: 6px; border-radius: 99px; background: var(--surface-3, rgba(0, 0, 0, 0.12)); }
+.chal-chest__dots i.is-on { background: var(--amber-500); }
+
+@keyframes chal-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } }
+@keyframes chal-glow { 50% { box-shadow: inset 0 0 0 2px var(--amber-500), 0 10px 26px -8px rgba(238, 164, 26, 1); } }
+@media (prefers-reduced-motion: reduce) { .chal-card, .chal-chest.is-ready, .chal-bar i { animation: none; transition: none; } }

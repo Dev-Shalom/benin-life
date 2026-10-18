@@ -65,6 +65,7 @@ import { useEventsLive } from '../state/events';
 import { EventBanner, useEventBadges } from './game/Events';
 import JourneyGuide from './game/JourneyGuide';
 import { DailySync, usePlaceGem } from './game/Daily';
+import { ChallengeSync } from './game/Challenges';
 import { useShownAvatar, useWardrobe } from '../state/wardrobe';
 import { GarageSheet } from './game/GarageSheet';
 import { MoveHouseSheet } from './game/MoveHouseSheet';
@@ -890,6 +891,7 @@ export default function Game() {
           onOpen={(id) => { if (id !== state.location.id || state.travel) setMapOpen(true); select(id); }} />
       )}
       <DailySync here={dailyHere} />
+      <ChallengeSync />
       <LeftRail state={state} status={status} atHome={atHome} compact={!showHome && (!showPlace || insets.narrow)} />
 
       <div className={`game__bottom${arrActive ? ' is-arranging' : ''}`} ref={bottomRef}>
