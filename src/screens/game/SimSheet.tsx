@@ -24,6 +24,7 @@ import { useGame } from '../../state/game';
 import { useUi, type SimTab } from '../../state/ui';
 import { Button, EmptyState, Logo, Sheet, Switch, Tabs, toast } from '../../ui';
 import { SkillsTab } from './Skills';
+import { CertificatesCard } from './School';
 import LookPanel from '../creator/LookPanel';
 import { NotificationsSettings } from './NotificationsSettings';
 import { JobCard, PerfBar, Promotion, ShiftStats } from '../../panels/careers/CareerUI';
@@ -165,6 +166,7 @@ function ProfileTab({ state, onEditLook, onWardrobe }: { state: GameState; onEdi
         </div>
       </section>
       <SimCharms />
+      <CertificatesCard />
       <section className="sim-card">
         <h4 className="sim-card__title">Dream</h4>
         {dream ? (

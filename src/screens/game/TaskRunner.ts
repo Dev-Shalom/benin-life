@@ -18,6 +18,8 @@ import { afterPurchase } from '../../state/garage';
 import { useShrine } from '../../state/shrine';
 import { hustleStart } from '../../api/hustles';
 import { useHustles } from '../../state/hustles';
+import { courseStartClass } from '../../api/school';
+import { useSchool } from '../../state/school';
 
 /** Walks to a task longer than this (real ms) give up and start anyway (e.g. the canvas went away). */
 const WALK_TIMEOUT_MS = 20_000;
@@ -118,6 +120,15 @@ export function useTaskRunner(state: GameState | null, homeLive: boolean, placeL
           if (useTasks.getState().current?.uid === uid) useTasks.getState().patchCurrent({ phase: 'running', busyUntil: h.busy_until });
           useHustles.getState().started({ id: h.run_id, hustle_id: h.hustle_id, name: h.name, icon: h.icon, started_at: h.started_at, resolve_at: h.resolve_at,
             status: 'running', cost: h.cost, amount: 0, outcome: null });
+          return;
+        }
+        // R4: a school class (its own timer; the school store rolls the exam when it ends)
+        if (kind === 'class') {
+          const r = await courseStartClass(c.id);
+          if (useTasks.getState().current?.uid === uid) useTasks.getState().patchCurrent({ phase: 'running', busyUntil: r.busy_until });
+          useSchool.getState().started({ id: r.run_id, course_id: r.course_id, name: r.name, icon: r.icon, class_no: r.class_no, started_at: r.started_at,
+            resolve_at: r.resolve_at, status: 'running', outcome: null, xp: 0, message: null });
+          if (r.exam) toast(r.message, 'info');
           return;
         }
         const res =

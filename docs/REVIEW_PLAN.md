@@ -20,7 +20,7 @@ The owner decided:
    - Shuffle or in order, looping forever.
    - Radio-style sync from the server clock: everyone hears the same moment, and leaving and coming back continues where the club is now.
    - Spotify or YouTube links are not possible (licensing and API).
-6. **R4 School:** UNIBEN classes and short courses that give certificates. Certificates unlock better jobs and give XP. Players choose between time spent learning and money earned now.
+6. **R4 School (DONE):** UNIBEN classes and short courses that give certificates. Certificates unlock better jobs and give XP. Players choose between time spent learning and money earned now.
 7. **R5 Challenges:** daily and weekly goals that pay cash and XP.
 8. **R6 Yahoo strategy:**
    - Cash-out choices: full (high risk), half (lower risk), or laundered (fee, much lower risk).

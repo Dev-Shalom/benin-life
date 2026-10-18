@@ -8,6 +8,8 @@ import { ShrineHost } from './game/Shrine';
 import { YahooHost } from './game/Yahoo';
 import { HustleHost } from './game/Hustles';
 import { SkillHost } from './game/Skills';
+import { SchoolHost } from './game/School';
+import { useSchool } from '../state/school';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HomeView, KINDS, LAYOUTS, activityGroup, findFreeSpot, furnishHome, furnitureIdOfKey, homeLayoutFor, itemGroup, placementIssue, type FurnitureItem, type FurnitureKind, type SavedHomePosition } from '../art/home3d';
 import { CityView, type CityBoard } from '../art/city3d';
@@ -566,7 +568,8 @@ export default function Game() {
     if (interior.data && !placeZone && interior.data.zones.length) setPlaceZone(interior.data.zones[0].key);
   }, [interior.data, placeZone]);
   // re-read the cards when money / the Bag change (owned counts, "In your Bag")
-  const cashKey = p ? `${p.cash}:${p.bank}:${p.job_id ?? ''}:${p.job_level}` : '';
+  const schoolKey = useSchool((x) => (x.last ? `${x.last.course_id}${x.last.done}${x.last.outcome}` : ''));
+  const cashKey = p ? `${p.cash}:${p.bank}:${p.job_id ?? ''}:${p.job_level}:${schoolKey}` : '';
   const lastCashKey = useRef(cashKey);
   useEffect(() => {
     if (!showPlace) return;
@@ -957,6 +960,7 @@ export default function Game() {
       <YahooHost />
       <HustleHost />
       <SkillHost />
+      <SchoolHost />
       {showPlace && (
         <PlacePlayerSheet
           person={placePlayer ? playersHere.find((pl) => pl.id === placePlayer.id) ?? null : null}

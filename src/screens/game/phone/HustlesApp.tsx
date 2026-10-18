@@ -80,6 +80,8 @@ function HustleCard({ h, st, free, now, busy, onStart, onGo }: {
         {h.loss && <span className="hs-chip is-risk" title={h.loss.text}>{h.loss.pct}% fraud −{nairaShort(h.loss.min)}–{nairaShort(h.loss.max)}</span>}
         {h.bonus && <span className="hs-chip is-ok" title={h.bonus.text}>{h.bonus.pct}% tip +{nairaShort(h.bonus.min)}–{nairaShort(h.bonus.max)}</span>}
         {h.skill && h.skill.pay_boost_pct > 0 && !instant && <span className="hs-chip is-ok">{h.skill.icon} +{Math.round(h.skill.pay_boost_pct)}% from skill</span>}
+        {(h.cert_bonus_pct ?? 0) > 0 && !instant && <span className="hs-chip is-ok">🎓 +{Math.round(h.cert_bonus_pct!)}% from certificate</span>}
+        {h.req_cert && h.locked?.hint === 'need_cert' && <span className="hs-chip is-need">🎓 {h.locked.short}</span>}
         {h.skill && !h.skill.ok && <span className="hs-chip is-need">{h.skill.icon} Needs {h.skill.name} lvl {h.skill.min_level}</span>}
         {h.pay_mult_now !== 1 && !instant && h.kind !== 'fishing' && <span className="hs-chip">now ×{h.pay_mult_now.toFixed(2).replace(/0$/, '')}</span>}
       </div>

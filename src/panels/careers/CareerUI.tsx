@@ -46,7 +46,8 @@ function ReqList({ reqs }: { reqs: CareerRequirement[] }) {
           <span className="req-list__dot" aria-hidden>{r.met ? <Icon name="check" size={12} stroke={3} /> : null}</span>
           <span>
             {r.label}
-            {r.key === 'degree' && !r.met && <span className="req-list__hint"> · reach Graduate Assistant in Education (UNIBEN)</span>}
+            {r.key === 'degree' && !r.met && <span className="req-list__hint"> · reach Graduate Assistant in Education (UNIBEN), or earn the BSc in the School app</span>}
+            {r.key === 'cert' && !r.met && <span className="req-list__hint"> · School app on your phone</span>}
             {r.key === 'item' && !r.met && <ItemShopLink item={r.item} />}
           </span>
         </li>
@@ -118,7 +119,12 @@ function TrackRow({ t, current, hasJob, busy, onApply }: {
   const entry = t.levels.find((l) => l.level === t.entry_level) ?? t.levels[0];
   const names = t.locations.map((l) => shortName(l.id, l.name));
   const where = names.length > 2 ? `${names.slice(0, 2).join(' · ')} +${names.length - 2} more` : names.join(' · ');
+  // R4: a track-level certificate gate, and the first ladder level that still needs a certificate
+  const gate = t.cert_gate ?? null;
+  const certLevel = t.levels.find((l) => l.requirements.some((r) => r.key === 'cert' && !r.met));
+  const certReq = certLevel?.requirements.find((r) => r.key === 'cert' && !r.met);
   const apply = () => {
+    if (gate) return;
     if (hasJob && !confirm) {
       setConfirm(true);
       return;
@@ -138,13 +144,15 @@ function TrackRow({ t, current, hasJob, busy, onApply }: {
               Start as <b>{entry.title}</b>{t.entry_level > 1 ? ` (level ${t.entry_level})` : ''} · {naira(entry.pay_per_shift)} a shift
             </p>
           )}
+          {gate && <p className="track__lock" data-testid={`track-lock-${t.id}`}>🔒 {gate.short}</p>}
+          {!gate && certLevel && certReq && <p className="track__lock" data-testid={`track-cert-${t.id}`}>🎓 {certLevel.title}: {certReq.label}</p>}
         </div>
         {current ? (
           <span className="chip good">Your job</span>
         ) : (
           <Button size="sm" variant={confirm ? 'gold' : 'green'} loading={busy === `apply:${t.id}`}
-            disabled={busy !== null && busy !== `apply:${t.id}`} onClick={apply}>
-            {confirm ? 'Tap to switch' : hasJob ? 'Switch' : 'Apply'}
+            disabled={Boolean(gate) || (busy !== null && busy !== `apply:${t.id}`)} onClick={apply}>
+            {gate ? 'Locked' : confirm ? 'Tap to switch' : hasJob ? 'Switch' : 'Apply'}
           </Button>
         )}
       </div>

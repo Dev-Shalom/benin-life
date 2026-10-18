@@ -173,6 +173,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
             : j.locked === 'no_laptop' ? 'Need a laptop'
               : j.locked === 'laptop_too_weak' ? `Need ${j.min_laptop ?? 'a better laptop'}+`
               : j.locked === 'skill_level' ? `Needs Yahoo lvl ${j.min_skill_level ?? 1}`
+              : j.locked === 'cert' ? (j.cert_short ?? 'Needs a certificate')
                 : cash && s.dirty <= 0 ? 'Nothing to cash'
                   : !s.where.ok ? (s.where.hint === 'no_mifi' ? 'Need MiFi' : s.where.hint === 'no_desk' ? 'Need a desk' : 'Home or cybercafe')
                     : cd > 0 ? `Wait ${countdown(cd)}`

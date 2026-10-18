@@ -426,7 +426,7 @@ export interface PlayersOnline {
 // Server: supabase/migrations/20261005000700_careers.sql.
 
 export interface CareerRequirement {
-  key: 'min_shifts_in_level' | 'item' | 'degree' | 'min_level_track' | 'min_street_cred' | string;
+  key: 'min_shifts_in_level' | 'item' | 'degree' | 'min_level_track' | 'min_street_cred' | 'cert' | string;
   label: string;
   met: boolean;
   item?: string;
@@ -453,6 +453,8 @@ export interface CareerJob {
   max_shifts_per_day: number;
   /** performance % if a shift started now (from current needs) */
   perf_now: number;
+  /** R4: % pay bonus from certificates on this track. */
+  cert_bonus_pct?: number;
   /** pay a shift started now would earn (performance, traits, career.pay_mult) */
   pay_now: number;
   started_at: string | null;
@@ -493,6 +495,10 @@ export interface JobTrack {
   description: string;
   skill: string | null;
   locations: { id: string; name: string }[];
+  /** R4: a track-level certificate gate (null = open) and what is missing. */
+  req_cert?: string | null;
+  cert_gate?: { hint: string; message: string; short: string } | null;
+  cert_bonus_pct?: number;
   entry_level: number;
   levels: JobLevelInfo[];
 }

@@ -43,6 +43,9 @@ export interface Hustle {
   /** Requirement problems that are not about the place (null = I could start it at the right place). */
   locked: HustleWhy | null;
   skill?: SkillCard | null;
+  /** R4: certificate that unlocks it (null = open) and the pay bonus (%) my certificates give now. */
+  req_cert?: string | null;
+  cert_bonus_pct?: number;
 }
 
 export interface HustleRun { id: number; hustle_id: string; name: string; icon: string; started_at: string; resolve_at: string; status: string; cost: number; amount: number; outcome: string | null }

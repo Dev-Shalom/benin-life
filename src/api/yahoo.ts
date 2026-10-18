@@ -34,10 +34,13 @@ export interface YahooJob {
   base_caught_pct: number;
   min_tier: number;
   min_laptop: string | null;
-  locked: 'no_laptop' | 'laptop_too_weak' | 'skill_level' | null;
+  locked: 'no_laptop' | 'laptop_too_weak' | 'skill_level' | 'cert' | null;
   /** R3: EFCC chance after my Yahoo level (the base and laptop numbers stay in caught_pct). */
   skill_caught_pct?: number;
   min_skill_level?: number;
+  /** R4: certificate gate: the short lock text ("Needs ICT certificate"). */
+  req_cert?: string | null;
+  cert_short?: string | null;
   skill?: SkillCard | null;
   cooldown_until: string | null;
 }

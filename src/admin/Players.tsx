@@ -214,6 +214,8 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
 
           <PlayerSkills id={id} />
 
+          <PlayerCertificates id={id} />
+
           <PlayerCharms id={id} />
 
           {!p.is_admin && p.id !== me && (
@@ -430,6 +432,53 @@ function PlayerCharms({ id }: { id: string }) {
           <ConfirmButton tone="ghost" confirmText="Tap again: clear all" disabled={busy} onConfirm={() => void clear(null)}>Clear all charms</ConfirmButton>
         </div>
       )}
+    </section>
+  );
+}
+
+/** R4: a player's certificates, with grant and revoke (both audited: grant_cert / revoke_cert). */
+function PlayerCertificates({ id }: { id: string }) {
+  const { data, reload } = useLoad(() => adminApi.playerCerts(id), [id]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [pick, setPick] = useState('');
+  const [note, setNote] = useState('');
+  const missing = (data?.catalog ?? []).filter((c) => !c.has);
+  const run = async (key: string, fn: () => Promise<{ message: string }>) => {
+    setBusy(key);
+    try {
+      const r = await fn();
+      toast(r.message, 'good');
+      setPick('');
+      setNote('');
+      await reload();
+    } catch (e) { toast(errorMessage(e), 'bad'); } finally { setBusy(null); }
+  };
+  return (
+    <section className="adm-box" data-testid="adm-certs">
+      <h3 className="adm-h3">🎓 Certificates</h3>
+      {data && data.rows.length === 0 && <p className="adm-empty">No certificates yet.</p>}
+      <div className="adm-rows">
+        {(data?.rows ?? []).map((r) => (
+          <div key={r.id} className="adm-ledger__row" data-testid={`adm-cert-${r.id}`}>
+            <span className="adm-ledger__label">
+              {r.icon} {r.name}
+              <small>{r.source === 'admin' ? 'Granted by an admin' : `Earned in ${r.course_id ?? 'a course'}`} · {timeShort(r.earned_at)}</small>
+            </span>
+            <ConfirmButton tone="ghost" confirmText="Tap again: remove" disabled={busy !== null} onConfirm={() => void run(`r:${r.id}`, () => adminApi.revokeCert(id, r.id, note.trim() || null))}>Revoke</ConfirmButton>
+          </div>
+        ))}
+      </div>
+      {(data?.courses ?? []).filter((c) => c.status === 'enrolled').length > 0 && (
+        <p className="adm-sub">In progress: {(data?.courses ?? []).filter((c) => c.status === 'enrolled').map((c) => `${c.name} ${c.done}/${c.classes}`).join(' · ')}</p>
+      )}
+      <div className="adm-btnrow">
+        <select className="adm-input" aria-label="Certificate to grant" value={pick} onChange={(e) => setPick(e.target.value)} disabled={busy !== null}>
+          <option value="">Grant a certificate…</option>
+          {missing.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+        </select>
+        <input className="adm-input" placeholder="Note (audit log)" aria-label="Note" value={note} maxLength={120} onChange={(e) => setNote(e.target.value)} />
+        <Btn tone="primary" small disabled={busy !== null || !pick} onClick={() => void run(`g:${pick}`, () => adminApi.grantCert(id, pick, note.trim() || null))}>Grant</Btn>
+      </div>
     </section>
   );
 }

@@ -2,7 +2,7 @@
 import { rpc } from '../lib/api';
 import type { SceneType } from '../lib/types';
 
-export type ZoneActionKind = 'activity' | 'job' | 'shop' | 'panel' | 'shrine' | 'linkup' | 'hustle';
+export type ZoneActionKind = 'activity' | 'job' | 'shop' | 'panel' | 'shrine' | 'linkup' | 'hustle' | 'class';
 
 import type { SkillCard } from './skills';
 
@@ -54,6 +54,16 @@ export interface ZoneAction {
   cooldown_until?: string | null;
   instant?: boolean;
   hustle_kind?: string;
+  /** R4 certificate pay bonus (%) on hustle cards. */
+  cert_bonus_pct?: number;
+  /** R4 class cards (kind 'class', ref = courses.id): 'new' = an instant Enrol card, 'enrolled' = a class that queues, 'completed'. */
+  class_state?: 'new' | 'enrolled' | 'completed';
+  classes?: number;
+  done?: number;
+  exam_next?: boolean;
+  module?: string | null;
+  cert_name?: string | null;
+  class_skill?: { icon: string; name: string; xp: number } | null;
   /** Why it can't be done now ("Opens 9 PM", "Night only", "Only in your own home"), or null. */
   locked: string | null;
 }
