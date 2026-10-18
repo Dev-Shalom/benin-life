@@ -39,4 +39,9 @@ The owner decided:
     - Players vote at polling units.
     - Winners get perks and duties for a term.
     - The governor appoints players as ministers, each with a role and perks.
+14b. **E3 Economy balance (owner request):**
+   - Audit every way to earn and spend: jobs, hustles, yahoo, invest, clubs, shops, houses and cars.
+   - Fix anything that pays too much or too little for the time and risk.
+   - Check that every stated chance (%) really happens at that rate, using simulation tests.
+   - Goal: enough to work towards for weeks, so players stay busy between updates.
 15. **Later, from the earlier queue:** Link-ups, Church/prophet, Benin Gist.
