@@ -4,12 +4,14 @@ import './styles/global.css';
 import './styles/ui.css';
 import './styles/screens.css';
 import './styles/game.css';
+import './styles/keyboard.css';
 import App from './App.tsx';
 import { initAuth } from './state/game';
 import { initSound } from './lib/sound';
 import { captureReferral } from './lib/referral';
 import { captureDeepLink } from './lib/deeplink';
 import { initErrorReporting, reportError } from './lib/errorReport';
+import { initKeyboardInset } from './lib/keyboard';
 import { Button, EmptyState, ErrorBoundary } from './ui';
 
 initErrorReporting();
@@ -17,6 +19,7 @@ captureReferral(); // E2: remember ?ref=CODE until the Sim exists
 captureDeepLink(); // P1: remember ?go=dm:12 from a tapped notification
 initAuth();
 initSound();
+initKeyboardInset(); // --vvh / --kb / html.has-kb for every text field (docs/MOBILE_INPUT.md)
 
 // After a new deploy, an open tab may ask for old chunk files that no longer exist.
 // Reload once to pick up the new build instead of showing a broken screen.

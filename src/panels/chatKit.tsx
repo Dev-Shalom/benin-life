@@ -10,6 +10,7 @@ import type { AvatarConfig, ReplyPreview } from '../lib/types';
 import { Icon, Spinner } from '../ui';
 import { VoicePlayer } from '../ui/VoicePlayer';
 import { useEscape } from '../ui/presence';
+import { useKeyboardInset } from '../lib/keyboard';
 
 export type { ReplyPreview };
 
@@ -341,36 +342,7 @@ export function useThreadScroll(listRef: RefObject<HTMLDivElement | null>, opts:
   return { onScroll, stickToBottom };
 }
 
-/**
- * Publish the visual viewport as CSS vars on <html>: --vvh (visible height) and --kb (the part of the
- * layout viewport the on-screen keyboard covers). Composers and their sheets use them to stay above the
- * keyboard on iOS/Android, where 100dvh does not shrink for the keyboard.
- */
+/** Kept for the chat screens: the keyboard variables now come from the shared src/lib/keyboard.ts. */
 export function useViewportVars() {
-  useEffect(() => {
-    const vv = window.visualViewport;
-    const root = document.documentElement;
-    if (!vv) return;
-    let raf = 0;
-    const apply = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
-        root.style.setProperty('--vvh', `${Math.round(vv.height)}px`);
-        root.style.setProperty('--kb', `${kb > 60 ? kb : 0}px`);
-        root.classList.toggle('has-kb', kb > 60);
-      });
-    };
-    apply();
-    vv.addEventListener('resize', apply);
-    vv.addEventListener('scroll', apply);
-    return () => {
-      cancelAnimationFrame(raf);
-      vv.removeEventListener('resize', apply);
-      vv.removeEventListener('scroll', apply);
-      root.style.removeProperty('--vvh');
-      root.style.removeProperty('--kb');
-      root.classList.remove('has-kb');
-    };
-  }, []);
+  useKeyboardInset();
 }

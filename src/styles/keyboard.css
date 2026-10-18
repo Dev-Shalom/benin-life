@@ -1,0 +1,68 @@
+/* On-screen keyboard + text fields (docs/MOBILE_INPUT.md). Loaded last, after game.css.
+   Variables come from src/lib/keyboard.ts: --vvh (visible height), --kb (keyboard height),
+   --vv-top (iOS page pan) and html.has-kb (a text field is focused and the keyboard is up). */
+
+/* 1. Never let iOS zoom on focus: every text field is at least 16px on touch screens. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='button']):not([type='submit']):not([type='file']):not([type='color']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* 2. Shared composer: sticks to the bottom of its scroll area / flex column, never to the layout viewport. */
+.kb-composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  flex: none;
+}
+
+/* 3. Sheets, modals and the phone follow the VISIBLE viewport while the keyboard is up. */
+@media (max-width: 899px) {
+  html.has-kb .bl-sheet-root,
+  html.has-kb .bl-modal-root,
+  html.has-kb .phone-root {
+    padding-top: var(--vv-top, 0px);
+    padding-bottom: var(--kb, 0px);
+  }
+  html.has-kb .bl-modal-root { padding-left: 12px; padding-right: 12px; }
+  html.has-kb .bl-modal { max-height: calc(var(--vvh, 100dvh) - 24px); }
+
+  /* The phone fills the visible area (no status bar / notch / home bar), so list + composer have room. */
+  html.has-kb .phone {
+    width: min(370px, calc(100vw - 16px));
+    height: calc(var(--vvh, 100dvh) - 12px);
+    margin-top: 0;
+    padding: 5px;
+    border-radius: 34px;
+  }
+  html.has-kb .phone__screen { border-radius: 29px; }
+  html.has-kb .phone__status,
+  html.has-kb .phone__notch,
+  html.has-kb .phone__home-bar,
+  html.has-kb .phone-close { display: none; }
+  html.has-kb .phone-app__body { padding-bottom: 8px; }
+  html.has-kb .msgs { padding-bottom: 8px; }
+
+  /* Chats: keep the list and the composer; fold the extras away until the keyboard closes. */
+  html.has-kb .dm-private,
+  html.has-kb .dm-streak,
+  html.has-kb .dm-chips,
+  html.has-kb .dm-quick,
+  html.has-kb .chat__rules { display: none; }
+  html.has-kb .dm-head { padding-top: 6px; padding-bottom: 2px; }
+  html.has-kb .social-app--house-chat .chat__list { min-height: 80px; }
+
+  /* "Say something out loud" in the place card: ride on top of the keyboard, hide the rest of the HUD. */
+  html.has-kb .game__bottom:has(.place-card__say input:focus) {
+    transform: translateY(calc(-1 * var(--kb, 0px)));
+    bottom: calc(var(--sab) + 10px);
+  }
+  html.has-kb .game__bottom:has(.place-card__say input:focus) > :not(.game__banners),
+  html.has-kb .game__banners:has(.place-card__say input:focus) > :not(.place-card),
+  html.has-kb .place-card:has(.place-card__say input:focus) > :not(.place-card__head):not(.place-card__say),
+  html.has-kb .place-card:has(.place-card__say input:focus) .place-card__btns,
+  html.has-kb .place-card:has(.place-card__say input:focus) .place-card__mood { display: none; }
+}
