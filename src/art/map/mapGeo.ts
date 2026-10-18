@@ -526,6 +526,8 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   bronze_bank: { short: 'Bronze Bank', tier: 1, side: 'l' },
   gra_duplex: { short: 'GRA Duplex', tier: 2, side: 'b' },
   kingdom_lounge: { short: 'Kingdom Lounge', tier: 2, side: 'l' },
+  // R7 Members' Lounge (docs/LOUNGE.md), open all day
+  members_lounge: { short: 'The Lounge', tier: 2, side: 'b' },
   benin_airport: { short: 'Benin Airport', tier: 1, side: 'l' },
   siluko_rd: { short: 'Siluko Road', tier: 2, side: 'r' },
   ekenwan_room: { short: 'Ekenwan Room', tier: 2, side: 'l' },

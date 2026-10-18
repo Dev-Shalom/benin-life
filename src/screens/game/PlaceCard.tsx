@@ -4,6 +4,8 @@
 // chips, Risky, why it's locked). Every card goes through the M2 queue: the Sim walks to the zone, then
 // the action starts (activities, shifts, purchases); tabs (bank counter, PoS, the whole shop) open the
 // place sheet on that tab. The server stays authoritative (hours, cash, night only...).
+import { LoungeStrip } from './Lounge';
+import { useLounge } from '../../state/lounge';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { placeInterior, placePeople, type PlaceInterior, type PlaceNpc, type PlacePeople, type PlaceZone, type ZoneAction } from '../../api/places';
 import { chatSend } from '../../api/chat';
@@ -86,7 +88,7 @@ export function usePlacePeople(locationId: string | null, hourKey: number, overr
 }
 
 /** Real players connected at a place (Realtime Presence ids -> players_here for names), me excluded. */
-export function usePlayersAt(locationId: string | null, meId: string): { id: string; username: string; avatar: PublicPlayer['avatar'] | null }[] {
+export function usePlayersAt(locationId: string | null, meId: string): { id: string; username: string; avatar: PublicPlayer['avatar'] | null; gold?: boolean }[] {
   const ids = usePresentAt(locationId);
   const live = usePresenceLiveAt(locationId);
   const [list, setList] = useState<PublicPlayer[]>([]);
@@ -108,7 +110,7 @@ export function usePlayersAt(locationId: string | null, meId: string): { id: str
   }, [locationId, meId, ids]);
   return useMemo(() => {
     const on = new Set(ids);
-    return list.filter((p) => !live || on.has(p.id)).map((p) => ({ id: p.id, username: p.username, avatar: p.avatar ?? null }));
+    return list.filter((p) => !live || on.has(p.id)).map((p) => ({ id: p.id, username: p.username, avatar: p.avatar ?? null, gold: Boolean((p as { gold?: boolean }).gold) }));
   }, [list, ids, live]);
 }
 
@@ -205,6 +207,11 @@ function ActionCard({ a, zone, state, locId, idle, blocked }: {
     if (klassNew && !lock) {
       void courseEnrol(a.ref).then((r) => { toast(r.message, 'good'); void useGame.getState().refresh(); void useSchool.getState().load(); })
         .catch((e) => toast(errorMessage(e), 'bad'));
+      return;
+    }
+    // R7: a lounge card without a pass opens the membership sheet
+    if (lock === 'Members only') {
+      useLounge.getState().show();
       return;
     }
     if (lock) {
@@ -517,6 +524,7 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
       <PeopleSheet open={peopleOpen} onClose={() => setPeopleOpen(false)} total={peopleCount} players={players} npcs={npcs} me={me}
         placeName={name} onSheet={() => select(loc.id)} />
       {open && current?.note && <p className="place-card__note"><span aria-hidden>{data?.location.scene === 'shrine' ? current.icon : '🎩'}</span> {current.note}</p>}
+      {open && data?.lounge && <LoungeStrip card={data.lounge} />}
       {open && data?.open && data.weekend_price && <p className="place-card__note"><span aria-hidden>🥂</span> Weekend prices tonight: Friday and Saturday nights cost more.</p>}
       {open && current && current.actions.length === 0 && (
         <p className="place-card__hint">Nothing to do here right now. Tap the floor to walk around.</p>

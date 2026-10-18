@@ -21,4 +21,4 @@ export function pokePush(): void {
 }
 
 /** RPCs whose success may notify another player. */
-export const POKE_RPC = /^(social_send_message|chat_send|chat_send_voice|bank_transfer|tip_player|social_add_friend|social_respond_friend|social_send_house_invite|social_respond_house_invite|admin_broadcast_send|admin_gift_send)$/;
+export const POKE_RPC = /^(social_send_message|chat_send|chat_send_voice|bank_transfer|tip_player|social_add_friend|social_respond_friend|social_send_house_invite|friend_invite_place|lounge_bring_guest|social_respond_house_invite|admin_broadcast_send|admin_gift_send)$/;

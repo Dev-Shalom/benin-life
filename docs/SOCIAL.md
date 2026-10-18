@@ -56,3 +56,14 @@ bash scripts/sql-test.sh supabase/tests/fixtures/social_furniture_compat.sql sup
 ```
 
 The client build and lint use `npm run build` and `npm run lint`.
+
+## R7 Friends tab (Phone -> Messages -> Friends)
+Full notes in docs/LOUNGE.md. Short version:
+- One read RPC, `friends_overview()`, returns requests, friends (online dot, last seen, where they are, join / invite flags) and my privacy switch. The tab polls it
+  every `friends.poll_seconds` (20) only while it is open (`startPoller`, visible tab only) and on a new alert.
+- Online = active in the last `friends.online_seconds` (120). Offline friends show "last seen 3h ago" and no place.
+- Privacy: `profiles.share_location_friends` (default on), `friends_set_privacy(bool)`. Off = no place is sent at all.
+- Actions: Message, Join them (`friend_join_check`: refused offline / hidden / road / private home / closed / inactive / same place / lounge without a pass),
+  Invite here (`friend_invite_place`: alert + `friends` push "@x wants you at <place>", tap = that place's travel picker), Invite home (existing house invites),
+  Yahoo group (opens the Yahoo app), Bring to Lounge (VIP guest pass).
+- Friend search and requests reuse `social_search_players`, `social_add_friend`, `social_respond_friend`, `social_cancel_friend_request`.

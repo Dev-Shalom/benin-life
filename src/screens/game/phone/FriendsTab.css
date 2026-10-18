@@ -1,0 +1,23 @@
+/* R7 Friends tab (docs/LOUNGE.md) */
+.fr { display: flex; flex-direction: column; gap: 10px; }
+.fr-search { margin-top: 2px; }
+.fr-sub { display: flex; align-items: center; gap: 8px; }
+.fr-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.fr-card { display: grid; gap: 10px; padding: 12px; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1.5px #e7eaf1; }
+.fr-card.is-online { box-shadow: inset 0 0 0 1.5px #bfe6cf; background: linear-gradient(180deg, #fff, #f6fcf8); }
+.fr-card__top { display: flex; align-items: center; gap: 12px; }
+.fr-face { position: relative; display: grid; place-items: center; flex: none; width: 52px; height: 52px; border-radius: 50%; background: #e9eef6; }
+.fr-face > :first-child { border-radius: 50%; overflow: hidden; }
+.fr-dot { display: inline-block; flex: none; width: 12px; height: 12px; border-radius: 50%; background: #b5bccb; box-shadow: 0 0 0 2px #fff; }
+.fr-dot.is-on { background: #22b35e; }
+.fr-face .fr-dot { position: absolute; right: -1px; bottom: -1px; width: 14px; height: 14px; }
+.fr-card__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fr-card__main b { display: flex; align-items: center; gap: 6px; overflow: hidden; font: 700 17px var(--font-display); white-space: nowrap; text-overflow: ellipsis; }
+.fr-unread { min-width: 20px; height: 20px; font-size: 11px; }
+.fr-where { overflow: hidden; color: var(--m-muted); font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+.fr-where.is-place { color: #178a4c; font-weight: 600; }
+.fr-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.fr-why { align-self: center; padding: 0 6px; color: var(--m-muted); font-size: 12.5px; }
+.fr-privacy { margin-top: 6px; padding-top: 10px; border-top: 1px solid #edf0f5; }
+.fr .msgs-req b.grow { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fr .msgs-req .grow { min-width: 0; }

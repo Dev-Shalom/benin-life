@@ -43,6 +43,7 @@ export const SCENE_EMOJI: Record<SceneType, string> = {
   stadium: '🏟️',
   monument: '🗽',
   car_dealer: '🚘',
+  lounge: '🛋️',
 };
 
 /** A few places get a more specific emoji than their scene's. */

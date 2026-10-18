@@ -1584,7 +1584,7 @@ export default function PlaceScene(props: PlaceSceneProps) {
       <div className="place3d__pills" aria-hidden>
         {props.crowd.map((p) => (
           <span key={p.id} ref={(el) => { if (el) pillRefs.current.set(p.id, el); else pillRefs.current.delete(p.id); }}
-            className={`place3d__pill${p.player ? ' is-player' : ' is-npc'}${p.seated && !p.player ? ' is-seated' : ''}`}
+            className={`place3d__pill${p.player ? ' is-player' : ' is-npc'}${p.gold ? ' is-gold' : ''}${p.seated && !p.player ? ' is-seated' : ''}`}
             title={p.role} onClick={() => onTapPerson(p.id)}>
             {p.player && <i className="place3d__dot" />}{p.name}
             {p.player && shamed[p.id] ? <b className="place3d__shame" title="Caught picking money">🙈 picker</b> : null}

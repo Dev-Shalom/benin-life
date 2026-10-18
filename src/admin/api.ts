@@ -26,7 +26,7 @@ export type AdminTable =
   | 'origin_tiers' | 'traits' | 'dreams' | 'start_homes' | 'career_tracks' | 'career_levels'
   | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture' | 'starter_furniture'
   | 'place_zones' | 'zone_actions' | 'place_moods' | 'npc_roster' | 'crowd_profiles' | 'hype_templates' | 'place_events' | 'topup_packs'
-  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'group_missions' | 'yahoo_ranks' | 'invest_products' | 'invest_markets' | 'hustles' | 'hustle_car_classes' | 'hustle_fish' | 'skills' | 'skill_curve' | 'skill_sources' | 'courses' | 'certificates' | 'challenge_templates' | 'challenge_template_stats';
+  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'group_missions' | 'yahoo_ranks' | 'invest_products' | 'invest_markets' | 'hustles' | 'hustle_car_classes' | 'hustle_fish' | 'skills' | 'skill_curve' | 'skill_sources' | 'courses' | 'certificates' | 'challenge_templates' | 'challenge_template_stats' | 'lounge_tiers';
 
 export interface PlayerRow {
   id: string;
@@ -187,5 +187,13 @@ export const adminApi = {
   playerCerts: (userId: string) => rpc<PlayerCerts>('admin_player_certs', { p_user: userId }),
   grantCert: (userId: string, cert: string, note: string | null) => rpc<Msg & { cert: string }>('admin_grant_cert', { p_user: userId, p_cert: cert, p_note: note }),
   revokeCert: (userId: string, cert: string, note: string | null) => rpc<Msg & { cert: string }>('admin_revoke_cert', { p_user: userId, p_cert: cert, p_note: note }),
+  /** R7: a player's Members' Lounge membership; grant a tier (hours = override, empty = the tier's length) or revoke. Audited (lounge_grant / lounge_revoke). */
+  loungeGet: (userId: string) => rpc<{
+    member: { tier_id: string; tier_name: string; started_at: string; expires_at: string; active: boolean; vouchers_left: number; source: string; paid_total: number } | null;
+    guest_passes: { host: string; expires_at: string }[];
+    tiers: { id: string; name: string; hours: number }[];
+  }>('admin_lounge_get', { p_user: userId }),
+  loungeGrant: (userId: string, tier: string, hours: number | null) => rpc<Msg & { tier: string; expires_at: string }>('admin_lounge_grant', { p_user: userId, p_tier: tier, p_hours: hours }),
+  loungeRevoke: (userId: string) => rpc<Msg>('admin_lounge_revoke', { p_user: userId }),
   charmClear: (userId: string, charmId: number | null) => rpc<Msg & { cleared: number }>('admin_charm_clear', { p_user: userId, p_charm: charmId }),
 };

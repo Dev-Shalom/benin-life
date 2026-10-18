@@ -103,6 +103,8 @@ export interface PlaceInterior {
   /** L4: today's / LIVE events here (same shape as events_on_today). */
   events?: import('./events').PlaceEvent[];
   zones: PlaceZone[];
+  /** R7: only at a lounge: my pass (access, tier, time left, vouchers). */
+  lounge?: import('./lounge').LoungeCard | null;
 }
 
 export const placeInterior = (location?: string) => rpc<PlaceInterior>('place_interior', location ? { p_location: location } : {});

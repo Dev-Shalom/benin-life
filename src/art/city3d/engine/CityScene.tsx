@@ -947,6 +947,7 @@ const Labels = memo(function Labels(props: {
               <span className="c3-pill__emoji" aria-hidden>{placeEmoji(l)}</span>
               <span className="c3-pill__name">{shortName(l.id, l.name)}</span>
               {l.active === false && l.scene === 'club' && <span className="c3-pill__off">Closed for now</span>}
+              {l.scene === 'lounge' && l.active !== false && <span className="c3-pill__open">Open all day</span>}
               {dangerNow && <span className="c3-pill__warn" aria-label="Danger at night">⚠️</span>}
               {n > 0 && <span className="c3-pill__count" aria-label={`${n} players here`}>{n}</span>}
               {ev && <span className={`c3-pill__ev is-${ev}`} aria-label={ev === 'live' ? 'Event live now' : 'Event today'}>{ev === 'live' ? 'LIVE' : '🎟️'}</span>}

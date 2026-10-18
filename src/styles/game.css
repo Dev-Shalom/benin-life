@@ -6071,7 +6071,7 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
   display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
   background: var(--m-red); color: #fff; font: 700 12px/1 var(--font-display); font-variant-numeric: tabular-nums;
 }
-.msgs-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: var(--m-fill); flex: none; }
+.msgs-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; border-radius: 999px; background: var(--m-fill); flex: none; }
 .msgs-tabs button {
   display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; border: 0; border-radius: 999px;
   background: none; color: var(--m-muted); font: 600 16px var(--font-display); cursor: pointer; transition: background 160ms ease-out, color 160ms ease-out;
@@ -6619,3 +6619,12 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 
 /* R3: "+15% from skill" on hustle cards */
 .pc-act__skill { color: var(--green-600, #14733e); font-weight: 600; }
+
+/* R7: "Go there" on a place invite alert */
+.alert__go {
+  margin-top: 8px; min-height: 36px; padding: 0 16px; border: 0; border-radius: 99px; background: #22a55b; color: #fff;
+  font: 700 14px var(--font-display); cursor: pointer; transition: transform 140ms ease-out;
+}
+.alert__go:active { transform: scale(0.96); }
+.place3d__pill.is-gold { color: #3a2706; background: linear-gradient(90deg, #f7d878, #e3b44d); box-shadow: 0 0 0 1.5px #fff4c4, 0 2px 8px rgba(160, 110, 10, 0.45); }
+.place3d__pill.is-gold .place3d__dot { background: #fff; }

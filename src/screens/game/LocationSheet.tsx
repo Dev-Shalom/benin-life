@@ -1,3 +1,5 @@
+import { LoungeMapStrip } from './Lounge';
+import { useLounge } from '../../state/lounge';
 import { useEffect, useMemo, useState } from 'react';
 import { AvatarPortrait, migrateAvatar } from '../../art/avatar3d';
 import { Scene } from '../../art/Scene';
@@ -82,6 +84,8 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
   const current = tab && tabs.includes(tab) ? tab : (tabs[0] ?? null);
   const chatUnread = useChat((s) => s.unread);
   const hours = useOpenNow(loc);
+  const loungeAccess = useLounge((s) => (loc.scene === 'lounge' ? (s.status ? (s.status.access ? 'ok' : 'none') : 'wait') : 'ok'));
+  const loungeBlock = loungeAccess === 'none' ? 'Members only. Get a day pass or a membership first.' : null;
   const isHome = loc.id === state.profile.home_location_id;
   const closedReason = !isHome && hours && !hours.open
     ? (loc.active === false ? `${loc.name} is closed for now. Check back soon.` : `${loc.name} is closed right now. ${hours.label.replace('Closed now · opens', 'It opens at')}.`)
@@ -91,10 +95,11 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
     // L4 map place sheet: facts (open now, people, share), what you can do, On today, travel cards + Go.
     return (
       <div className="loc-body">
+        {loc.scene === 'lounge' && <LoungeMapStrip />}
         <PlaceFacts loc={loc} meId={state.profile.id} />
         <WhatToDo loc={loc} fallback={tabs.filter((a) => a !== 'chat').map((a) => PANEL_LABELS[a] ?? a)} />
         <OnToday locId={loc.id} />
-        <TravelCards dest={loc} cash={state.profile.cash} blockedReason={status.blockedReason ?? closedReason} onStarted={close} />
+        <TravelCards dest={loc} cash={state.profile.cash} blockedReason={status.blockedReason ?? closedReason ?? loungeBlock} onStarted={close} />
       </div>
     );
   }

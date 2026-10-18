@@ -18,6 +18,8 @@ import { Button, Icon, Spinner, toast } from '../../../ui';
 import { SocialPlayerButton } from '../SocialPlayerButton';
 import ChatPanel from '../../../panels/ChatPanel';
 import { DmConversation, MiniSheet, MONEY_PREFIX } from './DmConversation';
+import { FriendsTab } from './FriendsTab';
+import type { FriendCard } from '../../../api/friends';
 import { usePollMode } from '../../../lib/realtime';
 
 interface SocialAppProps {
@@ -66,7 +68,7 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
   const [requests, setRequests] = useState<FriendRequest[] | null>(null);
   const [invites, setInvites] = useState<HouseInvite[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [tab, setTab] = useState<'chats' | 'groups'>('chats');
+  const [tab, setTab] = useState<'chats' | 'friends' | 'groups'>('chats');
   const [filter, setFilter] = useState<Filter>('all');
   const [chatSearch, setChatSearch] = useState('');
   const [who, setWho] = useState('');
@@ -117,7 +119,7 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
     } else if (want === 'requests') {
       if (!requests || !invites) return; // wait for the lists
       const waiting = requests.some((r) => r.direction === 'incoming') || invites.some((i) => (i.role === 'host' && i.status === 'knocking') || (i.role === 'guest' && i.status === 'invited'));
-      if (waiting) setView('requests');
+      if (waiting) setView('requests'); else setTab('friends');
       done();
     } else if (want.startsWith('dm:')) {
       if (!friends) return;
@@ -151,6 +153,15 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
       setConversation({ id: opened.id, friendId: friend.id, friend });
     } catch (e) { toast(errorMessage(e), 'bad'); }
     finally { setBusy(null); }
+  };
+
+  // R7: Message from a Friends-tab card (the chat list may not have loaded this friend yet)
+  const openFromCard = async (c: FriendCard) => {
+    const known = friends?.find((f) => f.id === c.id);
+    await openConversation(known ?? {
+      id: c.id, username: c.username, avatar: c.avatar, at_home: c.at_home, last_seen: c.last_seen ?? '', conversation_id: c.conversation_id,
+      last_message: null, last_message_at: null, last_sender_id: null, unread: c.unread,
+    });
   };
 
   const findPlayer = async (event: FormEvent) => {
@@ -301,6 +312,9 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
         <button type="button" role="tab" aria-selected={tab === 'chats'} className={tab === 'chats' ? 'is-on' : ''} onClick={() => setTab('chats')}>
           Chats <Badge n={unreadChats} />
         </button>
+        <button type="button" role="tab" aria-selected={tab === 'friends'} className={tab === 'friends' ? 'is-on' : ''} onClick={() => setTab('friends')}>
+          Friends <Badge n={incoming.length} />
+        </button>
         <button type="button" role="tab" aria-selected={tab === 'groups'} className={tab === 'groups' ? 'is-on' : ''} onClick={() => setTab('groups')}>
           Groups
         </button>
@@ -308,7 +322,9 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
 
       {loadError && <div className="social-error" role="alert">{loadError}<Button size="sm" variant="ghost" onClick={() => void reload()}>Retry</Button></div>}
 
-      {tab === 'groups' ? (
+      {tab === 'friends' ? (
+        <FriendsTab onMessage={(c) => void openFromCard(c)} onRefreshAll={() => void reload()} />
+      ) : tab === 'groups' ? (
         <div className="msgs-groups">
           {state.travel ? <p className="msgs-empty">You're on the move. Group chats open when you arrive.</p> : (
             <button type="button" className="msgs-row" onClick={() => setView('group')}>

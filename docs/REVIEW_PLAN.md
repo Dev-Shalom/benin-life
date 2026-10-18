@@ -26,7 +26,7 @@ The owner decided:
    - Cash-out choices: full (high risk), half (lower risk), or laundered (fee, much lower risk).
    - Group Yahoo missions with friends: more risk, more reward.
    - Also from the earlier queue: the HK Quarters map place and the Elon format job.
-9. **R7 Friends and the lounge:**
+9. **R7 Friends and the lounge (DONE):**
    - A Friends tab in Messages showing who is online, with invites to places and missions.
    - A members' lounge open all day, with membership rules (a fee or level to join) and member perks.
    - Challenges done with friends count towards the daily and weekly goals.

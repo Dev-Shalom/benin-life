@@ -779,6 +779,24 @@ function buildProp(b: B, z: PlaceZone, room: Room, seed: number) {
       b.box(0.1, 0.05, 0.04, -hw * 0.35, 0.62, Math.min(0.7, ld) / 2 + 0.03, '#7dff9a', { layer: 'glow' });
       return;
     }
+    // R7 Members' Lounge: a pool table, six pockets, balls and a cue (existing box/cylinder parts only)
+    case 'pool_table': {
+      const tw = Math.min(lw - 0.3, 2.6);
+      const td = Math.min(ld - 0.3, 1.4);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(0.18, 0.74, 0.18, sx * (tw / 2 - 0.12), 0, sz * (td / 2 - 0.12), WOOD_D);
+      b.box(tw, 0.14, td, 0, 0.74, 0, WOOD_D);
+      b.box(tw - 0.26, 0.04, td - 0.26, 0, 0.88, 0, '#1f7a52');
+      b.box(tw, 0.1, 0.12, 0, 0.88, -td / 2 + 0.06, WOOD);
+      b.box(tw, 0.1, 0.12, 0, 0.88, td / 2 - 0.06, WOOD);
+      b.box(0.12, 0.1, td, -tw / 2 + 0.06, 0.88, 0, WOOD);
+      b.box(0.12, 0.1, td, tw / 2 - 0.06, 0.88, 0, WOOD);
+      const ballC = ['#f4f2ee', '#d2342a', '#f2c230', '#1b1b1b', '#2f6fb3', '#2a9a52'];
+      for (let i = 0; i < 6; i++) b.cyl(0.05, 0.05, 0.05, tw * 0.12 + (i % 3) * 0.11, 0.9, -0.16 + Math.floor(i / 3) * 0.18 + (i % 3) * 0.04, ballC[i], { seg: 6 });
+      b.cyl(0.05, 0.05, 0.05, -tw * 0.3, 0.9, 0.05, '#f4f2ee', { seg: 6 });
+      b.box(0.04, 0.04, 1.3, -tw * 0.1, 0.96, td / 2 + 0.28, WOOD_L, { ry: 0.25 });
+      b.box(0.04, 0.04, 1.2, tw * 0.45, 0.96, td / 2 + 0.34, WOOD_L, { ry: -0.15 });
+      return;
+    }
     case 'router': {
       b.box(lw, 0.05, ld, 0, 0.82, 0, WOOD_L);
       for (const sx of [-1, 1]) b.cyl(0.04, 0.05, 0.82, sx * (hw - 0.1), 0, 0, METAL_D, { seg: 5 });

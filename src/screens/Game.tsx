@@ -65,6 +65,7 @@ import { useEventsLive } from '../state/events';
 import { EventBanner, useEventBadges } from './game/Events';
 import JourneyGuide from './game/JourneyGuide';
 import { DailySync, usePlaceGem } from './game/Daily';
+import { LoungeHost } from './game/Lounge';
 import { ChallengeSync } from './game/Challenges';
 import { useShownAvatar, useWardrobe } from '../state/wardrobe';
 import { GarageSheet } from './game/GarageSheet';
@@ -513,7 +514,7 @@ export default function Game() {
       : placeScene === 'motorpark' ? 'motorpark'
       : placeScene === 'stadium' ? 'stadium'
       : placeScene === 'cinema' ? 'cinema'
-      : placeScene === 'hotel' ? 'lounge' : null
+      : placeScene === 'hotel' || placeScene === 'lounge' ? 'lounge' : null
     : showHome && danceOn ? 'dance'
     : showHome && skyNight && (placeScene === 'home_face_me' || placeScene === 'hostel') ? 'generator' : null;
   useEffect(() => { setSoundPlace(placeSound); }, [placeSound]);
@@ -521,9 +522,9 @@ export default function Game() {
   const clubTrackUrl = String(cfg('music.club_track_url', '') ?? '');
   useEffect(() => { setPlaceTrack(clubTrackUrl); }, [clubTrackUrl]);
   // M1: the club's playlist (live event > club > default) plays as a server-clock radio
-  useClubMusic(state && !state.travel ? state.location.id : null, placeSound === 'club');
+  useClubMusic(state && !state.travel ? state.location.id : null, placeSound === 'club' || placeScene === 'lounge');
   // P2: club hype (server announcements over Realtime): the club channel while inside a club, the ticker always
-  const inClub = showPlace && placeScene === 'club';
+  const inClub = showPlace && (placeScene === 'club' || placeScene === 'lounge');
   // PAY: the place channel runs at every place (not on the road) so VIP arrivals reach everyone there
   useHypeLive(state && !state.travel ? state.location.id : null, p?.id ?? null, inClub);
   // L4: today's / LIVE events (map badges, place sheet "On today", top banner)
@@ -962,6 +963,7 @@ export default function Game() {
       <YahooHost />
       <HustleHost />
       <SkillHost />
+      <LoungeHost />
       <SchoolHost />
       {showPlace && (
         <PlacePlayerSheet

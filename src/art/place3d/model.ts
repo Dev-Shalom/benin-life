@@ -63,6 +63,8 @@ export const KITS: Record<string, Kit> = {
   airport: { ...HALL, floor: '#e3e7ea', floorAlt: '#d8dde1', tile: 1.5, wall: '#f4f7f9', trim: '#1c6a9a', signBg: '#1c6a9a' },
   mall: { ...HALL, floor: '#ecebe7', floorAlt: '#e2e0da', tile: 1.5, wall: '#f7f6f2', trim: '#a3182f', signBg: '#a3182f', dimAtNight: 0.2 },
   cinema: { ...HALL, floor: '#3a2f3f', floorAlt: '#332938', wall: '#4a2f3a', trim: '#f3d28a', signBg: '#151832', signInk: '#f3d28a', dimAtNight: 0 },
+  // R7 Members' Lounge: warm dark wood, soft lamps (the light rig 'lounge' in feel/rigs.ts), gold trim
+  lounge: { ...HALL, floor: '#4a3426', floorAlt: '#3f2c20', tile: 1.2, wall: '#5a3f2e', wallTop: '#46301f', trim: '#d9b25a', signBg: '#1b1424', signInk: '#f3d28a', dimAtNight: 0.1 },
   hotel: { ...HALL, floor: '#e8dcc6', floorAlt: '#dccfb6', tile: 1.2, wall: '#f6efe2', trim: '#1d5874', signBg: '#1d5874', signInk: '#f3d28a', dimAtNight: 0.25 },
   home_face_me: { ...YARD, floor: '#b98a5e' },
   home_flat: { ...HALL },
@@ -153,6 +155,8 @@ export const PROPS: Record<string, PropMeta> = {
   couches: P(false, 'centre', 'sit', 0.9),
   generator: P(true, 'front', 'stand', 1),
   router: P(true, 'front', 'stand', 1.2),
+  // R7 Members' Lounge: a pool table (walk around it, stand at its front)
+  pool_table: P(true, 'front', 'stand', 1),
   lane: P(false, 'centre', 'stand', 0.3),
   none: P(false, 'centre', 'stand', 0.5),
 };
@@ -259,6 +263,8 @@ export interface NpcPlan {
   seated: boolean;
   /** Real player (blue @name pill + green dot) or a background person (white pill). */
   player: boolean;
+  /** R7: a lounge member with a gold name tag (gold pill). */
+  gold?: boolean;
   /** L3: role ("Hype man"), what they do, their lines (tap = bubble), their look (nearest ones get the full rig). */
   role?: string;
   motion?: NpcMotion;
@@ -343,7 +349,7 @@ export function planCrowd(opts: {
   room: Room;
   zones: PlaceZone[];
   grid: NavGrid;
-  players: { id: string; username: string; avatar?: AvatarConfig | null }[];
+  players: { id: string; username: string; avatar?: AvatarConfig | null; gold?: boolean }[];
   /** L3: named people from place_people() (undefined = still loading: none drawn; null = failed: old random people). */
   npcs?: PlaceNpc[] | null;
   /** Everyone there per the crowd profile (place_people().total). */
@@ -397,7 +403,7 @@ export function planCrowd(opts: {
       id: pl.id, name: `@${pl.username}`, p: at.p, yaw: at.yaw,
       color: look?.top.c ?? NPC_COLORS[hash(pl.id) % NPC_COLORS.length], legs: look?.bottom.c ?? '#2a2d3a',
       skin: look ? skinTone(look.skin).base : SKIN[hash(pl.id) % SKIN.length], female,
-      lively: propMeta(z.prop).pose === 'dance', seated: at.seated, player: true, avatar: look,
+      lively: propMeta(z.prop).pose === 'dance', seated: at.seated, player: true, gold: pl.gold === true, avatar: look,
       motion: propMeta(z.prop).pose === 'dance' ? 'dance' : 'idle',
       zone: z.key, wander: at.seated ? 'seat' : propMeta(z.prop).pose === 'dance' ? 'dance' : 'roam',
     });

@@ -39,6 +39,14 @@ export function AlertsList({ active }: { active: boolean }) {
               <div className="alert__title">{e.title}</div>
               {e.body && <div className="alert__body">{e.body}</div>}
               <div className="alert__meta">{titleCase(e.kind)} · {timeAgo(e.created_at)}</div>
+              {(e.kind === 'place_invite' || e.kind === 'lounge_guest') && typeof e.data?.location_id === 'string' && (
+                <button type="button" className="alert__go" onClick={() => {
+                  const ui = useUi.getState();
+                  ui.closeAll();
+                  ui.setMapOpen(true);
+                  ui.select(String(e.data.location_id));
+                }}>Go there</button>
+              )}
             </div>
           </li>
         );

@@ -39,6 +39,7 @@ export const PIN_STYLE: Record<SceneType, PinStyle> = {
   stadium: { c1: '#2fa36b', c2: '#125a38', ink: '#fffaf0', accent: '#fffaf0' },
   monument: { c1: '#c9a26a', c2: '#6e4f26', ink: '#fff6dc', accent: '#d2342a' },
   car_dealer: { c1: '#6c7a89', c2: '#2c3540', ink: '#fffaf0', accent: '#f3cf5e' },
+  lounge: { c1: '#d9b25a', c2: '#6b4a12', ink: '#fffaf0', accent: '#2b2438' },
 };
 
 export const SCENES = Object.keys(PIN_STYLE) as SceneType[];
@@ -266,6 +267,16 @@ export function PinGlyph({ scene }: { scene: SceneType }): JSX.Element {
           <path d="M-7.5,-2H7.5V7H-7.5Z" fill={ink} />
           <path d="M-7.8,-3.4L6.8,-7.6L7.6,-4.8L-7,-0.6Z" fill={acc} />
           <path d="M-4.2,-4.4L-2.4,-1.4M0.4,-5.8L2.2,-2.8M4.6,-7L6,-4.2" {...sw} stroke={st.c2} strokeWidth={1.2} />
+        </g>
+      );
+    case 'lounge':
+      // sofa with a gold cushion
+      return (
+        <g>
+          <path d="M-7.5,1V-2.2A2.6,2.6 0 0 1 -4.9,-4.8H4.9A2.6,2.6 0 0 1 7.5,-2.2V1" {...sw} stroke={ink} strokeWidth={1.7} />
+          <path d="M-8.4,1.2H8.4V5.2H-8.4Z" fill={ink} />
+          <rect x={-3.4} y={-3.4} width={6.8} height={3.6} rx={1.4} fill={acc} />
+          <path d="M-6.4,5.2V7.4M6.4,5.2V7.4" {...sw} stroke={ink} strokeWidth={1.6} />
         </g>
       );
     case 'hotel':

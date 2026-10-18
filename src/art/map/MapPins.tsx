@@ -246,7 +246,7 @@ function Pin({ loc, ps, side, current, selected, night, count, onSelect }: PinPr
           paintOrder="stroke"
           className="map-pin-label"
         >
-          {text}{loc.active === false && loc.scene === 'club' ? ' · Closed' : ''}
+          {text}{loc.active === false && loc.scene === 'club' ? ' · Closed' : ''}{loc.scene === 'lounge' ? ' · Open all day' : ''}
         </text>
       )}
     </g>

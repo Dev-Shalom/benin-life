@@ -129,7 +129,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const chatUnread = useChat((s) => s.unread);
   const events = useGame((s) => s.events);
   const lastReadEventId = useGame((s) => s.lastReadEventId);
-  const socialUnread = events.filter((e) => ['friend_request', 'house_invite', 'house_knock', 'private_message'].includes(e.kind) && e.id > lastReadEventId).length;
+  const socialUnread = events.filter((e) => ['friend_request', 'house_invite', 'house_knock', 'private_message', 'place_invite', 'lounge_guest'].includes(e.kind) && e.id > lastReadEventId).length;
   const open = overlay === 'phone';
   const wardrobeOn = useConfig().cfg<boolean>('wardrobe.enabled', true);
   const billboardsOn = useConfig().cfg<boolean>('billboards.enabled', true);

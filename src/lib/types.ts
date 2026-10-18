@@ -65,7 +65,9 @@ export type SceneType =
   | 'home_face_me' | 'home_flat' | 'home_duplex' | 'farm' | 'airport' | 'shrine'
   | 'workshop' | 'buka' | 'salon' | 'cyber' | 'office'
   // L2 landmarks (docs/PLACES.md)
-  | 'mall' | 'cinema' | 'hotel' | 'zoo' | 'stadium' | 'monument' | 'car_dealer';
+  | 'mall' | 'cinema' | 'hotel' | 'zoo' | 'stadium' | 'monument' | 'car_dealer'
+  // R7 Members' Lounge (docs/LOUNGE.md)
+  | 'lounge';
 
 export type PanelId =
   | 'activities' | 'jobs' | 'shop' | 'market_p2p' | 'housing' | 'inventory'

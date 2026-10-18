@@ -388,7 +388,7 @@ function applyPlace() {
     placeBus.gain.setValueAtTime(0, ctx.currentTime);
     placeBus.gain.linearRampToValueAtTime(level, ctx.currentTime + 1.5);
     placeBus.connect(master);
-    if (placeSound === 'club' && radioPl) {
+    if ((placeSound === 'club' || placeSound === 'lounge') && radioPl) {
       radio = new ClubRadio(ctx, placeBus, radioPl, () => radioNow(serverNow()));
       if (!radio.start()) radio = null;
       else if (yielded || document.hidden) radio.pause();
@@ -433,7 +433,7 @@ export function setPlaceTrack(url: string | null) {
 export function setPlaceRadio(pl: RadioPlaylist | null) {
   if (samePlaylist(pl, radioPl)) return;
   radioPl = pl;
-  if (placeSound === 'club' && unlocked && ensureCtx()) applyPlace();
+  if ((placeSound === 'club' || placeSound === 'lounge') && unlocked && ensureCtx()) applyPlace();
 }
 
 // ---------- P2: the beat clock (visuals read it every frame, no allocation) ----------

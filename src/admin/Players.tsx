@@ -214,6 +214,8 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
 
           <PlayerSkills id={id} />
 
+          <PlayerLounge id={id} />
+
           <PlayerCertificates id={id} />
 
           <PlayerCharms id={id} />
@@ -478,6 +480,43 @@ function PlayerCertificates({ id }: { id: string }) {
         </select>
         <input className="adm-input" placeholder="Note (audit log)" aria-label="Note" value={note} maxLength={120} onChange={(e) => setNote(e.target.value)} />
         <Btn tone="primary" small disabled={busy !== null || !pick} onClick={() => void run(`g:${pick}`, () => adminApi.grantCert(id, pick, note.trim() || null))}>Grant</Btn>
+      </div>
+    </section>
+  );
+}
+
+/** R7: a player's Members' Lounge membership (tier, expiry, vouchers) with Grant (audited, free) and Remove. */
+function PlayerLounge({ id }: { id: string }) {
+  const { data, reload } = useLoad(() => adminApi.loungeGet(id), [id]);
+  const [busy, setBusy] = useState(false);
+  const [tier, setTier] = useState('');
+  const [hours, setHours] = useState('');
+  const m = data?.member ?? null;
+  const pick = tier || data?.tiers?.[0]?.id || '';
+  const act = async (fn: () => Promise<{ message: string }>) => {
+    setBusy(true);
+    try { const r = await fn(); toast(r.message, 'good'); await reload(); } catch (e) { toast(errorMessage(e), 'bad'); } finally { setBusy(false); }
+  };
+  return (
+    <section className="adm-box" data-testid="adm-lounge">
+      <h3 className="adm-h3">🛋️ The Lounge</h3>
+      {data && !m && <p className="adm-empty">No membership.</p>}
+      {m && (
+        <p className="adm-note">
+          <b>{m.tier_name}</b> · {m.active ? 'active' : 'ended'} · until {timeShort(m.expires_at)} · {m.vouchers_left} free drink{m.vouchers_left === 1 ? '' : 's'} ·{' '}
+          {m.source === 'admin' ? 'gift from admin' : `paid ${naira(m.paid_total)}`}
+        </p>
+      )}
+      {(data?.guest_passes?.length ?? 0) > 0 && <p className="adm-note">Guest pass from {data!.guest_passes.map((g) => `@${g.host}`).join(', ')}</p>}
+      <div className="adm-btnrow">
+        <select className="adm-input" aria-label="Tier" value={pick} onChange={(e) => setTier(e.target.value)}>
+          {(data?.tiers ?? []).map((t) => <option key={t.id} value={t.id}>{t.name} ({t.hours}h)</option>)}
+        </select>
+        <input className="adm-input" type="number" min={1} inputMode="numeric" placeholder="Hours (default)" aria-label="Hours override" style={{ width: 130 }}
+          value={hours} onChange={(e) => setHours(e.target.value)} />
+        <ConfirmButton tone="primary" confirmText="Tap again: grant free" disabled={busy || !pick}
+          onConfirm={() => act(() => adminApi.loungeGrant(id, pick, hours.trim() === '' ? null : Math.max(1, Math.floor(Number(hours)))))}>Grant membership</ConfirmButton>
+        {m && <ConfirmButton tone="ghost" confirmText="Tap again: remove" disabled={busy} onConfirm={() => act(() => adminApi.loungeRevoke(id))}>Remove</ConfirmButton>}
       </div>
     </section>
   );
