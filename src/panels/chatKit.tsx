@@ -25,6 +25,8 @@ export interface ThreadMessage {
   replyTo: number | null;
   reply: ReplyPreview | null;
   avatar?: AvatarConfig | null;
+  /** R11: the sender's crew tag. */
+  crewTag?: string | null;
 }
 
 export function timeOf(iso: string) {
@@ -200,7 +202,7 @@ export function MessageRow({ m, reply, showFace, dm, receipt, onReply, onMenu, o
           onClick={() => { if (suppressClick.current) { suppressClick.current = false; } }}>
           {!dm && (
             <span className="msg-bubble__meta">
-              <b>{m.mine ? 'You' : m.name}</b>
+              <b>{m.crewTag ? <span className="cr-tag-inline">[{m.crewTag}] </span> : null}{m.mine ? 'You' : m.name}</b>
               <time dateTime={m.createdAt}>{timeOf(m.createdAt)}</time>
             </span>
           )}

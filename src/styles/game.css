@@ -6660,3 +6660,4 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .builders-pill__bar { width: 54px; height: 6px; border-radius: 999px; background: rgba(74, 52, 20, 0.18); overflow: hidden; flex: none; }
 .builders-pill__bar > span { display: block; height: 100%; background: #e8892b; }
 .builders-pill span[aria-hidden] { font-family: var(--font-emoji); font-size: 18px; }
+.msg-bubble__meta .cr-tag-inline { color: var(--gold-600, #b8860b); font-weight: 800; }

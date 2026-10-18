@@ -6,10 +6,11 @@ import { AvatarPortrait } from '../../../art/avatar3d';
 import { errorMessage, rpc } from '../../../lib/api';
 import { nairaShort } from '../../../lib/format';
 import type { AvatarConfig } from '../../../lib/types';
-import { Icon } from '../../../ui';
+import { CrewTag, Icon } from '../../../ui';
+import { crewTop, type CrewTop } from '../../../api/crews';
 import '../../../styles/pay.css';
 
-type Board = 'rich' | 'vip' | 'week';
+type Board = 'rich' | 'vip' | 'week' | 'crews';
 interface RankRow {
   rank: number | null;
   id: string;
@@ -85,6 +86,49 @@ function Row({ board, data, r, pinned }: { board: Board; data: BoardData; r: Ran
   );
 }
 
+function CrewsBoard() {
+  const [d, setD] = useState<CrewTop | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { crewTop().then(setD).catch((e) => setErr(errorMessage(e))); }, []);
+  if (err && !d) return <p className="phone-app__lead">{err}</p>;
+  if (!d) return <div className="panel-skel"><span /><span /><span /></div>;
+  return (
+    <div className="rk-crews" data-testid="crews-board">
+      <p className="rk-blurb">Top crews this week: paid jobs and loot. Resets Monday 12 AM. {d.enabled ? '' : 'The weekly prize is off for now.'}</p>
+      {d.enabled && (
+        <div className="rk-week" data-testid="crew-prizes">
+          {d.prizes.map((x) => <span key={x.rank}>{MEDAL[x.rank - 1]} {nairaShort(x.amount)}</span>)}
+          <small>Paid into the crew bank when the week closes (at least {d.min_jobs} paid jobs).</small>
+        </div>
+      )}
+      {d.rows.length === 0
+        ? <div className="rk-empty"><span aria-hidden>🤝</span><p>No crew has pulled a paid job this week. Be the first.</p></div>
+        : (
+          <ol className="rk-list">
+            {d.rows.map((r) => (
+              <li key={r.crew_id} className={`rk-row${r.mine ? ' is-me' : ''}`}>
+                <span className="rk-row__rank">{r.rank}</span>
+                <span aria-hidden style={{ display: 'grid', placeItems: 'center', width: 36, height: 36, borderRadius: 12, background: r.color, fontSize: 20 }}>{r.emblem}</span>
+                <span className="rk-row__who">
+                  <span className="rk-row__name" style={{ whiteSpace: 'normal' }}><CrewTag tag={r.tag} color={r.color} />{r.name}{r.mine ? <span className="rk-row__you">You</span> : null}</span>
+                  <span className="rk-row__sub">Level {r.level} · {r.jobs} job{r.jobs === 1 ? '' : 's'}</span>
+                </span>
+                <span className="rk-row__val">{nairaShort(r.loot)}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      {d.mine && !d.rows.some((r) => r.mine) && <p className="rk-foot">Your crew is #{d.mine.rank} with {d.mine.jobs} jobs.</p>}
+      {d.last_week && d.last_week.winners.length > 0 && (
+        <div className="rk-week rk-week--last">
+          <b>Last week's top crews</b>
+          {d.last_week.winners.map((w) => <small key={w.rank}>{MEDAL[w.rank - 1]} [{w.tag}] {w.name} · {w.jobs} jobs · {nairaShort(w.loot)} · prize {nairaShort(w.prize)}</small>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RanksApp() {
   const [board, setBoard] = useState<Board>('rich');
   const [data, setData] = useState<Partial<Record<Board, BoardData>>>({});
@@ -105,9 +149,9 @@ export default function RanksApp() {
     }
   }, []);
 
-  useEffect(() => { void load(board); }, [board, load]);
+  useEffect(() => { if (board !== 'crews') void load(board); }, [board, load]);
 
-  const d = data[board];
+  const d = board === 'crews' ? undefined : data[board];
   const rest = d ? d.rows.slice(3) : [];
   const meInList = d?.rows.some((r) => r.me);
 
@@ -117,17 +161,19 @@ export default function RanksApp() {
         <div className="rk-tabs" role="tablist" aria-label="Leaderboards">
           <button type="button" role="tab" aria-selected={board === 'rich'} className={`rk-tab${board === 'rich' ? ' is-on' : ''}`} onClick={() => setBoard('rich')}>💰 Rich</button>
           <button type="button" role="tab" aria-selected={board === 'week'} className={`rk-tab${board === 'week' ? ' is-on' : ''}`} onClick={() => setBoard('week')} data-testid="ranks-week-tab">🔥 Week</button>
+          <button type="button" role="tab" aria-selected={board === 'crews'} className={`rk-tab${board === 'crews' ? ' is-on' : ''}`} onClick={() => setBoard('crews')} data-testid="ranks-crews-tab">🤝 Crews</button>
           <button type="button" role="tab" aria-selected={board === 'vip'} className={`rk-tab${board === 'vip' ? ' is-on' : ''}`} onClick={() => setBoard('vip')}>👑 VIP</button>
         </div>
-        <button type="button" className={`rk-refresh${loading ? ' is-spinning' : ''}`} onClick={() => void load(board)} aria-label="Refresh" disabled={loading}>
+        <button type="button" className={`rk-refresh${loading ? ' is-spinning' : ''}`} onClick={() => void load(board)} aria-label="Refresh" disabled={loading || board === 'crews'}>
           <Icon name="refresh" size={16} stroke={2.4} />
         </button>
       </div>
-      <p className="rk-blurb">
+      {board !== 'crews' && <p className="rk-blurb">
         {board === 'week' ? "This week's top earners: money from jobs, hustles and investments only. Resets Monday 12 AM." : board === 'rich' ? 'The richest Sims in Benin City, cash + bank.' : 'Top supporters of Benin Life. Top 3 VIPs get announced when they walk in anywhere.'}
-      </p>
-      {err && !d && <p className="phone-app__lead">{err}</p>}
-      {!d && !err && <div className="panel-skel"><span /><span /><span /></div>}
+      </p>}
+      {board === 'crews' && <CrewsBoard />}
+      {board !== 'crews' && err && !d && <p className="phone-app__lead">{err}</p>}
+      {board !== 'crews' && !d && !err && <div className="panel-skel"><span /><span /><span /></div>}
       {d && (
         <>
           {board === 'week' && d.prizes && (

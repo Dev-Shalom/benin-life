@@ -194,6 +194,8 @@ export interface PublicPlayer {
   avatar: AvatarConfig;
   street_cred: number;
   last_seen: string;
+  /** R11: the crew tag, colour and emblem (null = no crew). */
+  crew?: { tag: string; color: string; emblem: string; name?: string } | null;
 }
 
 export interface GameEvent {
@@ -708,6 +710,8 @@ export interface ChatMessage {
   /** M3: deleted for everyone (tombstone). */
   deleted_at?: string | null;
   hidden?: boolean;
+  /** R11: the sender's crew tag when the message was written. */
+  crew_tag?: string | null;
 }
 
 /** M3: quote preview of the message a chat row / DM replies to. */

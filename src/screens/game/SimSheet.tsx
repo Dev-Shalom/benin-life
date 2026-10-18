@@ -5,6 +5,7 @@
 import { CharmChips } from './Shrine';
 import { YahooBadge } from './Yahoo';
 import { useYahoo } from '../../state/yahoo';
+import { useCrew } from '../../state/crew';
 import { useShrine } from '../../state/shrine';
 import { useLiveProfile } from '../../lib/live';
 import { useEffect, useState } from 'react';
@@ -22,7 +23,7 @@ import { useDaily } from '../../state/daily';
 import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
 import { useUi, type SimTab } from '../../state/ui';
-import { Button, EmptyState, Logo, Sheet, Switch, Tabs, toast } from '../../ui';
+import { Button, CrewTag, EmptyState, Logo, Sheet, Switch, Tabs, toast } from '../../ui';
 import { SkillsTab } from './Skills';
 import { CertificatesCard } from './School';
 import LookPanel from '../creator/LookPanel';
@@ -48,11 +49,12 @@ function SheetHead({ state }: { state: GameState }) {
   const tier = state.origin?.id ?? p.origin;
   const copy = tier ? originCopy(tier, state.origin?.name ?? tier, state.origin?.tagline ?? '') : null;
   const yahooRank = useYahoo((s) => s.status?.rank);
+  const myCrew = useCrew((s) => s.status?.crew ?? null);
   return (
     <div className="sim-head">
       <span className="sim-head__face"><AvatarPortrait config={p.avatar} size={56} /></span>
       <div className="grow">
-        <div className="sim-head__name">{p.username}</div>
+        <div className="sim-head__name"><CrewTag tag={myCrew?.tag} color={myCrew?.color} emblem={myCrew?.emblem} />{p.username}</div>
         <div className="sim-head__sub">
           <span aria-hidden>{mood.emoji}</span> {mood.label}
           {copy && <span className={`origin-pill origin-pill--${tier === 'nepo' ? 'nepo' : 'lapo'}`}>{copy.emoji} {copy.badge}</span>}

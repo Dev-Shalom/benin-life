@@ -15,7 +15,7 @@ import { startPoller } from '../../../lib/realtime';
 import { useGame } from '../../../state/game';
 import { useLounge } from '../../../state/lounge';
 import { useUi } from '../../../state/ui';
-import { Button, Spinner, Switch, toast } from '../../../ui';
+import { Button, CrewTag, Spinner, Switch, toast } from '../../../ui';
 import { SocialPlayerButton } from '../SocialPlayerButton';
 import './FriendsTab.css';
 
@@ -116,7 +116,7 @@ export function FriendsTab({ onMessage, onRefreshAll }: { onMessage: (c: FriendC
             <i className={`fr-dot${c.online ? ' is-on' : ''}`} aria-label={c.online ? 'Online' : 'Offline'} />
           </span>
           <span className="fr-card__main">
-            <b>@{c.username}{c.unread > 0 && <span className="msgs-badge fr-unread">{c.unread > 9 ? '9+' : c.unread}</span>}</b>
+            <b><CrewTag tag={c.crew?.tag} color={c.crew?.color} />@{c.username}{c.unread > 0 && <span className="msgs-badge fr-unread">{c.unread > 9 ? '9+' : c.unread}</span>}</b>
             <span className={`fr-where${c.online && c.location && !c.location_hidden ? ' is-place' : ''}`}>
               {c.online && c.location && !c.location_hidden && !c.location.private && !c.location.traveling && <span aria-hidden>📍 </span>}
               {where(c)}

@@ -25,7 +25,7 @@ function toThread(m: ChatMessage): ThreadMessage {
   return {
     id: m.id, mine: Boolean(m.mine), name: m.username, createdAt: m.created_at, body: m.body,
     audioPath: m.audio_path ?? null, deletedAt: m.deleted_at ?? null, replyTo: m.reply_to ?? null,
-    reply: m.reply ?? null, avatar: m.avatar,
+    reply: m.reply ?? null, avatar: m.avatar, crewTag: m.crew_tag ?? null,
   };
 }
 

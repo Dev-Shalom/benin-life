@@ -17,6 +17,8 @@ export interface FriendLocation {
 export interface FriendCard {
   id: string;
   username: string;
+  /** R11: crew tag, colour and emblem. */
+  crew?: { tag: string; color: string; emblem: string } | null;
   avatar: AvatarConfig | null;
   online: boolean;
   last_seen: string | null;

@@ -20,7 +20,8 @@ import type { AvatarConfig, GameState, PanelId, PublicPlayer } from '../../lib/t
 import { usePresenceLiveAt, usePresentAt } from '../../state/presence';
 import { useTasks } from '../../state/tasks';
 import { useUi } from '../../state/ui';
-import { Icon, Sheet, toast } from '../../ui';
+import { CrewTag, Icon, Sheet, toast } from '../../ui';
+import { useCrew } from '../../state/crew';
 import { AvatarPortrait } from '../../art/avatar3d';
 import { npcAvatar } from '../../art/place3d/model';
 import { placeEmoji } from '../../art/city3d';
@@ -89,7 +90,7 @@ export function usePlacePeople(locationId: string | null, hourKey: number, overr
 }
 
 /** Real players connected at a place (Realtime Presence ids -> players_here for names), me excluded. */
-export function usePlayersAt(locationId: string | null, meId: string): { id: string; username: string; avatar: PublicPlayer['avatar'] | null; gold?: boolean }[] {
+export function usePlayersAt(locationId: string | null, meId: string): { id: string; username: string; avatar: PublicPlayer['avatar'] | null; gold?: boolean; crew?: PublicPlayer['crew'] }[] {
   const ids = usePresentAt(locationId);
   const live = usePresenceLiveAt(locationId);
   const [list, setList] = useState<PublicPlayer[]>([]);
@@ -111,7 +112,7 @@ export function usePlayersAt(locationId: string | null, meId: string): { id: str
   }, [locationId, meId, ids]);
   return useMemo(() => {
     const on = new Set(ids);
-    return list.filter((p) => !live || on.has(p.id)).map((p) => ({ id: p.id, username: p.username, avatar: p.avatar ?? null, gold: Boolean((p as { gold?: boolean }).gold) }));
+    return list.filter((p) => !live || on.has(p.id)).map((p) => ({ id: p.id, username: p.username, avatar: p.avatar ?? null, gold: Boolean((p as { gold?: boolean }).gold), crew: p.crew ?? null }));
   }, [list, ids, live]);
 }
 
@@ -307,7 +308,7 @@ export interface PlaceCardProps {
   onHome: () => void;
   atHome: boolean;
   /** L3 People list: players here (me excluded), the named people present, and everyone counted. */
-  players?: { id: string; username: string; avatar: AvatarConfig | null }[];
+  players?: { id: string; username: string; avatar: AvatarConfig | null; crew?: { tag: string; color: string; emblem: string } | null }[];
   npcs?: PlaceNpc[];
   me?: { username: string; avatar: AvatarConfig };
 }
@@ -317,6 +318,7 @@ function PeopleSheet({ open, onClose, total, players, npcs, me, placeName, onShe
   open: boolean; onClose: () => void; total: number; players: NonNullable<PlaceCardProps['players']>; npcs: PlaceNpc[];
   me?: PlaceCardProps['me']; placeName: string; onSheet: () => void;
 }) {
+  const myCrew = useCrew((s) => s.status?.crew ?? null);
   const looks = useMemo(() => new Map(npcs.map((n) => [n.id, npcAvatar(n.avatar)])), [npcs]);
   const [talking, setTalking] = useState<PlaceNpc | null>(null);
   const [reply, setReply] = useState<string | null>(null);
@@ -355,13 +357,13 @@ function PeopleSheet({ open, onClose, total, players, npcs, me, placeName, onShe
         {me && (
           <div className="people-row">
             <span className="people-row__av"><AvatarPortrait config={me.avatar} size={40} /></span>
-            <span className="people-row__main"><span className="people-row__name"><span className="people-row__dot" aria-hidden />@{me.username} (you)</span></span>
+            <span className="people-row__main"><span className="people-row__name"><span className="people-row__dot" aria-hidden /><CrewTag tag={myCrew?.tag} color={myCrew?.color} />@{me.username} (you)</span></span>
           </div>
         )}
         {players.map((pl) => (
           <div key={pl.id} className="people-row">
             <span className="people-row__av">{pl.avatar ? <AvatarPortrait config={pl.avatar} size={40} /> : '🙂'}</span>
-            <span className="people-row__main"><span className="people-row__name"><span className="people-row__dot" aria-label="online" />@{pl.username}</span></span>
+            <span className="people-row__main"><span className="people-row__name"><span className="people-row__dot" aria-label="online" /><CrewTag tag={pl.crew?.tag} color={pl.crew?.color} />@{pl.username}</span></span>
             <SocialPlayerButton userId={pl.id} />
           </div>
         ))}

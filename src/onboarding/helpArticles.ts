@@ -304,6 +304,28 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: 'business shop buka bar bukateria filling station salon pos car wash event centre chemist plot own takings collect restock staff upgrade passive income',
   },
   {
+    id: 'crew',
+    topic: 'money',
+    title: 'Crews: team up for group jobs',
+    summary: 'Found a crew, recruit players, pool money in the crew bank and run group jobs for big loot. It is a game: the police can catch everybody.',
+    steps: [
+      'Open Phone, then Crew. Found a crew: pick a name, a 3 or 4 letter tag, a colour and an emblem. Founding costs a fee, so check the app for the price.',
+      'Invite friends first, or anybody by username. New recruits start as Prospects; the Boss and Lieutenants promote them. Rejoining another crew after leaving has a cooldown.',
+      'Members put money in the crew bank. The Boss and Lieutenants spend it on crew upgrades, and every deposit and spend is logged.',
+      'Open a job from the Jobs tab. Members who are online and standing at a meeting spot join the lobby. When the countdown ends (or the leader starts it) the job runs and rolls once.',
+      'Paid: the loot splits between the crew bank and the members, by the share the Boss sets. Caught: the whole crew goes to the police cell, with bail, serve time or escape like any arrest.',
+      'Paid jobs give the crew XP. Higher crew levels unlock more members, better jobs and a loot bonus. The Ranks app has a weekly Top crews board.',
+    ],
+    where: 'Phone, then Crew. Your crew tag also shows next to your name in places, chat and profiles.',
+    tips: [
+      'Skills like Charisma, Fitness and Driving lower the chance of being caught.',
+      'Crew jobs never take money from other players.',
+      'Chances, prices, cooldowns and prizes can change. Check the app for the current numbers.',
+    ],
+    tour: ['crew'],
+    keywords: 'crew gang group job heist boss lieutenant member prospect tag emblem bank invite recruit loot police jail top crews',
+  },
+  {
     id: 'market',
     topic: 'buying',
     title: 'Benin Market: buy and sell with players',

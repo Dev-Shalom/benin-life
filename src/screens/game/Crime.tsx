@@ -15,7 +15,7 @@ import { playCue } from '../../lib/sound';
 import type { AvatarConfig } from '../../lib/types';
 import { startCrime, useCrime } from '../../state/crime';
 import { useGame } from '../../state/game';
-import { Button, Modal, Sheet, toast } from '../../ui';
+import { Button, CrewTag, Modal, Sheet, toast } from '../../ui';
 import { SocialPlayerButton } from './SocialPlayerButton';
 import { YahooBadge } from './Yahoo';
 import { rpc } from '../../lib/api';
@@ -157,14 +157,15 @@ export function PlacePlayerSheet({ person, metres, free, onClose }: {
   const [sending, setSending] = useState(false);
   const near = metres !== null && metres <= range;
   // Y1: their Yahoo rank badge (G-boy and up)
-  const [rankOf, setRankOf] = useState<{ pid: string; rank: { id: string; name: string; icon: string } | null } | null>(null);
+  const [rankOf, setRankOf] = useState<{ pid: string; rank: { id: string; name: string; icon: string } | null; crew: { tag: string; color: string; emblem: string } | null } | null>(null);
   const pid = person?.id;
   const rank = rankOf && rankOf.pid === pid ? rankOf.rank : null;
+  const crewOf = rankOf && rankOf.pid === pid ? rankOf.crew : null;
   useEffect(() => {
     if (!pid) return;
     let live = true;
-    rpc<{ yahoo_rank?: { id: string; name: string; icon: string } | null }>('get_public_profile', { p_id: pid })
-      .then((r) => { if (live) setRankOf({ pid, rank: r.yahoo_rank ?? null }); }).catch(() => undefined);
+    rpc<{ yahoo_rank?: { id: string; name: string; icon: string } | null; crew?: { tag: string; color: string; emblem: string } | null }>('get_public_profile', { p_id: pid })
+      .then((r) => { if (live) setRankOf({ pid, rank: r.yahoo_rank ?? null, crew: r.crew ?? null }); }).catch(() => undefined);
     return () => { live = false; };
   }, [pid]);
 
@@ -195,7 +196,7 @@ export function PlacePlayerSheet({ person, metres, free, onClose }: {
     <div className="ix-head">
       <span className="ix-head__face">{person.avatar && <AvatarPortrait config={person.avatar} size={56} />}</span>
       <span className="ix-head__text">
-        <b>@{person.username}<YahooBadge rank={rank} /></b>
+        <b><CrewTag tag={crewOf?.tag} color={crewOf?.color} emblem={crewOf?.emblem} />@{person.username}<YahooBadge rank={rank} /></b>
         <small>{metres !== null ? `About ${Math.max(1, Math.round(metres))} m from you` : 'Here with you'}</small>
       </span>
     </div>
