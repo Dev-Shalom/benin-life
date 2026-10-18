@@ -26,7 +26,7 @@ import { usePrefs } from '../lib/prefs';
 import { useCatalog } from '../state/catalog';
 import { useChat, useChatLive } from '../state/chat';
 import { useTier } from '../art/feel/quality';
-import { useGame } from '../state/game';
+import { refreshLocationsIfStale, useGame } from '../state/game';
 import { usePresenceStore } from '../state/presence';
 import { useUi } from '../state/ui';
 import { runDeepLink, takeDeepLink } from '../lib/deeplink';
@@ -164,6 +164,7 @@ export default function Game() {
   const boardSheet = useBillboards((s) => s.sheet);
   const boardsOn = cfg<boolean>('billboards.enabled', true);
   useEffect(() => {
+    if (mapOpen) refreshLocationsIfStale();
     if (!mapOpen || !boardsOn) return;
     void useBillboards.getState().load();
     const t = window.setInterval(() => { if (document.visibilityState === 'visible') void useBillboards.getState().load(true); }, 300_000);

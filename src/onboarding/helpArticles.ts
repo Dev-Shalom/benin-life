@@ -282,6 +282,28 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
 
   {
+    id: 'business',
+    topic: 'money',
+    title: 'Own a business',
+    summary: 'Buy a shop, buka, bar or even a filling station. It earns while you hustle, and you grow it with upgrades and staff.',
+    steps: [
+      'Open Phone, then Business, then Buy a business. Pick a kind, then a free plot (Ring Road, Uselu, Ugbowo, Sapele Rd, Airport Rd, GRA ...). Plots are limited: first come, first served.',
+      'Give it a name. Everybody sees it on the map as "Name · @you". The builders need a few minutes, then the money starts.',
+      'Come back and tap Collect takings. Takings stop growing after about two days, so log in often.',
+      'Restock shops, bukas and bars to keep income at 100%. With empty shelves income slides down.',
+      'Hire staff for more income, or go to your place and Work a shift: a boost and Business XP. Upgrade for a higher level and more income.',
+      'Other players who spend at your place pay you a share. Sell the business back to the system, or to another player on the Market.',
+    ],
+    where: 'Phone, then Business. Your places also show on the map, and the place card has Collect and Work a shift.',
+    tips: [
+      'Bigger businesses need the Business skill, or a certificate from School (a filling station needs Business Management). The buy list tells you what is missing.',
+      'Bad days happen: robbery (insurance helps), NEPA outage, a council levy, staff theft. Good days happen too.',
+      'Prices, income, caps and chances can change. Check the app for the current numbers.',
+    ],
+    tour: ['business'],
+    keywords: 'business shop buka bar bukateria filling station salon pos car wash event centre chemist plot own takings collect restock staff upgrade passive income',
+  },
+  {
     id: 'market',
     topic: 'buying',
     title: 'Benin Market: buy and sell with players',

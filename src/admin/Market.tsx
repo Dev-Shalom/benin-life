@@ -16,7 +16,7 @@ const FLAG_TEXT: Record<string, { label: string; tip: string; tone: 'red' | 'amb
   repeat_pair: { label: 'Repeat pair', tip: 'The same two players keep trading with each other', tone: 'amber' },
   new_account: { label: 'New account', tip: 'One side is still inside the new-account wait (an admin trusted sender?)', tone: 'violet' },
 };
-const KIND = { item: 'Item', furniture: 'Furniture', car: 'Car', land: 'Land' } as const;
+const KIND = { item: 'Item', furniture: 'Furniture', car: 'Car', land: 'Land', business: 'Business' } as const;
 
 export default function Market() {
   const { data, error, loading, reload } = useLoad(() => adminMarketOverview(150), []);

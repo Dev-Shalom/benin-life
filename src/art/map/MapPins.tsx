@@ -54,7 +54,7 @@ export function layoutLabels(locs: Location[], zoom: number, currentId?: string,
     const tier = PIN_META[l.id]?.tier ?? 2;
     if (!must && tier === 2 && zoom < 0.95) continue;
     if (!must && zoom < 0.5) continue;
-    const text = shortName(l.id, l.name);
+    const text = shortName(l.id, l.name, l.biz_owner);
     const pref = PIN_META[l.id]?.side ?? 'b';
     const sides: LabelSide[] = [pref, ...(['b', 'r', 'l', 't'] as LabelSide[]).filter((s) => s !== pref)];
     let placed: LabelSide | null = null;
@@ -160,9 +160,10 @@ interface PinProps {
 }
 
 function Pin({ loc, ps, side, current, selected, night, count, onSelect }: PinProps) {
-  const text = shortName(loc.id, loc.name);
+  const text = shortName(loc.id, loc.name, loc.biz_owner);
+  const biz = Boolean(loc.biz_owner);
   const danger = night && isNightRisky(loc);
-  const bodyScale = selected ? 1.3 : current ? 1.12 : 1;
+  const bodyScale = (selected ? 1.3 : current ? 1.12 : 1) * (biz && !selected && !current ? 0.82 : 1); // R10: business pins are small
   const k = bodyScale; // label offsets follow the body size
   const labelProps = (() => {
     switch (side) {
@@ -183,10 +184,11 @@ function Pin({ loc, ps, side, current, selected, night, count, onSelect }: PinPr
     <g
       className={`map-pin${selected ? ' is-selected' : ''}${current ? ' is-current' : ''}`}
       data-pin-id={loc.id}
+      data-biz={biz ? '1' : undefined}
       data-off={loc.active === false && loc.scene === 'club' ? '1' : undefined}
       role="button"
       tabIndex={0}
-      aria-label={`${loc.name}${loc.active === false && loc.scene === 'club' ? ' — closed for now' : ''}${current ? ' — you are here' : ''}${count > 0 ? `, ${count} people` : ''}`}
+      aria-label={`${loc.name}${biz ? ` — owned by ${loc.biz_owner}` : ''}${loc.active === false && loc.scene === 'club' ? ' — closed for now' : ''}${current ? ' — you are here' : ''}${count > 0 ? `, ${count} people` : ''}`}
       style={{ transform: `translate(${r1(loc.x)}px, ${r1(loc.y)}px) scale(${ps.toFixed(3)})` }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -211,12 +213,18 @@ function Pin({ loc, ps, side, current, selected, night, count, onSelect }: PinPr
       )}
       <g className="map-pin-body" style={{ transform: `scale(${bodyScale})` }}>
         <circle cy={BADGE_Y + 1} r={21} fill="transparent" className="map-pin-hit" />
-        <path d={PIN_D} fill={`url(#map-pin-${loc.scene})`} stroke={current ? '#2ee07a' : selected ? '#fff3e6' : '#fffaf0'} strokeWidth={current ? 2.6 : 2} className="map-pin-rim" />
+        <path d={PIN_D} fill={`url(#map-pin-${loc.scene})`} stroke={current ? '#2ee07a' : selected ? '#fff3e6' : biz ? '#f2c230' : '#fffaf0'} strokeWidth={current ? 2.6 : biz ? 2.6 : 2} className="map-pin-rim" />
         <circle cy={BADGE_Y} r={BADGE_R - 2.6} fill="none" stroke="#ffffff" strokeOpacity={0.28} strokeWidth={0.8} />
         <circle cx={-3} cy={BADGE_Y - 4} r={8} fill="url(#map-pin-shine)" />
         <g transform={`translate(0 ${BADGE_Y}) scale(0.92)`}>
           <PinGlyph scene={loc.scene} />
         </g>
+        {biz && (
+          <g transform={`translate(${-BADGE_R + 1} ${BADGE_Y - BADGE_R + 2})`}>
+            <circle r={6.4} fill="#f2c230" stroke="#fffaf0" strokeWidth={1.3} />
+            <text y={3} textAnchor="middle" fontSize={8.5} fontWeight={800} fill="#4a2f00">{loc.biz_level ?? 1}</text>
+          </g>
+        )}
         {count > 0 && (
           <g transform={`translate(${BADGE_R - 2} ${BADGE_Y - BADGE_R + 1})`}>
             <rect x={-bubbleW / 2} y={-7} width={bubbleW} height={14} rx={7} fill={night ? '#f3d28a' : '#2a2d5c'} stroke="#fffaf0" strokeWidth={1.5} />

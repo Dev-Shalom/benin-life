@@ -565,7 +565,12 @@ export const PIN_META: Record<string, { short: string; tier: 1 | 2; side?: Label
   hk_quarters: { short: 'HK Quarters', tier: 2, side: 'l' },
 };
 
-export function shortName(id: string, name: string): string {
+export function shortName(id: string, name: string, owner?: string | null): string {
+  // R10: a player's business shows "Mama Nosa's Buka · @x"
+  if (owner) {
+    const t = `${name} · @${owner}`;
+    return t.length > 30 ? t.slice(0, 29) + '…' : t;
+  }
   const m = PIN_META[id];
   if (m) return m.short;
   const cut = name.replace(/\s*\(.*\)\s*$/, '');

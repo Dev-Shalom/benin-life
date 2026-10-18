@@ -1,4 +1,5 @@
 import { LoungeMapStrip } from './Lounge';
+import { BusinessStrip, OwnerChip } from './BusinessStrip';
 import { useLounge } from '../../state/lounge';
 import { useEffect, useMemo, useState } from 'react';
 import { AvatarPortrait, migrateAvatar } from '../../art/avatar3d';
@@ -63,6 +64,7 @@ function LocationHeader({ loc, night, here }: { loc: Location; night: boolean; h
         <div className="loc-chips">
           <span className={`risk-chip risk-chip--${day.tone}${!night ? ' is-now' : ''}`}><Icon name="sun" size={12} /> {day.label}</span>
           <span className={`risk-chip risk-chip--${nite.tone}${night ? ' is-now' : ''}`}><Icon name="moon" size={12} /> {nite.label}</span>
+          <OwnerChip locId={loc.id} />
           {loc.cctv && <span className="risk-chip risk-chip--info"><Icon name="camera" size={12} /> CCTV</span>}
           {loc.keke_ok && <span className="risk-chip risk-chip--info"><Icon name="keke" size={12} /> Keke access</span>}
         </div>
@@ -96,6 +98,7 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
     return (
       <div className="loc-body">
         {loc.scene === 'lounge' && <LoungeMapStrip />}
+        <BusinessStrip locId={loc.id} compact />
         <PlaceFacts loc={loc} meId={state.profile.id} />
         <WhatToDo loc={loc} fallback={tabs.filter((a) => a !== 'chat').map((a) => PANEL_LABELS[a] ?? a)} />
         <OnToday locId={loc.id} />

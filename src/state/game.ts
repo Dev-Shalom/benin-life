@@ -38,6 +38,12 @@ interface GameStore {
 }
 
 const HEARTBEAT_MS = 60_000;
+/** R10: when the places were last read (business pins appear and vanish as players buy and sell). */
+let locationsAt = 0;
+/** Opening the map re-reads the places when they are over a minute old, so new business pins show up. */
+export function refreshLocationsIfStale(maxAgeMs = 60_000): void {
+  if (Date.now() - locationsAt > maxAgeMs) void useGame.getState().loadLocations();
+}
 
 let live: { uid: string; unbind: () => void; heartbeat: number; onVis: () => void } | null = null;
 /** F1: newest event id we know of (null until loadEvents ran), the cursor for the poll-mode events fetch. */
@@ -71,8 +77,8 @@ function normalizeState(raw: GameState): GameState {
 /** Guess a toast tone from an event kind. */
 export function eventTone(kind: string): ToastKind {
   const k = kind.toLowerCase();
-  if (/rob|arrest|jail|raid|injur|hospital|theft|stolen|fine|ban|loss|fail|caught|wanted|debt|default|owed/.test(k)) return 'bad';
-  if (/pay|salary|wage|harvest|reward|win|bonus|deposit|credit|topup|top_up|gift|grant|promot|level|sold|release/.test(k)) return 'good';
+  if (/rob|arrest|jail|raid|injur|hospital|theft|stolen|fine|ban|loss|fail|caught|wanted|debt|default|owed|levy|outage|removed/.test(k)) return 'bad';
+  if (/pay|salary|wage|harvest|reward|win|bonus|deposit|credit|topup|top_up|gift|grant|promot|level|sold|release|goodday/.test(k)) return 'good';
   return 'info';
 }
 
@@ -141,6 +147,7 @@ export const useGame = create<GameStore>((set, get) => ({
   },
 
   loadLocations: async () => {
+    locationsAt = Date.now();
     const { data, error } = await supabase.from('locations').select('*').order('sort');
     if (error) {
       console.warn('[locations]', error.message);

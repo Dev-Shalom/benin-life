@@ -4,6 +4,7 @@ import { toast } from '../ui';
 import { errorMessage } from '../lib/api';
 import { naira, nairaShort, parseNaira } from '../lib/format';
 import { useGame } from '../state/game';
+import { adminBusinessGet, adminBusinessGrant, adminBusinessRemove } from '../api/business';
 import { adminApi, type CharmRow, type JailCaseRow, type PlayerDetail, type PlayerRow, type PlayerSkillRow } from './api';
 import { Badge, Btn, ConfirmButton, DetailPane, LoadError, PageHead, Skeleton } from './parts';
 import { timeShort, useLoad } from './util';
@@ -217,6 +218,8 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
           <PlayerLounge id={id} />
 
           <PlayerHouseUpgrades id={id} />
+
+          <PlayerBusinesses id={id} />
 
           <PlayerCertificates id={id} />
 
@@ -549,6 +552,50 @@ function PlayerHouseUpgrades({ id }: { id: string }) {
           {(data?.options ?? []).map((o) => <option key={o.id} value={o.id}>{o.emoji} {o.name}</option>)}
         </select>
         <ConfirmButton tone="primary" confirmText="Tap again: grant free" disabled={busy || !choice} onConfirm={act}>Grant upgrade</ConfirmButton>
+      </div>
+    </section>
+  );
+}
+
+/** R10: a player's businesses, with a free, audited grant (admin_business_grant) and remove (admin_business_remove, takings paid out). */
+function PlayerBusinesses({ id }: { id: string }) {
+  const { data, reload } = useLoad(() => adminBusinessGet(id), [id]);
+  const [busy, setBusy] = useState(false);
+  const [type, setType] = useState('');
+  const [plot, setPlot] = useState('');
+  const [name, setName] = useState('');
+  const [reason, setReason] = useState('');
+  const t = type || data?.types?.[0]?.id || '';
+  const areas = data?.types.find((x) => x.id === t)?.areas ?? [];
+  const plots = (data?.plots ?? []).filter((p) => areas.includes(p.area));
+  const pl = plots.find((p) => p.id === plot)?.id ?? plots[0]?.id ?? '';
+  const act = async (fn: () => Promise<{ message: string }>) => {
+    setBusy(true);
+    try { const r = await fn(); toast(r.message, 'good'); setName(''); await reload(); } catch (e) { toast(errorMessage(e), 'bad'); } finally { setBusy(false); }
+  };
+  return (
+    <section className="adm-box" data-testid="adm-businesses">
+      <h3 className="adm-h3">🏪 Businesses</h3>
+      {data && data.businesses.length === 0 && <p className="adm-empty">Owns no business.</p>}
+      {(data?.businesses ?? []).map((b) => (
+        <p key={b.id} className="adm-note">
+          {b.icon} <b>{b.name}</b> · {b.type} · level {b.level} · {b.plot} · takings {naira(b.takings)} · {b.staff} staff · {b.source === 'admin' ? 'gift from admin' : `invested ${naira(b.invested)}`}{b.listed ? ' · on the Market' : ''}
+          {' '}<ConfirmButton tone="danger" small confirmText="Tap again: remove" disabled={busy} onConfirm={() => act(() => adminBusinessRemove(b.id, reason))}>Remove</ConfirmButton>
+        </p>
+      ))}
+      <label className="adm-field">
+        <span className="adm-field__label">Reason (sent to the player when you remove one)</span>
+        <input className="adm-input" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} />
+      </label>
+      <div className="adm-btnrow">
+        <select className="adm-input" aria-label="Business type to grant" value={t} onChange={(e) => { setType(e.target.value); setPlot(''); }}>
+          {(data?.types ?? []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <select className="adm-input" aria-label="Plot" value={pl} onChange={(e) => setPlot(e.target.value)} disabled={plots.length === 0}>
+          {plots.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+        </select>
+        <input className="adm-input" aria-label="Business name" placeholder="Name (optional)" maxLength={28} value={name} onChange={(e) => setName(e.target.value)} />
+        <ConfirmButton tone="primary" confirmText="Tap again: grant free" disabled={busy || !t || !pl} onConfirm={() => act(() => adminBusinessGrant(id, t, pl, name))}>Grant business</ConfirmButton>
       </div>
     </section>
   );

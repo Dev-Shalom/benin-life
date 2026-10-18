@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { rpc } from '../lib/api';
 
-export type MarketKind = 'item' | 'furniture' | 'car' | 'land';
+export type MarketKind = 'item' | 'furniture' | 'car' | 'land' | 'business';
 
 export interface MarketKindInfo {
   kind: MarketKind;

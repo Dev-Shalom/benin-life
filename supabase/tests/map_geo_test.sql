@@ -57,7 +57,7 @@ begin
     perform pg_temp.assert(exists (select 1 from locations l where l.id = r.id and l.x = r.x and l.y = r.y),
       format('%s should be at (%s,%s)', r.id, r.x, r.y));
   end loop;
-  select count(*) into n from locations where private_home_owner_id is null;
+  select count(*) into n from locations where private_home_owner_id is null and id not like 'biz\_%';  -- R10: business plots are counted separately (spacing is still checked in 3)
   -- the 40 MAP_GEO pins above + the L2 landmarks (20261006001300_places.sql), all checked for spacing in 3.
   perform pg_temp.assert(n = 40 + (select count(*) from locations where id in ('emotan_statue','kada_plaza','benin_city_mall','mama_ebo',
     'protea_hotel','golden_tulip','ogba_zoo','ogbemudia_stadium','club_360','club_de_medici','rome_club','cube_nightlife','versus_lounge',

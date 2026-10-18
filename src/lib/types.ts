@@ -97,6 +97,11 @@ export interface Location {
   close_hour?: number | null;
   /** F1 soft launch: false = hidden (no pin, not in Ride/search, can't travel or act there). */
   active?: boolean;
+  /** R10: a player-owned business sits here (set while the plot is owned). */
+  biz_id?: number | null;
+  biz_owner?: string | null;
+  biz_level?: number | null;
+  biz_type?: string | null;
 }
 
 export interface Profile {

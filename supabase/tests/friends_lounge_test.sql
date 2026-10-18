@@ -128,6 +128,7 @@ begin
   o := friends_overview();
   perform pg_temp.assert(jsonb_array_length(o->'friends') = 2, 'two friends listed');
   perform pg_temp.assert(o->'friends'->0->>'username' = 'FlBayo', 'online friend sorted first');
+  update locations set open_hour = null, close_hour = null where id = 'oba_market';   -- pinned always open: the suite must not depend on the hour it runs
   c := pg_temp.card(ada, bayo);
   perform pg_temp.assert((c->>'online')::boolean, 'bayo online (green dot)');
   perform pg_temp.assert(c->'location'->>'id' = 'oba_market', 'bayo shows where he is');

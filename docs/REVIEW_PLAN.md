@@ -32,7 +32,7 @@ The owner decided:
    - Challenges done with friends count towards the daily and weekly goals.
 10. **R8 House upgrade (DONE, docs/HOUSE_UPGRADES.md):** expand the house you live in instead of buying a new one.
 11. **R9 Player trading (DONE, docs/MARKET.md):** sell items, furniture, cars and land to other players (houses are rented, so no house sales).
-12. **R10 Own a business:** shop, bar or filling station with daily income and upgrades.
+12. **R10 Own a business (DONE, docs/BUSINESS.md):** shop, buka, bar, salon, PoS, car wash, chemist, filling station and event centre on limited plots, with takings every real hour (48 h cap), restock, staff, owner shifts, random events, upgrades, a cut of visitor spending, sell-back or sell on the Market.
 13. **R11 Crime gangs:** create a crew, recruit players, do group jobs.
 14. **R12 Politics:**
     - Run for councillor or governor and campaign.

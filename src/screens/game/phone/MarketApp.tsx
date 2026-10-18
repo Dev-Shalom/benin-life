@@ -15,12 +15,12 @@ import '../market.css';
 
 type Tab = 'browse' | 'mine' | 'offers';
 const KINDS: { id: MarketKind | ''; label: string }[] = [
-  { id: '', label: 'All' }, { id: 'item', label: 'Items' }, { id: 'furniture', label: 'Furniture' }, { id: 'car', label: 'Cars' }, { id: 'land', label: 'Land' },
+  { id: '', label: 'All' }, { id: 'item', label: 'Items' }, { id: 'furniture', label: 'Furniture' }, { id: 'car', label: 'Cars' }, { id: 'land', label: 'Land' }, { id: 'business', label: 'Businesses' },
 ];
 const SORTS: { id: MarketSort; label: string }[] = [
   { id: 'new', label: 'Newest' }, { id: 'price_asc', label: 'Cheapest' }, { id: 'price_desc', label: 'Dearest' }, { id: 'deal', label: 'Best deal' },
 ];
-const KIND_EMOJI: Record<MarketKind, string> = { item: '🎒', furniture: '🛋️', car: '🚗', land: '🏞️' };
+const KIND_EMOJI: Record<MarketKind, string> = { item: '🎒', furniture: '🛋️', car: '🚗', land: '🏞️', business: '🏪' };
 
 function Pic({ l }: { l: Pick<MarketListing, 'kind' | 'ref' | 'icon'> }) {
   const fallback = <span className="mk-pic__emoji" aria-hidden>{l.icon || KIND_EMOJI[l.kind]}</span>;

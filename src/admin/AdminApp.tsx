@@ -20,6 +20,7 @@ import Broadcast from './Broadcast';
 import Earn from './Earn';
 import Music from './Music';
 import Market from './Market';
+import Business from './Business';
 import './admin.css';
 
 const NAV = [
@@ -31,6 +32,7 @@ const NAV = [
   { to: '/admin/earn', label: 'Earn', icon: 'cash' },
   { to: '/admin/music', label: 'Music', icon: 'music' },
   { to: '/admin/market', label: 'Market', icon: 'cash' },
+  { to: '/admin/business', label: 'Business', icon: 'cash' },
   { to: '/admin/payments', label: 'Payments', icon: 'cash' },
   { to: '/admin/ads', label: 'Ads', icon: 'bell' },
   { to: '/admin/feedback', label: 'Feedback', icon: 'mail' },
@@ -127,6 +129,7 @@ export default function AdminApp() {
           <Route path="earn" element={<Earn />} />
           <Route path="music" element={<Music />} />
           <Route path="market" element={<Market />} />
+          <Route path="business" element={<Business />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>

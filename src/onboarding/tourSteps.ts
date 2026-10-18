@@ -198,6 +198,19 @@ export const TOUR_STEPS: TourStep[] = [
     before: toGame,
   },
   {
+    id: 'business',
+    target: '[data-tour="app-business"]',
+    title: 'Own a business',
+    body: 'Buy a shop, a buka, a bar or a filling station on a plot in Ring Road, Uselu, GRA and more. It earns while you hustle: collect your takings, restock, hire staff and upgrade.',
+    points: [
+      'Takings stop growing after about two days, so log in often.',
+      'Other players who spend at your place pay you a share.',
+      'Bigger ones need the Business skill or a School certificate.',
+    ],
+    isNew: true,
+    before: () => toPhone('home'),
+  },
+  {
     id: 'houses',
     target: '[data-tour="app-houses"]',
     title: 'Upgrade the home you have',

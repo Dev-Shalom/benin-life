@@ -26,7 +26,7 @@ export type AdminTable =
   | 'origin_tiers' | 'traits' | 'dreams' | 'start_homes' | 'career_tracks' | 'career_levels'
   | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture' | 'starter_furniture'
   | 'place_zones' | 'zone_actions' | 'place_moods' | 'npc_roster' | 'crowd_profiles' | 'hype_templates' | 'place_events' | 'topup_packs'
-  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'group_missions' | 'yahoo_ranks' | 'invest_products' | 'invest_markets' | 'hustles' | 'hustle_car_classes' | 'hustle_fish' | 'skills' | 'skill_curve' | 'skill_sources' | 'courses' | 'certificates' | 'challenge_templates' | 'challenge_template_stats' | 'lounge_tiers' | 'house_upgrades' | 'market_settings';
+  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'group_missions' | 'yahoo_ranks' | 'invest_products' | 'invest_markets' | 'hustles' | 'hustle_car_classes' | 'hustle_fish' | 'skills' | 'skill_curve' | 'skill_sources' | 'courses' | 'certificates' | 'challenge_templates' | 'challenge_template_stats' | 'lounge_tiers' | 'house_upgrades' | 'market_settings' | 'business_types' | 'business_plots';
 
 export interface PlayerRow {
   id: string;
