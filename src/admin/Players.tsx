@@ -4,7 +4,7 @@ import { toast } from '../ui';
 import { errorMessage } from '../lib/api';
 import { naira, nairaShort, parseNaira } from '../lib/format';
 import { useGame } from '../state/game';
-import { adminApi, type CharmRow, type JailCaseRow, type PlayerDetail, type PlayerRow } from './api';
+import { adminApi, type CharmRow, type JailCaseRow, type PlayerDetail, type PlayerRow, type PlayerSkillRow } from './api';
 import { Badge, Btn, ConfirmButton, DetailPane, LoadError, PageHead, Skeleton } from './parts';
 import { timeShort, useLoad } from './util';
 
@@ -211,6 +211,8 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
                 : <ConfirmButton tone="primary" confirmText="Tap again: allow sending" disabled={busy} onConfirm={() => run(() => adminApi.setTransferTrusted(id, true))}>Allow to send money now</ConfirmButton>}
             </div>
           </section>
+
+          <PlayerSkills id={id} />
 
           <PlayerCharms id={id} />
 
@@ -428,6 +430,47 @@ function PlayerCharms({ id }: { id: string }) {
           <ConfirmButton tone="ghost" confirmText="Tap again: clear all" disabled={busy} onConfirm={() => void clear(null)}>Clear all charms</ConfirmButton>
         </div>
       )}
+    </section>
+  );
+}
+
+/** R3: a player's skills (level, XP) with a level picker and an exact-XP box per skill. Every change is audited (set_skill). */
+function PlayerSkills({ id }: { id: string }) {
+  const { data, reload } = useLoad(() => adminApi.playerSkills(id), [id]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [xpIn, setXpIn] = useState<Record<string, string>>({});
+  const rows: PlayerSkillRow[] = data?.rows ?? [];
+  const max = data?.max_level ?? 10;
+  const set = async (skill: string, level: number | null, xp: number | null) => {
+    setBusy(skill);
+    try {
+      const r = await adminApi.setPlayerSkill(id, skill, level, xp);
+      toast(r.message, 'good');
+      setXpIn((m) => ({ ...m, [skill]: '' }));
+      await reload();
+    } catch (e) { toast(errorMessage(e), 'bad'); } finally { setBusy(null); }
+  };
+  return (
+    <section className="adm-box" data-testid="adm-skills">
+      <h3 className="adm-h3">🌟 Skills</h3>
+      {data && rows.length === 0 && <p className="adm-empty">No skills set up.</p>}
+      <div className="adm-rows">
+        {rows.map((r) => (
+          <div key={r.skill} className="adm-ledger__row" data-testid={`adm-skill-${r.skill}`}>
+            <span className="adm-ledger__label">
+              {r.icon} {r.name} · level {r.level}
+              <small>{r.xp.toLocaleString('en-NG')} XP{r.next_xp != null ? ` · next level at ${r.next_xp.toLocaleString('en-NG')}` : ' · max level'}</small>
+            </span>
+            <select className="adm-input" aria-label={`${r.name} level`} value={r.level} disabled={busy === r.skill}
+              onChange={(e) => void set(r.skill, Number(e.target.value), null)}>
+              {Array.from({ length: max }, (_, i) => i + 1).map((l) => <option key={l} value={l}>Lvl {l}</option>)}
+            </select>
+            <input className="adm-input" type="number" min={0} inputMode="numeric" placeholder="XP" aria-label={`${r.name} exact XP`} style={{ width: 84 }}
+              value={xpIn[r.skill] ?? ''} onChange={(e) => setXpIn((m) => ({ ...m, [r.skill]: e.target.value }))} />
+            <Btn tone="ghost" small disabled={busy === r.skill || (xpIn[r.skill] ?? '') === ''} onClick={() => void set(r.skill, null, Math.max(0, Math.floor(Number(xpIn[r.skill]))))}>Set XP</Btn>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

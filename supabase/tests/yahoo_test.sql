@@ -2,6 +2,8 @@
 -- the original Y1 numbers so its maths stays exact; group 14 at the end covers the fairer busts. Rolled back.
 update yahoo_jobs set caught_pct = case id when 'chat_client' then 20 when 'romance_job' then 25 when 'big_job' then 35 when 'cash_out' then 32 else caught_pct end;
 update game_config set value = '100' where key in ('yahoo.seize_laptop_pct', 'yahoo.confiscate_pct');
+-- R3 skills (20261017000400) gate the Big job and cut the EFCC chance; this suite tests the Y1 maths with skills off (skills_test.sql covers them)
+update game_config set value = 'false' where key = 'skills.enabled';
 -- Y1 Yahoo lifestyle (20261012001600_yahoo.sql). Rolled back. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/yahoo_test.sql
 -- Time moves with bl.test_offset_seconds; rolls are pinned with bl.test_rand (bl_rand).

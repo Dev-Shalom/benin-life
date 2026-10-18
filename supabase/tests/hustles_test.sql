@@ -4,6 +4,9 @@
 --   R_HI 0.9999999 (no risk / no loss / no bonus, top pay, last fish), R_MID 0.5, R_LO 0.01 (loss, risk and bonus all fire).
 -- Groups: 1 grants / anon · 2 seeds + numbers · 3 Bolt · 4 PoS · 5 food stall · 6 DJ + MC · 7 tutoring · 8 fishing · 9 mechanic ·
 -- 10 cooldown / cap / energy / switch / admin edit · 11 cards + status · 12 referral · 13 tips · 14 weekly leaderboard · 15 RLS / admin.
+-- R3 skills (20261017000400) add pay boosts and gate the Engine job; this suite tests the E2 maths with skills off (skills_test.sql covers them)
+update game_config set value = 'false' where key = 'skills.enabled';
+
 create or replace function pg_temp.hint_of(p_sql text) returns text
 language plpgsql as $$
 declare v_h text;

@@ -26,7 +26,7 @@ export type AdminTable =
   | 'origin_tiers' | 'traits' | 'dreams' | 'start_homes' | 'career_tracks' | 'career_levels'
   | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture' | 'starter_furniture'
   | 'place_zones' | 'zone_actions' | 'place_moods' | 'npc_roster' | 'crowd_profiles' | 'hype_templates' | 'place_events' | 'topup_packs'
-  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'yahoo_ranks' | 'invest_products' | 'invest_markets' | 'hustles' | 'hustle_car_classes' | 'hustle_fish';
+  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'yahoo_ranks' | 'invest_products' | 'invest_markets' | 'hustles' | 'hustle_car_classes' | 'hustle_fish' | 'skills' | 'skill_curve' | 'skill_sources';
 
 export interface PlayerRow {
   id: string;
@@ -92,6 +92,8 @@ export interface PaymentsData {
 type Msg = { message: string };
 
 /** B2: a player's charm (Admin → Players → Charms). */
+export interface PlayerSkillRow { skill: string; name: string; icon: string; xp: number; level: number; next_xp: number | null }
+
 export interface CharmRow {
   id: number; kind: string; name: string; icon: string; status: string; expires_at: string | null; uses_left: number | null;
   created_at: string; ended_at: string | null; effect: string | null; debuff: boolean; live: boolean;
@@ -169,5 +171,9 @@ export const adminApi = {
   jailRelease: (caseId: number, reason: string) => rpc<Msg>('admin_jail_release', { p_case_id: caseId, p_reason: reason }),
   /** B2: a player's charms; clear one (id) or all active ones (null). Audited. */
   playerCharms: (userId: string) => rpc<{ rows: CharmRow[] }>('admin_player_charms', { p_user: userId }),
+  /** R3: a player's skills; set a level (jumps to its XP) or exact XP. Audited (set_skill). */
+  playerSkills: (userId: string) => rpc<{ max_level: number; rows: PlayerSkillRow[] }>('admin_player_skills', { p_user: userId }),
+  setPlayerSkill: (userId: string, skill: string, level: number | null, xp: number | null) =>
+    rpc<Msg & { skill: string; xp: number; level: number }>('admin_set_player_skill', { p_user: userId, p_skill: skill, p_level: level, p_xp: xp }),
   charmClear: (userId: string, charmId: number | null) => rpc<Msg & { cleared: number }>('admin_charm_clear', { p_user: userId, p_charm: charmId }),
 };
