@@ -7,6 +7,7 @@ import {
 } from '../../../../api/invest';
 import { naira, nairaShort } from '../../../../lib/format';
 import { Button, Sheet, toast } from '../../../../ui';
+import { SellToPlayersButton } from '../../SellToPlayers';
 import { LineChart, Spark, trend, type Pt } from './Spark';
 import { useInvest } from './useInvest';
 
@@ -397,6 +398,10 @@ function MarketSheet({ m, d, run, close, goWhere, startSell }: { m: InvestMarket
                 onClick={() => void run(() => (land ? landSell(m.id, qty) : investMarketSell(m.id, qty >= held ? null : qty))).then((r) => { if (r) { setVal(''); if (qty >= held) close(); } })}>
                 {qty <= 0 ? 'Enter how many' : qty > held ? 'You do not have that many' : `Sell for ${naira(total)}`}
               </Button>
+            )}
+            {land && mode === 'sell' && held > 0 && (
+              <SellToPlayersButton kind="land" refId={m.id} maxQty={held} name={`${m.name} plots`} icon={m.icon} block label="Sell to players instead"
+                onListed={() => { void run(async () => ({ message: '' }), true); close(); }} />
             )}
           </>
         )}

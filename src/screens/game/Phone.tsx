@@ -38,6 +38,7 @@ const YahooApp = lazy(() => import('./phone/YahooApp'));
 const HustlesApp = lazy(() => import('./phone/HustlesApp'));
 const SchoolApp = lazy(() => import('./phone/SchoolApp'));
 const HelpApp = lazy(() => import('./phone/HelpApp'));
+const MarketApp = lazy(() => import('./phone/MarketApp'));
 
 interface App {
   id: string;
@@ -59,6 +60,7 @@ const APPS: App[] = [
   { id: 'food', name: 'Chowdeck', emoji: '🍲', bg: 'linear-gradient(160deg,#4fc98a,#0f7a4c)', pitch: 'Order rice, swallow and small chops to your door, from bukas all over Benin.' },
   { id: 'houses', name: 'Houses', emoji: '🔑', bg: 'linear-gradient(160deg,#f2a65a,#c96a1f)', pitch: 'Rent a bigger place, from a self-contain in Uselu to a duplex in GRA.' },
   { id: 'cars', name: 'Cars', emoji: '🚗', bg: 'linear-gradient(160deg,#4aa3ff,#1f62c9)', pitch: 'Buy a tokunbo or a brand-new ride. Fuel money not included.' },
+  { id: 'market', name: 'Market', emoji: '🏷️', bg: 'linear-gradient(160deg,#2fb7a6,#127a6e)', pitch: 'Buy and sell cars, land, furniture and gadgets with other players.' },
   { id: 'billboards', name: 'Billboards', emoji: '📺', bg: 'linear-gradient(160deg,#ff6b78,#d93646)', pitch: '' },
   { id: 'hustles', name: 'Hustles', emoji: '💪', bg: 'linear-gradient(160deg,#ffb347,#e2552c)', pitch: '' },
   { id: 'school', name: 'School', emoji: '🎓', bg: 'linear-gradient(160deg,#9b72f0,#4a2aa0)', pitch: '' },
@@ -253,9 +255,9 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp state={state} onGoHome={goHome} onBack={() => setScreen('home')} onOpenAlerts={() => setScreen('alerts')} alertsUnread={unread} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' ? (
+                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' || app.id === 'market' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
-                        {app.id === 'help' ? <HelpApp /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
+                        {app.id === 'help' ? <HelpApp /> : app.id === 'market' ? <MarketApp /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
                           : app.id === 'billboards' ? <BillboardsApp key={bbTab} initialTab={bbTab} onOpenBoard={openBoard} />
                           : app.id === 'cars' ? <CarsApp state={state} onGo={goToPlace} />
                             : app.id === 'police' ? <PoliceApp state={state} onGo={goToPlace} />

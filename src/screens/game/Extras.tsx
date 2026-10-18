@@ -12,6 +12,7 @@ import { errorMessage } from '../../lib/api';
 import { cameWithHouse, furnitureKey, type HomeLayout, type HomeLayoutId, type OwnedPiece, type SavedHomePosition } from '../../art/home3d/model';
 import { naira, nairaShort } from '../../lib/format';
 import { Button, Icon, Modal, Segmented, Sheet, toast } from '../../ui';
+import { SellToPlayersButton } from './SellToPlayers';
 
 export function ShortcutsSheet() {
   const overlay = useUi((s) => s.overlay);
@@ -285,7 +286,10 @@ export function BuySheet({ tab, onTab, home, onBought, onSold, onArrange }: {
                     </span>
                   </span>
                   {m.canSell && (
-                    <button type="button" className="buy-mine__btn buy-mine__btn--sell" onClick={() => setSelling(m)}>Sell</button>
+                    <button type="button" className="buy-mine__btn buy-mine__btn--sell" onClick={() => setSelling(m)}>Sell to shop</button>
+                  )}
+                  {m.canSell && !m.included && (
+                    <SellToPlayersButton kind="furniture" refId={m.id} itemKey={m.key} name={m.name} icon={m.emoji} label="Sell to players" onListed={onSold} />
                   )}
                   <button type="button" className="buy-mine__btn" onClick={() => onArrange(m.key)}>{m.placed ? 'Move' : 'Place'}</button>
                 </li>

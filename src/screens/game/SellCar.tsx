@@ -9,6 +9,7 @@ import { useGame } from '../../state/game';
 import { useGarage } from '../../state/garage';
 import { Thumb } from '../../art/thumbs/Thumb';
 import { Button, Modal, toast } from '../../ui';
+import { SellToPlayersButton } from './SellToPlayers';
 
 export function carPayout(base: number): number {
   const pct = Math.max(0, Math.min(100, Number(getCfg('cars.resale_pct', 60))));
@@ -44,7 +45,8 @@ export function SellCarButton({ car, icon, size = 'sm', onSold }: {
   return (
     <>
       <Button size={size} variant="ghost" disabled={traveling} onClick={() => setAsk(true)}
-        title={traveling ? 'You can sell when you arrive' : undefined}>Sell</Button>
+        title={traveling ? 'You can sell when you arrive' : undefined}>Sell to shop</Button>
+      <SellToPlayersButton kind="car" refId={car.id} name={car.name} icon={icon ?? undefined} size={size} onListed={() => { onSold?.(); useGarage.getState().bump(); }} />
       <Modal open={ask} onClose={() => !busy && setAsk(false)} title={`Sell your ${car.name}?`}
         art={<Thumb spec={{ type: 'car', id: car.id }} fallback={<span className="sell-dialog__emoji">{icon || '🚗'}</span>} className="sell-dialog__thumb" />}
         actions={

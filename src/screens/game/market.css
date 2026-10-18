@@ -1,0 +1,66 @@
+/* R9 Benin Market (phone app + the "Sell to players" sheet). Light tokens only; every control is 16px+ on touch. */
+.mk-app { display: flex; flex-direction: column; gap: 10px; }
+.mk-app > *, .mk-browse > *, .mk-mine > * { flex: none; }
+.mk-tabs, .mk-kinds { margin: 0; }
+.mk-browse, .mk-mine { display: flex; flex-direction: column; gap: 10px; }
+.mk-filters { display: grid; gap: 8px; }
+.mk-filters__row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mk-search, .mk-max, .mk-select select { width: 100%; font-size: 16px; }
+.mk-select { display: block; }
+.mk-count { margin: 0 2px; font: 700 12.5px var(--font-display); color: var(--ink-3); }
+.mk-list { display: grid; gap: 8px; }
+
+.mk-card {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; text-align: left; cursor: pointer;
+  border: 0; border-radius: 16px; background: var(--surface); box-shadow: var(--e1); color: var(--ink);
+}
+.mk-card:active { transform: scale(0.99); }
+.mk-card--mine { cursor: default; }
+.mk-card--mine:active { transform: none; }
+.mk-card__main { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.mk-card__title { font: 700 14px var(--font-display); overflow-wrap: anywhere; }
+.mk-card__cond { font-size: 12.5px; color: var(--ink-2); }
+.mk-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12px; color: var(--ink-3); }
+.mk-card__time { white-space: nowrap; }
+.mk-card__price { display: grid; justify-items: end; gap: 4px; flex: none; }
+.mk-card__price b { font: 800 16px var(--font-display); color: var(--ink); }
+
+.mk-pic { display: grid; place-items: center; width: 56px; height: 48px; flex: none; border-radius: 12px; background: var(--surface-2); overflow: hidden; }
+.mk-pic__emoji { font-family: var(--font-emoji); font-size: 26px; line-height: 1; }
+.mk-pic__thumb { width: 56px; height: 44px; display: grid; place-items: center; }
+.mk-sheet__art .mk-pic { width: 84px; height: 64px; margin: 0 auto; }
+.mk-sheet__art .mk-pic__emoji { font-size: 38px; }
+
+.mk-tag { padding: 1px 7px; border-radius: 999px; background: var(--chip-bg); color: var(--ink-2); font: 700 11px var(--font-display); }
+.mk-tag--private { background: var(--blue-50); color: var(--blue-500); }
+.mk-tag--warn { background: var(--amber-50); color: var(--amber-800); }
+.mk-deal { padding: 1px 7px; border-radius: 999px; font: 700 11px var(--font-display); white-space: nowrap; }
+.mk-deal--good { background: var(--green-50); color: var(--green-700); }
+.mk-deal--fair { background: var(--chip-bg); color: var(--ink-2); }
+.mk-deal--dear { background: var(--amber-50); color: var(--amber-800); }
+
+.mk-section { display: grid; gap: 8px; padding: 10px; border-radius: 16px; background: var(--surface-2); }
+.mk-section h4 { margin: 0 2px; font: 800 13px var(--font-display); color: var(--ink-2); }
+.mk-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; background: var(--surface); }
+.mk-row--plain { padding: 8px 10px; }
+.mk-row small, .mk-offer small { display: block; font-size: 12px; color: var(--ink-3); }
+.mk-offer { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px; border-radius: 12px; background: var(--surface); box-shadow: var(--e1); }
+.mk-offer__text { min-width: 0; font-size: 13.5px; overflow-wrap: anywhere; }
+.mk-offer__btns { display: flex; justify-content: flex-end; gap: 6px; flex: none; }
+.mk-err { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--red-50); color: var(--red-600); font-size: 13px; }
+.mk-link { padding: 0; border: 0; background: none; color: var(--primary-strong); font: 700 13px var(--font-display); text-decoration: underline; cursor: pointer; }
+.mk-foot { margin: 2px 0 0; font-size: 12px; color: var(--ink-3); text-align: center; }
+.mk-app .is-up { color: var(--good); }
+
+/* sell sheet + purchase sheet */
+.mk-sell, .mk-sheet { display: grid; gap: 8px; text-align: left; }
+.mk-sell__no { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--red-50); color: var(--red-600); font-size: 13.5px; }
+.mk-sell__qty { display: flex; align-items: center; justify-content: space-between; font-size: 13.5px; color: var(--ink-2); }
+.mk-sell__stepper { display: inline-flex; align-items: center; gap: 12px; }
+.mk-sell__stepper button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--surface-2); font: 800 18px var(--font-display); cursor: pointer; color: var(--ink); }
+.mk-sell__stepper button:disabled { opacity: 0.4; cursor: default; }
+.mk-sell__price { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.mk-sell__price .input { width: 100%; font-size: 16px; }
+.mk-sell__range { margin: -2px 2px 2px; font-size: 12px; color: var(--ink-3); }
+.mk-sell__range.is-bad { color: var(--red-600); font-weight: 700; }
+.mk-sheet__note { margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--blue-50); color: var(--ink-2); font-size: 13px; }

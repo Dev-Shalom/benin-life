@@ -281,6 +281,29 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: 'car vehicle clothes boutique outfit house rent move flat duplex',
   },
 
+  {
+    id: 'market',
+    topic: 'buying',
+    title: 'Benin Market: buy and sell with players',
+    summary: 'Sell your cars, land, furniture and gadgets to other players, or buy from them, from the Market app on your phone.',
+    steps: [
+      'To sell, open the thing: Bag for items, Phone then Cars for a car, Buy then Arrange for furniture, or Bank then Invest for land. Tap Sell to players.',
+      'Set a price. The sheet shows the lowest and highest price allowed and what you get after the market fee. Tick Open to offers if you want lower bids, or type a friend\'s username to sell only to them.',
+      'Your thing is locked while it is listed: you cannot use it, place it or drive it. Take it down any time, or it comes back by itself when the listing ends.',
+      'To buy, open Phone then Market. Filter by Items, Furniture, Cars or Land, search, and sort by price or best deal. Tap a card, check the seller and the condition, then confirm.',
+      'Offers: on a listing marked Offers, tap Make an offer. The seller gets an alert and can accept or decline. If they accept and you still have the money, you buy it at your offer.',
+    ],
+    where: 'Phone, then Market. Browse, My listings (cancel, answer offers) and My offers (withdraw).',
+    tips: [
+      'A market fee comes off every sale. Check the app for the current fee and price limits.',
+      'Cars keep their plate and wear. Plots keep their cost, and any pending land deal must be finished before you sell plots.',
+      'Furniture that is placed must be picked up first (Store). Pieces that came with your house, food, drinks and similar things cannot be sold to players.',
+      'New accounts must play a while before they can sell to players. Buying is open straight away.',
+      'See a scam or something wrong? Open the listing and tap Report this listing.',
+    ],
+    keywords: 'market marketplace jiji sell buy trade player listing offer car land plot furniture sell to players fee escrow',
+  },
+
   // ---- Jobs ------------------------------------------------------------------------------------------------------
   {
     id: 'jobs',

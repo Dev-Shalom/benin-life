@@ -21,6 +21,7 @@ function summary(a: AuditEntry): string {
       const fields = Object.keys(row).filter((k) => !['id', 'word', 'track_id', 'level'].includes(k));
       return `${a.action === 'row_insert' ? 'Added' : 'Edited'} ${d.table} · ${id}${fields.length ? ` · ${fields.join(', ')}` : ''}`;
     }
+    case 'market_remove': return `Removed market listing “${d.title}” (${naira(Number(d.price ?? 0))})${d.reason ? ` · ${d.reason}` : ''}`;
     case 'chat_hide': case 'chat_unhide': return `“${String(d.body ?? '').slice(0, 80)}”`;
     case 'ban': case 'unban': return d.reason ? String(d.reason) : '';
     case 'admin_claim': return `Claimed with ${d.email}`;

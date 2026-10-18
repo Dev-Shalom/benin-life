@@ -10,14 +10,16 @@ import type { InventoryItem, PanelProps } from '../lib/types';
 import { useUi } from '../state/ui';
 import { Button, EmptyState, toast } from '../ui';
 import { ItemCard } from './shop/ShopUI';
+import { SellToPlayersButton } from '../screens/game/SellToPlayers';
+import { useMarketInfo } from '../api/market';
 
 function verbFor(it: InventoryItem): string {
   if (it.kind !== 'use') return '';
   return it.category === 'food' ? 'Eat' : it.category === 'drink' ? 'Drink' : 'Use';
 }
 
-function Row({ it, sellHere, busyNow, busy, onUse, onSell }: {
-  it: InventoryItem; sellHere: boolean; busyNow: boolean; busy: string | null;
+function Row({ it, sellHere, busyNow, busy, onUse, onSell, tradeable }: {
+  it: InventoryItem; sellHere: boolean; busyNow: boolean; busy: string | null; tradeable: boolean;
   onUse: (id: string) => void; onSell: (id: string) => void;
 }) {
   const verb = verbFor(it);
@@ -35,6 +37,7 @@ function Row({ it, sellHere, busyNow, busy, onUse, onSell }: {
               Sell {naira(it.resale_price)}
             </Button>
           )}
+          {tradeable && <SellToPlayersButton kind="item" refId={it.id} maxQty={it.qty} name={it.name} icon={it.icon ?? undefined} />}
         </>
       } />
   );
@@ -48,6 +51,8 @@ export default function InventoryPanel({ state, location, refresh }: PanelProps)
   const p = state.profile;
   const busyNow = Boolean(p.busy_until && Date.parse(p.busy_until) > now);
   const here = state.location.id === location.id && !state.travel;
+  const market = useMarketInfo();
+  const tradeableIds = useMemo(() => new Set(market?.tradeable_items ?? []), [market]);
   const sellHere = here && canSellAt(location.scene, String(getCfg('shop.sell_scenes', 'market')));
   const items = useMemo(() => state.inventory ?? [], [state.inventory]);
   const groups = useMemo(() => {
@@ -91,7 +96,7 @@ export default function InventoryPanel({ state, location, refresh }: PanelProps)
           <h4 className="shop__cat">{g.label}</h4>
           <div className="items">
             {g.items.map((it) => (
-              <Row key={it.id} it={it} sellHere={sellHere} busyNow={busyNow} busy={busy}
+              <Row key={it.id} it={it} sellHere={sellHere} busyNow={busyNow} busy={busy} tradeable={tradeableIds.has(it.id)}
                 onUse={(id) => void run(`use:${id}`, () => itemUse(id))}
                 onSell={(id) => void run(`sell:${id}`, () => itemSell(id, 1))} />
             ))}
