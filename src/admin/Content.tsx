@@ -732,7 +732,7 @@ const DEFS: TableDef[] = [
     newRow: { id: '', name: '', kind: 'commissioner', title: 'Comm.', icon: '🏛️', blurb: '', elected: false, ward_scoped: false, salary_per_day: 40000, fee: 0, min_charisma: 0, min_account_days: 3, cert_any: [], alt_job_level: 0, sort: 100, active: true },
   },
   {
-    id: 'gov_policies', table: 'gov_policies', title: 'Policies', emoji: '📜', blurb: 'R12 Benin Votes (docs/POLITICS.md). The whitelist the Governor picks ONE policy from per term. Kind: travel_discount (fares in "Fares", on the weekday if set: 5 = Friday, Benin time), levy_cut (council levy chance for business owners), fitness_xp (Fitness XP bonus), hygiene_slow (hygiene decays slower). Value is a percent. Keep values small: a policy is a perk, not an economy.',
+    id: 'gov_policies', table: 'gov_policies', title: 'Policies', emoji: '📜', blurb: 'R12 Benin Votes (docs/POLITICS.md). The whitelist the Governor picks ONE policy from per term. Kind: travel_discount (fares in "Fares", on the weekday if set: 5 = Friday, Benin time), levy_cut (council levy chance for business owners), fitness_xp (Fitness XP bonus), hygiene_slow (hygiene decays slower), tax_cut (E4: every weekly income tax rate is cut by this percent, "Tax holiday"). Value is a percent. Keep values small: a policy is a perk, not an economy.',
     pk: ['id'], insert: true, inline: ['value'],
     toggle: { key: 'active', label: 'On' },
     titleOf: (r) => `${r.icon ?? ''} ${r.name}`.trim(),
@@ -741,7 +741,7 @@ const DEFS: TableDef[] = [
       { key: 'id', label: 'Policy id', type: 'text', help: 'e.g. keke_fridays (new: lowercase, no spaces)' },
       { key: 'name', label: 'Name', type: 'text' }, { key: 'icon', label: 'Emoji', type: 'text' },
       { key: 'blurb', label: 'Blurb', type: 'long' },
-      { key: 'kind', label: 'Kind', type: 'text', help: 'travel_discount, levy_cut, fitness_xp or hygiene_slow' },
+      { key: 'kind', label: 'Kind', type: 'text', help: 'travel_discount, levy_cut, fitness_xp, hygiene_slow or tax_cut' },
       { key: 'value', label: 'Value (%)', type: 'num' },
       { key: 'modes', label: 'Fares it covers (travel_discount)', type: 'list', help: 'keke, bus, drop (comma separated)' },
       { key: 'weekday', label: 'Only on this weekday (travel_discount)', type: 'intnull', help: '1 = Monday ... 7 = Sunday; empty = every day' },

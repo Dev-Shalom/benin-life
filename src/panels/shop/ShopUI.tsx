@@ -62,10 +62,12 @@ function Stepper({ value, max, onChange }: { value: number; max: number; onChang
  * One item row. `price` is per item; with `maxQty` > 1 a quantity stepper appears and the button shows the total.
  * `blocked` (a reason) disables the button and shows the reason as its label.
  */
-export function ItemCard({ item, price, priceNote, owned, kind, maxQty = 1, action, actionVariant = 'green', blocked, busy, onAction, extra, note }: {
+export function ItemCard({ item, price, priceNote, taxNote, owned, kind, maxQty = 1, action, actionVariant = 'green', blocked, busy, onAction, extra, note }: {
   item: ItemBase;
   price?: number;
   priceNote?: string;
+  /** E4: "incl. VAT" under the price (the price already includes it). */
+  taxNote?: string;
   owned?: number;
   kind?: string;
   maxQty?: number;
@@ -95,6 +97,7 @@ export function ItemCard({ item, price, priceNote, owned, kind, maxQty = 1, acti
           <div className="item__price">
             <b>{naira(price)}</b>
             {priceNote && <span>{priceNote}</span>}
+            {taxNote && <small className="item__tax" data-testid="item-vat-note">{taxNote}</small>}
           </div>
         )}
       </div>

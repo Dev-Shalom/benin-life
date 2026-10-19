@@ -1,3 +1,6 @@
+-- E4 money sinks (20261019000400): this suite asserts exact balances and prices, so the new fees, tax, bills and VAT are pinned off here.
+-- They are covered by money_sinks_test.sql.
+update game_config set value = 'false' where key in ('economy.transfer_fees_enabled', 'economy.tax_enabled', 'economy.bills_enabled', 'economy.vat_enabled', 'economy.luxury_enabled');
 -- B1 buy catalogue + arrange (20261012000200_buy_catalogue.sql). Rolled back. Run:
 --   bash scripts/sql-test.sh -- supabase/tests/buy_catalogue_test.sql
 create or replace function pg_temp.expect_hint(p_sql text, p_hint text) returns text

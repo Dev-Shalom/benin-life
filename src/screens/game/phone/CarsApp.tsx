@@ -12,6 +12,7 @@ import { EmptyState, toast } from '../../../ui';
 import { ItemCard } from '../../../panels/shop/ShopUI';
 import { SellCarButton } from '../SellCar';
 import { Thumb } from '../../../art/thumbs/Thumb';
+import { taxNote } from '../../../lib/tax';
 
 export default function CarsApp({ state, onGo }: { state: GameState; onGo: (id: string) => void }) {
   const locations = useGame((s) => s.locations);
@@ -129,7 +130,7 @@ function CarBuyCard({ item, owned, here, blocked, busy, others, exclusive, onBuy
   useEffect(() => { setConfirm(false); }, [here]);
   const base = item.base_price ?? item.price;
   const diff = item.price - base;
-  return <ItemCard item={item} price={item.price} owned={owned} kind={item.kind} blocked={blocked}
+  return <ItemCard item={item} price={item.price} taxNote={taxNote(item.vat_pct ?? 0, item.lux_pct ?? 0)} owned={owned} kind={item.kind} blocked={blocked}
     busy={busy} action={here ? (confirm ? 'Confirm purchase' : 'Review purchase') : 'Go to dealer'}
     onAction={() => { if (!here) { onGo(); return; } if (!confirm) { setConfirm(true); return; } setConfirm(false); onBuy(); }}
     extra={

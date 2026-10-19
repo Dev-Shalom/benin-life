@@ -10,6 +10,7 @@ import {
 import { errorMessage } from '../../../lib/api';
 import { useNow } from '../../../lib/clock';
 import { naira, nairaShort } from '../../../lib/format';
+import { taxInfo, type TaxInfo } from '../../../api/economy';
 import { useGame } from '../../../state/game';
 import { usePolitics } from '../../../state/politics';
 import { useUi } from '../../../state/ui';
@@ -155,6 +156,22 @@ function MyOffice({ s, h }: { s: PolStatus; h: PolHolder }) {
   );
 }
 
+/** E4: what the state takes from your weekly income, and the Governor's tax holiday (docs/ECONOMY_SINKS.md). */
+function TaxCard() {
+  const [t, setT] = useState<TaxInfo | null>(null);
+  useEffect(() => { let alive = true; taxInfo().then((r) => alive && setT(r)).catch(() => undefined); return () => { alive = false; }; }, []);
+  if (!t || !t.enabled) return null;
+  return (
+    <section className="po-card" data-testid="pol-tax">
+      <h4>🏛️ Edo State income tax</h4>
+      <p className="po-hint">
+        Weekly, on what you earn: {t.bands.map((b) => `${b.pct === 0 ? 'free' : `${t.holiday ? b.eff_pct : b.pct}%`} ${b.to == null ? `above ${nairaShort(b.from)}` : b.from === 0 ? `on the first ${nairaShort(b.to)}` : `to ${nairaShort(b.to)}`}`).join(', ')}.
+        {t.holiday ? ` Tax holiday: the Governor cut every rate by ${t.holiday.cut_pct}% for the term.` : ' The Governor can declare a tax holiday as the term policy.'}
+      </p>
+    </section>
+  );
+}
+
 function GovTab({ s }: { s: PolStatus }) {
   const seats = s.government;
   const top = seats.filter((x) => x.kind === 'governor' || x.kind === 'chairman');
@@ -172,6 +189,7 @@ function GovTab({ s }: { s: PolStatus }) {
           <p className="po-hint">{s.policy.blurb} Set by Gov. @{s.policy.by}. In force until the term ends{s.policy.term_end ? ` (${span((Date.parse(s.policy.term_end) - now) / 1000)} left)` : ''}.</p>
         </section>
       ) : filled > 0 ? <p className="po-fine">The Governor has not set a policy yet.</p> : null}
+      <TaxCard />
       {filled === 0 && <EmptyState icon="sparkle" title="No government yet" body="The seats are empty. Run for office, or help choose who sits in them: open the Elections tab." />}
       {filled > 0 && end && <p className="po-fine">Current term ends in {span((Date.parse(end) - now) / 1000)}.</p>}
       <h4 className="po-h">The top table</h4>

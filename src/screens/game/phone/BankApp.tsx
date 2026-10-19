@@ -14,9 +14,12 @@ import { Button, toast } from '../../../ui';
 import { AmountBox } from '../../../panels/bank/BankUI';
 import { realWait, useBankInfo, useGoTo } from '../../../panels/bank/bankHooks';
 import { InvestTab, SaveTab } from './invest/InvestApp';
+import { BillsTab } from './BankBills';
+import { StatusTab } from './BankStatus';
+import { FeeLine, useFeeQuote } from './FeeLine';
 import '../../../styles/invest.css';
 
-type Tab = 'send' | 'save' | 'invest' | 'history' | 'receipts' | 'where';
+type Tab = 'send' | 'bills' | 'status' | 'save' | 'invest' | 'history' | 'receipts' | 'where';
 
 function History({ active }: { active: boolean }) {
   const [rows, setRows] = useState<LedgerRow[] | null>(null);
@@ -111,8 +114,10 @@ export default function BankApp({ state }: { state: GameState }) {
 
   const t = info?.transfer;
   const n = Number(amount) || 0;
-  const fee = t?.fee ?? 0;
-  const maxSend = t ? Math.max(0, Math.min(p.bank - fee, t.left_today)) : 0;
+  const quote = useFeeQuote(n, t?.min_amount ?? 0);
+  const fee = quote?.fee ?? t?.fee ?? 0;
+  const tiered = Boolean(t?.fee_rules?.enabled);
+  const maxSend = t ? Math.max(0, Math.min(tiered ? p.bank : p.bank - fee, t.left_today)) : 0;
   const blocked = !t ? 'Loading…' : !user.trim() ? 'Type a username'
     : n < t.min_amount ? `At least ${naira(t.min_amount)}` : n > t.left_today ? `Daily limit: ${naira(t.left_today)} left`
       : n + fee > p.bank ? 'Not enough in the bank' : null;
@@ -155,7 +160,7 @@ export default function BankApp({ state }: { state: GameState }) {
       </div>
       <div className="bank-row"><span>Cash in pocket</span><b>{naira(p.cash)}</b></div>
       <div className="chop__tabs" role="tablist">
-        {([['send', '💸 Send'], ['save', '🐷 Save'], ['invest', '📈 Invest'], ['history', '📜 History'], ['receipts', '🧾 Receipts'], ['where', '📍 Where']] as const).map(([id, label]) => (
+        {([['send', '💸 Send'], ['bills', '🧾 Bills'], ['status', '🏛️ Status'], ['save', '🐷 Save'], ['invest', '📈 Invest'], ['history', '📜 History'], ['receipts', '🧾 Receipts'], ['where', '📍 Where']] as const).map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} className={`chop__tab${tab === id ? ' is-on' : ''}`}
             onClick={() => setTab(id)}>{label}</button>
         ))}
@@ -165,11 +170,13 @@ export default function BankApp({ state }: { state: GameState }) {
       {tab === 'send' && t && (to ? (
         <div className="bank-confirm">
           <p className="bank-confirm__q">Send <b>{naira(n)}</b> to <b>@{to.username}</b>?</p>
-          <div className="bankx__fee">
-            <div><span>Transfer fee</span><b>{naira(fee)}</b></div>
-            <div><span>Total from your bank</span><b>{naira(n + fee)}</b></div>
-            {note.trim() && <div><span>Note</span><b>"{note.trim()}"</b></div>}
-          </div>
+          {quote && tiered ? <FeeLine quote={quote} /> : (
+            <div className="bankx__fee">
+              <div><span>Transfer fee</span><b>{naira(fee)}</b></div>
+              <div><span>Total from your bank</span><b>{naira(n + fee)}</b></div>
+            </div>
+          )}
+          {note.trim() && <div className="bankx__fee"><div><span>Note</span><b>"{note.trim()}"</b></div></div>}
           <div className="row bank-confirm__btns">
             <Button variant="ghost" className="grow" onClick={() => setTo(null)} disabled={busy}>Cancel</Button>
             <Button variant="green" className="grow" icon="check" loading={busy} onClick={() => void send()}>Send</Button>
@@ -186,6 +193,7 @@ export default function BankApp({ state }: { state: GameState }) {
             </span>
           </label>
           <AmountBox value={amount} onChange={setAmount} max={maxSend} min={t.min_amount} />
+          {tiered && <FeeLine quote={quote} />}
           <label className="bankx__amount-field">
             <span className="bankx__amount-label">Note (optional)</span>
             <input className="input" value={note} maxLength={80} placeholder="For chop, rent, thank you…" onChange={(e) => setNote(e.target.value)} />
@@ -194,12 +202,14 @@ export default function BankApp({ state }: { state: GameState }) {
             {blocked ?? 'Continue'}
           </Button>
           <p className="bankx__fine">
-            Fee {naira(fee)} per transfer. You can send {naira(t.left_today)} more today, up to {t.daily_count} transfers.
+            {tiered ? 'The fee grows with the amount and you see it before you confirm.' : `Fee ${naira(fee)} per transfer.`} You can send {naira(t.left_today)} more today, up to {t.daily_count} transfers.
             {t.new_account_wait_real_seconds > 0 && ` New accounts can send in about ${realWait(t.new_account_wait_real_seconds)}.`}
           </p>
         </div>
       ))}
 
+      {tab === 'bills' && <BillsTab active={tab === 'bills'} />}
+      {tab === 'status' && <StatusTab active={tab === 'status'} />}
       {tab === 'save' && <SaveTab active={tab === 'save'} goWhere={() => setTab('where')} />}
       {tab === 'invest' && <InvestTab active={tab === 'invest'} goWhere={() => setTab('where')} />}
 

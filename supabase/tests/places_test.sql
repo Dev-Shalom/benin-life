@@ -1,3 +1,6 @@
+-- E4 money sinks (20261019000400): this suite asserts exact balances and prices, so the new fees, tax, bills and VAT are pinned off here.
+-- They are covered by money_sinks_test.sql.
+update game_config set value = 'false' where key in ('economy.transfer_fees_enabled', 'economy.tax_enabled', 'economy.bills_enabled', 'economy.vat_enabled', 'economy.luxury_enabled');
 -- L2 place interiors + real landmarks (20261006001300_places.sql). Rolled back. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/places_test.sql
 -- Groups: 1 seeds (landmarks, config, privileges) · 2 zones for every type + every action points at something

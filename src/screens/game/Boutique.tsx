@@ -1,6 +1,7 @@
 // W1: Benin Boutique / Wardrobe (docs/WARDROBE.md). Lazy-loaded overlay with ONE live turntable: full-height on
 // phones, a centred panel over a dimmed backdrop from 768 px (UI1), with the standard sheet header and × close.
 // Brands -> categories -> items. Tap to try on, pick a colour, buy with a confirm, save per "Wear for" slot.
+import { grossPrice, noteFor } from '../../lib/tax';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AvatarStage } from '../../art/avatar3d';
@@ -169,7 +170,7 @@ export default function Boutique({ state }: { state: GameState }) {
   const closed = data && !data.enabled;
 
   const primary = focusItem && focusItem.price > 0 && !focusItem.owned
-    ? { label: `Buy · ${naira(focusItem.price)}`, run: () => setConfirm(focusItem), disabled: false, busy: busy === 'buy' }
+    ? { label: `Buy · ${naira(grossPrice('wardrobe', focusItem.price))}`, run: () => setConfirm(focusItem), disabled: false, busy: busy === 'buy' }
     : unowned.length
       ? { label: `Buy the ${unowned[0].name} first`, run: () => { setFocus(unowned[0].id); setConfirm(unowned[0]); }, disabled: false, busy: false }
       : { label: dirty ? `Wear for ${meta.label}` : `Wearing for ${meta.label}`, run: () => void save(), disabled: !dirty, busy: busy === 'save' };
@@ -261,7 +262,8 @@ export default function Boutique({ state }: { state: GameState }) {
                         {b && <span className="btq-card__brand">{b.name}</span>}
                         <span className="btq-card__name">{it.name}</span>
                         <span className="btq-card__meta">
-                          <span className={`btq-card__price${it.owned || it.price === 0 ? ' is-free' : ''}`}>{it.owned && it.price > 0 ? 'Yours' : it.price === 0 ? 'Free' : naira(it.price)}</span>
+                          <span className={`btq-card__price${it.owned || it.price === 0 ? ' is-free' : ''}`}>{it.owned && it.price > 0 ? 'Yours' : it.price === 0 ? 'Free' : naira(grossPrice('wardrobe', it.price))}</span>
+                          {!it.owned && it.price > 0 && noteFor('wardrobe', it.price) && <span className="btq-card__tax">{noteFor('wardrobe', it.price)}</span>}
                           {it.colours.length > 1 && <span className="btq-card__count">{it.colours.length} colours</span>}
                         </span>
                       </span>
@@ -299,15 +301,15 @@ export default function Boutique({ state }: { state: GameState }) {
         actions={
           <>
             <Button variant="ghost" onClick={() => setConfirm(null)}>Not now</Button>
-            <Button variant="green" loading={busy === 'buy'} disabled={!confirm || money < (confirm?.price ?? 0)} onClick={() => confirm && void buy(confirm)}>
-              {confirm && money < confirm.price ? 'Not enough money' : `Pay ${confirm ? naira(confirm.price) : ''}`}
+            <Button variant="green" loading={busy === 'buy'} disabled={!confirm || money < grossPrice('wardrobe', confirm?.price ?? 0)} onClick={() => confirm && void buy(confirm)}>
+              {confirm && money < grossPrice('wardrobe', confirm.price) ? 'Not enough money' : `Pay ${confirm ? naira(grossPrice('wardrobe', confirm.price)) : ''}`}
             </Button>
           </>
         }>
         {confirm && (
           <p className="btq__confirm-text">
             {confirm.brand_id && brandById.get(confirm.brand_id) ? `${brandById.get(confirm.brand_id)!.name} · ` : ''}{confirm.description}
-            {' '}Paid from your bank first, then cash. You get every colour. You have {naira(money)}.
+            {' '}{noteFor('wardrobe', confirm.price) ? `Price ${noteFor('wardrobe', confirm.price)}. ` : ''}Paid from your bank first, then cash. You get every colour. You have {naira(money)}.
           </p>
         )}
       </Modal>

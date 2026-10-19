@@ -1,5 +1,6 @@
 // Settings: every game_config value, grouped by category, with the most-used knobs on top.
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from '../ui';
 import { errorMessage } from '../lib/api';
 import { useConfig } from '../lib/config';
@@ -47,6 +48,7 @@ const CATEGORY_META: Record<string, { title: string; emoji: string; blurb: strin
   business: { title: 'Business', emoji: '🏪', blurb: 'R10 (docs/BUSINESS.md): owning a business. The switch, how many a player can own, how long takings keep growing (48 h), restocking and the income floor with no stock, staff hiring, insurance, the owner shift (length, energy, boost, daily cap), the owner\'s cut of visitor spending, sell-back %, and the event chances per business day (robbery, NEPA outage, council levy, staff theft, great day). Types, prices, levels and per-type events: Content -> Business types. Plots: Content -> Business plots. Who owns what: Business tab.' },
   crews: { title: 'Gangs', emoji: '🤝', blurb: 'R11 (docs/CREWS.md): gangs and gang jobs. The switch, start fee and who may start a gang, rejoin cooldown, invites, the default and allowed bank share of loot, Prospect share, meeting spots, lobby countdown, jobs per day, member bonus, skill cut, jail time, bail and the gang bank fine after a bust, gang chat limits, blocked words / tags and emblems, and the weekly Top gangs prizes. Jobs and levels: Content -> Gang jobs / Gang levels. Gangs list, rename and disband: Gangs tab.' },
   politics: { title: 'Politics (Benin Votes)', emoji: '🗳️', blurb: 'R12 (docs/POLITICS.md): elections and government. The switch, the next election starting by itself, the registration / campaign / voting windows and the term length (real hours and days), who may vote (account age), the clean-record rule, candidates per race, campaign costs and points (rally, poster, supporters, endorsements, gang endorsements), report limits, salaries on or off, the Governor\'s announcement and ward notice limits, and the blocklists for real parties and politicians. Offices, fees, salaries and requirements: Content -> Offices. Policies: Content -> Policies. Parties and wards: Content. Start / advance / cancel an election, disqualify and see tallies: Elections tab.' },
+  economy: { title: 'Economy (money sinks)', emoji: '🏛️', blurb: 'E4 (docs/ECONOMY_SINKS.md): money that leaves the game. Master switches for each sink, the tiered transfer fee + stamp duty + daily soft cap, the weekly income tax bands and the new-player exemption, the weekly bills (house, car, business, land), the late fee and how long before an asset stops working, VAT and the luxury levy (rates, VAT-free and luxury categories), and the prestige sinks (donations, city party, Chief titles, philanthropist badges). The dashboard is the Economy tab; the Governor\'s Tax holiday policy is in Content -> Policies.' },
   admin: { title: 'Admin', emoji: '🛡️', blurb: 'Admin access. Hidden from players.' },
 };
 
@@ -236,7 +238,8 @@ export default function Settings() {
   const { data: tiers } = useLoad(() => adminApi.tableRows('origin_tiers'));
   const [drafts, setDrafts] = useState<Record<string, unknown>>({});
   const [q, setQ] = useState('');
-  const [cat, setCat] = useState<string>('quick');
+  const [params] = useSearchParams();
+  const [cat, setCat] = useState<string>(params.get('cat') ?? 'quick');
   const [savingAll, setSavingAll] = useState(false);
   const { values: liveValues } = useConfig();
 

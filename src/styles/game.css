@@ -6666,3 +6666,32 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 /* the election-day banner (game screen) */
 .banner--vote { cursor: pointer; text-align: left; width: 100%; border: 0; font: inherit; color: inherit; }
 .banner--vote .banner__icon { font-size: 18px; font-family: var(--font-emoji); }
+
+/* E4: "incl. VAT" under a price */
+.buy-card__tax, .btq-card__tax { font: 700 10px var(--font-body, inherit); color: var(--ink-3, #6b7a72); letter-spacing: .02em; }
+.item__tax { display: block; font: 700 10.5px var(--font-body, inherit); color: var(--ink-3, #6b7a72); text-align: right; white-space: nowrap; letter-spacing: .02em; }
+
+/* E4: Bank app Bills and Status tabs */
+.bills { gap: 12px; }
+.bills__card { display: grid; gap: 10px; padding: 14px; border-radius: 16px; background: #fff; box-shadow: var(--shadow-1, 0 1px 3px rgba(0,0,0,.08)); }
+.bills__h { margin: 0; font: 800 15px var(--font-display); color: var(--ink-1, #123); }
+.bills__h2 { margin: 6px 0 0; font: 800 13px var(--font-display); color: var(--ink-2); }
+.bills__empty { margin: 0; font-size: 13px; color: var(--ink-3); }
+.bills__bands, .bills__recs, .bills__list, .bills__board { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.bills__bands li, .bills__recs li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); }
+.bills__recs li small { display: block; font-size: 11px; color: var(--ink-3); }
+.bills__owed { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #fff4d6; border: 1px solid #f0cf73; }
+.bills__owed small { display: block; font-size: 11px; color: var(--ink-3); font-weight: 500; }
+.bills__row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 12px; background: var(--surface-2); }
+.bills__row.is-warn { background: #fff4d6; }
+.bills__row.is-bad { background: #fde3df; }
+.bills__row.is-paid { opacity: .75; }
+.bills__icon { font-size: 22px; }
+.bills__title { display: block; font-weight: 700; font-size: 13px; }
+.bills__sub { display: block; font-size: 11.5px; color: var(--ink-3); }
+.bills__pay { display: grid; justify-items: end; gap: 4px; font-variant-numeric: tabular-nums; }
+.bills__paid summary { cursor: pointer; font-size: 12.5px; color: var(--ink-2); padding: 4px 0; }
+.bills__board li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); }
+.bills__board li.is-me { background: #e4f6e6; font-weight: 700; }
+.bills__rank { width: 20px; text-align: center; font-weight: 800; color: var(--ink-3); }
+.bills__badge { margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: #fff4d6; color: #8a6200; font-size: 10.5px; font-weight: 700; }

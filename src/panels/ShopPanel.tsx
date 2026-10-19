@@ -10,6 +10,7 @@ import type { PanelProps, ShopList } from '../lib/types';
 import { openPanel } from '../state/ui';
 import { Button, EmptyState, toast } from '../ui';
 import { ItemCard } from './shop/ShopUI';
+import { taxNote } from '../lib/tax';
 
 const GREETING: Record<string, string> = {
   market: '"Customer, come and buy! Everything fresh, price is fair."',
@@ -87,7 +88,7 @@ export default function ShopPanel({ state, location, refresh }: PanelProps) {
             {g.items.map((it) => {
               const blocked = busyNow ? 'Busy right now' : p.cash < it.price ? 'Not enough cash' : null;
               return (
-                <ItemCard key={it.id} item={it} price={it.price} owned={owned[it.id] ?? 0} kind={it.kind}
+                <ItemCard key={it.id} item={it} price={it.price} taxNote={taxNote(it.vat_pct ?? 0, it.lux_pct ?? 0)} owned={owned[it.id] ?? 0} kind={it.kind}
                   maxQty={it.kind === 'keep' ? 1 : Math.max(1, Math.min(maxQty, Math.floor(p.cash / Math.max(1, it.price))))}
                   action="Buy" blocked={blocked} busy={busy === it.id}
                   onAction={(q) => void buy(it.id, q)} />
