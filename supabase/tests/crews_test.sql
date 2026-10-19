@@ -174,8 +174,8 @@ begin
                          and not ('crew_job' = any (bl_earn_reasons())), 'deposits, fees, supplies and refunds are not earned');
   perform pg_temp.assert(exists (select 1 from skill_sources where kind = 'crew' and ref = 'bank_van' and skill_id = 'driving'), 'crew skill sources');
   perform pg_temp.assert((select count(*) from crew_weeks where skipped) >= 1, 'the week the feature started is skipped');
-  perform pg_temp.assert(bl_ledger_label('crew_deposit', '{}') = 'Crew bank deposit' and bl_ledger_label('crew_payout', '{"label":"Crew job: X"}') = 'Crew job: X'
-                         and bl_ledger_label('crew_fee', '{}') = 'Crew founding fee' and bl_ledger_label('crew_job', '{}') = 'Crew job supplies', 'ledger labels');
+  perform pg_temp.assert(bl_ledger_label('crew_deposit', '{}') = 'Gang bank deposit' and bl_ledger_label('crew_payout', '{"label":"Gang job: X"}') = 'Gang job: X'
+                         and bl_ledger_label('crew_fee', '{}') = 'Gang start fee' and bl_ledger_label('crew_job', '{}') = 'Gang job supplies', 'ledger labels');
   raise notice 'ok 2: seeds';
 end $$;
 
@@ -221,7 +221,7 @@ begin
   perform pg_temp.assert(c.name = 'Ring Road Boys' and c.tag = 'RNG' and c.color = '#e0a030' and c.emblem = '🦁' and c.level = 1 and c.bank = 0 and c.split_bank_pct = 30, 'crew row (tag upper-cased, colour lower-cased)');
   perform pg_temp.assert(pg_temp.bank(pg_temp.u('a')) = 0 and pg_temp.cash(pg_temp.u('a')) = 100000, 'fee 500,000 taken bank first (300k) then cash (200k)');
   perform pg_temp.assert((select sum(-delta) from ledger where user_id = pg_temp.u('a') and reason = 'crew_fee') = 500000
-                         and (select meta->>'label' from ledger where user_id = pg_temp.u('a') and reason = 'crew_fee' order by id limit 1) like 'Crew: founding fee%', 'ledger crew_fee');
+                         and (select meta->>'label' from ledger where user_id = pg_temp.u('a') and reason = 'crew_fee' order by id limit 1) like 'Gang: start fee%', 'ledger crew_fee');
   perform pg_temp.assert(pg_temp.rank_of(pg_temp.u('a')) = 'boss', 'founder is the Boss');
   perform pg_temp.assert(pg_temp.hint_of('select crew_create(''Another One'', ''ANO'', ''#e0a030'', ''🦁'')') = 'in_crew', 'one crew at a time');
   -- taken name (any case) and taken tag, by another eligible founder
@@ -476,7 +476,7 @@ begin
   a0 := pg_temp.cash(pg_temp.u('a')); b0 := pg_temp.cash(pg_temp.u('b')); cb0 := pg_temp.cbank(pg_temp.cid());
   v := crew_job_start(v_run);
   perform pg_temp.assert(v->'run'->>'status' = 'running' and (v->'run'->>'caught_pct')::numeric = 22 and (v->'run'->>'skill_cut_pct')::numeric = 0, 'running at 22 %');
-  perform pg_temp.assert((select busy_label from profiles where id = pg_temp.u('b')) = 'Crew job: Night market shakedown'
+  perform pg_temp.assert((select busy_label from profiles where id = pg_temp.u('b')) = 'Gang job: Night market shakedown'
                          and (select busy_until from profiles where id = pg_temp.u('b')) > bl_now(), 'members are busy for the job');
   -- not done yet: the status leaves it running
   perform pg_temp.advance(30);
@@ -497,7 +497,7 @@ begin
   perform pg_temp.assert(pg_temp.cash(pg_temp.u('a')) = a0 + v_each and pg_temp.cash(pg_temp.u('b')) = b0 + v_each, 'both members got ' || v_each || ' in cash');
   perform pg_temp.assert(pg_temp.cbank(pg_temp.cid()) = cb0 + r.bank_share and r.bank_share >= v_bank, 'the crew bank got its share');
   perform pg_temp.assert((select delta from ledger where user_id = pg_temp.u('a') and reason = 'crew_payout' order by id desc limit 1) = v_each
-                         and (select meta->>'label' from ledger where user_id = pg_temp.u('a') and reason = 'crew_payout' order by id desc limit 1) = 'Crew job: Night market shakedown', 'ledger crew_payout');
+                         and (select meta->>'label' from ledger where user_id = pg_temp.u('a') and reason = 'crew_payout' order by id desc limit 1) = 'Gang job: Night market shakedown', 'ledger crew_payout');
   perform pg_temp.assert((select amount from crew_bank_log where crew_id = pg_temp.cid() and kind = 'job' order by id desc limit 1) = r.bank_share, 'bank log kind job');
   perform pg_temp.assert((select busy_label from profiles where id = pg_temp.u('b')) is null, 'busy cleared');
   perform pg_temp.assert((select xp from crews where id = pg_temp.cid()) = 20 and (select jobs_done from crews where id = pg_temp.cid()) = 1
@@ -536,7 +536,7 @@ begin
   perform pg_temp.assert(r.status = 'caught', 'caught with a roll of 0.0');
   -- every participant goes through the jail flow
   select * into k from jail_cases where user_id = pg_temp.u('b') and status = 'open';
-  perform pg_temp.assert(k.id is not null and k.kind = 'police' and k.bail_amount = 20000000 and k.jail_seconds = 120 and k.reason like 'Caught on a crew job%', 'jail case with the crew bail and time');
+  perform pg_temp.assert(k.id is not null and k.kind = 'police' and k.bail_amount = 20000000 and k.jail_seconds = 120 and k.reason like 'Caught on a gang job%', 'jail case with the crew bail and time');
   perform pg_temp.assert((select count(*) from jail_cases where status = 'open' and user_id in (pg_temp.u('a'), pg_temp.u('b'), pg_temp.u('d'))) = 3, 'all three are jailed');
   perform pg_temp.assert((select jailed_until from profiles where id = pg_temp.u('d')) > bl_now() and (select wanted from profiles where id = pg_temp.u('b')) = w0 + 1, 'jailed, wanted +1');
   perform pg_temp.assert((select location_id from profiles where id = pg_temp.u('d')) = 'police_hq', 'held at Police HQ');
@@ -701,7 +701,7 @@ begin
   perform pg_temp.assert((select level from crews where id = pg_temp.cid()) = 2 and pg_temp.cbank(pg_temp.cid()) = 500000, 'a Lieutenant paid 1,000,000 for level 2');
   perform pg_temp.assert((select kind from crew_bank_log where crew_id = pg_temp.cid() order by id desc limit 1) = 'upgrade'
                          and (select amount from crew_bank_log where crew_id = pg_temp.cid() order by id desc limit 1) = -1000000, 'upgrade logged');
-  perform pg_temp.assert(v->'crew'->>'level_name' = 'Block crew' and (v->'crew'->>'max_members')::int = 10 and (v->'crew'->>'bonus_pct')::numeric = 5, 'level 2: Block crew, 10 members, +5 %');
+  perform pg_temp.assert(v->'crew'->>'level_name' = 'Block gang' and (v->'crew'->>'max_members')::int = 10 and (v->'crew'->>'bonus_pct')::numeric = 5, 'level 2: Block gang, 10 members, +5 %');
   perform pg_temp.assert(not (select (jj->>'locked')::boolean from jsonb_array_elements(v->'crew'->'jobs') jj where jj->>'id' = 'port_container'), 'port job unlocked');
   perform pg_temp.assert((select (jj->>'locked')::boolean from jsonb_array_elements(v->'crew'->'jobs') jj where jj->>'id' = 'bank_van'), 'bank van still locked');
   perform pg_temp.assert(exists (select 1 from events where user_id = pg_temp.u('d') and kind = 'crew_level_up'), 'everybody is told');
@@ -722,7 +722,7 @@ begin
   perform crew_job_start(v_run);
   perform pg_temp.assert(pg_temp.cash(pg_temp.u('a')) = p0 - 20000 and pg_temp.cash(pg_temp.u('e')) = q0 - 20000, 'supplies of 20,000 taken from each');
   perform pg_temp.assert((select count(*) from ledger where reason = 'crew_job' and delta = -20000 and (meta->>'run')::bigint = v_run) = 3, 'ledger crew_job x 3');
-  perform pg_temp.assert((select meta->>'label' from ledger where reason = 'crew_job' and (meta->>'run')::bigint = v_run limit 1) = 'Crew job supplies: Hit a container at the port', 'supplies label');
+  perform pg_temp.assert((select meta->>'label' from ledger where reason = 'crew_job' and (meta->>'run')::bigint = v_run limit 1) = 'Gang job supplies: Hit a container at the port', 'supplies label');
   select * into j from crew_jobs where id = 'port_container';
   perform pg_temp.advance(95);
   p0 := pg_temp.cash(pg_temp.u('a')); q0 := pg_temp.cash(pg_temp.u('e'));

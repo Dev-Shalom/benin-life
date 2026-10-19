@@ -5,7 +5,7 @@
 //   go=yahoo                 the Yahoo app (a group mission invite)
 //   go=market                the Benin Market app (an offer, a sale)
 //   go=business              the Business app (takings ready)
-//   go=crew                  the Crew app (an invite, a job lobby)
+//   go=crew / go=gang        the Gang app (an invite, a job lobby); gang is an alias, the app id stays crew
 //   go=politics              the Benin Votes app (registration, voting day, results); go=politics:vote opens the Vote tab
 //   go=help                  the Help app          go=help:<article id>  that article (src/onboarding/helpArticles.ts)
 // Cold start: main.tsx captures ?go= (it survives the login redirect in sessionStorage) and the game runs it once the
@@ -13,7 +13,7 @@
 import { useUi } from '../state/ui';
 
 const KEY = 'bl.go';
-const SAFE = /^(dm:\d{1,12}|house|friends|bank|alerts|ranks|hustles|school|yahoo|market|business|crew|politics(?::(?:gov|elect|vote|results))?|help(?::[a-z0-9-]{1,40})?|place:[a-z0-9_]{1,40})$/;
+const SAFE = /^(dm:\d{1,12}|house|friends|bank|alerts|ranks|hustles|school|yahoo|market|business|crew|gang|politics(?::(?:gov|elect|vote|results))?|help(?::[a-z0-9-]{1,40})?|place:[a-z0-9_]{1,40})$/;
 
 /** Remember ?go= from the address bar and clean the URL. Call once at startup. */
 export function captureDeepLink(): void {
@@ -55,5 +55,6 @@ export function runDeepLink(go: string): void {
     ui.setMapOpen(true);
     ui.select(arg);
   } else if (kind === 'help' || kind === 'politics') ui.openPhone(go); // 'help' or 'help:<article id>', 'politics' or 'politics:vote'
+  else if (kind === 'gang') ui.openPhone('crew'); // alias of go=crew
   else ui.openPhone(kind); // bank, alerts, ranks, hustles are phone apps
 }

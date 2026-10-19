@@ -225,10 +225,10 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: 'crew',
     target: '[data-tour="app-crew"]',
-    title: 'Start a crew',
-    body: 'Found a crew with your own name, tag and emblem, invite friends, and pull group jobs together from the Crew app. Big loot, but the police can catch the whole crew.',
+    title: 'Start a gang',
+    body: 'Start a gang with your own name, tag and emblem, invite friends, and pull group jobs together from the Gang app. Big loot, but the police can catch the whole gang.',
     points: [
-      'Your crew tag shows next to your name: [TAG] @you.',
+      'Your gang tag shows next to your name: [TAG] @you.',
       'Jobs run at a meeting spot. Check the app for the places and the prices.',
     ],
     isNew: true,

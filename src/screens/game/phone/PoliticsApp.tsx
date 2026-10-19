@@ -329,8 +329,8 @@ function CandidateCard({ c, s, reload }: { c: PolCandidate; s: PolStatus; reload
               </>
             )}
           {c.my_backing === 'crew'
-            ? <Button size="sm" variant="ghost" onClick={() => done(() => polUnback(c.id, 'crew'), `uc${c.id}`)}>Remove crew endorsement</Button>
-            : <Button size="sm" variant="ghost" loading={busy === `c${c.id}`} onClick={() => done(() => polBack(c.id, 'crew'), `c${c.id}`)}>Endorse for my crew</Button>}
+            ? <Button size="sm" variant="ghost" onClick={() => done(() => polUnback(c.id, 'crew'), `uc${c.id}`)}>Remove gang endorsement</Button>
+            : <Button size="sm" variant="ghost" loading={busy === `c${c.id}`} onClick={() => done(() => polBack(c.id, 'crew'), `c${c.id}`)}>Endorse for my gang</Button>}
         </div>
       )}
       {!c.mine && (

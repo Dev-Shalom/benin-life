@@ -493,7 +493,7 @@ begin
   perform pg_temp.assert(v_pct = 18.93, 'group chance 18.93, got ' || v_pct);
   perform pg_temp.assert(bl_yahoo_group_pct(array[a, b, c], 20) = 18.93 and bl_yahoo_group_pct(array[d], 20) = 20
                          and bl_yahoo_group_pct(array[a], 20) = 18.4, 'the average level lowers the group chance');
-  perform pg_temp.assert((select count(*) from profiles where id in (a, b, c) and busy_label = 'Yahoo: Crew hustle' and busy_until > bl_now()) = 3, 'the crew is busy');
+  perform pg_temp.assert((select count(*) from profiles where id in (a, b, c) and busy_label = 'Yahoo: Gang hustle' and busy_until > bl_now()) = 3, 'the crew is busy');
   perform pg_temp.assert((select resolve_at - started_at from yahoo_groups where id = g) = interval '90 seconds', '90 s mission');
   perform pg_temp.assert((select count(*) from events where kind = 'yahoo_group_start' and user_id in (a, b, c)) = 3, 'start alerts');
   perform pg_temp.assert(pg_temp.hint_of(format('select yahoo_group_respond(%s, true)', g)) = 'closed', 'answers close once it runs');

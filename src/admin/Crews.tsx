@@ -1,6 +1,6 @@
-// R11 Crews admin (docs/CREWS.md): every crew with boss, members, bank, level and open reports. Opening the member view is audited
+// R11 Gangs admin (docs/CREWS.md): every gang with boss, members, bank, level and open reports. Opening the member view is audited
 // (action crew_view). Rename (name and tag, same word and real-name checks as players) and disband (the bank is shared out) are audited.
-// Jobs and levels: Content -> Crew jobs / Crew levels. Switches, fees, cooldowns, prizes and blocked names: Settings -> Crews.
+// Jobs and levels: Content -> Gang jobs / Gang levels. Switches, fees, cooldowns, prizes and blocked names: Settings -> Gangs.
 import { useState } from 'react';
 import { adminCrewDisband, adminCrewDismissReports, adminCrewGet, adminCrewRename, adminCrewsList, type AdminCrewDetail } from '../api/crews';
 import { errorMessage } from '../lib/api';
@@ -28,21 +28,21 @@ export default function Crews() {
   };
   return (
     <div className="adm-page" data-testid="admin-crews">
-      <PageHead title="Crews" sub="Player crews: disband, rename and review reports"
+      <PageHead title="Gangs" sub="Player gangs: disband, rename and review reports"
         actions={<Btn small icon="refresh" onClick={() => void reload()} disabled={loading}>Refresh</Btn>} />
       <section className="adm-card">
-        <p className="adm-sub">{s.crews} crews · {s.members} members · {naira(s.bank)} in crew banks · {s.open_reports} open reports · {s.jobs_7d} jobs in the last 7 days</p>
+        <p className="adm-sub">{s.crews} gangs · {s.members} members · {naira(s.bank)} in gang banks · {s.open_reports} open reports · {s.jobs_7d} jobs in the last 7 days</p>
         <label className="adm-field">
           <span className="adm-field__label">Search by name or tag</span>
           <input className="adm-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. ring" />
         </label>
       </section>
       <section className="adm-card">
-        <h3>All crews</h3>
-        {data.rows.length === 0 ? <p className="adm-sub">No crews yet.</p> : (
+        <h3>All gangs</h3>
+        {data.rows.length === 0 ? <p className="adm-sub">No gangs yet.</p> : (
           <div className="adm-scroll">
             <table className="adm-table">
-              <thead><tr><th>Crew</th><th>Boss</th><th>Level</th><th>Members</th><th>Bank</th><th>Jobs</th><th>Loot</th><th>Reports</th><th>Since</th><th /></tr></thead>
+              <thead><tr><th>Gang</th><th>Boss</th><th>Level</th><th>Members</th><th>Bank</th><th>Jobs</th><th>Loot</th><th>Reports</th><th>Since</th><th /></tr></thead>
               <tbody>
                 {data.rows.map((r) => (
                   <tr key={r.id}>

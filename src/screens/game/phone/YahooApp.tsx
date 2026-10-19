@@ -203,7 +203,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
       </div>
       <p className="yh-fine">
         Caught = EFCC case: bail from {nairaShort(s.prices.bail)}, escape {100 - s.prices.escape_caught_pct}% chance, your laptop may be seized and part of your yahoo balance taken.
-        Cash out in full, in half, or launder through a contact for a fee: less risk, longer wait. In a group mission everybody in the crew gets the case.
+        Cash out in full, in half, or launder through a contact for a fee: less risk, longer wait. In a group mission everybody in the gang gets the case.
       </p>
 
       <YahooGroups onGo={onGo} locationId={state.profile.location_id} />

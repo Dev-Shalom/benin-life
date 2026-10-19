@@ -94,15 +94,15 @@ function CrewsBoard() {
   if (!d) return <div className="panel-skel"><span /><span /><span /></div>;
   return (
     <div className="rk-crews" data-testid="crews-board">
-      <p className="rk-blurb">Top crews this week: paid jobs and loot. Resets Monday 12 AM. {d.enabled ? '' : 'The weekly prize is off for now.'}</p>
+      <p className="rk-blurb">Top gangs this week: paid jobs and loot. Resets Monday 12 AM. {d.enabled ? '' : 'The weekly prize is off for now.'}</p>
       {d.enabled && (
         <div className="rk-week" data-testid="crew-prizes">
           {d.prizes.map((x) => <span key={x.rank}>{MEDAL[x.rank - 1]} {nairaShort(x.amount)}</span>)}
-          <small>Paid into the crew bank when the week closes (at least {d.min_jobs} paid jobs).</small>
+          <small>Paid into the gang bank when the week closes (at least {d.min_jobs} paid jobs).</small>
         </div>
       )}
       {d.rows.length === 0
-        ? <div className="rk-empty"><span aria-hidden>🤝</span><p>No crew has pulled a paid job this week. Be the first.</p></div>
+        ? <div className="rk-empty"><span aria-hidden>🤝</span><p>No gang has pulled a paid job this week. Be the first.</p></div>
         : (
           <ol className="rk-list">
             {d.rows.map((r) => (
@@ -118,10 +118,10 @@ function CrewsBoard() {
             ))}
           </ol>
         )}
-      {d.mine && !d.rows.some((r) => r.mine) && <p className="rk-foot">Your crew is #{d.mine.rank} with {d.mine.jobs} jobs.</p>}
+      {d.mine && !d.rows.some((r) => r.mine) && <p className="rk-foot">Your gang is #{d.mine.rank} with {d.mine.jobs} jobs.</p>}
       {d.last_week && d.last_week.winners.length > 0 && (
         <div className="rk-week rk-week--last">
-          <b>Last week's top crews</b>
+          <b>Last week's top gangs</b>
           {d.last_week.winners.map((w) => <small key={w.rank}>{MEDAL[w.rank - 1]} [{w.tag}] {w.name} · {w.jobs} jobs · {nairaShort(w.loot)} · prize {nairaShort(w.prize)}</small>)}
         </div>
       )}
@@ -161,7 +161,7 @@ export default function RanksApp() {
         <div className="rk-tabs" role="tablist" aria-label="Leaderboards">
           <button type="button" role="tab" aria-selected={board === 'rich'} className={`rk-tab${board === 'rich' ? ' is-on' : ''}`} onClick={() => setBoard('rich')}>💰 Rich</button>
           <button type="button" role="tab" aria-selected={board === 'week'} className={`rk-tab${board === 'week' ? ' is-on' : ''}`} onClick={() => setBoard('week')} data-testid="ranks-week-tab">🔥 Week</button>
-          <button type="button" role="tab" aria-selected={board === 'crews'} className={`rk-tab${board === 'crews' ? ' is-on' : ''}`} onClick={() => setBoard('crews')} data-testid="ranks-crews-tab">🤝 Crews</button>
+          <button type="button" role="tab" aria-selected={board === 'crews'} className={`rk-tab${board === 'crews' ? ' is-on' : ''}`} onClick={() => setBoard('crews')} data-testid="ranks-crews-tab">🤝 Gangs</button>
           <button type="button" role="tab" aria-selected={board === 'vip'} className={`rk-tab${board === 'vip' ? ' is-on' : ''}`} onClick={() => setBoard('vip')}>👑 VIP</button>
         </div>
         <button type="button" className={`rk-refresh${loading ? ' is-spinning' : ''}`} onClick={() => void load(board)} aria-label="Refresh" disabled={loading || board === 'crews'}>

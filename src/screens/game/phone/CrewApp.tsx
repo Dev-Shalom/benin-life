@@ -38,15 +38,15 @@ function Create({ s }: { s: NonNullable<ReturnType<typeof useCrew.getState>['sta
   const st = s.settings;
   return (
     <form className="cr-card cr-form" onSubmit={(e) => { e.preventDefault(); void act('create', () => crewCreate(name, tag, color, emblem)); }} data-testid="crew-create">
-      <h4>Found a crew</h4>
-      <p className="cr-hint">Pick a name wey be yours. Founding costs <b>{naira(st.found_fee)}</b>. You need Charisma level {st.found_min_charisma} or an account at least {st.found_min_account_hours} hours old.</p>
-      <div className="cr-preview"><span className="cr-badge" style={{ background: color }} aria-hidden>{emblem}</span><b>{name || 'Your crew name'}</b><CrewTag tag={(tag || 'TAG').toUpperCase()} color={color} /></div>
-      <label className="cr-field"><span>Crew name</span><input value={name} maxLength={20} placeholder="e.g. Ring Road Boys" onChange={(e) => setName(e.target.value)} enterKeyHint="next" /></label>
+      <h4>Start a gang</h4>
+      <p className="cr-hint">Pick a name wey be yours. Starting a gang costs <b>{naira(st.found_fee)}</b>. You need Charisma level {st.found_min_charisma} or an account at least {st.found_min_account_hours} hours old.</p>
+      <div className="cr-preview"><span className="cr-badge" style={{ background: color }} aria-hidden>{emblem}</span><b>{name || 'Your gang name'}</b><CrewTag tag={(tag || 'TAG').toUpperCase()} color={color} /></div>
+      <label className="cr-field"><span>Gang name</span><input value={name} maxLength={20} placeholder="e.g. Ring Road Boys" onChange={(e) => setName(e.target.value)} enterKeyHint="next" /></label>
       <label className="cr-field"><span>Tag (3 or 4 letters)</span><input value={tag} maxLength={4} placeholder="RNG" onChange={(e) => setTag(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())} enterKeyHint="done" /></label>
       <div className="cr-field"><span>Colour</span><div className="cr-swatches">{COLORS.map((c) => <button key={c} type="button" className={c === color ? 'is-on' : ''} style={{ background: c }} aria-label={`Colour ${c}`} onClick={() => setColor(c)} />)}</div></div>
       <div className="cr-field"><span>Emblem</span><div className="cr-emblems">{st.emblems.map((m) => <button key={m} type="button" className={m === emblem ? 'is-on' : ''} onClick={() => setEmblem(m)}>{m}</button>)}</div></div>
       {!s.can_found.ok && <p className="cr-warn">{s.can_found.message}</p>}
-      <Button type="submit" block loading={busy === 'create'} disabled={!s.can_found.ok || name.trim().length < 3 || tag.length < 3}>Found it for {nairaShort(st.found_fee)}</Button>
+      <Button type="submit" block loading={busy === 'create'} disabled={!s.can_found.ok || name.trim().length < 3 || tag.length < 3}>Start it for {nairaShort(st.found_fee)}</Button>
     </form>
   );
 }
@@ -59,14 +59,14 @@ function Browse() {
   useEffect(() => { load(''); }, [load]);
   return (
     <div className="cr-list">
-      <input className="cr-search" value={q} placeholder="Search crews" onChange={(e) => { setQ(e.target.value); load(e.target.value); }} enterKeyHint="search" />
-      {rows && rows.length === 0 && <EmptyState title="No crews yet" body="Be the first. Found one." />}
+      <input className="cr-search" value={q} placeholder="Search gangs" onChange={(e) => { setQ(e.target.value); load(e.target.value); }} enterKeyHint="search" />
+      {rows && rows.length === 0 && <EmptyState title="No gangs yet" body="Be the first. Start one." />}
       {rows?.map((c) => (
         <article key={c.id} className="cr-card cr-row">
           <span className="cr-badge" style={{ background: c.color }} aria-hidden>{c.emblem}</span>
           <span className="cr-row__who"><b>{c.name} <CrewTag tag={c.tag} color={c.color} /></b><small>Level {c.level} · {c.members}/{c.max_members} members · Boss @{c.boss ?? '?'}</small></span>
           {c.recruiting ? <Button size="sm" loading={busy === `j${c.id}`} onClick={() => void act(`j${c.id}`, () => crewJoinOpen(c.id))}>Join</Button> : <small className="cr-fine">Invite only</small>}
-          <button type="button" className="cr-link" onClick={() => { const r = window.prompt('Why are you reporting this crew?'); if (r !== null) void act(`r${c.id}`, () => crewReport(c.id, r)); }}>Report</button>
+          <button type="button" className="cr-link" onClick={() => { const r = window.prompt('Why are you reporting this gang?'); if (r !== null) void act(`r${c.id}`, () => crewReport(c.id, r)); }}>Report</button>
         </article>
       ))}
     </div>
@@ -91,7 +91,7 @@ function NoCrew({ s }: { s: NonNullable<ReturnType<typeof useCrew.getState>['sta
           ))}
         </section>
       )}
-      {s.cooldown_until && <p className="cr-warn">You left a crew recently. You can join or found another in {countdown(secondsUntil(s.cooldown_until, Date.now()))}.</p>}
+      {s.cooldown_until && <p className="cr-warn">You left a gang recently. You can join or start another in {countdown(secondsUntil(s.cooldown_until, Date.now()))}.</p>}
       <Tabs tabs={[{ id: 'create', label: 'Create' }, { id: 'browse', label: 'Browse' }]} value={tab} onChange={(t) => setTab(t as 'create' | 'browse')} />
       {tab === 'create' ? <Create s={s} /> : <Browse />}
     </div>
@@ -165,8 +165,8 @@ function Overview({ crew }: { crew: Crew }) {
           <div className="cr-next">
             <small>Next: <b>{next.name}</b> · {next.max_members} members · +{next.bonus_pct}% loot. {next.perks}</small>
             <small className={next.xp_ok ? 'is-ok' : ''}>{next.xp_ok ? '✓' : '✗'} {next.xp_needed} XP</small>
-            <small className={next.bank_ok ? 'is-ok' : ''}>{next.bank_ok ? '✓' : '✗'} {naira(next.cost)} from the crew bank</small>
-            {me.can_manage && <Button size="sm" disabled={!next.xp_ok || !next.bank_ok} loading={busy === 'up'} onClick={() => void act('up', () => crewUpgrade())}>Upgrade the crew</Button>}
+            <small className={next.bank_ok ? 'is-ok' : ''}>{next.bank_ok ? '✓' : '✗'} {naira(next.cost)} from the gang bank</small>
+            {me.can_manage && <Button size="sm" disabled={!next.xp_ok || !next.bank_ok} loading={busy === 'up'} onClick={() => void act('up', () => crewUpgrade())}>Upgrade the gang</Button>}
           </div>
         )}
       </section>
@@ -178,7 +178,7 @@ function Overview({ crew }: { crew: Crew }) {
       {crew.pending_invites.length > 0 && me.can_manage && (
         <section className="cr-card"><h4>Sent invites</h4>{crew.pending_invites.map((i) => <div key={i.id} className="cr-row2"><span>@{i.username}</span><button type="button" className="cr-link" onClick={() => void act('c' + i.id, () => crewInviteCancel(i.id))}>Cancel</button></div>)}</section>
       )}
-      <p className="cr-fine">This week: {crew.week.jobs} jobs, {nairaShort(crew.week.loot)} loot{crew.week.rank ? ` · #${crew.week.rank} in Top crews` : ''}.</p>
+      <p className="cr-fine">This week: {crew.week.jobs} jobs, {nairaShort(crew.week.loot)} loot{crew.week.rank ? ` · #${crew.week.rank} in Top gangs` : ''}.</p>
     </div>
   );
 }
@@ -224,12 +224,12 @@ function Result({ run, onClose }: { run: CrewRun; onClose: () => void }) {
       <h4>{paid ? `💰 ${run.name} paid` : `🚓 ${run.name} got busted`}</h4>
       {paid ? (
         <>
-          <p className="cr-hint">Total loot <b>{naira(run.pot)}</b>. The crew bank took <b>{naira(run.bank_share)}</b> ({run.split_bank_pct}% share).</p>
+          <p className="cr-hint">Total loot <b>{naira(run.pot)}</b>. The gang bank took <b>{naira(run.bank_share)}</b> ({run.split_bank_pct}% share).</p>
           <ul className="cr-members">{run.members.map((m) => <li key={m.id} className="cr-member"><span className="cr-member__who"><b>@{m.username}</b><small>{RANK_LABEL[m.rank]}</small></span><b className="cr-plus">+{naira(m.payout)}</b></li>)}</ul>
         </>
       ) : (
         <>
-          <p className="cr-hint">The police caught the whole crew. Everybody got a jail case: bail, serve time or try to escape.{run.fine > 0 ? ` The crew bank paid ${naira(run.fine)} in legal fees.` : ''} No loot.</p>
+          <p className="cr-hint">The police caught the whole gang. Everybody got a jail case: bail, serve time or try to escape.{run.fine > 0 ? ` The gang bank paid ${naira(run.fine)} in legal fees.` : ''} No loot.</p>
           <ul className="cr-members">{run.members.map((m) => <li key={m.id} className="cr-member"><span className="cr-member__who"><b>@{m.username}</b></span><span className="cr-minus">🚓</span></li>)}</ul>
         </>
       )}
@@ -247,11 +247,11 @@ function JobCard({ j, crew }: { j: CrewJob; crew: Crew }) {
       <div className="cr-level"><b>{j.icon} {j.name}</b><span>{j.locked ? `🔒 ${j.locked_reason}` : `${j.min_members}–${j.max_members} members`}</span></div>
       <p className="cr-hint">{j.blurb}</p>
       <div className="cr-stats">
-        <span><small>Loot (pot)</small><b>{nairaShort(j.reward_min)}–{nairaShort(j.reward_max)}</b>{j.bonus_pct > 0 && <small>+{j.bonus_pct}% crew bonus</small>}</span>
+        <span><small>Loot (pot)</small><b>{nairaShort(j.reward_min)}–{nairaShort(j.reward_max)}</b>{j.bonus_pct > 0 && <small>+{j.bonus_pct}% gang bonus</small>}</span>
         <span><small>Caught chance</small><b>{j.est_pct}%</b>{j.skill_cut_pct > 0 && <small>skills −{j.skill_cut_pct}%</small>}</span>
         <span><small>Time</small><b>{countdown(j.duration_seconds)}</b></span>
       </div>
-      <small className="cr-fine">{j.skills.map((s) => `${s.icon} ${s.name}`).join(' · ') || 'No skill helps'} {j.buy_in > 0 ? `· supplies ${naira(j.buy_in)} each (lost if busted)` : ''} · +{j.xp} crew XP</small>
+      <small className="cr-fine">{j.skills.map((s) => `${s.icon} ${s.name}`).join(' · ') || 'No skill helps'} {j.buy_in > 0 ? `· supplies ${naira(j.buy_in)} each (lost if busted)` : ''} · +{j.xp} gang XP</small>
       {me.can_manage && <Button size="sm" disabled={j.locked || cd > 0 || !!crew.run} loading={busy === j.id} onClick={() => void act(j.id, () => crewJobOpen(j.id))}>{cd > 0 ? `Lie low ${countdown(cd)}` : 'Open a lobby'}</Button>}
     </article>
   );
@@ -281,8 +281,8 @@ function Bank({ crew }: { crew: Crew }) {
   return (
     <div className="cr-stack">
       <section className="cr-card">
-        <div className="cr-level"><b>Crew bank</b><span data-testid="crew-bank">{naira(crew.bank)}</span></div>
-        <p className="cr-hint">Everybody can put money in. The Boss and Lieutenants spend it on crew upgrades. Job loot adds to it.</p>
+        <div className="cr-level"><b>Gang bank</b><span data-testid="crew-bank">{naira(crew.bank)}</span></div>
+        <p className="cr-hint">Everybody can put money in. The Boss and Lieutenants spend it on gang upgrades. Job loot adds to it.</p>
         <div className="cr-deposit">
           <input inputMode="numeric" enterKeyHint="done" value={amt} placeholder="Amount" onChange={(e) => setAmt(e.target.value.replace(/[^\d]/g, ''))} />
           <Button loading={busy === 'dep'} disabled={!n} onClick={() => void act('dep', () => crewDeposit(n), () => { setAmt(''); load(); })}>Deposit</Button>
@@ -325,11 +325,11 @@ function Chat() {
   return (
     <div className="cr-chat">
       <div className="cr-chat__list" ref={box} data-testid="crew-chat">
-        {rows.length === 0 && <p className="cr-hint">Say something to the crew.</p>}
+        {rows.length === 0 && <p className="cr-hint">Say something to the gang.</p>}
         {rows.map((m) => <div key={m.id} className={`cr-msg${m.mine ? ' is-mine' : ''}`}><small>@{m.username}</small><span>{m.body}</span></div>)}
       </div>
       <div className="cr-chat__box kb-composer">
-        <input value={text} placeholder="Message the crew" enterKeyHint="send" readOnly={false} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} />
+        <input value={text} placeholder="Message the gang" enterKeyHint="send" readOnly={false} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} />
         <Button onClick={() => void send()}>Send</Button>
       </div>
     </div>
@@ -346,7 +346,7 @@ function Settings({ crew, bounds }: { crew: Crew; bounds: { min: number; max: nu
       {me.is_boss && (
         <section className="cr-card">
           <h4>Loot split</h4>
-          <p className="cr-hint">The crew bank takes <b>{split}%</b> of every payout. Members share the rest ({bounds.min}–{bounds.max}% allowed).</p>
+          <p className="cr-hint">The gang bank takes <b>{split}%</b> of every payout. Members share the rest ({bounds.min}–{bounds.max}% allowed).</p>
           <input type="range" min={bounds.min} max={bounds.max} value={split} onChange={(e) => setSplit(Number(e.target.value))} aria-label="Bank share of loot" />
           <Button size="sm" disabled={split === crew.split_bank_pct} loading={busy === 'split'} onClick={() => void act('split', () => crewOptions(split, null))}>Save split</Button>
         </section>
@@ -354,24 +354,24 @@ function Settings({ crew, bounds }: { crew: Crew; bounds: { min: number; max: nu
       {me.can_manage && (
         <section className="cr-card">
           <h4>Recruiting</h4>
-          <p className="cr-hint">Open crews let anybody walk in as a Prospect. Closed crews are invite only.</p>
+          <p className="cr-hint">Open gangs let anybody walk in as a Prospect. Closed gangs are invite only.</p>
           <Button size="sm" variant="ghost" loading={busy === 'rec'} onClick={() => void act('rec', () => crewOptions(null, !crew.recruiting))}>{crew.recruiting ? 'Close the door' : 'Open the door'}</Button>
         </section>
       )}
       {me.is_boss && (
         <section className="cr-card">
-          <h4>Rename the crew</h4>
-          <p className="cr-hint">The crew bank pays {naira(bounds.fee)}.</p>
+          <h4>Rename the gang</h4>
+          <p className="cr-hint">The gang bank pays {naira(bounds.fee)}.</p>
           <div className="cr-deposit"><input value={name} maxLength={20} placeholder="New name" onChange={(e) => setName(e.target.value)} /><Button size="sm" disabled={name.trim().length < 3} loading={busy === 'ren'} onClick={() => void act('ren', () => crewRename(name), () => setName(''))}>Rename</Button></div>
         </section>
       )}
       <section className="cr-card">
         <h4>Leave</h4>
         {me.is_boss
-          ? <><p className="cr-hint">Make another member the Boss (Overview, Manage), or disband the crew. The bank is shared out to the members.</p>
-            <Button variant="danger" loading={busy === 'dis'} onClick={() => { if (window.confirm('Disband the crew? This cannot be undone.')) void act('dis', () => crewDisband()); }}>Disband the crew</Button></>
-          : <><p className="cr-hint">You cannot join or found another crew for a while after you leave.</p>
-            <Button variant="danger" loading={busy === 'leave'} onClick={() => { if (window.confirm('Leave the crew?')) void act('leave', () => crewLeave()); }}>Leave the crew</Button></>}
+          ? <><p className="cr-hint">Make another member the Boss (Overview, Manage), or disband the gang. The bank is shared out to the members.</p>
+            <Button variant="danger" loading={busy === 'dis'} onClick={() => { if (window.confirm('Disband the gang? This cannot be undone.')) void act('dis', () => crewDisband()); }}>Disband the gang</Button></>
+          : <><p className="cr-hint">You cannot join or start another gang for a while after you leave.</p>
+            <Button variant="danger" loading={busy === 'leave'} onClick={() => { if (window.confirm('Leave the gang?')) void act('leave', () => crewLeave()); }}>Leave the gang</Button></>}
       </section>
     </div>
   );
@@ -407,6 +407,6 @@ export default function CrewApp({ onGo }: { onGo: (id: string) => void }) {
   const s = useCrew((x) => x.status);
   useEffect(() => { void useCrew.getState().load(); }, []);
   if (!s) return <div className="phone-app__body"><div className="panel-skel"><span /><span /><span /></div></div>;
-  if (!s.enabled && !s.crew) return <div className="phone-app__body"><p className="phone-app__lead">Crews are off for now.</p></div>;
+  if (!s.enabled && !s.crew) return <div className="phone-app__body"><p className="phone-app__lead">Gangs are off for now.</p></div>;
   return <div className="phone-app__body cr-body">{s.crew ? <InCrew crew={s.crew} s={s} onGo={onGo} /> : <NoCrew s={s} />}</div>;
 }
