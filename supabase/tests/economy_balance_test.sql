@@ -4,6 +4,9 @@
 -- never capped) · 3 group mission daily cap · 4 Market business loop closed (invested is capped at the catalogue value) · 5 crew disband fee ·
 -- 6 referral milestone needs real play · 7 the ladder: risk-adjusted crime vs the legit tier next to it · 8 business payback with stock.
 -- Chances (the percentages) are in odds_test.sql.
+-- The owner removed the Yahoo daily limits (20261019000300). Pin the E3 caps so the cap mechanism is still tested.
+update public.yahoo_jobs set daily_cap = case id when 'chat_client' then 15 when 'romance_job' then 8 when 'elon_format' then 4 when 'big_job' then 3 else 0 end;
+update public.group_missions set daily_cap = 3 where id in ('crew_hustle', 'hk_big_table');
 create or replace function pg_temp.hint_of(p_sql text) returns text
 language plpgsql as $$
 declare v_h text;
