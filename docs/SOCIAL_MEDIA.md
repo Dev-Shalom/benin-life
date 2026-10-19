@@ -122,3 +122,45 @@ Features: School and certificates · Skills · Daily challenges · Gangs · Elec
 - Hook: "Benin Life don start to collect tax 😭💸" (players react; good for comments).
 - Poster: "TAX SEASON IN BENIN LIFE": the Edo State revenue office in game style.
 - Philanthropists leaderboard: "Who be the biggest giver for Benin City?"
+
+## 9. LinkedIn (founder profile)
+Goal: be known as the founder and CEO of Benin Life, and use LinkedIn to get press, partners, sponsors and Benin diaspora players.
+
+### Profile edits
+- **Headline** (under your name, 220 characters max): `Founder & CEO, Benin Life 🇳🇬 | Building the first life-simulation game set in Benin City | Play free: playbeninlife.app`
+- **Banner** (1584 × 396 px): the Benin Life logo and the line "Live a whole new life in Benin City". Ask Claude to export it.
+- **Profile photo:** keep your own face. Put the game logo in the banner, not the photo.
+- **Experience → Add position:** Title `Founder & CEO` · Company `Benin Life` (create the company page first, or type the name) · Type `Self-employed` or `Full-time` · Start date = the month you began building · Location `Benin City, Edo, Nigeria` · Description (below).
+- **Featured section:** add the 60-second film, the link to playbeninlife.app and your best post.
+- **Custom button / website link:** playbeninlife.app.
+- **Create a company page** "Benin Life" (Me → For Business → Create a Company Page). Use the logo, the tagline and the website. Then post as the page too, and add it to your Experience.
+
+### About section (paste and edit)
+> I'm Shalom, founder and CEO of Benin Life, a free life-simulation game set in Benin City.
+> Players live a whole second life: work and hustle, study at UNIBEN, invest, own a business, start a gang, run for Governor and party at the clubs. It is built around real Benin places and Pidgin, and it runs in your browser on any phone.
+> I design, build and run it myself, and I'm growing the community now. If you're a creator, brand, investor or Benin diaspora who wants to be part of it, message me.
+> 🌐 playbeninlife.app
+
+### First post (with the film)
+> I just launched something I've been building: Benin Life 🇳🇬
+>
+> It's a free life-simulation game set in Benin City. You can hustle, go to school at UNIBEN, invest, open a business, start a gang, even run for Governor, all in one world built around real Benin places.
+>
+> I'm the founder, and I've been building it myself, one feature at a time. Over the last weeks I added schools, businesses, elections, a player market, gangs and a full city economy.
+>
+> Play free in your browser: playbeninlife.app
+>
+> I'd love your feedback. What should I build next?
+>
+> #BeninCity #Edo #Nigeria #GameDev #IndieGame #Startup #Founder #Gaming
+
+### Video specs for LinkedIn
+- Vertical (9:16) works on mobile but looks small on desktop. A **4:5 (1080 × 1350)** or **square (1080 × 1080)** version looks better in the feed. Ask Claude to export one.
+- Under 10 minutes, ideally under 90 seconds. Add captions: most people watch muted.
+- Upload the video directly to LinkedIn (don't paste a TikTok link).
+
+### Posting rhythm
+- 3 posts a week: Mon founder story, Wed update with a clip, Fri a number or lesson ("200 players in week 1 and what they did first").
+- Reply to every comment in the first hour and comment on other Nigerian founders' posts.
+- Tell the building story: why Benin City, what was hard, what players asked for. Founder stories do best on LinkedIn.
+- Connect with: Nigerian game developers, Edo diaspora, UNIBEN alumni, Nigerian tech journalists (TechCabal, Techpoint), creators who cover Naija gaming.
