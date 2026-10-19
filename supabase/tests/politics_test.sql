@@ -1,3 +1,7 @@
+-- E4 money sinks: the "Tax holiday" policy (kind tax_cut) is a fifth whitelist entry; this suite counts four, so it is switched off here.
+-- money_sinks_test.sql covers it. Tax / bills / VAT are pinned off as well.
+update gov_policies set active = false where id = 'tax_holiday';
+update game_config set value = 'false' where key in ('economy.transfer_fees_enabled', 'economy.tax_enabled', 'economy.bills_enabled', 'economy.vat_enabled', 'economy.luxury_enabled');
 -- E3 (20261019000100_economy_balance) halved the office salaries (a seat pays no work). This suite tests the R12 maths on the original
 -- numbers, so they are pinned back here (rolled back with everything else).
 update offices set salary_per_day = case id when 'councillor' then 20000 when 'chairman' then 50000 when 'governor' then 100000 else 40000 end;

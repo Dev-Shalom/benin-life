@@ -1,3 +1,6 @@
+-- E4 money sinks (20261019000400): this suite asserts exact balances and prices, so the new fees, tax, bills and VAT are pinned off here.
+-- They are covered by money_sinks_test.sql.
+update game_config set value = 'false' where key in ('economy.transfer_fees_enabled', 'economy.tax_enabled', 'economy.bills_enabled', 'economy.vat_enabled', 'economy.luxury_enabled');
 -- L1 (20261006000100_real_time.sql): this file pins the pre-L1 behaviour (accelerated clock +
 -- game-minute durations); time_test.sql covers the real clock and short actions. Rolled back.
 update game_config set value = '"accelerated"' where key = 'clock.mode';

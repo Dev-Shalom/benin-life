@@ -10,6 +10,7 @@ import { socialHomeOffer } from '../../api/social';
 import { naira } from '../../lib/format';
 import type { AvatarConfig, InventoryItem } from '../../lib/types';
 import { Icon, Sheet, toast } from '../../ui';
+import { FeeLine, useFeeQuote } from './phone/FeeLine';
 
 const NEED_LABEL: Record<string, string> = { hunger: 'hunger', fun: 'fun', social: 'social', energy: 'energy', stress: 'stress', hygiene: 'hygiene', health: 'health' };
 
@@ -70,6 +71,7 @@ export function HouseInteractSheet({ person, types, layout, inventory, busy, onC
       toast(error instanceof Error ? error.message : 'Could not share that item.', 'bad');
     } finally { setSending(null); }
   };
+  const giftQuote = useFeeQuote(Number(amount) || 0, 100);
   const gift = async () => {
     const n = Math.round(Number(amount));
     if (!person || sending || !Number.isFinite(n) || n <= 0) return;
@@ -142,6 +144,7 @@ export function HouseInteractSheet({ person, types, layout, inventory, busy, onC
             <span>Amount</span>
             <input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ''))} aria-label="Gift amount" />
           </label>
+          <FeeLine quote={giftQuote} />
           <button type="button" className="ix-primary" disabled={sending !== null || !(Number(amount) > 0)} onClick={() => void gift()}>
             {sending === 'gift' ? 'Sending…' : `Send ${Number(amount) > 0 ? naira(Number(amount)) : ''}`}
           </button>

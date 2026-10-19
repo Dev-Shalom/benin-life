@@ -24,6 +24,7 @@ import { Button, EmptyState, Icon, Spinner, toast } from '../../../ui';
 import { useEscape } from '../../../ui/presence';
 import { AmountBox } from '../../../panels/bank/BankUI';
 import { realWait, useBankInfo } from '../../../panels/bank/bankHooks';
+import { FeeLine, useFeeQuote } from './FeeLine';
 import {
   canDeleteForEveryone, DaySep, flashMessage, MessageMenu, MessageRow, previewOf, ReplyBar, resolveReply,
   useThreadScroll, useViewportVars, type MenuAction, type Receipt, type ThreadMessage,
@@ -113,9 +114,10 @@ function SendMoneySheet({ state, friend, onClose, onSent }: {
   const [busy, setBusy] = useState(false);
   const t = info?.transfer;
   const n = Number(amount) || 0;
-  const fee = t?.fee ?? 0;
+  const quote = useFeeQuote(n, t?.min_amount ?? 0);
+  const fee = quote?.fee ?? t?.fee ?? 0;
   const bank = state.profile.bank;
-  const maxSend = t ? Math.max(0, Math.min(bank - fee, t.left_today)) : 0;
+  const maxSend = t ? Math.max(0, Math.min(bank - (t.fee_rules?.enabled ? 0 : fee), t.left_today)) : 0;
   const wait = t?.new_account_wait_real_seconds ?? 0;
   const blocked = !t ? (err ?? 'Loading…') : wait > 0 ? `New accounts can send in ${realWait(wait)}`
     : n < t.min_amount ? `At least ${naira(t.min_amount)}` : n > t.left_today ? `Daily limit: ${naira(t.left_today)} left`
@@ -133,8 +135,9 @@ function SendMoneySheet({ state, friend, onClose, onSent }: {
   return (
     <MiniSheet title={`Send money to @${friend.username}`} onClose={onClose}>
       <div className="dm-sheet__body stack">
-        <p className="dm-sheet__lead">From your bank · balance <b>{naira(bank)}</b>{t ? ` · fee ${naira(fee)}` : ''}</p>
+        <p className="dm-sheet__lead">From your bank · balance <b>{naira(bank)}</b>{t && !t.fee_rules?.enabled ? ` · fee ${naira(fee)}` : ''}</p>
         {t && <AmountBox value={amount} onChange={setAmount} max={maxSend} min={t.min_amount} />}
+        <FeeLine quote={quote} />
         <input className="input" value={note} maxLength={80} placeholder="Note (optional): for chop, rent, thank you…" aria-label="Note"
           onChange={(e) => setNote(e.target.value)} />
         <Button variant="green" block loading={busy} disabled={Boolean(blocked) || busy} onClick={() => void send()}>

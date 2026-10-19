@@ -1,3 +1,6 @@
+-- E4 money sinks (20261019000400): this suite asserts exact balances and prices, so the new fees, tax, bills and VAT are pinned off here.
+-- They are covered by money_sinks_test.sql.
+update game_config set value = 'false' where key in ('economy.transfer_fees_enabled', 'economy.tax_enabled', 'economy.bills_enabled', 'economy.vat_enabled', 'economy.luxury_enabled');
 -- H2 sell furniture + cars, dealer price tiers, receipts (20261012000400_sell_receipts.sql). Rolled back. Run:
 --   bash scripts/sql-test.sh -- supabase/tests/sell_receipts_test.sql
 -- Groups: 1 sell furniture (payout, copy removal + key renumbering, ledger, fixed refusals; H4: starters sell) ·

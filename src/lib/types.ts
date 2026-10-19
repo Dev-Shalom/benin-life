@@ -570,6 +570,9 @@ export interface ShopItem extends ItemBase {
   base_price?: number;
   /** H2: every place that sells it (vehicles: the dealers). */
   sold_at?: string[];
+  /** E4: the VAT and luxury levy percent inside `price` (price is what you pay). */
+  vat_pct?: number;
+  lux_pct?: number;
 }
 
 /** H2: a car dealer's tier (car_dealers table; price = base x multiplier). */
@@ -639,6 +642,8 @@ export interface BankInfo {
   pos: { fee_pct: number; fee_min: number; max_amount: number; max_cashout: number; max_deposit: number };
   transfer: {
     fee: number;
+    /** E4: the tiered fee rules (percent tiers, stamp duty, soft cap). */
+    fee_rules?: { enabled: boolean; flat_fee: number; min_fee: number; stamp_duty: number; stamp_duty_min: number; soft_cap: number; soft_cap_mult: number };
     min_amount: number;
     daily_limit: number;
     sent_today: number;

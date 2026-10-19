@@ -1,6 +1,7 @@
 // V1-7 admin RPC wrappers. Every RPC is guarded server-side by bl_is_admin() (supabase/migrations/20261005001100_admin.sql).
 import { GameError, rpc } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import type { EconomyOverview } from '../api/economy';
 
 export type ConfigKind = 'number' | 'percent' | 'naira' | 'minutes' | 'bool' | 'text' | 'json';
 
@@ -168,6 +169,8 @@ export const adminApi = {
     rpc<Msg>('admin_set_origin', { p_user: id, p_origin: origin, p_apply_perks: applyPerks }),
   stats: () => rpc<Stats>('admin_stats'),
   /** E2: referrals, weekly winners and tips (docs/HUSTLES.md). */
+  /** E4: the Economy dashboard (docs/ECONOMY_SINKS.md). */
+  economyOverview: (days = 14) => rpc<EconomyOverview>('admin_economy_overview', { p_days: days }),
   earnOverview: (limit = 100) => rpc<EarnOverview>('admin_earn_overview', { p_limit: limit }),
   audit: (limit = 150) => rpc<AuditEntry[]>('admin_audit_list', { p_limit: limit }),
   payments: (status: string | null, search: string | null) => rpc<PaymentsData>('admin_payments', { p_status: status, p_search: search, p_limit: 200 }),

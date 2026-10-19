@@ -11,6 +11,7 @@ import { getCfg } from '../../lib/config';
 import { errorMessage } from '../../lib/api';
 import { cameWithHouse, furnitureKey, type HomeLayout, type HomeLayoutId, type OwnedPiece, type SavedHomePosition } from '../../art/home3d/model';
 import { naira, nairaShort } from '../../lib/format';
+import { grossPrice, noteFor } from '../../lib/tax';
 import { Button, Icon, Modal, Segmented, Sheet, toast } from '../../ui';
 import { SellToPlayersButton } from './SellToPlayers';
 
@@ -240,7 +241,8 @@ export function BuySheet({ tab, onTab, home, onBought, onSold, onArrange }: {
               {items.map((it) => {
                 const have = ownedQty(it.id);
                 const maxed = have >= it.max_qty;
-                const broke = money < it.price;
+                const gross = grossPrice('furniture', it.price);
+                const broke = money < gross;
                 const perk = perkLine(it);
                 return (
                   <div key={it.id} className={`buy-card buy-card--${it.tier}`}>
@@ -248,11 +250,12 @@ export function BuySheet({ tab, onTab, home, onBought, onSold, onArrange }: {
                     <span className={`buy-card__tier buy-card__tier--${it.tier}`}>{it.tier === 'mid' ? 'Mid' : it.tier.toUpperCase()}</span>
                     <span className="buy-card__name">{it.name}</span>
                     {perk && <span className="buy-card__perk">{perk}</span>}
-                    <span className="buy-card__price" title={naira(it.price)}>{naira(it.price)}</span>
+                    <span className="buy-card__price" title={naira(gross)}>{naira(gross)}</span>
+                    {noteFor('furniture', it.price) && <span className="buy-card__tax">{noteFor('furniture', it.price)}</span>}
                     {have > 0 && <span className="buy-card__owned">You have {have}{it.max_qty > 1 ? ` of ${it.max_qty}` : ''}</span>}
                     <button type="button" className={`buy-card__btn${confirm === it.id ? ' is-confirm' : ''}`} disabled={maxed || broke || busy !== null}
                       onClick={() => void buy(it)}>
-                      {busy === it.id ? 'Buying…' : maxed ? 'Owned' : broke ? 'Not enough money' : confirm === it.id ? `Pay ${nairaShort(it.price)}` : 'Buy'}
+                      {busy === it.id ? 'Buying…' : maxed ? 'Owned' : broke ? 'Not enough money' : confirm === it.id ? `Pay ${nairaShort(gross)}` : 'Buy'}
                     </button>
                   </div>
                 );

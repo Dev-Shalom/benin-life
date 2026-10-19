@@ -34,3 +34,4 @@ supabase/functions/.env
 # brand build: local copy of the Outfit font used to outline the wordmark
 scripts/brand/.fonts
 scripts/brand/__pycache__
+marketing/*.mp4

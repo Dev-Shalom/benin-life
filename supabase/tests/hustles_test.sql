@@ -1,3 +1,6 @@
+-- E4 money sinks (20261019000400): this suite asserts exact balances and prices, so the new fees, tax, bills and VAT are pinned off here.
+-- They are covered by money_sinks_test.sql.
+update game_config set value = 'false' where key in ('economy.transfer_fees_enabled', 'economy.tax_enabled', 'economy.bills_enabled', 'economy.vat_enabled', 'economy.luxury_enabled');
 -- E3 (20261019000100_economy_balance) retuned tutor / MC / DJ / quick-fix pay, fish prices and the Bolt class multipliers. This suite
 -- tests the E2 maths on the original numbers, so they are pinned back here (rolled back with everything else).
 update hustles set

@@ -586,3 +586,6 @@ Change them after launch traffic shows how fast people earn: Admin → Overview 
 
 ## Owner decision on Yahoo (19 Oct 2026)
 The owner chose the "middle ground": Yahoo and group-mission pay ranges and gates stay as approved; only daily caps were added (chat 15, romance 8, Elon 4, Big job 3, each group mission 3). The Yahoo rows in the tables above that show cut pay were NOT applied. Measured after caps: chat about 16x a starter day, romance 31x mid, Elon 19x senior, Big job 34x senior. Everything else in E3 was applied.
+
+## E4 money sinks (2026-10-19)
+Tax, bills, VAT, transfer charges and prestige sinks now remove roughly 10 % (mid) to 20-25 % (rich) of daily money creation at the defaults. See docs/ECONOMY_SINKS.md.

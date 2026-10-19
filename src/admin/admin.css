@@ -547,3 +547,17 @@
 .adm-music-plist { margin-top: 6px; border: 1px solid var(--adm-line); border-radius: 12px; }
 .adm-music-plist .adm-iconbtn:disabled { opacity: 0.35; }
 .adm-music-pick { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow: auto; }
+
+/* E4 Economy dashboard */
+.eco-chart { width: 100%; height: auto; display: block; margin: 6px 0 10px; }
+.eco-chart__grid { stroke: var(--adm-line, #e3e8e5); stroke-width: 1; }
+.eco-chart__made { fill: #2f9e5b; }
+.eco-chart__gone { fill: #d9534f; }
+.eco-chart__lbl { font-size: 10px; fill: var(--adm-muted, #6b7a72); }
+.eco-parts { display: grid; gap: 8px; }
+.eco-part { position: relative; display: flex; justify-content: space-between; padding: 8px 12px; border-radius: 10px; background: var(--adm-surface-2, #f2f5f3); overflow: hidden; }
+.eco-part > * { position: relative; z-index: 1; }
+.eco-part i { position: absolute; inset: 0 auto 0 0; background: rgba(47, 158, 91, .18); z-index: 0; }
+.eco-sinks, .eco-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.eco-sinks li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; border-radius: 8px; background: var(--adm-surface-2, #f2f5f3); }
+.eco-links small { color: var(--adm-muted, #6b7a72); margin-left: 6px; }
