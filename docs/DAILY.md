@@ -28,3 +28,7 @@ Everything is decided on the server and keyed to the **WAT calendar day**: `bl_w
 
 ## Tests
 `bash scripts/sql-test.sh -- supabase/tests/daily_test.sql`: claim once per day + ledger label + day-7 item + grants, streak +1 next day, missed day resets to 1, deterministic pick that drops hidden places / private homes (checked over 40 days), `gem_find` needs you there and not travelling, no double find, all-found bonus + counters (own vs all players), players cannot write the tables or read others' finds, switches off.
+
+
+## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
+Gem hunt: `daily.gem_prize` ₦3,000 -> **₦1,000**, `daily.gem_all_bonus` ₦5,000 -> **₦2,000** (up to ₦14,000 a day for walking was more than a starter day of work; now up to ₦5,000). The 7-day reward ladder is unchanged.

@@ -1,3 +1,26 @@
+-- E3 (20261019000100_economy_balance) retuned tutor / MC / DJ / quick-fix pay, fish prices and the Bolt class multipliers. This suite
+-- tests the E2 maths on the original numbers, so they are pinned back here (rolled back with everything else).
+update hustles set
+  pay_min = case id when 'tutor_session' then 6000 when 'mc_gig' then 8000 when 'dj_set' then 15000 when 'mech_quick' then 3500 else pay_min end,
+  pay_max = case id when 'tutor_session' then 12000 when 'mc_gig' then 18000 when 'dj_set' then 35000 when 'mech_quick' then 8000 else pay_max end,
+  bonus_min = case id when 'tutor_session' then 5000 when 'mc_gig' then 5000 when 'dj_set' then 10000 else bonus_min end,
+  bonus_max = case id when 'tutor_session' then 15000 when 'mc_gig' then 15000 when 'dj_set' then 30000 else bonus_max end;
+update items set price = case id when 'fish_tilapia_small' then 1200 when 'fish_tilapia' then 2500 when 'fish_catfish' then 5500
+  when 'fish_mudfish' then 9000 when 'fish_giant_catfish' then 30000 else price end where id like 'fish\_%';
+update hustle_car_classes set pay_mult = case id when 'premium' then 2.2 when 'luxury' then 3.5 else pay_mult end;
+-- E3 (20261019000100_economy_balance) retuned yahoo pay, gates, daily caps and the launder fee. This suite tests the Y1/R6 maths on
+-- the original numbers, so they are pinned back here (rolled back with everything else). odds_test.sql covers the new numbers.
+update yahoo_jobs set
+  pay_min = case id when 'chat_client' then 5000 when 'romance_job' then 50000 when 'big_job' then 500000 when 'elon_format' then 200000 else pay_min end,
+  pay_max = case id when 'chat_client' then 50000 when 'romance_job' then 400000 when 'big_job' then 3000000 when 'elon_format' then 1200000 else pay_max end,
+  min_tier = case id when 'romance_job' then 0 when 'elon_format' then 1 else min_tier end,
+  min_skill_level = case id when 'romance_job' then 1 else min_skill_level end,
+  daily_cap = 0;
+update group_missions set
+  reward_min = case id when 'crew_hustle' then 400000 when 'hk_big_table' then 3000000 else reward_min end,
+  reward_max = case id when 'crew_hustle' then 1600000 when 'hk_big_table' then 12000000 else reward_max end,
+  daily_cap = 0;
+update game_config set value = '15' where key = 'yahoo.launder_fee_pct';
 -- R3 Skills & progression (20261017000400_skills.sql). Rolled back. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/skills_test.sql
 -- Time moves with bl.test_offset_seconds; rolls are pinned with bl.test_rand (bl_rand / bl_crime_roll).

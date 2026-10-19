@@ -1,3 +1,9 @@
+-- E3 (20261019000100_economy_balance) cut the restock cost of five business types and raised the Chemist / Filling station income.
+-- This suite tests the R10 maths on the original numbers, so they are pinned back here (rolled back with everything else).
+update business_types set
+  restock_cost = case id when 'provision_shop' then 18000 when 'buka' then 25000 when 'beer_parlour' then 55000 when 'chemist' then 70000 when 'filling_station' then 280000 else restock_cost end,
+  income_min = case id when 'chemist' then 30000 when 'filling_station' then 90000 else income_min end,
+  income_max = case id when 'chemist' then 45000 when 'filling_station' then 130000 else income_max end;
 -- R10 own a business (20261018000900_business.sql). Rolled back. Run (migration applied):
 --   bash scripts/sql-test.sh -- supabase/tests/business_test.sql
 -- Or with the migration first: bash scripts/sql-test.sh supabase/migrations/20261018000900_business.sql -- supabase/tests/business_test.sql

@@ -1,3 +1,16 @@
+-- E3 (20261019000100_economy_balance) retuned yahoo pay, gates, daily caps and the launder fee. This suite tests the Y1/R6 maths on
+-- the original numbers, so they are pinned back here (rolled back with everything else). odds_test.sql covers the new numbers.
+update yahoo_jobs set
+  pay_min = case id when 'chat_client' then 5000 when 'romance_job' then 50000 when 'big_job' then 500000 when 'elon_format' then 200000 else pay_min end,
+  pay_max = case id when 'chat_client' then 50000 when 'romance_job' then 400000 when 'big_job' then 3000000 when 'elon_format' then 1200000 else pay_max end,
+  min_tier = case id when 'romance_job' then 0 when 'elon_format' then 1 else min_tier end,
+  min_skill_level = case id when 'romance_job' then 1 else min_skill_level end,
+  daily_cap = 0;
+update group_missions set
+  reward_min = case id when 'crew_hustle' then 400000 when 'hk_big_table' then 3000000 else reward_min end,
+  reward_max = case id when 'crew_hustle' then 1600000 when 'hk_big_table' then 12000000 else reward_max end,
+  daily_cap = 0;
+update game_config set value = '15' where key = 'yahoo.launder_fee_pct';
 -- 20261014000500 made Yahoo fairer (lower catch chances, laptop seized 35 %, half the balance taken). This file pins
 -- the original Y1 numbers so its maths stays exact; group 14 at the end covers the fairer busts. Rolled back.
 update yahoo_jobs set caught_pct = case id when 'chat_client' then 20 when 'romance_job' then 25 when 'big_job' then 35 when 'cash_out' then 32 else caught_pct end;

@@ -1,3 +1,13 @@
+-- E3 (20261019000100_economy_balance) retuned the safe yields, the share / land / flat / crypto drifts and the farm gains. This suite tests the
+-- I1 maths on the original numbers, so they are pinned back here (rolled back with everything else).
+update invest_products set
+  rate_pct = case id when 'bronze_savings' then 10 when 'mmf' then 18 when 'safelock_7' then 15 when 'safelock_30' then 18 when 'safelock_90' then 22
+    when 'fd_30' then 16 when 'fd_90' then 19 when 'tbill_91' then 16 when 'tbill_182' then 17.75 when 'tbill_364' then 21.85 when 'fgn_bond' then 19 else rate_pct end,
+  gain_min_pct = case id when 'farm_poultry' then 25 when 'farm_fish' then 28 else gain_min_pct end,
+  gain_max_pct = case id when 'farm_poultry' then 35 when 'farm_fish' then 38 else gain_max_pct end;
+update invest_markets set drift_pct_year = case id when 'stk_dangcem' then 10 when 'stk_mtnn' then 12 when 'stk_gtco' then 15 when 'stk_zenith' then 13
+  when 'stk_okomu' then 14 when 'stk_presco' then 16 when 'crypto_usdt' then 6 when 'crypto_btc' then 55 when 'property_index' then 14
+  when 'land_gra' then 22 when 'land_ugbowo' then 28 when 'land_sapele' then 24 when 'land_airport' then 30 when 'land_ikpoba' then 26 when 'land_okhoro' then 33 when 'land_ekenwan' then 35 else drift_pct_year end;
 -- I1 Invest & Save (20261014000200_invest_save.sql). Rolled back. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/invest_save_test.sql
 -- Time moves with bl.test_offset_seconds; rolls are pinned with bl.test_rand (bl_rand). One invest day = year_days*86400/365 s.

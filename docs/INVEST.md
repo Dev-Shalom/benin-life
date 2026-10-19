@@ -43,3 +43,22 @@ Content → "Invest & Save products" (`invest_products`: rate, term, exit fee, f
 
 ## Not included
 Rich list / leaderboards still count cash + bank only (not invested value). Price history is never pruned.
+
+
+## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
+Risk and reward were out of order (a risk-free any-time MMF at 18 % beat Dangote Cement at 10 %, "high risk" USDT paid 6 %, land grew 22-35 % a 30 days with only 7-9 % vol, Bitcoin +55 % a 30 days with no cap on the amount). One game year is 30 real days, so every "year" rate is a per-30-days rate. Now (percent per game year = per 30 real days):
+
+| Group | Before | Now |
+|---|---|---|
+| Bronze Savings / MMF | 10 / 18 | **6 / 9** |
+| SafeLock 7 / 30 / 90 | 15 / 18 / 22 | **9.5 / 11 / 13** |
+| FD 30 / 90 | 16 / 19 | **10.5 / 12.5** |
+| T-bill 91 / 182 / 364 | 16 / 17.75 / 21.85 | **11 / 13.5 / 15** |
+| FGN bond coupon | 19 | **12.5** |
+| Share drift (Dangote, MTN, Zenith, GTCO, Okomu, Presco) | 10 / 12 / 13 / 15 / 14 / 16 | **15 / 16 / 18 / 19 / 18 / 21** |
+| USDT / BTC drift | 6 / 55 | **10 / 30** |
+| Land drift (GRA, Ugbowo, Sapele, Airport, Ikpoba, Okhoro, Ekenwan) | 22 / 28 / 24 / 30 / 26 / 33 / 35 | **12 / 15 / 13 / 16 / 14 / 17 / 18** |
+| Property index drift (flat prices) | 14 | **8** |
+| Poultry / fish gain range | 25-35 / 28-38 | **20-30 / 22-32** |
+
+Keke, Okada, Sienna and POS units were checked WITH their own event losses (breakdown, accident, fraud, network) and pay 0.8 to 1.3 % a real day (payback 78 to 123 days): unchanged. `invest_save_test` pins the old rates, drifts and gains.

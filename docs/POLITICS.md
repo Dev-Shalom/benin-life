@@ -148,3 +148,7 @@ places / profile / chat / friends, salary accrual, ledger, earned), Governor (ap
 polling units open only on voting day, auto cycle timing, admin (disqualify + audit + voided votes, reports, remove holder, cancel + refunds, secrecy), term end (last salary stops, policies stop, cancelled never restarts),
 switch off, removing a Governor.
 `map_geo_test.sql` and `places_test.sql` were pinned: the 8 `pu_*` polling units are counted separately (like the business plots) and `politics` is an allowed panel ref.
+
+
+## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
+Salary is paid for holding the seat. Per day: Councillor ₦20k -> **₦10k**, Chairman ₦50k -> **₦25k**, Governor ₦100k -> **₦50k**, each Commissioner (appointed, so an alt can hold one) ₦40k -> **₦15k**. The fees (₦10k / ₦50k / ₦250k), rally and poster costs are unchanged. `politics_test` pins the old salaries.

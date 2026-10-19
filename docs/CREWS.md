@@ -125,3 +125,10 @@ separately from the global mute, and a realtime channel for crew chat (it polls)
 run (jail for all, fine, no loot, jail flow works), skill cut (levels, average, cap, skills off), cooldown / daily cap / auto start / dropped member / too few, level up unlocks (bonus, supplies, Prospect half
 share), leave / kick / transfer / rejoin cooldown / on job, recruiting / browse / report, crew chat, tag in places / profile / chat / friends, weekly settle (prize into the bank, once), disband and
 refunds, admin (audited view, rename, disband, reports, content tables), earned vs transfer.
+
+
+## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
+- Job pots (whole pot, before the crew level bonus and the member bonus): Night market shakedown ₦300k-900k -> **₦50k-110k**, Hit a container ₦1.2M-3.5M -> **₦250k-550k**, Ring Road warehouse ₦2M-5M -> **₦350k-750k**, Bank van ₦8M-25M -> **₦1.5M-3.5M**. Before, the first job on the board paid about ₦1M a member a day (8 a day); now a member earns about ₦17k a job (starter), ₦44k / ₦55k (level 2), ₦180k (bank van), 3 jobs a day.
+- `crew.max_jobs_per_day` 8 -> 3. `crew.weekly_min_jobs` 2 -> 8 (two jobs a week was enough for an alt crew to win the ₦500k Top crew prize).
+- Disband: `crew.disband_fee_pct` (new, 10 %) is kept from the bank when the Boss disbands; the rest is shared equally. An admin disband charges nothing. Before, disbanding was a free way to move money between accounts.
+- The caught chances, buy-ins, cooldowns, crew levels and upgrade costs are unchanged. `crews_test` pins the old pots, the daily cap, the fee and the weekly minimum.

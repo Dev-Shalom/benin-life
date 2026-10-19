@@ -111,3 +111,20 @@ sell-back is 60 % of what you invested, the Market fee on a business is 8 %, a r
 levy 8 %, great day 10 %, staff theft 8 %. Incomes are tuned for a payback of roughly 40 to 100 real days; the E3 economy audit is the place to retune them.
 Not built: an interior that changes by level (the pin, the blurb and income change), customers that are NPCs (only player visits pay the owner), renaming a business,
 per-staff names saved (names are derived from the business id), and deleting plots (switch them off).
+
+
+## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
+The "payback of roughly 40 to 100 real days" line above was wrong for five types: restock (per 48 h) cost 60 to 127 % of the income of the same 48 h, so a stocked Beer parlour made ₦0 a day, a stocked Chemist lost ₦3k and a stocked Filling station lost ₦47k a day (the best play was never to restock; payback 120 to 237 days). Now:
+
+| Type | Restock before | Restock now | Income | Payback with stock |
+|---|---|---|---|---|
+| Provision shop | 18k | **6k** | 12-18k | 171 -> **63 days** |
+| Buka | 25k | **8k** | 16-24k | 257 -> **75** |
+| Beer parlour | 55k | **14k** | 28-42k | never -> **88** |
+| Chemist | 70k | **15k** | 30-45k -> **36-54k** | never -> **88** |
+| Filling station | 280k | **44k** | 90-130k -> **100-145k** | never -> **108** |
+Salon, Car wash, PoS centre and Event centre were already 67-98 days and are unchanged.
+
+- Market: a business bought on the Market now counts as invested at most its catalogue value (`bl_biz_value`), not the price paid. Before, list at 250 % of value, an alt buys, sells to the system for 60 % of what it paid (150 % of value): +30 % of the value per lap. Now a lap loses 40 % of the value plus the 8 % fee.
+- The visitor cut (30 %) is not a loop: the visitor pays 100 %, the owner gets 30 %, 70 % leaves the economy.
+- `business_test` pins the old restock costs and incomes.

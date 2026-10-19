@@ -1,3 +1,11 @@
+-- E3 (20261019000100_economy_balance) retuned the crew job pots, the daily job cap and added a disband fee. This suite tests the R11
+-- maths on the original numbers, so they are pinned back here (rolled back with everything else).
+update crew_jobs set
+  reward_min = case id when 'market_shakedown' then 300000 when 'port_container' then 1200000 when 'ring_road_warehouse' then 2000000 when 'bank_van' then 8000000 else reward_min end,
+  reward_max = case id when 'market_shakedown' then 900000 when 'port_container' then 3500000 when 'ring_road_warehouse' then 5000000 when 'bank_van' then 25000000 else reward_max end;
+update game_config set value = '8' where key = 'crew.max_jobs_per_day';
+update game_config set value = '0' where key = 'crew.disband_fee_pct';
+update game_config set value = '2' where key = 'crew.weekly_min_jobs';
 -- R11 Crews (20261018001000_crews.sql). Rolled back. Run (migration applied):
 --   bash scripts/sql-test.sh -- supabase/tests/crews_test.sql
 -- Or with the migration first: bash scripts/sql-test.sh supabase/migrations/20261018001000_crews.sql -- supabase/tests/crews_test.sql

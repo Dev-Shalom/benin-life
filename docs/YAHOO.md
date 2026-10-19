@@ -258,3 +258,21 @@ The Y1 suite's cash-out group still passes: it uses the plain `yahoo_job_start('
 13. RLS and admin
 
 Also updated: `origin_test.sql` (the laptop's category may be `laptop`).
+
+
+## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
+The pay numbers in the tables above are the Y1 / R6 launch values. E3 found crime paying 1,000 x a starter job (₦2M an hour for Chat a client, ₦71M an hour for the Big job, no daily limit), so it changed:
+
+| Job | Pay before | Pay now | Needs now | A day |
+|---|---|---|---|---|
+| Chat a client | ₦5k-50k | **₦3k-10k** | any laptop | 8 |
+| Romance job | ₦50k-400k | **₦28k-60k** | ThinkPad (tier 1) + Yahoo lvl 2 | 4 |
+| Elon format | ₦200k-1.2M | **₦70k-150k** | EliteBook (tier 2) + Yahoo lvl 4 | 3 |
+| Big job | ₦500k-3M | **₦160k-320k** | Dell XPS (tier 3) + Yahoo lvl 3 | 2 |
+| Crew hustle (group) | pot ₦400k-1.6M | **₦30k-80k** | Yahoo lvl 2 | 3 |
+| HK big table (group) | pot ₦3M-12M | **₦300k-550k** | Yahoo lvl 4 | 2 |
+
+- New column `yahoo_jobs.daily_cap` / `group_missions.daily_cap` (0 = no cap; cash out is never capped), counted per player per Benin day. Refusal hint `daily_cap`; `yahoo_status` jobs carry `daily_cap`, `cap_left` and `locked = 'daily_cap'`; the group status missions carry `daily_cap` and `cap_left`. Admin: Content -> Yahoo jobs / Group missions, field "Most runs a day".
+- The EFCC chances (12 / 16 / 24 / 14), the 35 % laptop seizure and the 50 % balance confiscation are the owner's and are untouched. `yahoo.launder_fee_pct` 15 -> 10 (the launder option was always worse than a full cash out).
+- Odds shown on screen: the running-job bar used the chance BEFORE the Yahoo level cut; it now shows the cut one (`skill_caught_pct`), and the "escape x %" line uses the server's number (vanishing charm, bad luck) instead of the bare setting.
+- Tests that assert the launch pay pin it at the top (`yahoo_test`, `yahoo_strategy_test`, `skills_test`). `odds_test.sql` checks every chance, `economy_balance_test.sql` the caps and the ladder.

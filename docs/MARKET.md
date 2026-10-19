@@ -109,3 +109,7 @@ reports are admin-only through `admin_market_overview`. Every market RPC is `sec
 5% fee, 20% to 300% price band, 10 new listings a day, 20 open, 7-day listings, 24-hour offers, lowest offer 50%, 3 reports hide a
 listing, flag a trade under 50% or over 200% of value, new accounts wait 24 real hours before they can sell. All editable as
 above. Not built: IP/device checks (nothing tracks them), selling clothes, counter-offers, editing a price (take it down and list again).
+
+
+## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
+A business bought here counts as invested at most its catalogue value, not the price paid (closes a loop worth +30 % of the value per lap; see docs/BUSINESS.md). The fees and price bands are unchanged. The Market stays the one way to move money between accounts without the ₦200k a day transfer limit, at a 5 to 8 % cost: kept on purpose, watch `admin_market_overview` for repeated pairs.

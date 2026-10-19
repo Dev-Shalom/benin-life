@@ -137,3 +137,12 @@ Also updated: `map_geo_test.sql` (two more places). Note: `places_test.sql` has 
 - Picking up real players for Bolt, a DJ controller upgrade ladder, and hustle ranks.
 - Fish sales are `shop_sell`, so they are not weekly earnings (fishing pays nothing in cash).
 - The referral milestone does not hook the work-shift code directly (checked at the next check-in).
+
+
+## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
+- Gear-free hustles paid more than hustles that need gear and 2 to 5 x a starter day: Tutor ₦6k-12k (+₦5k-15k tip) -> **₦2.5k-5k (+₦3k-8k)**, MC ₦8k-18k (+₦5k-15k) -> **₦4k-9k (+₦3k-8k)**, DJ set ₦15k-35k (+₦10k-30k) -> **₦10k-22k (+₦6k-18k)**, Quick fix ₦3.5k-8k -> **₦2.5k-6k**.
+- Fish: a cast was worth ₦2.7k (3 x a starter shift) for an ₦8k rod: tilapia 1,200 / 2,500, catfish 5,500, mudfish 9,000, giant catfish 30,000 -> **600 / 1,200 / 2,600 / 4,200 / 12,000** (fish sell at 100 % at a market).
+- Bolt Premium x2.2 -> **x3.0**, Black x3.5 -> **x5.0** (paid back in 440 / 1,000 days; now about 290 / 620).
+- Referral (the milestone is still ANY ONE of the three): shifts 1 -> **9**, hustles 3 -> **15**, play minutes 60 -> **240**; bonus ₦20k -> **₦10k** each; per day 5 -> **3**; per inviter 100 -> **30**. One 20-second shift used to pay ₦40k per alt account.
+- Tips: `tips.max_amount` ₦1M -> **₦100k**, `tips.daily_max` ₦5M -> **₦300k** (a tip bypassed the bank transfer limit of ₦200k a day and the fee). Weekly top earners: `leaderboard.weekly_min_earned` ₦20k -> **₦100k**.
+- `hustles_test` and `skills_test` pin the E2 numbers.

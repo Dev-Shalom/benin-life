@@ -1,3 +1,16 @@
+-- E3 (20261019000100_economy_balance) retuned yahoo pay, gates, daily caps and the launder fee. This suite tests the Y1/R6 maths on
+-- the original numbers, so they are pinned back here (rolled back with everything else). odds_test.sql covers the new numbers.
+update yahoo_jobs set
+  pay_min = case id when 'chat_client' then 5000 when 'romance_job' then 50000 when 'big_job' then 500000 when 'elon_format' then 200000 else pay_min end,
+  pay_max = case id when 'chat_client' then 50000 when 'romance_job' then 400000 when 'big_job' then 3000000 when 'elon_format' then 1200000 else pay_max end,
+  min_tier = case id when 'romance_job' then 0 when 'elon_format' then 1 else min_tier end,
+  min_skill_level = case id when 'romance_job' then 1 else min_skill_level end,
+  daily_cap = 0;
+update group_missions set
+  reward_min = case id when 'crew_hustle' then 400000 when 'hk_big_table' then 3000000 else reward_min end,
+  reward_max = case id when 'crew_hustle' then 1600000 when 'hk_big_table' then 12000000 else reward_max end,
+  daily_cap = 0;
+update game_config set value = '15' where key = 'yahoo.launder_fee_pct';
 -- R6 Yahoo strategy (20261018000300_yahoo_strategy.sql). Rolled back. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/yahoo_strategy_test.sql
 -- Time moves with bl.test_offset_seconds; every roll is pinned with bl.test_rand (bl_rand, so bl_crime_roll too):
