@@ -66,7 +66,7 @@ const APPS: App[] = [
   { id: 'cars', name: 'Cars', emoji: '🚗', bg: 'linear-gradient(160deg,#4aa3ff,#1f62c9)', pitch: 'Buy a tokunbo or a brand-new ride. Fuel money not included.' },
   { id: 'market', name: 'Market', emoji: '🏷️', bg: 'linear-gradient(160deg,#2fb7a6,#127a6e)', pitch: 'Buy and sell cars, land, furniture and gadgets with other players.' },
   { id: 'business', name: 'Business', emoji: '🏪', bg: 'linear-gradient(160deg,#f0b43a,#b86a12)', pitch: 'Own a shop, a buka, a bar or a filling station. Collect takings, restock, hire and upgrade.' },
-  { id: 'crew', name: 'Crew', emoji: '🤝', bg: 'linear-gradient(160deg,#3b3f58,#16182a)', pitch: 'Found a crew, recruit players and pull group jobs for big loot. The police can catch everybody.' },
+  { id: 'crew', name: 'Gang', emoji: '🤝', bg: 'linear-gradient(160deg,#3b3f58,#16182a)', pitch: 'Start a gang, recruit players and pull group jobs for big loot. The police can catch everybody.' },
   { id: 'politics', name: 'Benin Votes', emoji: '🗳️', bg: 'linear-gradient(160deg,#2f9e6b,#0e5a3a)', pitch: 'Run for councillor, chairman or governor, campaign, and vote at your ward polling unit. Fictional parties only.' },
   { id: 'billboards', name: 'Billboards', emoji: '📺', bg: 'linear-gradient(160deg,#ff6b78,#d93646)', pitch: '' },
   { id: 'hustles', name: 'Hustles', emoji: '💪', bg: 'linear-gradient(160deg,#ffb347,#e2552c)', pitch: '' },

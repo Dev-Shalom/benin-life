@@ -44,7 +44,7 @@ The owner decided:
    - Fix anything that pays too much or too little for the time and risk.
    - Check that every stated chance (%) really happens at that rate, using simulation tests.
    - Goal: enough to work towards for weeks, so players stay busy between updates.
-14c. **Rename Crew → Gang (owner request):** every player-facing word (app, buttons, Help, tour, Ranks, alerts, server messages). Internal ids stay `crew_*`. Runs right after E3.
+14c. **Rename Crew → Gang (DONE):** every player-facing word (app, buttons, Help, tour, Ranks, alerts, server messages). Internal ids stay `crew_*`. Runs right after E3.
 14d. **E4 Money sinks (owner request):** players can still earn big, but money must leave the game. Covers:
    - transfer fee and stamp duty on big transfers
    - progressive weekly income tax on high earners only

@@ -35,7 +35,7 @@ const NAV = [
   { to: '/admin/music', label: 'Music', icon: 'music' },
   { to: '/admin/market', label: 'Market', icon: 'cash' },
   { to: '/admin/business', label: 'Business', icon: 'cash' },
-  { to: '/admin/crews', label: 'Crews', icon: 'people' },
+  { to: '/admin/crews', label: 'Gangs', icon: 'people' },
   { to: '/admin/elections', label: 'Elections', icon: 'star' },
   { to: '/admin/payments', label: 'Payments', icon: 'cash' },
   { to: '/admin/ads', label: 'Ads', icon: 'bell' },

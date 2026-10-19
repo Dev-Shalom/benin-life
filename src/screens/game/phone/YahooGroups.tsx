@@ -1,6 +1,6 @@
 // R6 group missions section of the Yahoo app (docs/YAHOO.md "R6"): create a group mission, invite online friends, see who is
 // ready, start, and see the result with the split. Everything is decided on the server (yahoo_group_*); this only shows it.
-// Abstract game mechanic: a bigger pot split evenly, a higher EFCC risk for the whole crew.
+// Abstract game mechanic: a bigger pot split evenly, a higher EFCC risk for the whole gang.
 import { useEffect, useState } from 'react';
 import {
   yahooGroupCancel, yahooGroupCreate, yahooGroupRespond, yahooGroupStart,
@@ -96,7 +96,7 @@ export default function YahooGroups({ onGo, locationId }: { onGo: (id: string) =
             <p className="yh-fine">Your share: {nairaShort(inv.per_min)}–{nairaShort(inv.per_max)}. Be at HK Quarters or home on MiFi, with a laptop.</p>
             <div className="yh-gm__btns">
               <Button size="sm" variant="gold" loading={busy === `a${inv.id}`} disabled={busy !== null} data-testid="yahoo-invite-accept"
-                onClick={() => void act(`a${inv.id}`, () => yahooGroupRespond(inv.id, true))}>Join the crew</Button>
+                onClick={() => void act(`a${inv.id}`, () => yahooGroupRespond(inv.id, true))}>Join the gang</Button>
               <Button size="sm" variant="ghost" loading={busy === `p${inv.id}`} disabled={busy !== null}
                 onClick={() => void act(`p${inv.id}`, () => yahooGroupRespond(inv.id, false))}>Pass</Button>
             </div>
@@ -113,11 +113,11 @@ export default function YahooGroups({ onGo, locationId }: { onGo: (id: string) =
               <b>{g.name}</b>
               <small>
                 {g.status === 'inviting'
-                  ? `Waiting for the crew · starts in ${countdown(Math.max(0, secondsUntil(g.start_at, now)))} or when all answer`
+                  ? `Waiting for the gang · starts in ${countdown(Math.max(0, secondsUntil(g.start_at, now)))} or when all answer`
                   : `Running · ${countdown(Math.max(0, secondsUntil(g.resolve_at, now)))} left`}
               </small>
             </span>
-            <span className={`yh-odds ${oddsTone(g.caught_pct)}`} title={g.caught_pct !== g.base_caught_pct ? `Base ${pct(g.base_caught_pct)}, cut by the crew's average Yahoo level` : undefined}>
+            <span className={`yh-odds ${oddsTone(g.caught_pct)}`} title={g.caught_pct !== g.base_caught_pct ? `Base ${pct(g.base_caught_pct)}, cut by the gang's average Yahoo level` : undefined}>
               🚨 {pct(g.caught_pct)}{g.caught_pct !== g.base_caught_pct ? <s>{pct(g.base_caught_pct)}</s> : null}
             </span>
           </div>
@@ -128,7 +128,7 @@ export default function YahooGroups({ onGo, locationId }: { onGo: (id: string) =
           )}
           <Members g={g} />
           <p className="yh-fine">
-            {g.ready} of {g.min_members}+ ready · each share about {nairaShort(g.per_min)}–{nairaShort(g.per_max)}. Caught = the whole crew gets the EFCC case.
+            {g.ready} of {g.min_members}+ ready · each share about {nairaShort(g.per_min)}–{nairaShort(g.per_max)}. Caught = the whole gang gets the EFCC case.
           </p>
           {g.status === 'inviting' && (
             <div className="yh-gm__btns">
@@ -150,7 +150,7 @@ export default function YahooGroups({ onGo, locationId }: { onGo: (id: string) =
           <div className="yh-gm__head">
             <span className="yh-gm__icon" aria-hidden>{last.status === 'paid' ? '✅' : '🚨'}</span>
             <span className="grow">
-              <b>{last.name}: {last.status === 'paid' ? 'paid' : 'EFCC caught the crew'}</b>
+              <b>{last.name}: {last.status === 'paid' ? 'paid' : 'EFCC caught the gang'}</b>
               <small>{last.status === 'paid' ? `Pot ${naira(last.pot)} split ${last.members.filter((m) => m.status === 'accepted').length} ways: ${naira(last.per_member)} each` : 'Everybody got the EFCC case.'}</small>
             </span>
           </div>
@@ -163,7 +163,7 @@ export default function YahooGroups({ onGo, locationId }: { onGo: (id: string) =
       {!g && mission && (
         <div className="yh-gm" data-testid="yahoo-group-new">
           <p className="yh-fine yh-fine--top">
-            Work a format with friends: bigger pot split evenly, but the whole crew shares the EFCC risk.
+            Work a format with friends: bigger pot split evenly, but the whole gang shares the EFCC risk.
             Everybody needs a laptop and must be at {gs.places.map((p) => p.name).join(' or ') || 'HK Quarters'} or home on MiFi.
           </p>
           <p className={`yh-where${gs.spot.ok ? ' is-ok' : ''}`}>
@@ -185,7 +185,7 @@ export default function YahooGroups({ onGo, locationId }: { onGo: (id: string) =
               </button>
             ))}
           </div>
-          <p className="yh-fine">{mission.blurb} Pot grows {gs.bonus_pct}% for each extra member; the crew's average Yahoo level lowers the risk.</p>
+          <p className="yh-fine">{mission.blurb} Pot grows {gs.bonus_pct}% for each extra member; the gang's average Yahoo level lowers the risk.</p>
           <h5 className="yh-gm__sub">Invite friends ({friends.length}/{maxInvites})</h5>
           {gs.friends.length === 0 ? <p className="yh-fine">No friends yet. Add friends from Messages first.</p> : (
             <div className="yh-gm__friends">
