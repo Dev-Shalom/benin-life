@@ -44,4 +44,5 @@ The owner decided:
    - Fix anything that pays too much or too little for the time and risk.
    - Check that every stated chance (%) really happens at that rate, using simulation tests.
    - Goal: enough to work towards for weeks, so players stay busy between updates.
+14c. **Rename Crew → Gang (owner request):** every player-facing word (app, buttons, Help, tour, Ranks, alerts, server messages). Internal ids stay `crew_*`. Runs right after E3.
 15. **Later, from the earlier queue:** Link-ups, Church/prophet, Benin Gist.
