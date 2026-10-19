@@ -1,3 +1,9 @@
+-- E3 (20261019000100_economy_balance) cut the restock cost of five business types and raised the Chemist / Filling station income.
+-- This suite tests the R10 maths on the original numbers, so they are pinned back here (rolled back with everything else).
+update business_types set
+  restock_cost = case id when 'provision_shop' then 18000 when 'buka' then 25000 when 'beer_parlour' then 55000 when 'chemist' then 70000 when 'filling_station' then 280000 else restock_cost end,
+  income_min = case id when 'chemist' then 30000 when 'filling_station' then 90000 else income_min end,
+  income_max = case id when 'chemist' then 45000 when 'filling_station' then 130000 else income_max end;
 -- R10 own a business (20261018000900_business.sql). Rolled back. Run (migration applied):
 --   bash scripts/sql-test.sh -- supabase/tests/business_test.sql
 -- Or with the migration first: bash scripts/sql-test.sh supabase/migrations/20261018000900_business.sql -- supabase/tests/business_test.sql
@@ -7,6 +13,9 @@
 -- 9 upgrade · 10 visitors pay the owner a cut (shop_buy, do_activity, own spend pays nothing, interior lists the shelf) ·
 -- 11 sell back · 12 Market (quote rolls back, escrow, buy, cancel) · 13 weekly earnings · 14 admin grant / remove + audit +
 -- content spec + new plot · 15 push plan · 16 switches · 17 plots are hidden places.
+-- Markets have opening hours; pin them open so the suite does not depend on the hour it runs.
+update public.locations set open_hour = null, close_hour = null where scene = 'market';
+
 create or replace function pg_temp.hint_of(p_sql text) returns text
 language plpgsql as $$
 declare v_h text;
@@ -324,6 +333,8 @@ begin
   -- daily cap
   perform pg_temp.cfg('business.shift_daily_cap', '1');
   perform pg_temp.fresh(o);
+  -- the earlier shift may fall on yesterday's game date depending on the hour the suite runs; work one now
+  if pg_temp.hint_of(format('select business_work(%s)', v_biz)) = 'ok' then perform pg_temp.fresh(o); end if;
   perform pg_temp.assert(pg_temp.hint_of(format('select business_work(%s)', v_biz)) = 'shift_cap', 'shifts per day are capped');
   perform pg_temp.cfg('business.shift_daily_cap', '6');
   update profiles set energy = 3, needs_updated_at = bl_now() where id = o;

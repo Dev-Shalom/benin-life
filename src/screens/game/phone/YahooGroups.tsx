@@ -74,7 +74,8 @@ export default function YahooGroups({ onGo, locationId }: { onGo: (id: string) =
   const createWhy = !gs.has_laptop ? 'Need a laptop'
     : !gs.spot.ok ? (gs.spot.hint === 'no_mifi' ? 'Need MiFi' : 'Go to HK Quarters')
       : mission && !mission.level_ok ? `Needs Yahoo lvl ${mission.min_yahoo_level}`
-        : mCd > 0 ? `Wait ${countdown(mCd)}`
+        : mission && mission.daily_cap && (mission.cap_left ?? 0) <= 0 ? 'Done for today'
+          : mCd > 0 ? `Wait ${countdown(mCd)}`
           : friends.length < 1 ? 'Pick a friend' : null;
 
   return (
@@ -178,7 +179,7 @@ export default function YahooGroups({ onGo, locationId }: { onGo: (id: string) =
                 <span aria-hidden>{m.icon}</span>
                 <span className="grow">
                   <b>{m.name}</b>
-                  <small>{m.min_members}–{m.max_members} players · {dur(m.duration_seconds)} · pot {nairaShort(m.reward_min)}–{nairaShort(m.reward_max)}{m.min_yahoo_level > 1 ? ` · Yahoo lvl ${m.min_yahoo_level}+` : ''}</small>
+                  <small>{m.min_members}–{m.max_members} players · {dur(m.duration_seconds)} · pot {nairaShort(m.reward_min)}–{nairaShort(m.reward_max)}{m.min_yahoo_level > 1 ? ` · Yahoo lvl ${m.min_yahoo_level}+` : ''}{m.daily_cap ? ` · ${m.cap_left ?? 0}/${m.daily_cap} left today` : ''}</small>
                 </span>
                 <span className={`yh-odds ${oddsTone(m.caught_pct)}`}>🚨 {pct(m.caught_pct)}</span>
               </button>

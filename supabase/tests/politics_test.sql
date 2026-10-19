@@ -1,3 +1,6 @@
+-- E3 (20261019000100_economy_balance) halved the office salaries (a seat pays no work). This suite tests the R12 maths on the original
+-- numbers, so they are pinned back here (rolled back with everything else).
+update offices set salary_per_day = case id when 'councillor' then 20000 when 'chairman' then 50000 when 'governor' then 100000 else 40000 end;
 -- R12 Politics, "Benin Votes" (20261018001100_politics.sql). Rolled back. Run (migration applied):
 --   bash scripts/sql-test.sh -- supabase/tests/politics_test.sql
 -- Or with the migration first: bash scripts/sql-test.sh supabase/migrations/20261018001100_politics.sql -- supabase/tests/politics_test.sql

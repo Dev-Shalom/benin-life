@@ -1,3 +1,13 @@
+-- E3 (20261019000100_economy_balance) retuned tutor / MC / DJ / quick-fix pay, fish prices and the Bolt class multipliers. This suite
+-- tests the E2 maths on the original numbers, so they are pinned back here (rolled back with everything else).
+update hustles set
+  pay_min = case id when 'tutor_session' then 6000 when 'mc_gig' then 8000 when 'dj_set' then 15000 when 'mech_quick' then 3500 else pay_min end,
+  pay_max = case id when 'tutor_session' then 12000 when 'mc_gig' then 18000 when 'dj_set' then 35000 when 'mech_quick' then 8000 else pay_max end,
+  bonus_min = case id when 'tutor_session' then 5000 when 'mc_gig' then 5000 when 'dj_set' then 10000 else bonus_min end,
+  bonus_max = case id when 'tutor_session' then 15000 when 'mc_gig' then 15000 when 'dj_set' then 30000 else bonus_max end;
+update items set price = case id when 'fish_tilapia_small' then 1200 when 'fish_tilapia' then 2500 when 'fish_catfish' then 5500
+  when 'fish_mudfish' then 9000 when 'fish_giant_catfish' then 30000 else price end where id like 'fish\_%';
+update hustle_car_classes set pay_mult = case id when 'premium' then 2.2 when 'luxury' then 3.5 else pay_mult end;
 -- E2 More ways to earn (20261014000400_hustles.sql). Rolled back. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/hustles_test.sql
 -- Time moves with bl.test_offset_seconds (to_hour jumps to the next Benin hour); rolls are pinned with bl.test_rand:

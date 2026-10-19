@@ -60,7 +60,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
       const r = await yahooJobStart(j.id, null);
       toast(r.message, 'info');
       useYahoo.getState().started({ id: r.run_id, job_id: r.job_id, name: r.name, icon: j.icon, started_at: new Date(now).toISOString(),
-        resolve_at: r.resolve_at, status: 'running', caught_pct: r.caught_pct, amount: r.amount });
+        resolve_at: r.resolve_at, status: 'running', caught_pct: r.caught_pct, skill_caught_pct: r.skill_caught_pct, amount: r.amount });
       void refresh();
     } catch (e) { toast(errorMessage(e), 'bad'); void useYahoo.getState().load(); } finally { setBusy(null); }
   };
@@ -177,6 +177,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
               : j.locked === 'laptop_too_weak' ? `Need ${j.min_laptop ?? 'a better laptop'}+`
               : j.locked === 'skill_level' ? `Needs Yahoo lvl ${j.min_skill_level ?? 1}`
               : j.locked === 'cert' ? (j.cert_short ?? 'Needs a certificate')
+                : j.locked === 'daily_cap' ? 'Done for today'
                 : cash && s.dirty <= 0 ? 'Nothing to cash'
                   : !s.where.ok ? (s.where.hint === 'no_mifi' ? 'Need MiFi' : s.where.hint === 'no_desk' ? 'Need a desk' : 'Home or a work spot')
                     : cd > 0 ? `Wait ${countdown(cd)}`
@@ -187,7 +188,7 @@ export default function YahooApp({ state, onGo }: { state: GameState; onGo: (id:
               <span className="yh-job__body">
                 <b>{j.name}</b>
                 <small>
-                  {j.seconds}s · {cash ? 'moves yahoo balance to cash' : `${nairaShort(j.pay_min)}–${nairaShort(j.pay_max)}`}{!cash && j.min_skill_level && j.min_skill_level > 1 ? ` · Yahoo lvl ${j.min_skill_level}+` : ''}
+                  {j.seconds}s · {cash ? 'moves yahoo balance to cash' : `${nairaShort(j.pay_min)}–${nairaShort(j.pay_max)}`}{!cash && j.min_skill_level && j.min_skill_level > 1 ? ` · Yahoo lvl ${j.min_skill_level}+` : ''}{!cash && j.daily_cap ? ` · ${j.cap_left ?? 0}/${j.daily_cap} left today` : ''}
                 </small>
                 <span className={`yh-odds ${oddsTone(j.caught_pct)}`} title={`Base ${j.base_caught_pct}%${j.skill?.caught_cut_pct ? ` · Yahoo lvl ${j.skill.level} cuts it ${j.skill.caught_cut_pct}%` : ''}`}>
                   🚨 EFCC {Math.round(j.skill_caught_pct ?? j.caught_pct)}%{(j.skill_caught_pct ?? j.caught_pct) !== j.base_caught_pct ? <s>{j.base_caught_pct}%</s> : null}
@@ -258,7 +259,7 @@ function RunBar({ run, now }: { run: NonNullable<YahooStatus['run']>; now: numbe
       <span className="yh-run__icon" aria-hidden>{run.icon}</span>
       <span className="grow">
         <b>{run.name}{run.mode ? ` · ${run.mode === 'launder' ? 'Launder' : run.mode === 'half' ? 'Half' : 'Full'}` : ''}…</b>
-        <small>{Math.max(0, Math.ceil((end - now) / 1000))}s · EFCC {Math.round(run.caught_pct)}%</small>
+        <small>{Math.max(0, Math.ceil((end - now) / 1000))}s · EFCC {Math.round(run.skill_caught_pct ?? run.caught_pct)}%</small>
         <span className="yh-run__bar"><span style={{ transform: `scaleX(${frac})` }} /></span>
       </span>
     </div>

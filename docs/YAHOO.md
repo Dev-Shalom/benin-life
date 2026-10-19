@@ -258,3 +258,23 @@ The Y1 suite's cash-out group still passes: it uses the plain `yahoo_job_start('
 13. RLS and admin
 
 Also updated: `origin_test.sql` (the laptop's category may be `laptop`).
+
+
+## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
+**Owner decision (19 Oct 2026, "middle ground"):** E3 proposed cutting Yahoo pay by about 85 % (crime paid up to ₦71M an hour for the Big job). The owner chose to KEEP the approved pay ranges and laptop/level gates and add daily limits only:
+
+| Job | Pay (unchanged) | A day |
+|---|---|---|
+| Chat a client | ₦5k-50k | 15 |
+| Romance job | ₦50k-400k | 8 |
+| Elon format | ₦200k-1.2M | 4 |
+| Big job | ₦500k-3M | 3 |
+| Crew hustle (group) | pot ₦400k-1.6M | 3 |
+| HK big table (group) | pot ₦3M-12M | 3 |
+
+Even capped, expected Yahoo income per day is still about 16-34 x a legit job at the same tier (economy_balance_test prints the ladder). Lower `pay_min`/`pay_max` in Content -> Yahoo jobs if Yahoo money floods the game.
+
+- New column `yahoo_jobs.daily_cap` / `group_missions.daily_cap` (0 = no cap; cash out is never capped), counted per player per Benin day. Refusal hint `daily_cap`; `yahoo_status` jobs carry `daily_cap`, `cap_left` and `locked = 'daily_cap'`; the group status missions carry `daily_cap` and `cap_left`. Admin: Content -> Yahoo jobs / Group missions, field "Most runs a day".
+- The EFCC chances (12 / 16 / 24 / 14), the 35 % laptop seizure and the 50 % balance confiscation are the owner's and are untouched. `yahoo.launder_fee_pct` 15 -> 10 (the launder option was always worse than a full cash out).
+- Odds shown on screen: the running-job bar used the chance BEFORE the Yahoo level cut; it now shows the cut one (`skill_caught_pct`), and the "escape x %" line uses the server's number (vanishing charm, bad luck) instead of the bare setting.
+- Tests that assert the launch pay pin it at the top (`yahoo_test`, `yahoo_strategy_test`, `skills_test`). `odds_test.sql` checks every chance, `economy_balance_test.sql` the caps and the ladder.

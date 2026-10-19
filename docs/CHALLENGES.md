@@ -108,3 +108,7 @@ skill, job, friends, hustle kit), progress from a real hustle / shift / earnings
 reroll limits, chests (daily, weekly, push), reset on the next day and the next week (time travel with `bl.test_offset_seconds`, lazy hand-out on the
 first action of a new day), rewards excluded from weekly earnings, every other goal, the no-op path, the master switch, the reward multiplier and the
 admin editor and stats.
+
+
+## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
+Challenges and chests paid about ₦16k a day for a starter (a job pays ₦8.4k a day). `challenges.reward_mult` 1 -> **0.7** (every reward on screen and paid is x0.7), daily chest cash ₦3,000 -> **₦2,000**, weekly chest ₦20,000 -> **₦12,000**: about ₦9.7k a day for someone who finishes everything. Friend challenges (DMs, house visits, hustle with a friend) are the ones an alt account can farm; the multiplier cuts them like the rest.

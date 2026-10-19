@@ -320,6 +320,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     where: 'Phone, then Crew. Your crew tag also shows next to your name in places, chat and profiles.',
     tips: [
       'Skills like Charisma, Fitness and Driving lower the chance of being caught.',
+      'A crew can only run a few jobs a day, and a disbanded crew keeps a small fee from its bank.',
       'Crew jobs never take money from other players.',
       'Chances, prices, cooldowns and prizes can change. Check the app for the current numbers.',
     ],
@@ -547,8 +548,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     where: 'Phone, then Yahoo.',
     tips: [
-      'If EFCC catches you, you lose the laptop and the Yahoo balance, and you can bail out or go to jail.',
-      'Higher Yahoo skill lowers your caught chance.',
+      'If EFCC catches you, part of the Yahoo balance is taken, the laptop may be seized, and you can bail out or go to jail.',
+      'Higher Yahoo skill lowers your caught chance. Better jobs need a better laptop and a higher Yahoo level.',
+      'Every job has a limit for each day, shown on its card. Group missions have one too.',
     ],
     tour: ['hustles'],
     keywords: 'yahoo efcc laptop cash out caught bail rank',

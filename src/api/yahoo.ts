@@ -34,7 +34,10 @@ export interface YahooJob {
   base_caught_pct: number;
   min_tier: number;
   min_laptop: string | null;
-  locked: 'no_laptop' | 'laptop_too_weak' | 'skill_level' | 'cert' | null;
+  locked: 'no_laptop' | 'laptop_too_weak' | 'skill_level' | 'cert' | 'daily_cap' | null;
+  /** E3: most runs a Benin day (0 = no cap) and what is left today. */
+  daily_cap?: number;
+  cap_left?: number | null;
   /** R3: EFCC chance after my Yahoo level (the base and laptop numbers stay in caught_pct). */
   skill_caught_pct?: number;
   min_skill_level?: number;
@@ -49,6 +52,8 @@ export interface YahooRank { id: string; name: string; icon: string; min_earned:
 
 export interface YahooRun {
   id: number; job_id: string; name: string; icon: string; started_at: string; resolve_at: string; status: string; caught_pct: number; amount: number;
+  /** E3: the chance after my Yahoo level: the one the roll really uses (caught_pct is before the level cut). */
+  skill_caught_pct?: number;
   /** R6: a cash-out run remembers its option and the launder fee. */
   mode?: CashMode | null;
   fee?: number;
@@ -106,7 +111,7 @@ export const yahooStatus = () => rpc<YahooStatus>('yahoo_status');
 export const yahooBuyPass = (kind: 'mifi' | 'desk') =>
   rpc<{ pass: string; until: string; paid: number; message: string }>('yahoo_buy_pass', { p_kind: kind });
 export const yahooJobStart = (job: string, amount?: number | null) =>
-  rpc<{ run_id: number; busy_until: string; resolve_at: string; seconds: number; job_id: string; name: string; caught_pct: number; amount: number; message: string }>(
+  rpc<{ run_id: number; busy_until: string; resolve_at: string; seconds: number; job_id: string; name: string; caught_pct: number; skill_caught_pct?: number; amount: number; message: string }>(
     'yahoo_job_start', { p_job: job, p_amount: amount ?? null });
 export const yahooFinish = () => rpc<YahooResult>('yahoo_finish');
 
@@ -160,6 +165,9 @@ export interface GroupMission {
   cooldown_seconds: number;
   level_ok: boolean;
   cooldown_until: string | null;
+  /** E3: most runs a Benin day (0 = no cap) and what is left today. */
+  daily_cap?: number;
+  cap_left?: number | null;
 }
 
 export type GroupStatusName = 'inviting' | 'running' | 'paid' | 'caught' | 'cancelled';

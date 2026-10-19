@@ -39,7 +39,7 @@ The owner decided:
     - Players vote at polling units.
     - Winners get perks and duties for a term.
     - The governor appoints players as ministers, each with a role and perks.
-14b. **E3 Economy balance (owner request):**
+14b. **E3 Economy balance (DONE):**
    - Audit every way to earn and spend: jobs, hustles, yahoo, invest, clubs, shops, houses and cars.
    - Fix anything that pays too much or too little for the time and risk.
    - Check that every stated chance (%) really happens at that rate, using simulation tests.
