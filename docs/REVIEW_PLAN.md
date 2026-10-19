@@ -53,4 +53,11 @@ The owner decided:
    - fun prestige sinks: status items, donations, big parties
    - admin money-supply dashboard: total money, daily in and out, top holders
    All rates are admin-tunable and gentle for new players.
+14e. **M2 Owner earnings (owner request), after E4:**
+   1. Billboard ad price: ₦150k for 7 days on any board (1 day ₦30k, 3 days ₦75k).
+   2. Starter pack (about ₦500) and first top-up doubled.
+   3. Benin Life VIP, ₦2,000 per 30 days via Paystack: gold name and badge, monthly money bonus, no transfer wait, free Lounge pass, extra slots.
+   4. Real-money flex shop: exclusive cars and outfits, name colours, club entrance effect, chat stickers. Cosmetic only, no power.
+   5. Admin earnings page (daily and monthly by product).
+   All prices are admin-tunable.
 15. **Later, from the earlier queue:** Link-ups, Church/prophet, Benin Gist.
