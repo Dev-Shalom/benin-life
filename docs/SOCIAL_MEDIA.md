@@ -164,3 +164,10 @@ Goal: be known as the founder and CEO of Benin Life, and use LinkedIn to get pre
 - Reply to every comment in the first hour and comment on other Nigerian founders' posts.
 - Tell the building story: why Benin City, what was hard, what players asked for. Founder stories do best on LinkedIn.
 - Connect with: Nigerian game developers, Edo diaspora, UNIBEN alumni, Nigerian tech journalists (TechCabal, Techpoint), creators who cover Naija gaming.
+
+### Pack: 19 Oct 2026 (Monday) — tax season + new trailer
+New since the last pack: taxes and bills (transfer fees, weekly income tax, VAT, house/car/business bills), Chief titles and the Philanthropists board, Crew → Gang, the 30-second trailer, lighter on the servers.
+- **TikTok:** post `marketing/benin-life-trailer-30s.mp4` with its own sound. Second post later in the week: screen-record Bank → Bills ("Edo State Internal Revenue") then a Chief title purchase. Hook: "Benin Life don start to collect tax 😭💸". Trending sound: any "tax / money gone" meme sound.
+- **Image prompt:** see the Monday pack text in chat (tax season poster).
+- **Caption:** "Edo State Internal Revenue don land for Benin Life 😭 Tax, VAT, light bill… but you fit buy Chief title too 👑 Who go be the first Grand Chief? Play free, link in bio. #BeninLife #BeninCity #Edo #Naija"
+- **Monday:** weekly winners. Open Ranks → Week / Gangs and post the top 3 (with permission, or blur names).
