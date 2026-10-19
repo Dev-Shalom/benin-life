@@ -25,6 +25,7 @@ import { useConfig } from '../../lib/config';
 import { useGameClock } from '../../lib/clock';
 import { toast } from '../../ui';
 import { useGarage } from '../../state/garage';
+import { canPoll } from '../../lib/activity';
 
 export function LocationSheet({ state, status, night }: { state: GameState; status: PlayerStatus; night: boolean }) {
   const selectedId = useUi((s) => s.selectedId);
@@ -168,7 +169,7 @@ function PeopleHere({ loc, meId }: { loc: Location; meId: string }) {
     };
     const t = window.setTimeout(load, 250); // debounce presence bursts
     // S1: slow safety-net poll, only while the tab is visible (live presence covers my own place)
-    const id = window.setInterval(() => { if (document.visibilityState === 'visible') void load(); }, presenceLive ? 180_000 : 60_000);
+    const id = window.setInterval(() => { if (canPoll()) void load(); }, presenceLive ? 180_000 : 90_000);
     return () => {
       alive = false;
       window.clearTimeout(t);

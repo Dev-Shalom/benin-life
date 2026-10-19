@@ -15,6 +15,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { rpc } from '../lib/api';
 import { isPollMode, startPoller, trackSubscribe, useRealtime, type Poller } from '../lib/realtime';
+import { canPoll } from '../lib/activity';
 
 interface PresenceStore {
   /** Players online (last_seen within the presence window); null until the first count. */
@@ -38,7 +39,7 @@ let pollTimer: number | null = null;
 let lastPoll = 0;
 let onVis: (() => void) | null = null;
 
-const POLL_MS = 60_000;
+const POLL_MS = 90_000; // IO: world_counts (map counts) 60 s -> 90 s
 /** Presence traffic grows with (players at the place)². Above this many other players at a place we skip the
  *  live channel and the people-here list falls back to a slow players_here poll (last_seen). */
 const PRESENCE_MAX = 40;
@@ -46,7 +47,7 @@ let joinedLoc: string | null = null;
 /** F1 poll mode: players_here_ids every ~25 s replaces the place presence channel. */
 const HERE_POLL_MS = 25_000;
 /** A player counts as "here" when their last_seen is this fresh (poll-mode tabs bump it every ~18 s, live ones every 60 s). */
-const FRESH_MS = 100_000;
+const FRESH_MS = 130_000; // IO: the server now re-saves last_seen at most every 55 s (was 30 s), so allow a bit more age
 let herePoll: Poller | null = null;
 /** F1 mixed mode: players at my place that are polling (not on the presence channel), found via players_here. */
 let bridgeIds = new Set<string>();
@@ -113,7 +114,7 @@ function joinPlace(loc: string | null) {
 
 async function poll(force = false) {
   if (!me) return;
-  if (!force && (document.visibilityState !== 'visible' || Date.now() - lastPoll < POLL_MS / 2)) return;
+  if (!force && (!canPoll() || Date.now() - lastPoll < POLL_MS / 2)) return;
   lastPoll = Date.now();
   try {
     const r = await rpc<{ online?: number; at?: Record<string, number> }>('world_counts');

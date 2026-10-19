@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import { polStatus, type PolStatus } from '../api/politics';
 import { serverNow } from '../lib/clock';
 import { useGame } from './game';
+import { canPoll } from '../lib/activity';
 
 interface PoliticsStore {
   status: PolStatus | null;
@@ -47,7 +48,7 @@ export function startPolitics(): () => void {
   if (started) return () => undefined;
   started = true;
   void usePolitics.getState().load();
-  const poll = window.setInterval(() => { if (!document.hidden) void usePolitics.getState().load(); }, 120_000);
+  const poll = window.setInterval(() => { if (canPoll()) void usePolitics.getState().load(); }, 180_000); // IO: 120 s -> 180 s, not while hidden / AFK
   let lastEvent = useGame.getState().events[0]?.id ?? 0;
   const unsub = useGame.subscribe((g) => {
     const top = g.events[0];

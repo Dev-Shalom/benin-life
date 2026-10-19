@@ -12,6 +12,7 @@ import { rpc, errorMessage, GameError, lastWriteAt } from '../lib/api';
 import { serverNow, syncServerTime } from '../lib/clock';
 import { ensureConfig } from '../lib/config';
 import { bindRealtime, isPollMode, startPoller, trackSubscribe } from '../lib/realtime';
+import { canPoll, onResume } from '../lib/activity';
 import { migrateAvatar } from '../art/avatar3d/catalog';
 import type { GameEvent, GameState, Location } from '../lib/types';
 import { toast, type ToastKind } from '../ui/Toast';
@@ -45,11 +46,11 @@ export function refreshLocationsIfStale(maxAgeMs = 60_000): void {
   if (Date.now() - locationsAt > maxAgeMs) void useGame.getState().loadLocations();
 }
 
-let live: { uid: string; unbind: () => void; heartbeat: number; onVis: () => void } | null = null;
+let live: { uid: string; unbind: () => void; heartbeat: number; onVis: () => void; offResume: () => void } | null = null;
 /** F1: newest event id we know of (null until loadEvents ran), the cursor for the poll-mode events fetch. */
 let eventsCursor: number | null = null;
 /** F1 poll mode: own state every ~15–20 s, new events every ~30 s (visible tab only). */
-const POLL_STATE_MS = 17_500;
+const POLL_STATE_MS = 20_000; // IO: was 17.5 s; doubles after 2 idle minutes (startPoller) and stops while AFK
 const POLL_EVENTS_MS = 30_000;
 let inflight: Promise<void> | null = null;
 let refreshTimer: number | null = null;
@@ -283,13 +284,15 @@ function startLive(uid: string) {
   });
   const heartbeat = window.setInterval(() => {
     // F1: in poll mode the faster state poller replaces the heartbeat
-    if (document.visibilityState === 'visible' && !isPollMode()) void useGame.getState().refresh();
+    // IO: also silent while the player is AFK (10 min without input): they stop counting as online until they are back
+    if (canPoll() && !isPollMode()) void useGame.getState().refresh();
   }, HEARTBEAT_MS);
+  const offResume = onResume(() => scheduleRefresh(50));
   const onVis = () => {
     if (document.visibilityState === 'visible') scheduleRefresh(50);
   };
   document.addEventListener('visibilitychange', onVis);
-  live = { uid, unbind, heartbeat, onVis };
+  live = { uid, unbind, heartbeat, onVis, offResume };
   void useGame.getState().loadEvents();
 }
 
@@ -300,6 +303,7 @@ function stopLive() {
   live.unbind();
   window.clearInterval(live.heartbeat);
   document.removeEventListener('visibilitychange', live.onVis);
+  live.offResume();
   live = null;
 }
 

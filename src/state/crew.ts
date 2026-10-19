@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import { crewStatus, type CrewStatus } from '../api/crews';
 import { serverNow } from '../lib/clock';
 import { useGame } from './game';
+import { canPoll } from '../lib/activity';
 
 interface CrewStore {
   status: CrewStatus | null;
@@ -50,9 +51,9 @@ export function startCrew(): () => void {
   void useCrew.getState().load();
   const poll = window.setInterval(() => {
     const s = useCrew.getState().status;
-    if (document.hidden || !s || !(s.crew?.run || s.invites.length > 0)) return;
+    if (!canPoll() || !s || !(s.crew?.run || s.invites.length > 0)) return;
     void useCrew.getState().load();
-  }, 5000);
+  }, 8000); // IO: 5 s -> 8 s, and silent while hidden or AFK
   let lastEvent = useGame.getState().events[0]?.id ?? 0;
   const unsub = useGame.subscribe((g) => {
     const top = g.events[0];

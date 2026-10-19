@@ -338,9 +338,9 @@ begin
   perform pg_temp.assert(not (billboard_tap(ad)->>'counted')::boolean, 'one tap per hour per player');
   perform pg_temp.assert((select taps from billboard_ads where id = ad) = 1, 'taps = 1');
   r := billboard_track(jsonb_build_object(ad::text, 500, 'junk', 3, current_setting('h3.ad3'), 4));
-  perform pg_temp.assert((r->>'counted')::int = 10 and (select views from billboard_ads where id = ad) = 10, 'views capped at 10 per batch, only live: ' || r::text);
-  perform pg_temp.assert((billboard_track(jsonb_build_object(ad::text, 5))->>'throttled')::boolean, 'one batch per 50 s');
-  perform pg_temp.assert((select views from billboard_ads where id = ad) = 10, 'throttled batch not counted');
+  perform pg_temp.assert((r->>'counted')::int = 50 and (select views from billboard_ads where id = ad) = 50, 'views capped at 50 per batch (Disk IO: batches are sent every 5 min), only live: ' || r::text);
+  perform pg_temp.assert((billboard_track(jsonb_build_object(ad::text, 5))->>'throttled')::boolean, 'one batch per 240 s');
+  perform pg_temp.assert((select views from billboard_ads where id = ad) = 50, 'throttled batch not counted');
 end $$;
 
 -- ---------- 9. RLS ----------
@@ -353,7 +353,7 @@ begin
   r := billboard_ad_create('oba_market', 1, img, 'https://wa.me/2348222222222');
   my := billboard_my_ads();
   perform pg_temp.assert(exists (select 1 from jsonb_array_elements(my) x where x->>'id' = r->>'ad_id' and x->>'status' = 'awaiting_payment'), 'my ads lists own checkout');
-  perform pg_temp.assert(exists (select 1 from jsonb_array_elements(my) x where x->>'status' = 'live' and (x->>'views')::int = 10 and (x->>'taps')::int = 1),
+  perform pg_temp.assert(exists (select 1 from jsonb_array_elements(my) x where x->>'status' = 'live' and (x->>'views')::int = 50 and (x->>'taps')::int = 1),
                          'my ads shows stats');
   set local role authenticated;
   select count(*) into n from billboard_ads where user_id = b;

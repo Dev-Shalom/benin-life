@@ -78,6 +78,7 @@ import { garageHome, type GarageHome } from '../api/garage';
 import { houseUpgradeHome, type UpgradeHome } from '../api/upgrades';
 import { useUpgradeWatcher, useUpgrades } from '../state/upgrades';
 import { BuildersPill } from './game/BuildersPill';
+import { canPoll } from '../lib/activity';
 
 const Boutique = lazy(() => import('./game/Boutique'));
 const BillboardSheet = lazy(() => import('./game/BillboardSheet'));
@@ -168,7 +169,7 @@ export default function Game() {
     if (mapOpen) refreshLocationsIfStale();
     if (!mapOpen || !boardsOn) return;
     void useBillboards.getState().load();
-    const t = window.setInterval(() => { if (document.visibilityState === 'visible') void useBillboards.getState().load(true); }, 300_000);
+    const t = window.setInterval(() => { if (canPoll()) void useBillboards.getState().load(true); }, 300_000);
     return () => window.clearInterval(t);
   }, [mapOpen, boardsOn]);
   const cityBoards = useMemo<CityBoard[] | undefined>(() => {

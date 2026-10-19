@@ -13,6 +13,7 @@ import { playCue } from '../lib/sound';
 import { toast } from '../ui';
 import { useCrime } from './crime';
 import { useGame } from './game';
+import { canPoll } from '../lib/activity';
 
 interface YahooStore {
   status: YahooStatus | null;
@@ -174,9 +175,9 @@ export function startYahoo(): () => void {
   // while I am in a group or have an invite, ask the server every few seconds (it also starts / settles overdue groups)
   const poll = window.setInterval(() => {
     const g = useYahoo.getState().groups;
-    if (document.hidden || !g || !(g.group || g.invites.length > 0)) return;
+    if (!canPoll() || !g || !(g.group || g.invites.length > 0)) return;
     void useYahoo.getState().loadGroups();
-  }, 5000);
+  }, 8000); // IO: 5 s -> 8 s, and silent while hidden or AFK
   let lastEvent = useGame.getState().events[0]?.id ?? 0;
   const unsub = useGame.subscribe((s) => {
     const top = s.events[0];

@@ -6,6 +6,7 @@ import { MODE_META } from '../../lib/pidgin';
 import type { Location, TravelOption, TravelQuote } from '../../lib/types';
 import { useGame } from '../../state/game';
 import { toast } from '../../ui';
+import { canPoll } from '../../lib/activity';
 
 export function riskTone(pct: number): 'good' | 'warn' | 'bad' {
   if (pct < 3) return 'good';
@@ -49,7 +50,7 @@ export function useTravel(dest: Location, cash: number, onStarted: () => void) {
   // Re-quote if the sheet stays open a while (traffic changes with the clock).
   useEffect(() => {
     if (!quote) return;
-    const id = window.setInterval(() => { if (document.visibilityState === 'visible') void load(); }, 60_000);
+    const id = window.setInterval(() => { if (canPoll()) void load(); }, 90_000);
     return () => window.clearInterval(id);
   }, [quote?.dest]);
 

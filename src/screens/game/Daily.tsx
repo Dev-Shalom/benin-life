@@ -12,6 +12,7 @@ import { useDaily, type RewardStep } from '../../state/daily';
 import { useGame } from '../../state/game';
 import { Button, Sheet, toast } from '../../ui';
 import './Daily.css';
+import { canPoll } from '../../lib/activity';
 
 /** Keeps the daily statuses fresh. `here` = the place you stand in (null while travelling). */
 export function DailySync({ here }: { here: string | null }) {
@@ -19,7 +20,7 @@ export function DailySync({ here }: { here: string | null }) {
   const loadGems = useDaily((s) => s.loadGems);
   useEffect(() => {
     void load();
-    const id = window.setInterval(() => { if (document.visibilityState === 'visible') void load(); }, 5 * 60_000);
+    const id = window.setInterval(() => { if (canPoll()) void load(); }, 5 * 60_000);
     const vis = () => { if (document.visibilityState === 'visible') void load(); };
     document.addEventListener('visibilitychange', vis);
     return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', vis); };

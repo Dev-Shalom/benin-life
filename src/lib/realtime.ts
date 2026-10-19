@@ -18,6 +18,7 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { canPoll, idleFactor, onResume } from './activity';
 
 export type RtMode = 'live' | 'poll';
 
@@ -217,8 +218,9 @@ export interface Poller {
 }
 
 /**
- * Jittered polling loop: runs `fn` every `periodMs()` (±20 %), only while the tab is visible; when the tab
- * comes back after a full period it runs at once. Errors are swallowed (the next tick retries).
+ * Jittered polling loop: runs `fn` every `periodMs()` (±20 %), only while the tab is visible and the player is not
+ * AFK (10 min without input, see lib/activity.ts); the period doubles after 2 idle minutes. When the tab or the
+ * player comes back after a full period it runs at once. Errors are swallowed (the next tick retries).
  */
 export function startPoller(fn: () => unknown, periodMs: () => number, opts: { immediate?: boolean } = {}): Poller {
   let timer = 0;
@@ -227,7 +229,7 @@ export function startPoller(fn: () => unknown, periodMs: () => number, opts: { i
   let running = false;
   const tick = async () => {
     if (stopped) return;
-    if (document.visibilityState === 'visible' && !running) {
+    if (canPoll() && !running) {
       running = true;
       last = Date.now();
       try {
@@ -243,19 +245,21 @@ export function startPoller(fn: () => unknown, periodMs: () => number, opts: { i
   const schedule = (ms?: number) => {
     window.clearTimeout(timer);
     if (stopped) return;
-    const p = ms ?? periodMs() * (0.8 + Math.random() * 0.4);
+    const p = ms ?? periodMs() * idleFactor() * (0.8 + Math.random() * 0.4);
     timer = window.setTimeout(() => void tick(), p);
   };
   const onVis = () => {
-    if (document.visibilityState === 'visible' && Date.now() - last > periodMs()) schedule(300 + Math.random() * 1200);
+    if (canPoll() && Date.now() - last > periodMs()) schedule(300 + Math.random() * 1200);
   };
   document.addEventListener('visibilitychange', onVis);
+  const offResume = onResume(onVis); // an AFK player is back: catch up once
   schedule(opts.immediate ? 0 : undefined);
   return {
     stop: () => {
       stopped = true;
       window.clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVis);
+      offResume();
     },
     kick: (delayMs = 0) => schedule(delayMs),
   };

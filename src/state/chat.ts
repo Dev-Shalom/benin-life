@@ -149,7 +149,7 @@ function stop() {
 
 /** F1 poll mode: chat poll period — panel open vs closed (unread dot only). */
 const CHAT_POLL_OPEN_MS = 8_000;
-const CHAT_POLL_CLOSED_MS = 30_000;
+const CHAT_POLL_CLOSED_MS = 60_000; // IO: 30 s -> 60 s (it only feeds the unread dot)
 const CHAT_COLS = 'id,location_id,user_id,username,body,audio_path,audio_mime,created_at,reply_to,deleted_at';
 
 /** F1 poll cursor: newest chat id known for the current place (null = not known yet). */

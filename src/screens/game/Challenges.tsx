@@ -14,12 +14,13 @@ import { challengeSummary, useChallenges } from '../../state/challenges';
 import { useGame } from '../../state/game';
 import { Button, Sheet, Tabs, toast } from '../../ui';
 import './Challenges.css';
+import { canPoll } from '../../lib/activity';
 
 export function ChallengeSync() {
   const load = useChallenges((s) => s.load);
   useEffect(() => {
     void load();
-    const id = window.setInterval(() => { if (document.visibilityState === 'visible') void load(); }, 5 * 60_000);
+    const id = window.setInterval(() => { if (canPoll()) void load(); }, 5 * 60_000);
     const vis = () => { if (document.visibilityState === 'visible') void load(); };
     document.addEventListener('visibilitychange', vis);
     return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', vis); };

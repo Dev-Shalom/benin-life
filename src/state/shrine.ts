@@ -10,6 +10,7 @@ import { serverNow } from '../lib/clock';
 import { playCue } from '../lib/sound';
 import { toast } from '../ui';
 import { useGame } from './game';
+import { canPoll } from '../lib/activity';
 
 interface ShrineStore {
   charms: Charm[];
@@ -99,7 +100,7 @@ export function startShrine(): () => void {
   started = true;
   void useShrine.getState().load();
   const poll = window.setInterval(() => {
-    if (document.visibilityState === 'visible') void useShrine.getState().load();
+    if (canPoll()) void useShrine.getState().load();
   }, 5 * 60_000);
   const onVis = () => { if (document.visibilityState === 'visible') void useShrine.getState().load(); };
   document.addEventListener('visibilitychange', onVis);

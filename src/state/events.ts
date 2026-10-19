@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import { eventsOnToday, type PlaceEvent } from '../api/events';
 import { serverNow } from '../lib/clock';
+import { canPoll } from '../lib/activity';
 
 interface EventsStore {
   list: PlaceEvent[];
@@ -69,7 +70,7 @@ export function useEventsLive(uid: string | null) {
   useEffect(() => {
     if (!uid) return;
     void reloadEvents();
-    const id = window.setInterval(() => { if (document.visibilityState === 'visible') void reloadEvents(); }, 300_000); // S1: visible tabs only
+    const id = window.setInterval(() => { if (canPoll()) void reloadEvents(); }, 300_000); // S1: visible tabs only; IO: and not AFK
     const vis = () => document.visibilityState === 'visible' && void reloadEvents();
     document.addEventListener('visibilitychange', vis);
     return () => {

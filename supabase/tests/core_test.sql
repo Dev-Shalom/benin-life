@@ -351,7 +351,7 @@ begin
     perform pg_temp.assert((select needs_updated_at from profiles where id = pg_temp.uid('a')) = v_nu, 'get_my_state did not persist decay');
     perform pg_temp.assert((select last_seen from profiles where id = pg_temp.uid('a')) = v_ls, 'last_seen throttled');
     perform pg_temp.assert((p->>'hunger')::numeric < v_h, 'but returned needs are decayed in memory');
-    perform pg_temp.advance(31);
+    perform pg_temp.advance(46); -- Disk IO: the throttle is 55 s now (was 30 s)
     perform get_my_state();
     perform pg_temp.assert((select last_seen from profiles where id = pg_temp.uid('a')) = bl_now(), 'last_seen bumped after throttle');
     perform pg_temp.assert(pg_temp.approx((get_my_state()->'profile'->>'hunger')::numeric,

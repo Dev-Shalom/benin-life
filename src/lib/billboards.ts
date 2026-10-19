@@ -264,17 +264,17 @@ export const useBillboards = create<BoardsStore>((set, get) => ({
 const pendingViews = new Map<string, number>();
 let viewTimer: number | null = null;
 
-/** The map saw this ad on a board on screen (batched, sent at most once a minute; the server caps it). */
+/** The map saw this ad on a board on screen (batched, sent at most once every 5 minutes (IO); the server caps it). */
 export function noteAdView(adId: string) {
   if (!/^[0-9a-f-]{36}$/.test(adId)) return;
-  pendingViews.set(adId, Math.min(10, (pendingViews.get(adId) ?? 0) + 1));
+  pendingViews.set(adId, Math.min(50, (pendingViews.get(adId) ?? 0) + 1));
   if (viewTimer == null) {
     viewTimer = window.setTimeout(() => {
       viewTimer = null;
       const batch = Object.fromEntries(pendingViews);
       pendingViews.clear();
       if (Object.keys(batch).length) void rpc('billboard_track', { p_views: batch }).catch(() => {});
-    }, 60_000);
+    }, 300_000);
   }
 }
 

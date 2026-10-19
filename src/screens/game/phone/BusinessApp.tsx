@@ -13,6 +13,7 @@ import { useGame } from '../../../state/game';
 import { Button, EmptyState, Modal, Tabs, toast } from '../../../ui';
 import { SellToPlayersButton } from '../SellToPlayers';
 import './BusinessApp.css';
+import { canPoll } from '../../../lib/activity';
 
 type Tab = 'mine' | 'buy';
 const LOG_ICON: Record<string, string> = {
@@ -254,7 +255,7 @@ export default function BusinessApp({ state, onGo }: { state: GameState; onGo: (
   const loadCat = useCallback(() => { businessCatalog().then(setCat).catch((e) => setErr(errorMessage(e))); }, []);
   useEffect(() => { loadMine(); loadCat(); }, [loadMine, loadCat]);
   useEffect(() => {
-    const id = window.setInterval(() => { if (document.visibilityState === 'visible') loadMine(); }, 30_000);
+    const id = window.setInterval(() => { if (canPoll()) loadMine(); }, 60_000);
     return () => window.clearInterval(id);
   }, [loadMine]);
   // first visit with nothing owned: start on the buy list

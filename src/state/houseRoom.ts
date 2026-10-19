@@ -6,8 +6,8 @@ import { rpc } from '../lib/api';
 import { startPoller, trackSubscribe, usePollMode } from '../lib/realtime';
 
 /** F1 poll mode: house_room_state every ~4 s while others are in the house, ~20 s while alone. */
-const HOUSE_POLL_BUSY_MS = 4_000;
-const HOUSE_POLL_ALONE_MS = 20_000;
+const HOUSE_POLL_BUSY_MS = 5_000;
+const HOUSE_POLL_ALONE_MS = 30_000;
 /** Poll-mode keep-alive post (live tabs drop a polling member they haven't heard from in PRUNE_MS). */
 const KEEPALIVE_MS = 60_000;
 const PRUNE_MS = 150_000;

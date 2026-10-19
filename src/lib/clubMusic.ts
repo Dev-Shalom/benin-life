@@ -8,6 +8,7 @@ import { serverNow } from './clock';
 import { usePrefs } from './prefs';
 import { setPlaceRadio } from './sound';
 import { noteClockSample, type ResolvedMusic } from './radio';
+import { canPoll } from './activity';
 
 const POLL_MS = 120_000;
 const cache = new Map<string, ResolvedMusic>();
@@ -40,6 +41,8 @@ export function useClubMusic(locationId: string | null, enabled: boolean) {
     };
     const load = async () => {
       if (busy) return; // one call at a time: a joined in-flight call would be timed from the wrong start
+      const held = cache.get(locationId);
+      if (held && !canPoll()) { next(held); return; } // IO: hidden / AFK tab: keep what plays, ask again when it is back
       busy = true;
       if (timer !== null) { window.clearTimeout(timer); timer = null; }
       try {

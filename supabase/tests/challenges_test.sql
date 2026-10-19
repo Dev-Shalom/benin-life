@@ -209,7 +209,7 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', a::text, true);
   select count(*) into v_n from public.player_challenges;
-  perform pg_temp.assert(v_n >= 6 and v_n % 6 = 0 and not exists (select 1 from public.player_challenges where user_id <> a), 'RLS: a sees only their own rows (6 per period)');
+  perform pg_temp.assert(v_n >= 6 and v_n % 3 = 0 and not exists (select 1 from public.player_challenges where user_id <> a), 'RLS: a sees only their own rows (3 per period)');
   select count(*) into v_n from public.challenge_chests;
   perform pg_temp.assert(v_n = 0, 'RLS: no chests yet');
   reset role;
