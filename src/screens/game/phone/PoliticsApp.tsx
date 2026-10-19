@@ -7,6 +7,7 @@ import {
   polSetPolicy, polSetPromise, polUnback, polVote, polWardNotice, polWithdraw, type PartyBadge, type PolBallot, type PolCandidate, type PolHolder, type PolOffice,
   type PolResult, type PolSeat, type PolStatus,
 } from '../../../api/politics';
+import { canPoll } from '../../../lib/activity';
 import { errorMessage } from '../../../lib/api';
 import { useNow } from '../../../lib/clock';
 import { naira, nairaShort } from '../../../lib/format';
@@ -361,7 +362,7 @@ function CandidateCard({ c, s, reload }: { c: PolCandidate; s: PolStatus; reload
 function ElectTab({ s }: { s: PolStatus }) {
   const [list, setList] = useState<PolCandidate[] | null>(null);
   const load = useCallback(() => { void polCandidates().then(setList).catch(() => setList([])); }, []);
-  useEffect(() => { load(); const id = window.setInterval(load, 30000); return () => window.clearInterval(id); }, [load, s.cycle?.status]);
+  useEffect(() => { load(); const id = window.setInterval(() => { if (canPoll()) load(); }, 30000); return () => window.clearInterval(id); }, [load, s.cycle?.status]);
   const c = s.cycle;
   const mine = s.me.candidacy;
   const bySlot = new Map<string, PolCandidate[]>();
@@ -393,7 +394,7 @@ function VoteTab({ s, onGo }: { s: PolStatus; onGo: (id: string) => void }) {
   const [b, setB] = useState<PolBallot | null>(null);
   const [pick, setPick] = useState<Record<string, number>>({});
   const load = useCallback(() => { void polBallot().then(setB).catch((e) => toast(errorMessage(e), 'bad')); }, []);
-  useEffect(() => { load(); const id = window.setInterval(load, 20000); return () => window.clearInterval(id); }, [load, s.me.at_polling_unit, s.cycle?.status]);
+  useEffect(() => { load(); const id = window.setInterval(() => { if (canPoll()) load(); }, 20000); return () => window.clearInterval(id); }, [load, s.me.at_polling_unit, s.cycle?.status]);
   const now = useNow(1000);
   const refreshGame = useGame((x) => x.refresh);
   if (!b) return <div className="panel-skel"><span /><span /><span /></div>;

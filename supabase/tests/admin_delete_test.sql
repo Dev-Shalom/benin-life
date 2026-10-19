@@ -68,6 +68,13 @@ begin
   perform pg_temp.login(adm);
   perform pg_temp.assert((world_counts()->'at'->>'oba_market')::int = (r->'at'->>'oba_market')::int - 1, 'caller excluded');
   update profiles set location_id = home_location_id where id in (adm, adm2);
+  -- realtime_scale: one shared result per cache window, profiles no longer published
+  perform pg_temp.assert((select computed_at from world_counts_cache) = now(), 'cache filled');
+  update profiles set location_id = 'oba_market', last_seen = now() where id = adm2;
+  perform pg_temp.login(b);
+  perform pg_temp.assert(world_counts()->'at' = r->'at', 'second call inside the window reuses the shared result');
+  perform pg_temp.assert(not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'profiles'), 'profiles not in realtime');
+  update profiles set location_id = home_location_id where id = adm2;
 
   -- 2. leaderboards still rank (one ranking per call)
   perform pg_temp.login(b);

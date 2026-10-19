@@ -178,3 +178,18 @@ Notes on reading this:
 * Never put a frequently written column in an index (it kills HOT). Index a coarse value instead.
 * Every poller goes through `canPoll()` / `startPoller()`.
 * Every append-only table gets a retention rule in `bl_io_housekeeping()` (ledger and payments excepted).
+
+## Many players online (20261019000700_realtime_scale)
+
+Players said the game got slow when lots of people were online. What grew with the player count:
+
+- **`profiles` was in Realtime.** Every heartbeat and every money change was decoded and checked by Supabase Realtime.
+  Removed from the publication. The app refreshes your state from your own events, your own actions and the 60 s
+  heartbeat (`src/state/game.ts`).
+- **`world_counts` ran once per player per poll.** That cost grows with the square of the player count. It is now worked out once every
+  `world.counts_cache_seconds` (admin, default 20) into `world_counts_cache` and shared. Only one caller recomputes;
+  the rest get the last numbers. Your own place is reduced by one per caller.
+- Politics polls and gang chat now stop while the tab is hidden or the player is AFK. Gang chat now polls every 6 s, down from 4 s.
+
+If it is still slow: check Database → Reports in Supabase (CPU, Disk IO budget) and the compute size. With the
+spend cap off, moving from Micro to Small compute raises the CPU and IO baseline.

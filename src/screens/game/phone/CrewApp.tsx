@@ -6,6 +6,7 @@ import {
   crewJobCancel, crewJobJoin, crewJobLeave, crewJobOpen, crewJobStart, crewJoinOpen, crewKick, crewLeave, crewOptions, crewRename, crewReport, crewSetRank,
   crewTransfer, crewUpgrade, RANK_LABEL, type BankRow, type Candidate, type ChatRow, type Crew, type CrewJob, type CrewListed, type CrewMember, type CrewRun,
 } from '../../../api/crews';
+import { canPoll } from '../../../lib/activity';
 import { errorMessage } from '../../../lib/api';
 import { useNow } from '../../../lib/clock';
 import { countdown, naira, nairaShort, secondsUntil } from '../../../lib/format';
@@ -312,7 +313,7 @@ function Chat() {
   }, []);
   useEffect(() => {
     void poll();
-    const id = window.setInterval(() => { if (!document.hidden) void poll(); }, 4000);
+    const id = window.setInterval(() => { if (canPoll()) void poll(); }, 6000);
     return () => window.clearInterval(id);
   }, [poll]);
   useEffect(() => { box.current?.scrollTo({ top: box.current.scrollHeight }); }, [rows.length]);

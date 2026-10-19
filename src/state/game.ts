@@ -8,8 +8,8 @@ import { supabase, supabaseConfigured } from '../lib/supabase';
 import { startPresence, stopPresence } from './presence';
 import { useTasks } from './tasks';
 import { playCue } from '../lib/sound';
-import { rpc, errorMessage, GameError, lastWriteAt } from '../lib/api';
-import { serverNow, syncServerTime } from '../lib/clock';
+import { rpc, errorMessage, GameError } from '../lib/api';
+import { syncServerTime } from '../lib/clock';
 import { ensureConfig } from '../lib/config';
 import { bindRealtime, isPollMode, startPoller, trackSubscribe } from '../lib/realtime';
 import { canPoll, onResume } from '../lib/activity';
@@ -54,8 +54,6 @@ const POLL_STATE_MS = 20_000; // IO: was 17.5 s; doubles after 2 idle minutes (s
 const POLL_EVENTS_MS = 30_000;
 let inflight: Promise<void> | null = null;
 let refreshTimer: number | null = null;
-/** When the last get_my_state answer arrived (S1: skip the Realtime echo of its own last_seen bump). */
-let lastStateAt = 0;
 
 function readKey(uid: string) {
   return `bl.lastReadEvent.${uid}`;
@@ -109,7 +107,6 @@ export const useGame = create<GameStore>((set, get) => ({
       try {
         const data = await rpc<GameState | null>('get_my_state');
         const t1 = Date.now();
-        lastStateAt = t1;
         if (!data || !data.profile) {
           set({ status: 'noprofile', state: null });
           return;
@@ -263,14 +260,8 @@ function startLive(uid: string) {
     }
     const channel = trackSubscribe(supabase
       .channel(`me-${uid}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${uid}` }, (payload) => {
-        // S1 scaling: get_my_state bumps last_seen, and that UPDATE comes straight back here. Without this check every
-        // heartbeat cost two get_my_state calls. A real change in that window is picked up by the next heartbeat, and
-        // anything another player does to you also inserts an event (handled below).
-        const seen = Date.parse(String((payload.new as { last_seen?: string } | null)?.last_seen ?? ''));
-        if (Date.now() - lastStateAt < 3000 && lastWriteAt() < lastStateAt - 1000 && Number.isFinite(seen) && Math.abs(seen - serverNow()) < 5000) return;
-        scheduleRefresh();
-      })
+      // Speed: profiles is not in Realtime any more (every heartbeat fanned out). Your state refreshes from your own
+      // events (anything another player does to you inserts one), your own actions and the heartbeat.
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: `user_id=eq.${uid}` }, (payload) => onEventRow(payload.new as GameEvent)),
     'me', (status) => {
       // back from poll mode: catch up once (events dedupe by id)
