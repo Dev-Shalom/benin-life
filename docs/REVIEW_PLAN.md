@@ -61,3 +61,5 @@ The owner decided:
    5. Admin earnings page (daily and monthly by product).
    All prices are admin-tunable.
 15. **Later, from the earlier queue:** Link-ups, Church/prophet, Benin Gist.
+
+**Company app (paused, wip/companies):** owner wants it INSIDE the existing Business app (tabs: My companies · Map plots · Discover · Real business), not a separate phone app. Merge similar apps instead of adding new ones.
