@@ -133,11 +133,11 @@ export function MoneyPickLayer() {
       <div className="mp-top">
         {total > 0 && <Counter total={total} gold={drops.some((d) => d.vip)} />}
         {live && total === 0 && <div className="mp-hint">Tap the notes! 💸</div>}
-        {notices.map((n) => (
+        {/* mobile: one small pill at a time so the notes stay tappable (the hype man says the MC line) */}
+        {notices.slice(-1).map((n) => (
           <div key={n.id} className={`mp-notice${n.vip ? ' is-gold' : ''}${n.kind === 'pick_top' ? ' is-top' : ''}`}
             style={{ animationDelay: `0ms, ${noticeMs() - 300}ms` }}>
-            <b>{noticeHeadline(n)}</b>
-            {n.text && <span className="mp-notice__mc">🎤 {n.text}</span>}
+            {noticeHeadline(n)}
           </div>
         ))}
       </div>
