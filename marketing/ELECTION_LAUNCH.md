@@ -1,5 +1,13 @@
 # Benin Votes: first election (20 Oct 2026)
 
+## UPDATE: owner's timing (teaser first)
+Start on **Thursday 22 Oct** with **48 / 96 / 48 hours**:
+- Registration: Thu 22 → Sat 24 Oct (2 days)
+- Campaign: Sat 24 → Wed 28 Oct (4 days)
+- Voting: Wed 28 → Fri 30 Oct (2 days), results Fri 30 Oct
+Also set Settings → Politics: registration_hours 48, campaign_hours 96, voting_hours 48, so later elections use the same timing.
+The teaser poster prompts are in the chat log of 20 Oct (BENIN VOTES · COMING THURSDAY).
+
 ## How the election works (plain words)
 One election fills every seat at once. It runs in 4 steps:
 
