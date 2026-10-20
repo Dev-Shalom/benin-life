@@ -25,37 +25,47 @@ Avoid betting and alcohol brands: many players are young and it can get the app 
 - **Social posts**: TikTok, Instagram, X with their brand.
 - **Prizes**: they give data / airtime / vouchers, players compete for them.
 
-## Cold email (copy, then fill in)
-**Subject:** A game set in Benin City — want your brand inside it?
+## Cold email: remote, they try it themselves (copy, then fill in)
+**Subject:** Play this in 2 minutes: a game set in Benin City (for [Company])
 
 Hi [Name],
 
-I'm [Your name], and I'm based in Benin City. I built **Benin Life** (playbeninlife.app). It's a free life game in your phone browser, set in our city: real streets, GRA, Ring Road, Ugbowo, UNIBEN, the clubs, the markets.
+I'm [Your name], the creator of **Benin Life**, a free life game set in Benin City. No download: it opens in any phone browser.
 
-Players pick a hustle, open businesses, go to school, join gangs, run for Governor, spray money in the club. [X] people have played so far, about [Y] play every day, and the TikTok page has [Z] followers.
+**Try it in 2 minutes:** open **playbeninlife.app** on your phone, sign up, and walk around GRA, Ring Road and Ugbowo. Here's a 30-second trailer if you're busy: [trailer link].
 
-I'm looking for a few brands to grow with the game. I think [Company] fits because [one specific reason, e.g. "your customers are the same young Benin crowd that plays every night"].
+**The numbers so far:**
+- 4,200+ registered players
+- 110+ players online at the same time at peak
+- [TikTok followers] followers on TikTok, growing every week
 
-What I can do for you:
-- your brand on billboards inside the game's 3D city
-- a sponsored event (for example a club night or the election week) with your name on it
-- posts on our TikTok and Instagram
+Players hustle, open businesses, go to school, party in the clubs, join gangs, and this week they elect the first Governor of Benin.
 
-I'd love 15 minutes to show you the game on my phone. Is [day] or [day] good for you?
+**What [Company] can get:**
+- **Your brand inside the city:** billboards on the 3D streets and the map, seen by everyone who plays
+- **A sponsored event with your name:** a club night, the election week, or a "money spray" party
+- **A message to every player:** an in-game announcement and a phone notification
+- **Posts on our TikTok and Instagram**
+- **Prizes that bring people to you:** your data, vouchers or discounts as rewards players compete for
+
+Packages start from ₦30,000 for one day on a billboard. I'm happy to build something around your budget.
+
+If you like what you see after playing, just reply here or on WhatsApp ([number]) and I'll send a short plan.
 
 Thanks,
 [Your name]
 Creator, Benin Life
-[phone / WhatsApp] · playbeninlife.app · TikTok [@handle]
+playbeninlife.app · TikTok [@handle] · WhatsApp [number]
 
 ### Tips so it sounds like you
-- Change the "why you fit" line for every company. One real sentence beats a long letter.
-- Send to a real person (marketing manager, brand manager, owner), not info@.
-- Attach 2–3 screenshots or the 30-second trailer link. Don't attach big files.
-- Follow up once after 4–5 days: "Hi [Name], just bumping this. Happy to send a short video of the game instead."
+- Change the subject line and one sentence for each company ("your customers are the same young Benin crowd").
+- Send it to a real person (brand manager, owner), not info@.
+- Follow up once after 4–5 days: "Hi [Name], did you get a chance to try it? Happy to send a short video of your logo inside the game."
+- Strongest move: put their logo on a free in-game billboard for a day, screenshot it, and send that.
 
 ## Short DM (Instagram / WhatsApp / LinkedIn)
-> Hi [Name]! I'm [Your name] from Benin City. I built Benin Life, a free game set in our city (playbeninlife.app). [X] people have played so far. I'd love to put [Brand] inside the game: billboards in the 3D city, a sponsored club night, and posts on our page. Can I send you a 30-second video?
+> Hi [Name]! I'm [Your name] from Benin City. I built Benin Life, a free game set in our city: 4,200+ players so far. Try it on your phone in 2 minutes: playbeninlife.app 🎮
+> I'd love to put [Brand] inside the game: billboards on the 3D streets, a sponsored club night, a message to every player. From ₦30k. Can I send you a quick mock-up of your logo in the city?
 
 ## Image prompt: "who I am" card (ChatGPT)
 Use it as a LinkedIn banner, an email attachment or slide 1 of a sponsor deck.
