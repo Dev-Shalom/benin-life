@@ -249,8 +249,8 @@ function Declare({ s }: { s: PolStatus }) {
   const [buying, setBuying] = useState(false);
   const o: PolOffice | undefined = elected.find((x) => x.id === officeId);
   const req = o?.requirements;
-  // a ticket is offered only when something fails and the ticket covers every failing item
-  const ticket = o && req && !req.ok && o.ticket_available && o.ticket_price != null ? o.ticket_price : null;
+  // a ticket is offered to everybody (jail included) while the office has a price
+  const ticket = o && o.ticket_available && o.ticket_price != null ? o.ticket_price : null;
   const money = useGame((x) => (x.state?.profile.cash ?? 0) + Math.max(x.state?.profile.bank ?? 0, 0));
   const promiseOk = promise.trim().length >= 10;
   const promiseBox = useRef<HTMLTextAreaElement>(null);
@@ -281,11 +281,10 @@ function Declare({ s }: { s: PolStatus }) {
           {s.parties.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.abbr}){p.mine ? ' · yours' : ''}</option>)}
         </select></label>
       {req && !req.ok && <p className="po-warn">{req.message}</p>}
-      {req && !req.ok && ticket == null && o?.ticket_price != null && <p className="po-fine">🎟️ A Godfather ticket cannot cover this one: jail and bans always stop you.</p>}
       {ticket != null && o && (
         <div className="po-ticketbox" data-testid="pol-ticket">
           <b>🎟️ Buy a Godfather ticket — {naira(ticket)}</b>
-          <p className="po-fine">Skip the requirements and run now. But: everybody sees 🎟️ on your card, EFCC may catch you during the campaign (you lose the seat and the money), and reports against you count faster.</p>
+          <p className="po-fine">{req?.ok ? 'You already qualify, so you do not need it. ' : 'Skip every requirement, even jail, and run now. '}But: everybody sees 🎟️ on your card, EFCC may catch you during the campaign (you lose the seat and the money), and reports against you count faster.</p>
           <p className="po-fine">You have {naira(money)}. Fee + ticket = {naira(o.fee + ticket)}.{money < o.fee + ticket ? ' You do not have enough yet.' : ''}</p>
           {!promiseOk && <p className="po-warn">Write your campaign promise above first (at least 10 letters).</p>}
           {buying ? (

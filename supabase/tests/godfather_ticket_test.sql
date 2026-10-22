@@ -1,6 +1,6 @@
 -- Godfather ticket (20261022000100_godfather_ticket.sql). Rolled back. Run (migration applied):
 --   bash scripts/sql-test.sh -- supabase/tests/godfather_ticket_test.sql
--- Time moves with bl.test_offset_seconds. Groups: 1 grants / RLS / seeds / ledger · 2 refusals (not needed, off, no price, jail, broke) ·
+-- Time moves with bl.test_offset_seconds. Groups: 1 grants / RLS / seeds / ledger · 2 refusals (off, no price, broke) and everybody-can-buy (even jailed) ·
 -- 3 waivers + payment (bank first, fee + ticket, ledger, not earned) · 4 public tag + hidden probe · 5 probes (caught, cleared, during voting) ·
 -- 6 report flag at 1 · 7 withdraw / admin disqualify / cancel refunds.
 update game_config set value = 'false' where key in ('economy.transfer_fees_enabled', 'economy.tax_enabled', 'economy.bills_enabled', 'economy.vat_enabled', 'economy.luxury_enabled');
@@ -115,12 +115,10 @@ begin
   perform pg_temp.login(pg_temp.u('a'));
   perform pg_temp.money(pg_temp.u('a'), 50000000, 0);
   v_before := pg_temp.total(pg_temp.u('a'));
-  perform pg_temp.assert(pg_temp.hint_of('select pol_declare(''councillor'', null, ''Steady light and clean gutters'', null, true)') = 'ticket_not_needed', 'refused when requirements already met');
-  perform pg_temp.assert(pg_temp.total(pg_temp.u('a')) = v_before and not exists (select 1 from pol_candidates where user_id = pg_temp.u('a')), 'nothing charged, nobody declared');
-  -- status: ticket not available for a player who meets everything
+  -- everybody may buy it: the status offers the ticket even to a player who already qualifies
   v := pol_status();
-  perform pg_temp.assert((select (e->>'ticket_available')::boolean from jsonb_array_elements(v->'offices') e where e->>'id' = 'councillor') = false
-                         and (select (e->>'ticket_price')::bigint from jsonb_array_elements(v->'offices') e where e->>'id' = 'councillor') = 5000000000, 'status: price shown, ticket not available');
+  perform pg_temp.assert((select (e->>'ticket_available')::boolean from jsonb_array_elements(v->'offices') e where e->>'id' = 'councillor') = true
+                         and (select (e->>'ticket_price')::bigint from jsonb_array_elements(v->'offices') e where e->>'id' = 'councillor') = 5000000000, 'status: price shown, ticket available to everybody');
   -- the same player, without a ticket, declares as before (4 positional args still work)
   perform pg_temp.assert(pg_temp.hint_of('select pol_declare(''councillor'', null, ''Steady light and clean gutters'', null)') = 'ok', 'plain declare still works');
   perform pg_temp.assert((select ticket_paid from pol_candidates where user_id = pg_temp.u('a')) = 0 and not exists (select 1 from pol_ticket_probes p join pol_candidates k on k.id = p.candidate_id where k.user_id = pg_temp.u('a')), 'no ticket, no probe');
@@ -140,12 +138,15 @@ begin
   update offices set ticket_price = 20000000 where id = 'chairman';
   update offices set ticket_price = 50000000 where id = 'governor';
   perform pg_temp.assert(pg_temp.hint_of('select pol_declare(''commissioner_works'', null, ''Light for every street here'', null, true)') = 'bad_office', 'commissioners cannot be run for, ticket or not');
-  -- jail is not waived (and the status says a ticket would not cover it)
+  -- jail does not stop a Godfather: the jailed player buys the ticket and is on the ballot
   perform pg_temp.login(pg_temp.u('j'));
   perform pg_temp.money(pg_temp.u('j'), 50000000, 0);
   update profiles set jailed_until = bl_now() + interval '1 hour' where id = pg_temp.u('j');
-  perform pg_temp.assert(pg_temp.hint_of('select pol_declare(''councillor'', null, ''Light for every street here'', null, true)') = 'jailed', 'a ticket does not get you out of jail');
-  perform pg_temp.assert((select (e->>'ticket_available')::boolean from jsonb_array_elements(pol_status()->'offices') e where e->>'id' = 'councillor') = false, 'status: a ticket would not cover jail');
+  perform pg_temp.assert((select (e->>'ticket_available')::boolean from jsonb_array_elements(pol_status()->'offices') e where e->>'id' = 'councillor') = true, 'status: a ticket covers jail too');
+  perform pg_temp.assert(pg_temp.hint_of('select pol_declare(''councillor'', null, ''Light for every street here'', null, true)') = 'ok', 'a jailed player can buy the ticket');
+  perform pg_temp.assert((select ticket_paid from pol_candidates where user_id = pg_temp.u('j')) = 10000000, 'the jailed player is a ticket candidate');
+  perform pg_temp.assert(pg_temp.hint_of('select pol_declare(''councillor'', null, ''Without a ticket this must fail'', null)') = 'already_candidate', 'one candidacy only');
+  select pol_withdraw() into v;
   update profiles set jailed_until = null where id = pg_temp.u('j');
   -- a banned player is refused like everybody else (the session guard)
   -- not enough money: fee + ticket together, nothing taken
