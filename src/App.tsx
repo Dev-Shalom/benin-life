@@ -20,6 +20,7 @@ const CreateSim = lazy(() => import('./screens/CreateSim'));
 const Game = lazy(() => import('./screens/Game'));
 const WelcomeBack = lazy(() => import('./screens/WelcomeBack'));
 const AdminRoute = lazy(() => import('./screens/AdminRoute'));
+const CompanyPage = lazy(() => import('./screens/CompanyPage'));
 const Terms = lazy(() => import('./screens/Legal').then((m) => ({ default: m.Terms })));
 const Privacy = lazy(() => import('./screens/Legal').then((m) => ({ default: m.Privacy })));
 // Dev-only gallery of the 3D avatars (not linked anywhere; dev server only).
@@ -111,6 +112,7 @@ export default function App() {
           <Route path="/auth" element={<Auth />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/c/:id" element={<CompanyPage />} />
           <Route
             path="/create"
             element={

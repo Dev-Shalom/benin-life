@@ -14,6 +14,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { HomeView, KINDS, LAYOUTS, activityGroup, applyUpgrades, findFreeSpot, furnishHome, furnitureIdOfKey, homeLayoutFor, itemGroup, placementIssue, type FurnitureItem, type FurnitureKind, type SavedHomePosition } from '../art/home3d';
 import { CityView, type CityBoard } from '../art/city3d';
 import { adImageUrl, noteAdView, useBillboards } from '../lib/billboards';
+import { useRealBiz } from '../lib/realBiz';
 import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
 import { serverNow, useGameClock } from '../lib/clock';
 import { devHourOverride, looksNight } from '../lib/daylight';
@@ -82,6 +83,7 @@ import { canPoll } from '../lib/activity';
 
 const Boutique = lazy(() => import('./game/Boutique'));
 const BillboardSheet = lazy(() => import('./game/BillboardSheet'));
+const RealBizSheet = lazy(() => import('./game/RealBizSheet'));
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
@@ -164,6 +166,7 @@ export default function Game() {
   const boardsData = useBillboards((s) => s.data);
   const openBoard = useBillboards((s) => s.open);
   const boardSheet = useBillboards((s) => s.sheet);
+  const realSheet = useRealBiz((s) => s.sheet);
   const boardsOn = cfg<boolean>('billboards.enabled', true);
   useEffect(() => {
     if (mapOpen) refreshLocationsIfStale();
@@ -1023,6 +1026,7 @@ export default function Game() {
       <ShortcutsSheet />
       <Phone state={state} clock={clock} />
       {boardSheet && <Suspense fallback={null}><BillboardSheet state={state} /></Suspense>}
+      {realSheet && <Suspense fallback={null}><RealBizSheet /></Suspense>}
       {overlay === 'boutique' && <Suspense fallback={null}><Boutique state={state} /></Suspense>}
       <OnboardingHost />
     </div>

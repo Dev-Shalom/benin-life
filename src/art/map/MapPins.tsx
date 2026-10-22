@@ -2,6 +2,7 @@
 // and the travel route. Pins counter-scale with zoom so they stay thumb-sized on phones.
 import { memo, useMemo } from 'react';
 import type { Location } from '../../lib/types';
+import type { RealPin } from '../../api/company';
 import { PIN_META, isNightRisky, r1, shortName, type LabelSide } from './mapGeo';
 import { PIN_STYLE, PinGlyph, SCENES } from './pinIcons';
 
@@ -329,3 +330,28 @@ export const MAP_CSS = `
 @keyframes map-dash{to{stroke-dashoffset:-20}}
 @media (prefers-reduced-motion:reduce){.map-pulse,.map-danger,.map-sel-glow,.map-route-dash{animation:none}.map-pin,.map-pin-body,.map-travel>g{transition:none}}
 `;
+
+/** Companies: live real-business pins (gold rim, verified check, logo emoji). data-pin-id = "rb:<id>" so a tap opens the showcase. */
+export const RealBizPins = memo(function RealBizPins({ pins, zoom }: { pins: RealPin[]; zoom: number }) {
+  const ps = pinScaleFor(zoom);
+  return (
+    <g className="map-pins map-pins--real" fontFamily={FONT}>
+      {pins.map((p) => (
+        <g key={p.id} className="map-pin rb-pin" data-pin-id={`rb:${p.id}`} role="button" tabIndex={0} aria-label={`${p.name} — verified real business`}
+          style={{ transform: `translate(${r1(p.x)}px, ${r1(p.y)}px) scale(${ps.toFixed(3)})` }}>
+          <ellipse cx={1.5} cy={0.5} rx={6.5} ry={2.6} fill="#2a1030" opacity={0.35} />
+          <g className="map-pin-body">
+            <circle cy={BADGE_Y + 1} r={21} fill="transparent" className="map-pin-hit" />
+            <path d={PIN_D} fill="#fff3cf" stroke="#d4a017" strokeWidth={2.8} className="rb-pin__rim" />
+            <text y={BADGE_Y + 6} textAnchor="middle" fontSize={15}>{p.logo}</text>
+            <g transform={`translate(${BADGE_R - 2} ${BADGE_Y - BADGE_R + 2})`}>
+              <circle r={6.4} fill="#d4a017" stroke="#fffaf0" strokeWidth={1.3} />
+              <text y={3} textAnchor="middle" fontSize={8.5} fontWeight={900} fill="#fff">✔</text>
+            </g>
+          </g>
+          <text y={13} textAnchor="middle" fontSize={LABEL_FS} fontWeight={800} fill="#3d2a00" stroke="#fff8ea" strokeWidth={3.6} strokeLinejoin="round" paintOrder="stroke" className="map-pin-label">{p.name}</text>
+        </g>
+      ))}
+    </g>
+  );
+});

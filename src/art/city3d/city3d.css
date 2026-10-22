@@ -524,3 +524,8 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
+
+/* Companies: a verified real-business pin (gold rim + check) */
+.c3-pill--real { border: 2px solid #d4a017; background: linear-gradient(180deg, #fffaf0, #fff3cf); color: #3d2a00; }
+.c3-pill__verified { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: #d4a017; color: #fff; font: 900 10px/1 system-ui; flex: none; }
+.c3-dot--real { border: 2px solid #d4a017; background: #fff3cf; }

@@ -4,7 +4,7 @@
 //   go=hustles               Hustles app      go=place:<id>   a place on the map
 //   go=yahoo                 the Yahoo app (a group mission invite)
 //   go=market                the Benin Market app (an offer, a sale)
-//   go=business              the Business app (takings ready)
+//   go=business              the Company app on its Map plots tab (takings ready); go=company opens My companies
 //   go=crew / go=gang        the Gang app (an invite, a job lobby); gang is an alias, the app id stays crew
 //   go=politics              the Benin Votes app (registration, voting day, results); go=politics:vote opens the Vote tab
 //   go=help                  the Help app          go=help:<article id>  that article (src/onboarding/helpArticles.ts)
@@ -13,7 +13,7 @@
 import { useUi } from '../state/ui';
 
 const KEY = 'bl.go';
-const SAFE = /^(dm:\d{1,12}|house|friends|bank|alerts|ranks|hustles|school|yahoo|market|business|crew|gang|politics(?::(?:gov|elect|vote|results))?|help(?::[a-z0-9-]{1,40})?|place:[a-z0-9_]{1,40})$/;
+const SAFE = /^(dm:\d{1,12}|house|friends|bank|alerts|ranks|hustles|school|yahoo|market|business|company|crew|gang|politics(?::(?:gov|elect|vote|results))?|help(?::[a-z0-9-]{1,40})?|place:[a-z0-9_]{1,40})$/;
 
 /** Remember ?go= from the address bar and clean the URL. Call once at startup. */
 export function captureDeepLink(): void {
