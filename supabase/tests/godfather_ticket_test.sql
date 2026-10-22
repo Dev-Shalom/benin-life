@@ -91,11 +91,11 @@ begin
                          and not has_table_privilege('authenticated', 'public.pol_ticket_probes', 'insert'), 'no grant on the probe table');
   perform pg_temp.assert((select relrowsecurity from pg_class where oid = 'public.pol_ticket_probes'::regclass)
                          and not exists (select 1 from pg_policies where tablename = 'pol_ticket_probes'), 'probe table: RLS on, no policies');
-  perform pg_temp.assert((select ticket_price from offices where id = 'councillor') = 10000000 and (select ticket_price from offices where id = 'chairman') = 20000000
-                         and (select ticket_price from offices where id = 'governor') = 50000000
+  perform pg_temp.assert((select ticket_price from offices where id = 'councillor') = 5000000000 and (select ticket_price from offices where id = 'chairman') = 25000000000
+                         and (select ticket_price from offices where id = 'governor') = 50000000000
                          and not exists (select 1 from offices where kind = 'commissioner' and ticket_price is not null), 'ticket prices seeded, commissioners none');
   perform pg_temp.assert((select count(*) from game_config where key in ('pol.ticket_enabled', 'pol.ticket_probe_pct', 'pol.ticket_report_flag_count') and category = 'politics' and label <> '' and description <> '') = 3
-                         and bl_pol_num('pol.ticket_probe_pct', 0) = 25 and bl_pol_num('pol.ticket_report_flag_count', 0) = 1 and bl_pol_flag('pol.ticket_enabled', false), 'ticket settings and defaults');
+                         and bl_pol_num('pol.ticket_probe_pct', 0) = 10 and bl_pol_num('pol.ticket_report_flag_count', 0) = 1 and bl_pol_flag('pol.ticket_enabled', false), 'ticket settings and defaults');
   perform pg_temp.assert(not ('godfather_ticket' = any (bl_earn_reasons())), 'godfather_ticket is not earned');
   perform pg_temp.cfg('leaderboard.earn_reasons', '"salary,hustle,godfather_ticket"');
   perform pg_temp.assert(not ('godfather_ticket' = any (bl_earn_reasons())), 'not earned even if an admin lists it');
@@ -120,7 +120,7 @@ begin
   -- status: ticket not available for a player who meets everything
   v := pol_status();
   perform pg_temp.assert((select (e->>'ticket_available')::boolean from jsonb_array_elements(v->'offices') e where e->>'id' = 'councillor') = false
-                         and (select (e->>'ticket_price')::bigint from jsonb_array_elements(v->'offices') e where e->>'id' = 'councillor') = 10000000, 'status: price shown, ticket not available');
+                         and (select (e->>'ticket_price')::bigint from jsonb_array_elements(v->'offices') e where e->>'id' = 'councillor') = 5000000000, 'status: price shown, ticket not available');
   -- the same player, without a ticket, declares as before (4 positional args still work)
   perform pg_temp.assert(pg_temp.hint_of('select pol_declare(''councillor'', null, ''Steady light and clean gutters'', null)') = 'ok', 'plain declare still works');
   perform pg_temp.assert((select ticket_paid from pol_candidates where user_id = pg_temp.u('a')) = 0 and not exists (select 1 from pol_ticket_probes p join pol_candidates k on k.id = p.candidate_id where k.user_id = pg_temp.u('a')), 'no ticket, no probe');
@@ -135,7 +135,10 @@ begin
   perform pg_temp.cfg('pol.ticket_enabled', 'true');
   update offices set ticket_price = null where id = 'councillor';
   perform pg_temp.assert(pg_temp.hint_of('select pol_declare(''councillor'', null, ''Light for every street here'', null, true)') = 'ticket_off', 'refused when the office has no price');
+  -- the rest of the suite uses smaller prices than the live ones (5B / 25B / 50B) so the money helpers stay readable
   update offices set ticket_price = 10000000 where id = 'councillor';
+  update offices set ticket_price = 20000000 where id = 'chairman';
+  update offices set ticket_price = 50000000 where id = 'governor';
   perform pg_temp.assert(pg_temp.hint_of('select pol_declare(''commissioner_works'', null, ''Light for every street here'', null, true)') = 'bad_office', 'commissioners cannot be run for, ticket or not');
   -- jail is not waived (and the status says a ticket would not cover it)
   perform pg_temp.login(pg_temp.u('j'));

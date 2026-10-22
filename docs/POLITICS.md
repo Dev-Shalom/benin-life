@@ -43,7 +43,7 @@ Every number is editable; a player's status shows a ✓ / ✗ checklist per offi
 
 ## Godfather ticket (paid bypass of the requirements)
 Migration `supabase/migrations/20261022000100_godfather_ticket.sql`, tests `supabase/tests/godfather_ticket_test.sql`. A player who fails the requirements can buy a ticket when declaring (`pol_declare(..., p_ticket := true)`), **on top of** the normal fee.
-- **Prices** (Content -> Offices, column `ticket_price`, empty = no ticket): Councillor 10,000,000, Chairman 20,000,000, Governor 50,000,000, Commissioners none (appointed). Seeded once, never overwritten.
+- **Prices** (Content -> Offices, column `ticket_price`, empty = no ticket): Councillor 5,000,000,000, Chairman 25,000,000,000, Governor 50,000,000,000 (raised in 20261022000200_ticket_prices, EFCC probe 10 %), Commissioners none (appointed). Seeded once, never overwritten.
 - **Settings** (Settings -> Politics): `pol.ticket_enabled` (true), `pol.ticket_probe_pct` (25, percent), `pol.ticket_report_flag_count` (1).
 - **Waives**: account age, Charisma, education / career (BSc, Business certificate, career level) and the clean-record (EFCC case) rule. **Does not waive**: jail, a ban, the Councillor ward rule, one candidacy per election, race caps, promise moderation, the fee.
   Refused with `ticket_not_needed` when every requirement is met, and with `ticket_off` when the switch is off or the office has no price. `pol_status` returns `ticket_price` and `ticket_available` (something fails and the ticket covers all of it) per office.
