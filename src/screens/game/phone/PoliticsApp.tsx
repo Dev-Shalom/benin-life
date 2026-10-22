@@ -1,7 +1,7 @@
 // R12 Benin Votes app (docs/POLITICS.md). Tabs: Government (officeholders, policy, term countdown, my powers), Elections (phase, declare, campaign,
 // candidates), Vote (my polling unit and the ballot), Results (history). Everything is decided on the server (pol_*); this only shows it.
 // A fictional, light, satirical game: made-up parties, no real politicians, no vote buying (there is a report button instead).
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   polAnnounce, polAppoint, polBack, polBallot, polCandidates, polDeclare, polPartyCreate, polPoster, polRally, polReportVoteBuying, polResign, polResults, polSack,
   polSetPolicy, polSetPromise, polUnback, polVote, polWardNotice, polWithdraw, type PartyBadge, type PolBallot, type PolCandidate, type PolHolder, type PolOffice,
@@ -251,7 +251,15 @@ function Declare({ s }: { s: PolStatus }) {
   const req = o?.requirements;
   // a ticket is offered only when something fails and the ticket covers every failing item
   const ticket = o && req && !req.ok && o.ticket_available && o.ticket_price != null ? o.ticket_price : null;
+  const money = useGame((x) => (x.state?.profile.cash ?? 0) + Math.max(x.state?.profile.bank ?? 0, 0));
+  const promiseOk = promise.trim().length >= 10;
+  const promiseBox = useRef<HTMLTextAreaElement>(null);
   const declare = (withTicket: boolean) => void act('declare', () => polDeclare(officeId, o?.ward_scoped ? s.me.ward.id : null, promise, party || null, withTicket), () => { setPromise(''); setBuying(false); });
+  // the ticket button is never greyed out: with no promise yet it says so and jumps to the box
+  const startTicket = () => {
+    if (!promiseOk) { toast('Write your campaign promise first (at least 10 letters), then use the ticket.', 'bad'); promiseBox.current?.focus(); return; }
+    setBuying(true);
+  };
   return (
     <section className="po-card" data-testid="pol-declare">
       <h4>Declare your candidacy</h4>
@@ -266,26 +274,29 @@ function Declare({ s }: { s: PolStatus }) {
         </ul>
       )}
       <label className="po-field"><span>Campaign promise ({promise.length}/{s.settings.promise_max_len})</span>
-        <textarea value={promise} maxLength={s.settings.promise_max_len} onChange={(e) => setPromise(e.target.value)} placeholder="Steady light and clean gutters for every street" /></label>
+        <textarea ref={promiseBox} value={promise} maxLength={s.settings.promise_max_len} onChange={(e) => setPromise(e.target.value)} placeholder="Steady light and clean gutters for every street" /></label>
       <label className="po-field"><span>Party</span>
         <select value={party} onChange={(e) => setParty(e.target.value)}>
           <option value="">Independent</option>
           {s.parties.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.abbr}){p.mine ? ' · yours' : ''}</option>)}
         </select></label>
       {req && !req.ok && <p className="po-warn">{req.message}</p>}
+      {req && !req.ok && ticket == null && o?.ticket_price != null && <p className="po-fine">🎟️ A Godfather ticket cannot cover this one: jail and bans always stop you.</p>}
       {ticket != null && o && (
         <div className="po-ticketbox" data-testid="pol-ticket">
           <b>🎟️ Buy a Godfather ticket — {naira(ticket)}</b>
           <p className="po-fine">Skip the requirements and run now. But: everybody sees 🎟️ on your card, EFCC may catch you during the campaign (you lose the seat and the money), and reports against you count faster.</p>
+          <p className="po-fine">You have {naira(money)}. Fee + ticket = {naira(o.fee + ticket)}.{money < o.fee + ticket ? ' You do not have enough yet.' : ''}</p>
+          {!promiseOk && <p className="po-warn">Write your campaign promise above first (at least 10 letters).</p>}
           {buying ? (
             <>
               <p className="po-warn">You pay {naira(o.fee + ticket)} now: the fee {naira(o.fee)} plus the ticket {naira(ticket)}. No refund if you withdraw or EFCC catches you.</p>
               <div className="po-actions">
-                <Button size="sm" variant="gold" loading={busy === 'declare'} disabled={promise.trim().length < 10} onClick={() => declare(true)}>Yes, pay {nairaShort(o.fee + ticket)} and run</Button>
+                <Button size="sm" variant="gold" loading={busy === 'declare'} disabled={!promiseOk || money < o.fee + ticket} onClick={() => declare(true)}>Yes, pay {nairaShort(o.fee + ticket)} and run</Button>
                 <Button size="sm" variant="ghost" onClick={() => setBuying(false)}>Not now</Button>
               </div>
             </>
-          ) : <Button size="sm" variant="ghost" disabled={promise.trim().length < 10} onClick={() => setBuying(true)}>Use a Godfather ticket</Button>}
+          ) : <Button size="sm" variant="gold" onClick={startTicket}>Use a Godfather ticket</Button>}
         </div>
       )}
       <Button loading={busy === 'declare' && !buying} disabled={!o || !req?.ok || promise.trim().length < 10} onClick={() => declare(false)}>
