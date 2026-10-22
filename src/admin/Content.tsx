@@ -723,6 +723,7 @@ const DEFS: TableDef[] = [
       { key: 'ward_scoped', label: 'One seat per ward', type: 'bool' },
       { key: 'salary_per_day', label: 'Salary per day of term', type: 'money' },
       { key: 'fee', label: 'Candidacy fee', type: 'money' },
+      { key: 'ticket_price', label: 'Ticket price', type: 'money', help: '0 = free entry, no ticket needed' },
       { key: 'min_charisma', label: 'Charisma level needed', type: 'int' },
       { key: 'min_account_days', label: 'Account age needed (days)', type: 'num' },
       { key: 'cert_any', label: 'Needs ANY of these certificates', type: 'list', help: 'certificate ids, comma separated (bsc, business_mgmt ...). Empty = no rule' },

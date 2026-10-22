@@ -79,7 +79,7 @@ export default function Elections() {
                 {cands.map((k) => (
                   <tr key={k.id}>
                     <td>{k.office}{k.ward ? ` · ${k.ward}` : ''}</td>
-                    <td><b>@{k.username}</b>{k.final_votes != null && <div className="adm-sub">{k.final_votes} votes{k.won ? ' · won' : ''}</div>}</td>
+                    <td><b>@{k.username}</b>{k.ticket && <div className="adm-sub">🎟️ Godfather ticket</div>}{k.final_votes != null && <div className="adm-sub">{k.final_votes} votes{k.won ? ' · won' : ''}</div>}</td>
                     <td>{k.party ? `${k.party.abbr}` : 'Ind.'}</td>
                     <td style={{ maxWidth: 220 }}>{k.promise}</td>
                     <td>{k.rally_points} <span className="adm-sub">({k.rallies} rall{k.rallies === 1 ? 'y' : 'ies'}, {k.posters} poster{k.posters === 1 ? '' : 's'})</span></td>

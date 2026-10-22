@@ -41,6 +41,15 @@ Everyone also needs: **not in jail**, and **no EFCC case** (a Yahoo bust, `jail_
 A Councillor runs in the **ward where they live** (their home's map district decides the ward). One candidacy per player per election. A player holds one office at a time.
 Every number is editable; a player's status shows a ✓ / ✗ checklist per office.
 
+## Godfather ticket (paid bypass of the requirements)
+Migration `supabase/migrations/20261022000100_godfather_ticket.sql`, tests `supabase/tests/godfather_ticket_test.sql`. A player who fails the requirements can buy a ticket when declaring (`pol_declare(..., p_ticket := true)`), **on top of** the normal fee.
+- **Prices** (Content -> Offices, column `ticket_price`, empty = no ticket): Councillor 10,000,000, Chairman 20,000,000, Governor 50,000,000, Commissioners none (appointed). Seeded once, never overwritten.
+- **Settings** (Settings -> Politics): `pol.ticket_enabled` (true), `pol.ticket_probe_pct` (25, percent), `pol.ticket_report_flag_count` (1).
+- **Waives**: account age, Charisma, education / career (BSc, Business certificate, career level) and the clean-record (EFCC case) rule. **Does not waive**: jail, a ban, the Councillor ward rule, one candidacy per election, race caps, promise moderation, the fee.
+  Refused with `ticket_not_needed` when every requirement is met, and with `ticket_off` when the switch is off or the office has no price. `pol_status` returns `ticket_price` and `ticket_available` (something fails and the ticket covers all of it) per office.
+- **Payment**: fee + ticket in one transaction, bank first then cash, all or nothing. Ledger `godfather_ticket` ("Godfather ticket"): a pure sink, never earned (also blocked in `bl_earn_reasons` if listed in `leaderboard.earn_reasons`); Admin -> Economy files it under fees. Admin **Cancel** refunds the ticket (a credit, like the fee). Withdrawing, an admin disqualification and an EFCC catch refund nothing.
+- **Bad sides**: (1) the candidate is tagged `🎟️ Godfather ticket` on candidate cards, the ballot and the Admin candidates table; (2) a **secret EFCC probe**: at declare time the server rolls (`pol.ticket_probe_pct`) whether EFCC will catch them, and a random time inside the campaign window (from now if later). Stored only in `pol_ticket_probes` (RLS on, no client policy, no grant, never returned by any RPC). `bl_pol_tick()` resolves due probes first (also on voting day, before the count): caught = disqualified (reason `EFCC probe: godfather ticket`, votes voided, alert `pol_disqualified`), cleared = alert `pol_ticket_cleared` ("found nothing... this time"); (3) vote-buying reports flag a ticket candidate for admin at `pol.ticket_report_flag_count` instead of `pol.report_flag_count`.
+
 ## Wards and polling units (Content -> Wards, table `wards`)
 Eight wards = the business areas: Ugbowo, Uselu, Ring Road, GRA, Sapele Rd, New Benin, Ikpoba Hill, Airport Rd. Each lists the map districts that belong to it (so
 Oluku counts as Ugbowo, Aduwawa as Uselu, Ekenwan as Airport Rd and so on) and has one **polling unit** place: `pu_ugbowo`, `pu_uselu`, `pu_ring_road`, `pu_gra`, `pu_sapele_rd`,
@@ -118,6 +127,7 @@ Events-category pushes (opt-in, `push.cat_events`) to every player with a device
 | `campaign_fee` | candidacy fee, party fee (a credit when an election is cancelled) | no |
 | `campaign_spend` | rally, poster | no |
 | `office_salary` | the daily salary | **yes** |
+| `godfather_ticket` | Godfather ticket (a credit when an election is cancelled) | no |
 
 ## RPCs
 Players: `pol_status`, `pol_candidates`, `pol_ballot`, `pol_results`, `pol_party_create`, `pol_declare`, `pol_set_promise`, `pol_withdraw`, `pol_rally`, `pol_poster`, `pol_back`, `pol_unback`,

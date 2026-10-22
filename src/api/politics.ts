@@ -11,7 +11,7 @@ export interface PolSeat { office_id: string; office: string; kind: string; titl
 export interface PolCheck { key: string; label: string; ok: boolean; message?: string }
 export interface PolOffice {
   id: string; name: string; kind: string; title: string; icon: string; blurb: string; elected: boolean; ward_scoped: boolean; salary_per_day: number; fee: number;
-  min_charisma: number; min_account_days: number; requirements: { ok: boolean; hint: string | null; message: string | null; checks: PolCheck[] } | null;
+  min_charisma: number; min_account_days: number; ticket_price: number | null; ticket_available: boolean; requirements: { ok: boolean; hint: string | null; message: string | null; checks: PolCheck[] } | null;
 }
 export interface PolParty { id: string; name: string; abbr: string; color: string; blurb: string; seeded: boolean; mine: boolean }
 export interface PolWard { id: string; name: string; poll_unit: string | null; poll_unit_name: string | null }
@@ -22,7 +22,7 @@ export interface PolCandidate {
   id: number; slot_key: string; office_id: string; office: string; ward_id: string | null; ward: string | null; user_id: string; username: string; title: string | null;
   party: PartyBadge | null; promise: string; rallies: number; rally_points: number; posters: number; supporters: number; endorsers: string[]; endorse_n: number;
   crews: { name: string; tag: string; color: string; emblem: string }[]; points: number; momentum_pct: number; momentum: string; mine: boolean;
-  my_backing: 'support' | 'endorse' | 'crew' | null; declared_at: string;
+  my_backing: 'support' | 'endorse' | 'crew' | null; declared_at: string; ticket: boolean;
 }
 export interface PolPowers {
   can_announce?: boolean; announce_next_at?: string | null; can_set_policy?: boolean; can_ward_notice?: boolean;
@@ -44,7 +44,7 @@ export interface PolStatus {
 }
 export interface PolBallotRace {
   office_id: string; office: string; icon: string; ward_id: string | null; ward: string | null; slot_key: string; voted: boolean;
-  candidates: { id: number; username: string; party: PartyBadge | null; promise: string; title: string | null }[];
+  candidates: { id: number; username: string; party: PartyBadge | null; promise: string; title: string | null; ticket: boolean }[];
 }
 export interface PolBallot {
   voting_open: boolean; phase: string; opens_at: string | null; closes_at: string | null; ward: { id: string; name: string }; unit: { id: string; name: string };
@@ -63,7 +63,8 @@ export const polCandidates = () => rpc<PolCandidate[]>('pol_candidates');
 export const polBallot = () => rpc<PolBallot>('pol_ballot');
 export const polResults = (limit = 5) => rpc<PolResult[]>('pol_results', { p_limit: limit });
 export const polPartyCreate = (name: string, abbr: string, color: string) => rpc<Msg & { id: string }>('pol_party_create', { p_name: name, p_abbr: abbr, p_color: color });
-export const polDeclare = (office: string, ward: string | null, promise: string, party: string | null) => rpc<Msg>('pol_declare', { p_office: office, p_ward: ward, p_promise: promise, p_party: party });
+export const polDeclare = (office: string, ward: string | null, promise: string, party: string | null, ticket = false) =>
+  rpc<Msg>('pol_declare', { p_office: office, p_ward: ward, p_promise: promise, p_party: party, p_ticket: ticket });
 export const polSetPromise = (promise: string) => rpc<Msg>('pol_set_promise', { p_promise: promise });
 export const polWithdraw = () => rpc<Msg>('pol_withdraw');
 export const polRally = () => rpc<Msg & { points: number; attendees: number }>('pol_rally');
@@ -82,7 +83,7 @@ export const polResign = () => rpc<Msg>('pol_resign');
 // admin
 export interface AdminPolCandidate {
   id: number; cycle_id: number; user_id: string; username: string; office_id: string; office: string; ward: string | null; party: PartyBadge | null; promise: string; status: string;
-  dq_reason: string | null; fee_paid: number; rally_points: number; rallies: number; posters: number; won: boolean; final_votes: number | null; supporters: number; endorsements: number;
+  dq_reason: string | null; fee_paid: number; ticket: boolean; rally_points: number; rallies: number; posters: number; won: boolean; final_votes: number | null; supporters: number; endorsements: number;
   reports: number; flagged: boolean; report_texts: string[]; declared_at: string;
 }
 export interface AdminPolOverview {

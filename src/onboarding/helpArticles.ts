@@ -661,6 +661,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       'During registration open the Elections tab and declare. Pick an office, write a short promise and choose a party (or run as an independent). Each office has a fee and requirements, so check the app: account age, Charisma level, no jail and no recent EFCC case. The Governor also needs a degree or a high career level. A Councillor runs in the ward where they live.',
       'During the campaign hold rallies at busy public places, put up posters, and ask players and gangs to back you. A rally costs money and trains your Charisma, and every player standing there adds points. Momentum shows who is rising: it is not votes.',
       'You can found your own fictional party. Real party names and real politicians are refused.',
+      'Missing a requirement? A Godfather ticket (a very big fee on top of the normal one) lets you run anyway. The price is on the declare card. But everybody sees a 🎟️ on your card, EFCC may catch you during the campaign (you are disqualified and nothing is refunded), and reports against you count faster. Jail and a ban still stop you.',
       'Vote buying is not allowed. If you see it, tap Report vote buying on the candidate. An admin reviews it and can disqualify.',
       'Winners are sworn in when voting closes. You get a title next to your name (Hon., Chairman, Gov.), a salary for every day of the term, and your term runs for a while before the next election.',
     ],
@@ -671,7 +672,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       'Fees, windows, salaries and requirements can change. Check the app for the current numbers.',
     ],
     tour: ['politics'],
-    keywords: 'politics election vote votes governor chairman councillor commissioner party campaign rally poster candidate endorse salary title hon gov policy announcement ward benin votes',
+    keywords: 'politics election godfather ticket vote votes governor chairman councillor commissioner party campaign rally poster candidate endorse salary title hon gov policy announcement ward benin votes',
   },
   {
     id: 'vote',

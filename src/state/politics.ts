@@ -40,7 +40,7 @@ export const usePolitics = create<PoliticsStore>((set) => ({
   },
 }));
 
-const POL_EVENTS = new Set(['pol_won', 'pol_lost', 'pol_appointed', 'pol_sacked', 'pol_removed', 'pol_disqualified', 'pol_cancelled', 'pol_rally', 'pol_ward_notice']);
+const POL_EVENTS = new Set(['pol_won', 'pol_lost', 'pol_appointed', 'pol_sacked', 'pol_removed', 'pol_disqualified', 'pol_cancelled', 'pol_rally', 'pol_ward_notice', 'pol_ticket_cleared']);
 let started = false;
 
 /** Follow Benin Votes for the signed-in game. Returns a stop function. */

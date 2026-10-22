@@ -236,6 +236,9 @@ function PartyForm({ fee }: { fee: number }) {
   );
 }
 
+/** The tag every Godfather ticket candidate wears (cards and ballot). */
+const TicketTag = () => <span className="po-ticket" title="Paid a Godfather ticket to skip the requirements">🎟️ Godfather ticket</span>;
+
 function Declare({ s }: { s: PolStatus }) {
   const { busy, act } = useAct();
   const elected = s.offices.filter((o) => o.elected);
@@ -243,13 +246,17 @@ function Declare({ s }: { s: PolStatus }) {
   const [promise, setPromise] = useState('');
   const [party, setParty] = useState('');
   const [showParty, setShowParty] = useState(false);
+  const [buying, setBuying] = useState(false);
   const o: PolOffice | undefined = elected.find((x) => x.id === officeId);
   const req = o?.requirements;
+  // a ticket is offered only when something fails and the ticket covers every failing item
+  const ticket = o && req && !req.ok && o.ticket_available && o.ticket_price != null ? o.ticket_price : null;
+  const declare = (withTicket: boolean) => void act('declare', () => polDeclare(officeId, o?.ward_scoped ? s.me.ward.id : null, promise, party || null, withTicket), () => { setPromise(''); setBuying(false); });
   return (
     <section className="po-card" data-testid="pol-declare">
       <h4>Declare your candidacy</h4>
       <label className="po-field"><span>Office</span>
-        <select value={officeId} onChange={(e) => setOfficeId(e.target.value)}>
+        <select value={officeId} onChange={(e) => { setOfficeId(e.target.value); setBuying(false); }}>
           {elected.map((x) => <option key={x.id} value={x.id}>{x.icon} {x.name} · fee {nairaShort(x.fee)}</option>)}
         </select></label>
       {o && <p className="po-hint">{o.blurb} Salary {naira(o.salary_per_day)} a day if you win.{o.ward_scoped ? ` You run in the ward where you live: ${s.me.ward.name}.` : ''}</p>}
@@ -266,8 +273,22 @@ function Declare({ s }: { s: PolStatus }) {
           {s.parties.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.abbr}){p.mine ? ' · yours' : ''}</option>)}
         </select></label>
       {req && !req.ok && <p className="po-warn">{req.message}</p>}
-      <Button loading={busy === 'declare'} disabled={!o || !req?.ok || promise.trim().length < 10}
-        onClick={() => void act('declare', () => polDeclare(officeId, o?.ward_scoped ? s.me.ward.id : null, promise, party || null), () => setPromise(''))}>
+      {ticket != null && o && (
+        <div className="po-ticketbox" data-testid="pol-ticket">
+          <b>🎟️ Buy a Godfather ticket — {naira(ticket)}</b>
+          <p className="po-fine">Skip the requirements and run now. But: everybody sees 🎟️ on your card, EFCC may catch you during the campaign (you lose the seat and the money), and reports against you count faster.</p>
+          {buying ? (
+            <>
+              <p className="po-warn">You pay {naira(o.fee + ticket)} now: the fee {naira(o.fee)} plus the ticket {naira(ticket)}. No refund if you withdraw or EFCC catches you.</p>
+              <div className="po-actions">
+                <Button size="sm" variant="gold" loading={busy === 'declare'} disabled={promise.trim().length < 10} onClick={() => declare(true)}>Yes, pay {nairaShort(o.fee + ticket)} and run</Button>
+                <Button size="sm" variant="ghost" onClick={() => setBuying(false)}>Not now</Button>
+              </div>
+            </>
+          ) : <Button size="sm" variant="ghost" disabled={promise.trim().length < 10} onClick={() => setBuying(true)}>Use a Godfather ticket</Button>}
+        </div>
+      )}
+      <Button loading={busy === 'declare' && !buying} disabled={!o || !req?.ok || promise.trim().length < 10} onClick={() => declare(false)}>
         Declare for {o ? nairaShort(o.fee) : ''}
       </Button>
       <button type="button" className="po-link" onClick={() => setShowParty(!showParty)}>{showParty ? 'Hide' : 'Found your own party'}</button>
@@ -288,6 +309,7 @@ function MyCampaign({ s, c, reload }: { s: PolStatus; c: PolCandidate; reload: (
   return (
     <section className="po-card" data-testid="pol-my-campaign">
       <h4>Your campaign: {c.office}{c.ward ? ` · ${c.ward}` : ''} <PartyChip party={c.party} /></h4>
+      {c.ticket && <p><TicketTag /></p>}
       {edit ? (
         <>
           <label className="po-field"><span>Promise</span><textarea value={text} maxLength={s.settings.promise_max_len} onChange={(e) => setText(e.target.value)} /></label>
@@ -314,7 +336,7 @@ function MyCampaign({ s, c, reload }: { s: PolStatus; c: PolCandidate; reload: (
         </div>
       )}
       {phase === 'campaign' && <p className="po-fine">A rally happens where you stand now{here ? ` (${here})` : ''}: stand at a busy public place, and bring friends, because every player there adds points. Councillors rally inside their ward. Vote buying is not allowed.</p>}
-      {phase !== 'voting' && <button type="button" className="po-link" onClick={() => { if (window.confirm('Withdraw from the election? Your fee is not refunded.')) done(() => polWithdraw(), 'wd'); }}>Withdraw</button>}
+      {phase !== 'voting' && <button type="button" className="po-link" onClick={() => { if (window.confirm(c.ticket ? 'Withdraw from the election? Your fee and your Godfather ticket are not refunded.' : 'Withdraw from the election? Your fee is not refunded.')) done(() => polWithdraw(), 'wd'); }}>Withdraw</button>}
     </section>
   );
 }
@@ -327,7 +349,7 @@ function CandidateCard({ c, s, reload }: { c: PolCandidate; s: PolStatus; reload
   return (
     <article className="po-card" data-testid="pol-candidate">
       <div className="po-row">
-        <span className="po-row__who"><b><OfficeTag title={c.title} />@{c.username}{c.mine ? ' (you)' : ''}</b><small><PartyChip party={c.party} /> {c.office}{c.ward ? ` · ${c.ward}` : ''}</small></span>
+        <span className="po-row__who"><b><OfficeTag title={c.title} />@{c.username}{c.mine ? ' (you)' : ''}</b><small><PartyChip party={c.party} /> {c.office}{c.ward ? ` · ${c.ward}` : ''}{c.ticket && <> <TicketTag /></>}</small></span>
       </div>
       <p className="po-promise">“{c.promise}”</p>
       <div className="po-mom"><span>Momentum</span><b>{c.momentum}</b></div>
@@ -420,7 +442,7 @@ function VoteTab({ s, onGo }: { s: PolStatus; onGo: (id: string) => void }) {
                 <div className="po-list">
                   {r.candidates.map((c) => (
                     <button key={c.id} type="button" className={`po-pick${pick[key] === c.id ? ' is-on' : ''}`} disabled={!b.can_vote} onClick={() => setPick({ ...pick, [key]: c.id })} aria-pressed={pick[key] === c.id}>
-                      <span><b><OfficeTag title={c.title} />@{c.username} <PartyChip party={c.party} /></b><small className="po-fine">“{c.promise}”</small></span>
+                      <span><b><OfficeTag title={c.title} />@{c.username} <PartyChip party={c.party} />{c.ticket && <> <TicketTag /></>}</b><small className="po-fine">“{c.promise}”</small></span>
                     </button>
                   ))}
                 </div>

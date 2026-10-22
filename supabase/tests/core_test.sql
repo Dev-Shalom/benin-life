@@ -309,7 +309,9 @@ begin
      'public.activities'::regclass)), 'RLS enabled everywhere');
   -- realtime publication
   perform pg_temp.assert((select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public'
-                          and tablename in ('profiles','events','game_config')) = 3, 'realtime publication');
+                          and tablename in ('events','game_config')) = 2
+                         and not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'profiles'),
+                         'realtime publication (profiles left it in 20261019000700_realtime_scale)');
   delete from inventory where item_id = 'test_item_bl';
   raise notice 'ok 3e: function privileges, RLS flags, realtime';
 end $$;

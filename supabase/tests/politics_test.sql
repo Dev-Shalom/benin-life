@@ -111,7 +111,7 @@ end $$;
 do $$
 declare f text; t text;
 begin
-  foreach f in array array['pol_status()', 'pol_candidates()', 'pol_ballot()', 'pol_results(int)', 'pol_party_create(text,text,text)', 'pol_declare(text,text,text,text)',
+  foreach f in array array['pol_status()', 'pol_candidates()', 'pol_ballot()', 'pol_results(int)', 'pol_party_create(text,text,text)', 'pol_declare(text,text,text,text,boolean)',
     'pol_set_promise(text)', 'pol_withdraw()', 'pol_rally()', 'pol_poster()', 'pol_back(bigint,text)', 'pol_unback(bigint,text)', 'pol_report_vote_buying(bigint,text)',
     'pol_vote(bigint)', 'pol_appoint(text,text)', 'pol_sack(text)', 'pol_announce(text)', 'pol_set_policy(text)', 'pol_ward_notice(text)', 'pol_resign()',
     'admin_pol_overview()', 'admin_pol_start(numeric,numeric,numeric,numeric)', 'admin_pol_advance()', 'admin_pol_cancel(text)', 'admin_pol_disqualify(bigint,text)',
