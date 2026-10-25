@@ -12,7 +12,7 @@ import { musicApi } from './musicApi';
 import { PlaylistSelect } from './Music';
 
 type FieldType = 'text' | 'long' | 'int' | 'money' | 'num' | 'bool' | 'json' | 'list' | 'intnull' | 'numnull' | 'textnull' | 'time';
-interface Field { key: string; label: string; type: FieldType; help?: string }
+interface Field { key: string; label: string; type: FieldType; help?: string; /** text length limit (also enforced by a check constraint on the table) */ maxLength?: number }
 interface TableDef {
   id: string; table: AdminTable; title: string; emoji: string; blurb: string; pk: string[]; insert: boolean;
   fields: Field[]; inline?: string[]; titleOf: (r: Row) => string; subOf?: (r: Row) => string; newRow?: Row;
@@ -577,6 +577,38 @@ const DEFS: TableDef[] = [
     newRow: { id: '', kind: 'activity', ref: '', skill_id: 'charisma', xp: 2, note: '', active: true },
   },
   {
+    id: 'love_flirts', table: 'love_flirts', title: 'Flirt lines', emoji: '💞', blurb: 'Family & love (docs/LOVE.md). The menu players pick flirts from (there is no free-text flirting). Price is plain naira (0 = free, spent as a money sink, never earned). Level points is what one flirt adds to the pair\'s shared level (the daily cap is Settings → Love). "Unlocks at level" hides a line until the pair reaches it. Keep the lines PG, light and playful: banned words are refused. Off = hidden from players.',
+    pk: ['id'], insert: true, inline: ['cost'],
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => `${r.icon ?? ''} ${r.text}`.trim(),
+    subOf: (r) => `${Number(r.cost) ? naira(Number(r.cost)) : 'free'} · +${r.points} level${Number(r.min_level) ? ` · from level ${r.min_level}` : ''}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'id', label: 'Line id', type: 'text', help: 'e.g. wave, zobo (new lines: lowercase, no spaces)', maxLength: 30 },
+      { key: 'text', label: 'The line (3 to 120 characters)', type: 'text', maxLength: 120 }, { key: 'icon', label: 'Emoji', type: 'text', maxLength: 8 },
+      { key: 'points', label: 'Level points (0 to 30)', type: 'int' }, { key: 'cost', label: 'Price', type: 'money' },
+      { key: 'min_level', label: 'Unlocks at level (0 to 100)', type: 'int' }, { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { id: '', text: '', icon: '💞', points: 3, cost: 0, min_level: 0, sort: 200, active: true },
+  },
+  {
+    id: 'love_dates', table: 'love_dates', title: 'Dates', emoji: '🥂', blurb: 'Family & love (docs/LOVE.md). Places a pair can go out together. Both partners must be standing at the Place id (a real place from Content → Places, e.g. oba_market; empty = on the phone, from anywhere) when the invite is accepted; each pays "cost each" (a money sink, never earned) and gets the Fun and Social gain; the pair gets the bond points (the daily cap is Settings → Love). Cooldown is per pair per date. "For" = talking (any pair) or couple (couples only).',
+    pk: ['id'], insert: true, inline: ['cost_each'],
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => `${r.icon ?? ''} ${r.name}`.trim(),
+    subOf: (r) => `${r.place_id ?? 'anywhere'} · ${naira(Number(r.cost_each))} each · fun +${r.fun_gain} social +${r.social_gain} bond +${r.bond_points} · ${r.cooldown_hours}h · ${r.min_status}${r.active ? '' : ' · off'}`,
+    fields: [
+      { key: 'id', label: 'Date id', type: 'text', help: 'e.g. suya_oba (new dates: lowercase, no spaces)', maxLength: 30 },
+      { key: 'name', label: 'Name (3 to 60 characters)', type: 'text', maxLength: 60 }, { key: 'icon', label: 'Emoji', type: 'text', maxLength: 8 },
+      { key: 'place_id', label: 'Place id', type: 'textnull', help: 'oba_market, kada_plaza ... empty = anywhere' },
+      { key: 'cost_each', label: 'Cost each', type: 'money' }, { key: 'fun_gain', label: 'Fun gain (0 to 100)', type: 'int' },
+      { key: 'social_gain', label: 'Social gain (0 to 100)', type: 'int' }, { key: 'bond_points', label: 'Bond points (0 to 30)', type: 'int' },
+      { key: 'cooldown_hours', label: 'Cooldown (hours)', type: 'int' },
+      { key: 'min_status', label: 'For', type: 'text', help: 'talking (any pair) or couple (couples only)', maxLength: 10 },
+      { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { id: '', name: '', icon: '💞', place_id: null, cost_each: 1000, fun_gain: 8, social_gain: 8, bond_points: 3, cooldown_hours: 6, min_status: 'talking', sort: 200, active: true },
+  },
+  {
     id: 'lounge_tiers', table: 'lounge_tiers', title: 'Lounge tiers', emoji: '🛋️', blurb: 'R7 Members\' Lounge (docs/LOUNGE.md). One row per pass: price (naira), Hours it lasts (24 = a day, 720 = 30 days), drinks and bites discount %, VIP (the VIP cabana / mixer), gold name tag, free drink vouchers per purchase, free guests a VIP may bring. Requirement: Charisma level N (0 = none) OR any certificate; both off = open to all (Settings → Lounge switches the check off for everyone). Which cards are VIP-only and which activity a voucher covers: Settings → Lounge. Players buy and renew in the lounge sheet; Admin → Players → detail can grant a membership. A tier that is not Active is hidden from the sheet (players who hold it keep it). Prices are plain naira: 5000 = ₦5,000.',
     pk: ['id'], insert: true, inline: ['price'],
     toggle: { key: 'active', label: 'On' },
@@ -1097,7 +1129,7 @@ const fmtField = (f: Field, v: unknown): string => (f.type === 'time' ? hourToTi
 function parseField(f: Field, raw: unknown): [unknown, string | null] {
   switch (f.type) {
     case 'bool': return [raw === true, null];
-    case 'text': case 'long': return [String(raw ?? ''), null];
+    case 'text': case 'long': return f.maxLength && String(raw ?? '').length > f.maxLength ? [null, `At most ${f.maxLength} characters`] : [String(raw ?? ''), null];
     case 'textnull': return [String(raw ?? '').trim() === '' ? null : String(raw), null];
     case 'time': {
       const t = String(raw ?? '').trim();
@@ -1138,12 +1170,12 @@ function FieldInput({ f, value, onChange }: { f: Field; value: unknown; onChange
       </span>
     );
   }
-  if (f.type === 'long') return <textarea className="adm-input" rows={3} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)} />;
+  if (f.type === 'long') return <textarea className="adm-input" rows={3} maxLength={f.maxLength} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)} />;
   const numeric = ['int', 'money', 'num', 'intnull', 'numnull'].includes(f.type);
   return (
     <label className="adm-numbox adm-numbox--wide">
       {f.type === 'money' && <span className="adm-numbox__affix">₦</span>}
-      <input type={numeric ? 'number' : 'text'} inputMode={numeric ? 'decimal' : undefined} step="any"
+      <input type={numeric ? 'number' : 'text'} inputMode={numeric ? 'decimal' : undefined} step="any" maxLength={numeric ? undefined : f.maxLength}
         value={String(value ?? '')} onChange={(e) => onChange(e.target.value)} />
     </label>
   );

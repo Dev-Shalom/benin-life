@@ -248,6 +248,19 @@ export const TOUR_STEPS: TourStep[] = [
     before: () => toPhone('home'),
   },
   {
+    id: 'family',
+    target: '[data-tour="app-family"]',
+    title: 'Family: ask somebody out',
+    body: 'Open to link-ups? Other players can ask you out, and you can ask them. Say yes, send flirts from a menu, go on dates together, and become a couple.',
+    points: [
+      'Only players who switch on "Open to link-ups" can see or ask each other.',
+      'Flirts and dates cost a little money and build your level together.',
+      'You can break up or report anytime. Check the app for the current rules.',
+    ],
+    isNew: true,
+    before: () => toPhone('home'),
+  },
+  {
     id: 'help',
     target: '[data-tour="app-help"]',
     title: 'Help is on your phone',

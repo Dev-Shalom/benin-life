@@ -1679,7 +1679,9 @@ div.wish-chip {
   background: var(--surface);
   box-shadow: var(--e1);
   animation: bl-rise 180ms var(--ease-out);
+  flex-wrap: wrap;
 }
+.love-with { padding: 4px 10px; border-radius: 99px; background: #ffe6ee; color: #b3295d; font: 800 12px var(--font-display); }
 
 /* Panel loading skeleton */
 .panel-skel {

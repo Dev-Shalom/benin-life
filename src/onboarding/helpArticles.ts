@@ -27,6 +27,7 @@ export const HELP_TOPICS = [
   { id: 'clubs', label: 'Clubs, spray & hype', icon: '🪩' },
   { id: 'lounge', label: 'The Lounge', icon: '🥂' },
   { id: 'friends', label: 'Friends & messages', icon: '💬' },
+  { id: 'family', label: 'Family & love', icon: '💞' },
   { id: 'notifications', label: 'Notifications', icon: '🔔' },
   { id: 'invest', label: 'Invest & save', icon: '📈' },
   { id: 'yahoo', label: 'Yahoo & EFCC', icon: '💻' },
@@ -545,6 +546,31 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tour: ['phone', 'chat'],
     keywords: 'friend dm message chat voice note invite visit house request',
+  },
+
+  // ---- Family & love ---------------------------------------------------------------------------------------------
+  {
+    id: 'family-love',
+    topic: 'family',
+    title: 'Family and love',
+    summary: 'Ask somebody out, flirt, go on dates together and become a couple.',
+    steps: [
+      'Open Phone, then Family, then Link-ups. Switch on "Open to link-ups". Only players who are open can see each other.',
+      'Tap Ask out beside a player. They get an alert and can say yes or no. A no is private: you only see "No reply".',
+      'When they say yes you are "talking". Open the Us tab and send flirts: pick a line from the menu. Lines cost a little money and raise your level together.',
+      'When your level reaches the couple mark, you become a couple 💞. It shows in the Family tab and on your profile.',
+      'Go out together from the Us tab: pick a date, both be at the place, and both pay your share. Dates give Fun, Social and bond.',
+    ],
+    where: 'Phone, then Family.',
+    tips: [
+      'No free-text flirting: only the preset lines, so nobody can be rude to you.',
+      'Ignore each other for a few days and the level slowly drops, so keep the spark alive.',
+      'Break up any time from the Us tab. There is a short wait before you can ask again. Use Report if somebody behaves badly.',
+      'Prices, waits and the couple level are set by the game admins, so check the app for the current numbers.',
+      'Kids are coming in a later update.',
+    ],
+    tour: ['family'],
+    keywords: 'love date dating girlfriend boyfriend couple flirt ask out link up relationship partner kids family marry',
   },
 
   // ---- Notifications ---------------------------------------------------------------------------------------------

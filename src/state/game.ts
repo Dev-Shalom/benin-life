@@ -77,7 +77,7 @@ function normalizeState(raw: GameState): GameState {
 export function eventTone(kind: string): ToastKind {
   const k = kind.toLowerCase();
   if (/rob|arrest|jail|raid|injur|hospital|theft|stolen|fine|ban|loss|fail|caught|wanted|debt|default|owed|levy|outage|removed/.test(k)) return 'bad';
-  if (/pay|salary|wage|harvest|reward|win|bonus|deposit|credit|topup|top_up|gift|grant|promot|level|sold|release|goodday/.test(k)) return 'good';
+  if (/pay|salary|wage|harvest|reward|win|bonus|deposit|credit|topup|top_up|gift|grant|promot|level|sold|release|goodday|couple|accept/.test(k)) return 'good';
   return 'info';
 }
 

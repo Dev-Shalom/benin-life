@@ -60,6 +60,8 @@ The owner decided:
    4. Real-money flex shop: exclusive cars and outfits, name colours, club entrance effect, chat stickers. Cosmetic only, no power.
    5. Admin earnings page (daily and monthly by product).
    All prices are admin-tunable.
-15. **Later, from the earlier queue:** Link-ups, Church/prophet, Benin Gist.
+15. **Later, from the earlier queue:** ~~Link-ups~~ (DONE 2026-10-26 as Family & Love stage 1, docs/LOVE.md; kids are stage 2), Church/prophet, Benin Gist.
 
 **Company app (DONE 2026-10-26, docs/COMPANIES.md):** merged INTO the Business app, one phone icon, tabs My companies · Map plots · Discover (with Rankings) · Real business. Migration 20261020000100_companies, test companies_test. Real-money Paystack path reviewed; one test-mode payment is still to be checked by the owner before launch.
+
+**Family & Love stage 1 (DONE 2026-10-26, docs/LOVE.md):** one phone icon Family (Link-ups · Us · Family): opt-in, ask out, accept, preset flirts with a shared level, couple at 30, dates at real Benin places, break-up, reports. Migration 20261026000200_family_love, test love_test. Stage 2 (kids) is not built.

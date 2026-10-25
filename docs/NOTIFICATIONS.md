@@ -17,6 +17,7 @@ Every player can get phone notifications (Web Push) with a master switch and fiv
 | Messages | House chat (`chat_messages` in a home) to the others in that home | `House chat: @ada` / first 60 chars | house chat |
 | Money | `ledger` rows `transfer_in`, `tip_in`, `admin_gift` | "Money don land" / "₦5,000 from @ada" (a tip's note is never included) | Bank app |
 | Friends | `events`: friend_request, friend_accepted, house_invite, house_knock | "New friend request" / "@ada wan add you as friend" | Messages (requests if any) |
+| Friends | Family & love (docs/LOVE.md), category Friends: somebody asked you out, said yes, sent a flirt (folded into "3 new flirts for you"), invited you on a date, you became a couple, a break-up | "💞 @name wants to link up" / the flirt line / "You are now a couple 💞" | Family app (`go=family:linkups`, `family:us`, `family:family`) |
 | Game events | `events`: weekly_prize, referral_bonus | the game's own title and body | Ranks / Hustles app |
 | Game events | Benin Votes (docs/POLITICS.md): registration open, voting day, results are out (to every player with a device; winners get their own "You won" push) | "Benin Votes: voting day!" / "The polling units are open..." | Benin Votes app |
 | Game events | club event starts (`bl_push_tick`) | "Amapiano Night is starting" / "At 360 Signature. Come join!" | that place |

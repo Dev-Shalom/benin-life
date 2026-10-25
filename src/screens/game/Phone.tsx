@@ -50,6 +50,12 @@ function coTabFor(app: string | null): CoTab {
 }
 const CrewApp = lazy(() => import('./phone/CrewApp'));
 const PoliticsApp = lazy(() => import('./phone/PoliticsApp'));
+const FamilyApp = lazy(() => import('./phone/FamilyApp'));
+type FamTab = 'linkups' | 'us' | 'family';
+function famTabFor(app: string | null): FamTab {
+  const sub = (app ?? '').split(':')[1];
+  return sub === 'us' || sub === 'family' ? sub : 'linkups';
+}
 
 interface App {
   id: string;
@@ -63,6 +69,7 @@ interface App {
 const APPS: App[] = [
   { id: 'jobs', name: 'Jobs', emoji: '💼', bg: 'linear-gradient(160deg,#34c77f,#0e874e)', pitch: 'Find work across Benin City: shop hands, PoS agents, nurses, tech interns and more.' },
   { id: 'messages', name: 'Messages', emoji: '💬', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Add friends, message them, and invite them over.' },
+  { id: 'family', name: 'Family', emoji: '💞', bg: 'linear-gradient(160deg,#ff8fa3,#d6336c)', pitch: 'Ask somebody out, flirt, go on dates and build a life together.' },
   { id: 'stories', name: 'Stories', emoji: '📖', bg: 'linear-gradient(160deg,#f0a45a,#d66830)', pitch: 'Weekly stories shaped by everyday Benin City life.' },
   { id: 'boutique', name: 'Boutique', emoji: '🛒', bg: 'linear-gradient(160deg,#3a7bd5,#1e3c72)', pitch: '' },
   { id: 'bank', name: 'Bank', emoji: '🏦', bg: 'linear-gradient(160deg,#9b8cff,#5b4fd6)', pitch: '' },
@@ -149,17 +156,20 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const events = useGame((s) => s.events);
   const lastReadEventId = useGame((s) => s.lastReadEventId);
   const socialUnread = events.filter((e) => ['friend_request', 'house_invite', 'house_knock', 'private_message', 'place_invite', 'lounge_guest'].includes(e.kind) && e.id > lastReadEventId).length;
+  const familyUnread = events.filter((e) => e.kind.startsWith('love_') && e.id > lastReadEventId).length;
   const open = overlay === 'phone';
   const polBadge = usePolitics((s) => Boolean(s.status?.cycle && ((s.status.cycle.voting_open && s.status.me.voted.length < 3) || (s.status.cycle.status === 'registration' && !s.status.me.candidacy))));
   const wardrobeOn = useConfig().cfg<boolean>('wardrobe.enabled', true);
   const billboardsOn = useConfig().cfg<boolean>('billboards.enabled', true);
   const yahooOn = useConfig().cfg<boolean>('yahoo.enabled', true);
+  const loveOn = useConfig().cfg<boolean>('love.enabled', true);
   const { mounted, closing } = usePresence(open, 200);
   const [screen, setScreen] = useState<'lock' | 'home' | string>('lock');
   const [wasOpen, setWasOpen] = useState(open);
   const [seenNonce, setSeenNonce] = useState(phoneNonce);
   const [bbTab, setBbTab] = useState<'boards' | 'mine'>('boards');
   const [coTab, setCoTab] = useState<CoTab>('mine');
+  const [famTab, setFamTab] = useState<FamTab>('linkups');
   const touch = useRef<number | null>(null);
   if (open !== wasOpen || (open && phoneNonce !== seenNonce)) {
     setWasOpen(open);
@@ -169,6 +179,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
       // and business:mine|plots|discover|real picks a tab.
       setScreen((phoneApp ?? 'lock').replace(/:.*$/, '').replace(/^company$/, 'business'));
       setCoTab(coTabFor(phoneApp));
+      setFamTab(famTabFor(phoneApp));
       setBbTab(phoneApp === 'billboards:mine' ? 'mine' : 'boards');
     }
   }
@@ -249,13 +260,14 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
           {screen === 'home' && (
             <div className="phone-home">
               <div className="phone-home__grid">
-                {APPS.filter((a) => (a.id !== 'boutique' || wardrobeOn) && (a.id !== 'billboards' || billboardsOn) && (a.id !== 'yahoo' || yahooOn)).map((a) => (
+                {APPS.filter((a) => (a.id !== 'boutique' || wardrobeOn) && (a.id !== 'billboards' || billboardsOn) && (a.id !== 'yahoo' || yahooOn) && (a.id !== 'family' || loveOn)).map((a) => (
                   <button key={a.id} type="button" className="app-icon" data-tour={`app-${a.id}`} onClick={() => launch(a.id)}>
                     <span className="app-icon__tile" style={{ background: a.bg }} aria-hidden>
                       {a.emoji}
                       {a.id === 'alerts' && unread > 0 && <span className="app-icon__badge">{unread > 99 ? '99+' : unread}</span>}
                       {a.id === 'messages' && chatUnread + socialUnread > 0 && <span className="app-icon__badge">{chatUnread + socialUnread > 9 ? '9+' : chatUnread + socialUnread}</span>}
                       {a.id === 'houses' && (state.rent?.owed ?? 0) > 0 && <span className="app-icon__badge">!</span>}
+                      {a.id === 'family' && familyUnread > 0 && <span className="app-icon__badge">{familyUnread > 9 ? '9+' : familyUnread}</span>}
                       {a.id === 'politics' && polBadge && <span className="app-icon__badge">!</span>}
                     </span>
                     <span className="app-icon__name">{a.name}</span>
@@ -275,9 +287,9 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp state={state} onGoHome={goHome} onBack={() => setScreen('home')} onOpenAlerts={() => setScreen('alerts')} alertsUnread={unread} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' || app.id === 'market' || app.id === 'business' || app.id === 'crew' || app.id === 'politics' ? (
+                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' || app.id === 'market' || app.id === 'business' || app.id === 'crew' || app.id === 'politics' || app.id === 'family' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
-                        {app.id === 'help' ? <HelpApp /> : app.id === 'politics' ? <PoliticsApp onGo={goToPlace} /> : app.id === 'crew' ? <CrewApp onGo={goToPlace} /> : app.id === 'market' ? <MarketApp /> : app.id === 'business' ? <CompanyApp key={coTab} initialTab={coTab} state={state} onGo={goToPlace} /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
+                        {app.id === 'help' ? <HelpApp /> : app.id === 'family' ? <FamilyApp key={famTab} initialTab={famTab} /> : app.id === 'politics' ? <PoliticsApp onGo={goToPlace} /> : app.id === 'crew' ? <CrewApp onGo={goToPlace} /> : app.id === 'market' ? <MarketApp /> : app.id === 'business' ? <CompanyApp key={coTab} initialTab={coTab} state={state} onGo={goToPlace} /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
                           : app.id === 'billboards' ? <BillboardsApp key={bbTab} initialTab={bbTab} onOpenBoard={openBoard} />
                           : app.id === 'cars' ? <CarsApp state={state} onGo={goToPlace} />
                             : app.id === 'police' ? <PoliceApp state={state} onGo={goToPlace} />
