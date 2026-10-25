@@ -119,7 +119,7 @@ function TracksTab({ d, reload }: { d: MusicOverview; reload: () => Promise<void
         <input type="file" multiple accept={ACCEPT} data-testid="music-file" className="adm-drop__input"
           onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ''; void addFiles(fs); }} />
         <b>Tap to pick songs, or drop them here</b>
-        <span className="adm-sub">MP3, M4A, OGG or WAV, up to 30 MB each. You can pick many at once. Use music you have the rights to (see docs/MUSIC.md).</span>
+        <span className="adm-sub">MP3, M4A, OGG or WAV, up to 150 MB each (big files upload in pieces and continue if your network drops). You can pick many at once. Use music you have the rights to (see docs/MUSIC.md).</span>
       </label>
 
       {queue.length > 0 && (

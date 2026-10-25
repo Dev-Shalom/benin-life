@@ -4,7 +4,7 @@ The owner uploads songs, puts them in playlists, and picks a playlist for each c
 
 ## Upload songs (Admin > Music > Tracks)
 1. Open `/admin/music` on a phone or PC.
-2. Tap the big box (opens the file picker) or drop files on it. Pick **many files at once**: MP3, M4A, OGG (WAV also works), up to 30 MB each.
+2. Tap the big box (opens the file picker) or drop files on it. Pick **many files at once**: MP3, M4A, OGG (WAV also works), up to 150 MB each. Files over 6 MB upload in pieces (resumable) with a percent counter, and carry on if the network drops.
 3. For each file the browser measures the length, uploads it to the public Storage bucket `club-music`, and adds it to the list. The title comes from the file name; the artist is empty.
 4. In the list, edit the **title** and **artist** (optional) in place (it saves when you leave the box). Use the play button to preview. Delete removes the track from every playlist and deletes the file.
 5. "Add by direct MP3 link instead" adds a track that lives on another website. The other site must allow other websites to play its file (CORS), and the page checks that for you. Spotify and YouTube links do **not** work (licensing and no way to play them in the game). Uploading the file is more reliable.
@@ -56,7 +56,12 @@ Only play music you have the right to play in a public place. Good options:
 Do not upload ripped or streamed songs from Spotify, YouTube, Apple Music or the radio. If a rights holder complains, delete the track in Admin > Music and the file is gone from the bucket and the playlists. Keep a note of where each track came from.
 
 ## Limits and notes
-- 30 MB per file, up to 200 tracks per playlist, track length between 1 second and 3 hours.
+- 150 MB per file (the bucket limit; see below), up to 200 tracks per playlist, track length between 1 second and 3 hours.
 - Files are cached by the browser for a year (they are never overwritten; each upload has its own name).
 - Data: music_tracks, music_playlists, music_playlist_tracks have RLS and no direct grants; players cannot read or write them. The only public read is the RPC `club_music_for(location)`. Every admin change is in the Audit log (`music_track_add`, `music_track_update`, `music_track_delete`, `music_playlist_create`, `music_playlist_edit`, `music_playlist_delete`, `music_assign`).
 - Not covered yet: real iPhone testing of the radio (the code unlocks both elements from the first tap, as iOS needs), and a true overlapping crossfade (the fade is a short dip).
+
+## 150 MB uploads: two limits must both allow it (20261028000300_club_music_150mb)
+1. The **bucket** `club-music` limit (set to 150 MB by the migration, and the admin page checks 150 MB).
+2. Supabase's **global upload limit**: Dashboard > Storage > Settings > "Upload file size limit". The free plan allows at most 50 MB; on a paid plan set it to at least 150 MB. This one cannot be changed from code. If a big upload fails with "bigger than its upload limit", this is the setting to raise.
+Big files use the resumable (TUS) endpoint `https://<project>.storage.supabase.co/storage/v1/upload/resumable` in 6 MB pieces (`src/admin/musicApi.ts`).

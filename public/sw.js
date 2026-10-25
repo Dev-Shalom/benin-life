@@ -31,6 +31,8 @@ self.addEventListener('push', (event) => {
         badge: '/badge-96.png',
         tag: d.tag || undefined,
         renotify: Boolean(d.tag),
+        silent: false, // ask the phone to make its notification sound (the browser cannot pick a custom one)
+        vibrate: [180, 80, 180],
         data: { url: d.url || (isPlayer ? '/play' : '/admin/ads') },
       });
     })(),

@@ -2,6 +2,7 @@
 // Every RPC is admin-guarded server-side (supabase/migrations/20261017000500_club_music.sql); the bucket only
 // accepts writes from admins (Storage policies).
 import { rpc } from '../lib/api';
+import * as tus from 'tus-js-client';
 import { supabase } from '../lib/supabase';
 
 export interface MusicTrack {
@@ -34,7 +35,10 @@ export const musicApi = {
   assign: (kind: 'club' | 'event', id: string, playlist: string | null) => rpc<Msg>('admin_music_assign', { p_kind: kind, p_id: id, p_playlist: playlist }),
 };
 
-export const MAX_BYTES = 30 * 1024 * 1024;
+export const MAX_BYTES = 150 * 1024 * 1024;
+export const MAX_MB = 150;
+/** Above this size the upload is resumable (6 MB chunks, retries on a weak connection); smaller files go in one request. */
+const RESUMABLE_FROM = 6 * 1024 * 1024;
 export const AUDIO_EXT = ['mp3', 'm4a', 'ogg', 'oga', 'wav', 'aac', 'webm'];
 export const ACCEPT = 'audio/mpeg,audio/mp4,audio/ogg,audio/x-m4a,audio/aac,audio/wav,.mp3,.m4a,.ogg,.oga,.wav,.aac';
 
@@ -72,6 +76,7 @@ export async function measureDuration(src: File | string): Promise<number> {
     });
     if (viaElement > 0) return viaElement;
     // some files (streams, odd containers) report Infinity: decode it for the real length
+    if (typeof src !== 'string' && src.size > 60 * 1024 * 1024) return 0; // decoding a huge file would exhaust the phone's memory
     const buf = typeof src === 'string' ? await (await fetch(src)).arrayBuffer() : await src.arrayBuffer();
     const ctx = new OfflineAudioContext(1, 1, 44100);
     const audio = await ctx.decodeAudioData(buf);
@@ -103,14 +108,18 @@ const safeId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? 
 /** Upload one file to the bucket and register it. Throws a plain-English Error. */
 export async function uploadTrack(file: File, title: string, artist: string, onStep?: (s: string) => void): Promise<MusicTrack> {
   if (!isAudioFile(file)) throw new Error('Only MP3, M4A, OGG or WAV files.');
-  if (file.size > MAX_BYTES) throw new Error(`Too big (${(file.size / 1048576).toFixed(1)} MB). The limit is 30 MB.`);
+  if (file.size > MAX_BYTES) throw new Error(`Too big (${(file.size / 1048576).toFixed(1)} MB). The limit is ${MAX_MB} MB.`);
   onStep?.('Reading length');
   const durationMs = await measureDuration(file);
   if (durationMs < 1000) throw new Error('Could not read the length of this file. Is it a broken or unsupported file?');
   onStep?.('Uploading');
   const path = `${safeId()}.${extOf(file.name) === 'oga' ? 'ogg' : extOf(file.name)}`;
-  const up = await supabase.storage.from('club-music').upload(path, file, { contentType: mimeOf(file), cacheControl: '31536000', upsert: false });
-  if (up.error) throw new Error('Upload failed: ' + up.error.message);
+  if (file.size > RESUMABLE_FROM) {
+    await uploadResumable(file, path, mimeOf(file), (pct) => onStep?.(`Uploading ${pct}%`));
+  } else {
+    const up = await supabase.storage.from('club-music').upload(path, file, { contentType: mimeOf(file), cacheControl: '31536000', upsert: false });
+    if (up.error) throw new Error(uploadMessage(up.error.message));
+  }
   onStep?.('Saving');
   try {
     return await musicApi.trackAdd({ title, artist, url: publicUrl(path), storagePath: path, durationMs, size: file.size, corsOk: true });
@@ -118,6 +127,53 @@ export async function uploadTrack(file: File, title: string, artist: string, onS
     void supabase.storage.from('club-music').remove([path]);
     throw e;
   }
+}
+
+/** Turn a Storage error into something the admin can act on. */
+function uploadMessage(raw: string): string {
+  const m = (raw || '').toLowerCase();
+  if (m.includes('exceeded') || m.includes('too large') || m.includes('413') || m.includes('maximum allowed size')) {
+    return `Supabase refused the file because it is bigger than its upload limit. Raise it: Supabase dashboard > Storage > Settings > "Upload file size limit" (set it to at least ${MAX_MB} MB; the free plan allows at most 50 MB). (${raw})`;
+  }
+  if (m.includes('mime') || m.includes('not supported') || m.includes('invalid')) return `The file type was refused by storage (${raw}). Use a normal MP3, M4A, OGG or WAV file.`;
+  if (m.includes('row-level security') || m.includes('unauthorized') || m.includes('403') || m.includes('not allowed')) return `Storage said you are not allowed to upload (${raw}). Log in again as an admin.`;
+  return 'Upload failed: ' + raw;
+}
+
+/** Resumable (TUS) upload straight to the Storage host: survives a weak phone connection, shows percent. */
+function uploadResumable(file: File, path: string, contentType: string, onPct: (pct: number) => void): Promise<void> {
+  const base = String(import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '');
+  let endpoint = `${base}/storage/v1/upload/resumable`;
+  try {
+    const host = new URL(base).hostname;
+    if (host.endsWith('.supabase.co') && !host.includes('.storage.')) endpoint = `https://${host.replace(/\.supabase\.co$/, '.storage.supabase.co')}/storage/v1/upload/resumable`;
+  } catch { /* keep the plain endpoint */ }
+  return new Promise<void>((resolve, reject) => {
+    const up = new tus.Upload(file, {
+      endpoint,
+      retryDelays: [0, 3000, 5000, 10000, 20000, 30000],
+      headers: { 'x-upsert': 'false' },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      chunkSize: 6 * 1024 * 1024,
+      metadata: { bucketName: 'club-music', objectName: path, contentType, cacheControl: '31536000' },
+      onBeforeRequest: async (req) => {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (token) req.setHeader('Authorization', `Bearer ${token}`);
+        const key = String(import.meta.env.VITE_SUPABASE_ANON_KEY ?? '');
+        if (key) req.setHeader('apikey', key);
+      },
+      onError: (err) => {
+        const res = (err as { originalResponse?: { getStatus: () => number; getBody: () => string } }).originalResponse;
+        const status = res?.getStatus?.();
+        const body = res?.getBody?.() ?? '';
+        reject(new Error(uploadMessage(status === 413 || /exceed|too large|maximum/i.test(body) ? `413 ${body}` : `${status ?? ''} ${body || String(err.message ?? err)}`.trim())));
+      },
+      onProgress: (sent, total) => onPct(total ? Math.min(99, Math.floor((sent / total) * 100)) : 0),
+      onSuccess: () => resolve(),
+    });
+    void up.findPreviousUploads().then((prev) => { if (prev.length) up.resumeFromPreviousUpload(prev[0]); up.start(); });
+  });
 }
 
 export async function removeFromBucket(path: string | null): Promise<boolean> {

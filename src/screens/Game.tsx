@@ -20,7 +20,7 @@ import { PlaceView, buildPlaceGrid, planCrowd, roomFor } from '../art/place3d';
 import { serverNow, useGameClock } from '../lib/clock';
 import { devHourOverride, looksNight } from '../lib/daylight';
 import { useClubMusic } from '../lib/clubMusic';
-import { leaveGameSound, setPlaceTrack, setSoundPlace, setSoundScene, type PlaceSound } from '../lib/sound';
+import { leaveGameSound, playCue, setPlaceTrack, setSoundPlace, setSoundScene, type PlaceSound } from '../lib/sound';
 import { useConfig } from '../lib/config';
 import { simPosture } from '../lib/mood';
 import { randomGreeting } from '../lib/pidgin';
@@ -286,6 +286,8 @@ export default function Game() {
     const on = (e: MessageEvent) => {
       const d = e.data as { type?: string; go?: string } | null;
       if (d?.type === 'bl-go' && typeof d.go === 'string') runDeepLink(d.go);
+      // a push that arrived while the game is in front: the service worker shows no system notification, so make the in-game sound
+      if (d?.type === 'bl-push') playCue('alert');
     };
     sw.addEventListener('message', on);
     return () => sw.removeEventListener('message', on);
