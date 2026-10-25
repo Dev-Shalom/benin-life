@@ -1,6 +1,7 @@
 // Shared Paystack helpers for the paystack-verify and paystack-webhook Edge Functions (docs/PAYMENTS.md).
 // The secret key lives only in the Supabase secret PAYSTACK_SECRET_KEY; it never reaches the client or the repo.
 // Only bl_payment_credit (service role) credits naira: once per reference, only for the exact amount.
+// Companies: references starting BLRB- are real-business map listings (purpose 'real_business'): bl_real_biz_paid, same rules.
 // H3: references starting BLAD- are billboard ads (purpose 'billboard_ad'): bl_billboard_paid moves the ad to
 // 'pending_review', again only for the exact stored price and only once (docs/BILLBOARDS.md).
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
@@ -9,6 +10,8 @@ import { flushQuietly } from './notify.ts';
 /** Top-up references (payments table) and billboard ad references (billboard_ads table). */
 export const TOPUP_REF = /^BL-[a-f0-9]{32}$/;
 export const AD_REF = /^BLAD-[a-f0-9]{32}$/;
+/** Real-business listing references (purpose 'real_business'): first payment and renewals. */
+export const RB_REF = /^BLRB-[a-f0-9]{32}$/;
 
 const ALLOWED_ORIGINS = [
   'https://playbeninlife.app',
@@ -66,6 +69,7 @@ export interface CreditResult {
  */
 export async function verifyAndCredit(db: SupabaseClient, reference: string): Promise<CreditResult> {
   if (AD_REF.test(reference)) return verifyAndMarkAd(db, reference);
+  if (RB_REF.test(reference)) return verifyAndMarkRealBiz(db, reference);
   const secret = env('PAYSTACK_SECRET_KEY');
   if (!secret) return { ok: false, error: 'not_configured', status: 503 };
 
@@ -157,6 +161,41 @@ export async function verifyAndMarkAd(db: SupabaseClient, reference: string): Pr
     customer_email: (tx.customer as Record<string, unknown> | undefined)?.email ?? null,
   };
   const { data, error } = await db.rpc('bl_billboard_paid', { p_reference: reference, p_amount_kobo: Number(tx.amount), p_raw: { data: raw } });
+  if (error) return { ok: false, error: 'mark_failed', status: 500 };
+  const out = data as AdPayResult;
+  await flushQuietly(db);
+  return { ...out, credited: false, status: out.ok ? 200 : 409 };
+}
+
+/**
+ * Real-business listing payment (first payment or a renewal): Paystack must say success for this reference;
+ * bl_real_biz_paid then checks the exact stored price, moves the listing to pending_review once (admins get a push),
+ * or extends a live listing for a renewal. Never marks anything paid on the client's word.
+ */
+export async function verifyAndMarkRealBiz(db: SupabaseClient, reference: string): Promise<CreditResult & AdPayResult> {
+  const { data: biz, error: bizErr } = await db.from('real_businesses')
+    .select('id, status, paid_at, owner_id, reference, renew_reference, renewed_refs').or(`reference.eq.${reference},renew_reference.eq.${reference}`).maybeSingle();
+  if (bizErr) return { ok: false, error: 'db_error', status: 500 };
+  if (!biz) {
+    const { data: done } = await db.from('real_businesses').select('id, owner_id').contains('renewed_refs', [reference]).maybeSingle();
+    if (done) return { ok: true, already: true, credited: false, marked: false, ad_id: done.id, user_id: done.owner_id, status: 200 };
+    return { ok: false, error: 'unknown_reference', status: 404 };
+  }
+  const isRenewal = biz.renew_reference === reference;
+  if (!isRenewal && biz.paid_at) return { ok: true, already: true, credited: false, marked: false, ad_id: biz.id, user_id: biz.owner_id, status: 200 };
+  if (!isRenewal && biz.status !== 'awaiting_payment' && biz.status !== 'cancelled') return { ok: false, error: 'not_awaiting', status: 409 };
+
+  const v = await paystackVerify(reference);
+  if ('error' in v) return { ok: false, error: v.error, status: v.status };
+  const tx = v.tx;
+  const meta = (tx.metadata ?? {}) as Record<string, unknown>;
+  if (meta.biz_id && String(meta.biz_id) !== biz.id) return { ok: false, error: 'bad_metadata', status: 400 };
+  const raw = {
+    id: tx.id, status: tx.status, reference: tx.reference, amount: tx.amount, currency: tx.currency,
+    channel: tx.channel, paid_at: tx.paid_at, gateway_response: tx.gateway_response, purpose: meta.purpose ?? null,
+    customer_email: (tx.customer as Record<string, unknown> | undefined)?.email ?? null,
+  };
+  const { data, error } = await db.rpc('bl_real_biz_paid', { p_reference: reference, p_amount_kobo: Number(tx.amount), p_raw: { data: raw } });
   if (error) return { ok: false, error: 'mark_failed', status: 500 };
   const out = data as AdPayResult;
   await flushQuietly(db);

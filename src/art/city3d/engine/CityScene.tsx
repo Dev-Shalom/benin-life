@@ -35,6 +35,7 @@ import {
 import { roadRoute } from '../route';
 import { buildCity, kekeGeometry, pinGeometry, radialTexture, ringGeometry, routeGeometry } from './build';
 import { boardDims, BoardsLayer, boardTop, type CityBoard } from './boards';
+import { useRealBiz } from '../../../lib/realBiz';
 import { getCityLayout } from './layout';
 import { cityLight } from './light';
 import { mixHex, smoothstep } from '../../../lib/daylight';
@@ -877,6 +878,9 @@ const Labels = memo(function Labels(props: {
 }) {
   const { locations, currentId, selectedId, travelTo, travelMode, crowd, events, filters, night, labels, onPick, onItems, dragMoved, boards, onBoard } = props;
   const adsOn = filters.includes('ads');
+  // Companies: live real-business pins (verified badge); one cached read, no polling
+  const realPins = useRealBiz((s) => s.pins);
+  useEffect(() => { useRealBiz.getState().load(); }, []);
   // priority order for the greedy placement
   const items = useMemo(() => {
     const out: LabelItem[] = [];
@@ -895,11 +899,12 @@ const Labels = memo(function Labels(props: {
     }
     for (const c of COMING_SOON) out.push({ key: 'soon:' + c.id, kind: 'soon', x: c.x, y: c.y, prio: 7, tier: 1, must: false });
     for (const b of boards ?? []) out.push({ key: 'bb:' + b.id, kind: 'board', x: b.x, y: b.y, prio: adsOn ? 4 : 9.5, tier: adsOn ? 1 : 2, must: false, lift: boardTop(b.kind) });
+    for (const p of realPins) out.push({ key: 'rb:' + p.id, kind: 'place', x: p.x, y: p.y, prio: 5.5, tier: 1, must: false });
     for (const e of EXIT_SIGNS) out.push({ key: 'exit:' + e.text, kind: 'exit', x: e.x, y: e.y, prio: 9, tier: 1, must: false });
     for (const d of DISTRICT_NAMES) out.push({ key: 'd:' + d.t, kind: 'district', x: d.x, y: d.y, prio: 10, tier: 2, must: false });
     out.push(...roadLabels());
     return out.sort((a, b) => a.prio - b.prio);
-  }, [locations, currentId, selectedId, travelTo, crowd, events, filters, night, boards, adsOn]);
+  }, [locations, currentId, selectedId, travelTo, crowd, events, filters, night, boards, adsOn, realPins]);
   useEffect(() => onItems(items), [items, onItems]);
 
   const reg = (key: string) => (el: HTMLElement | null) => {
@@ -976,6 +981,18 @@ const Labels = memo(function Labels(props: {
           </button>
           <button type="button" className="c3-dot" onClick={tap(() => onBoard?.(b.id))} aria-label={`${b.name}, billboard`} tabIndex={-1}>
             <span aria-hidden>📺</span>
+          </button>
+        </div>
+      ))}
+      {realPins.map((p) => (
+        <div key={p.id} ref={reg('rb:' + p.id)} className="c3-label c3-place c3-real is-match" data-s="hidden">
+          <button type="button" className="c3-pill c3-pill--real" onClick={tap(() => useRealBiz.getState().open(p.id))} aria-label={`${p.name}, verified real business`} data-testid="real-pin">
+            <span className="c3-pill__emoji" aria-hidden>{p.logo}</span>
+            <span className="c3-pill__name">{p.name}</span>
+            <span className="c3-pill__verified" aria-hidden>✔</span>
+          </button>
+          <button type="button" className="c3-dot c3-dot--real" onClick={tap(() => useRealBiz.getState().open(p.id))} aria-label={`${p.name}, verified real business`} tabIndex={-1}>
+            <span aria-hidden>{p.logo}</span>
           </button>
         </div>
       ))}

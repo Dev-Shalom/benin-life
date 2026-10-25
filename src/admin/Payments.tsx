@@ -5,10 +5,15 @@ import { Link } from 'react-router-dom';
 import { naira } from '../lib/format';
 import { Icon } from '../ui';
 import { adminApi, type PaymentRow } from './api';
+import { rpc } from '../lib/api';
 import { Badge, Btn, LoadError, PageHead, Skeleton } from './parts';
 import { timeShort, useLoad } from './util';
 
 const kobo = (k: number) => '₦' + Math.round(k / 100).toLocaleString('en-NG');
+interface RealRevenue {
+  today_kobo: number; d7_kobo: number; all_kobo: number; renew_count: number; paid_count: number; refunded_kobo: number; refund_due: number;
+  rows: { id: string; name: string; username: string | null; paid_kobo: number; paid_at: string; status: string; refund_status: string; reference: string; renewals: number }[];
+}
 const STATUSES = ['all', 'success', 'pending', 'failed'] as const;
 const TONE: Record<PaymentRow['status'], 'green' | 'amber' | 'red'> = { success: 'green', pending: 'amber', failed: 'red' };
 
@@ -22,6 +27,7 @@ export default function Payments() {
   }, [q]);
   const { data, error, loading, reload } = useLoad(() => adminApi.payments(status === 'all' ? null : status, search || null), [status, search]);
   const t = data?.totals;
+  const real = useLoad(() => rpc<RealRevenue>('admin_real_biz_revenue'), []).data;
 
   return (
     <div className="adm-page">
@@ -39,6 +45,18 @@ export default function Payments() {
           <div className="adm-stat"><span className="adm-kicker">All time</span><b className="adm-stat__value">{kobo(t.all_kobo)}</b><span className="adm-stat__sub">{t.all_count} paid · {t.payers} payers</span></div>
           <div className="adm-stat adm-stat--amber"><span className="adm-kicker">Pending / failed</span><b className="adm-stat__value">{t.pending} / {t.failed}</b><span className="adm-stat__sub">{naira(t.naira_sold)} game naira sold</span></div>
         </div>
+      )}
+      {real && (
+        <section className="adm-card" data-testid="real-revenue">
+          <h3>Real business listings</h3>
+          <p className="adm-sub">Today {kobo(real.today_kobo)} · 7 days {kobo(real.d7_kobo)} · all time {kobo(real.all_kobo)} · {real.paid_count} paid listings · {real.renew_count} renewals · refunded {kobo(real.refunded_kobo)}{real.refund_due ? ` · ${real.refund_due} refund${real.refund_due > 1 ? 's' : ''} due` : ''} (queue: <Link to="/admin/real-business">Real business</Link>)</p>
+          {real.rows.slice(0, 8).map((r) => (
+            <div key={r.id} className="adm-pay-row">
+              <div className="adm-pay-row__main"><b>{r.name}</b><span className="adm-sub">@{r.username ?? '–'} · {timeShort(r.paid_at)} · {r.status}{r.refund_status !== 'none' ? ` · refund ${r.refund_status}` : ''}</span><span className="adm-sub adm-mono">{r.reference}</span></div>
+              <div className="adm-pay-row__side"><b>{kobo(r.paid_kobo)}</b></div>
+            </div>
+          ))}
+        </section>
       )}
       <div className="adm-toolbar">
         <div className="adm-chips">
