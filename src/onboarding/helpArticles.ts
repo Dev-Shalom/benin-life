@@ -573,10 +573,27 @@ export const HELP_ARTICLES: HelpArticle[] = [
       'Newborns and babies need formula, cereal and diapers from your bag. Buy them at Oba Market (cheaper, the price moves a little each day, open in the day) or the Edo Fresh Supermarket (fixed price, always open). Older children need lunch money in cash, and a toy makes playtime better. Sleep and cuddles are free but have a short wait.',
       'A child can fall ill on any day. Dr. Osagie sends both parents a card: Hospital costs more and almost always works, the Chemist costs less and may not work. Whoever answers first treats the child. You can also treat at home with medicine and a cuddle.',
       'If a bar stays empty for too long the child falls sick (medicine and a cuddle help). If nobody cares for many days, relatives take them in. To bring a child home each parent pays a share (₦200,000 each by default) and the child comes home when both have paid. A very long, ignored illness can end sadly: the Family tab keeps a small candle.',
-      'After about three weeks the child grows up and moves out, and you become a Proud parent (Gold, Silver or Bronze by how well you raised them, with a small thank-you gift). You stay co-parents even if you break up.',
+      'After about three weeks the child grows up and moves out (or goes to university), and you become a Proud parent (Graduate, Gold, Silver or Bronze, with a thank-you gift that grows with what you spent on school). School and university are in the next article. You stay co-parents even if you break up.',
     ],
     tour: ['family'],
     keywords: 'love date dating girlfriend boyfriend couple flirt ask out link up relationship partner kids family marry',
+  },
+  {
+    id: 'family-school',
+    topic: 'family',
+    title: 'School and university for your child',
+    summary: 'Enrol your child, pay the fees, help with homework, read the report cards, and decide about university.',
+    steps: [
+      'When your child reaches Nursery (day 5), open Family, Kids and tap Find a school. Pick a school that teaches that level. Fees are per class: a dearer school lifts every grade.',
+      'School runs fast: about one class a day. Nursery 1 and 2, Primary 1 to 6, then JSS 1 to 3 and SSS 1 to 3. Either parent can pay the fee with the Pay button. If a class fee is not paid before the class ends, your child misses the class and repeats it.',
+      'Grades (0 to 100 for each subject) go up with a fed, rested, healthy child, fees paid on time, Homework (once a class for each parent), Textbooks, a School bag and uniform, and Extra lessons. Buy books and uniform at Oba Market or the supermarket, then give them from the School panel.',
+      'At the end of each class an average of 50 or more means promoted. Under 50 the child repeats that class. A child who repeats may not reach SSS 3 before growing up.',
+      'The school sometimes asks for money: PTA levy, excursion, sports wear, a party, and the WAEC fee. Both parents get the card. The first to pay settles it. Later brings it back; Ignore costs grades and a sad child once both parents ignore it.',
+      'After each stage you get a report card with the grades, a position, and the teacher\'s remark. Open Report cards and tap Share to post it or copy it.',
+      'At the end of SSS 3 your child sits WAEC. With enough credits including Maths and English, both parents choose on day 21: UNIBEN, Edo Royal University, or work. University takes four levels (100L to 400L), about one a day, with fees each level. Graduating gives a degree class and the top Graduate badge.',
+    ],
+    where: 'Phone, then Family, then Kids.',
+    keywords: 'school class grades report card waec university uniben homework fees kids child graduate degree teacher',
   },
 
   // ---- Notifications ---------------------------------------------------------------------------------------------

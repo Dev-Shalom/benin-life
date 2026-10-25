@@ -173,7 +173,7 @@ begin
       or has_table_privilege('authenticated', 'public.' || t, 'delete');
   perform pg_temp.assert(v is null, 'kids tables: RLS on, no grants: ' || coalesce(v, ''));
   select count(*) into n from game_config where key like 'kids.%' and category = 'kids' and label <> '' and description <> '';
-  perform pg_temp.assert(n = 56 and n = (select count(*) from game_config where key like 'kids.%'), 'every kids setting has a label and description (' || n || ')');
+  perform pg_temp.assert(n = 57 and n = (select count(*) from game_config where key like 'kids.%'), 'every kids setting has a label and description (' || n || ')');
   perform pg_temp.assert(bl_cfg_bool('kids.enabled') and bl_cfg('kids.min_couple_days') = 2 and bl_cfg('kids.max_children_per_couple') = 3 and bl_cfg('kids.max_children_per_player') = 5
                          and bl_cfg('kids.invite_expire_hours') = 24 and bl_cfg('kids.try_cost_each') = 0 and bl_cfg('kids.pregnancy_days') = 7 and bl_cfg('kids.name_grace_hours') = 24
                          and bl_cfg('kids.grow_days') = 21 and bl_cfg('kids.alert_below') = 30 and bl_cfg('kids.alert_cooldown_hours') = 3 and bl_cfg('kids.sweep_batch') = 200
@@ -181,8 +181,8 @@ begin
   -- owner defaults are free / 7 days; the maths below is tested on the first numbers (rolled back)
   update game_config set value = '5000'::jsonb where key = 'kids.try_cost_each';
   update game_config set value = '3'::jsonb where key = 'kids.pregnancy_days';
-  perform pg_temp.assert((select count(*) from kids_stages where active) = 5 and (select array_agg(from_days order by from_days) from kids_stages where active) = array[0, 2, 5, 8, 14],
-                         'five stages: Newborn 0, Baby 2, Nursery 5, Primary 8, Secondary 14');
+  perform pg_temp.assert((select count(*) from kids_stages where active) = 6 and (select array_agg(from_days order by from_days) from kids_stages where active) = array[0, 2, 5, 8, 14, 21],
+                         'six stages: Newborn 0, Baby 2, Nursery 5, Primary 8, Secondary 14, University 21');
   perform pg_temp.assert((select rate_hunger from kids_stages where id = 'newborn') > (select rate_hunger from kids_stages where id = 'secondary'), 'a newborn loses hunger faster than a teen');
   perform pg_temp.assert((select count(*) from kids_auto_names where active) >= 20 and not exists (select 1 from kids_auto_names where bl_chat_mask(name) <> name), 'auto names: enough and clean');
   perform pg_temp.assert(pg_temp.hint_of($q$insert into kids_auto_names (name) values ('Ab1')$q$) <> 'ok', 'an auto name must be letters only');
@@ -460,11 +460,13 @@ begin
   -- a window around "now": sweep sends nothing, the alert is moved to the end of the window
   perform pg_temp.cfg('kids.quiet_from_hour', extract(hour from (bl_now() at time zone bl_clock_tz()))::int::text);
   perform pg_temp.cfg('kids.quiet_to_hour', ((extract(hour from (bl_now() at time zone bl_clock_tz()))::int + 2) % 24)::text);
-  update kids_children set hunger = 10, hunger_at = bl_now(), last_alert_at = null, alerts_unanswered = 0, next_alert_at = bl_now() - interval '1 minute' where id = v_ca;
+  update kids_children set hunger = 10, hunger_at = bl_now(), last_alert_at = null, alerts_unanswered = 0, next_alert_at = bl_now() - interval '1 minute',
+         next_roll_at = bl_now() + interval '30 days' where id = v_ca;   -- the daily illness roll time depends on the child id: keep it out of the window so only the quiet end is due
   delete from events where user_id = pg_temp.u('a') and kind = 'kids_needs';
   perform bl_kids_alert_sweep();
   select * into c from kids_children where id = v_ca;
   perform pg_temp.assert(pg_temp.ev(pg_temp.u('a'), 'kids_needs') = 0 and c.next_alert_at > bl_now() and c.next_alert_at <= bl_now() + interval '2 hours 1 minute', 'quiet hours: no alert now, due when the window ends: ' || c.next_alert_at::text);
+  perform pg_temp.assert(c.next_alert_at = bl_kids_quiet_shift(bl_now()), 'the alert is due exactly when the window ends');
   perform pg_temp.advance(extract(epoch from (c.next_alert_at - bl_now())) + 1);
   perform bl_kids_alert_sweep();
   perform pg_temp.assert(pg_temp.ev(pg_temp.u('a'), 'kids_needs') = 1, 'sent when the quiet hours end');

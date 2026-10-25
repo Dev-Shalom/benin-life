@@ -51,6 +51,11 @@ export default function Love() {
             <Stat label="Grown up" value={kids.grown} />
             <Stat label="Gone" value={kids.gone} />
             <Stat label="Passed away" value={kids.passed} />
+            <Stat label="At school" value={kids.at_school} tone="green" />
+            <Stat label="At university" value={kids.university} tone="green" />
+            <Stat label="WAEC passed" value={kids.waec_passed} />
+            <Stat label="Graduated" value={kids.graduated} />
+            <Stat label="Dropped out of uni" value={kids.dropped_uni} />
             <Stat label="Due for the sweep" value={kids.due_now} tone={kids.due_now > 50 ? 'amber' : undefined} />
           </section>
           <p className="adm-sub">"Due for the sweep" stays near 0 when the player-push Cron job runs every minute (docs/LOVE.md). Removing a child tells both parents and is audited (kids_remove).</p>
