@@ -255,6 +255,7 @@ export const TOUR_STEPS: TourStep[] = [
     points: [
       'Only players who switch on "Open to link-ups" can see or ask each other.',
       'Flirts and dates cost a little money and build your level together.',
+      'Couples can have a baby and look after it together. When the child needs you, the Family icon shows a red dot.',
       'You can break up or report anytime. Check the app for the current rules.',
     ],
     isNew: true,

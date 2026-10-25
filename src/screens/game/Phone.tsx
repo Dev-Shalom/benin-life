@@ -5,7 +5,7 @@
 // Apps without working features stay hidden.
 // Esc closes the phone.
 import { useBroadcasts } from '../../state/broadcasts';
-import { lazy, Suspense, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { clockTime } from '../../lib/format';
 import { WEEKDAYS } from '../../lib/pidgin';
@@ -13,6 +13,8 @@ import type { GameClock, GameState } from '../../lib/types';
 import { useChat } from '../../state/chat';
 import { usePolitics } from '../../state/politics';
 import { useGame } from '../../state/game';
+import { useKids } from '../../state/kids';
+import { startPoller } from '../../lib/realtime';
 import { useUi } from '../../state/ui';
 import { Button, Icon, toast, usePresence } from '../../ui';
 import { useEscape } from '../../ui/presence';
@@ -156,13 +158,16 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const events = useGame((s) => s.events);
   const lastReadEventId = useGame((s) => s.lastReadEventId);
   const socialUnread = events.filter((e) => ['friend_request', 'house_invite', 'house_knock', 'private_message', 'place_invite', 'lounge_guest'].includes(e.kind) && e.id > lastReadEventId).length;
-  const familyUnread = events.filter((e) => e.kind.startsWith('love_') && e.id > lastReadEventId).length;
+  // Family dot: unread love / kids alerts, plus every child that needs its parents right now (kids_status, polled only while the phone is open)
+  const kidsAttention = useKids((s) => s.status?.attention ?? 0);
+  const familyUnread = events.filter((e) => (e.kind.startsWith('love_') || (e.kind.startsWith('kids_') && e.kind !== 'kids_needs')) && e.id > lastReadEventId).length + kidsAttention;
   const open = overlay === 'phone';
   const polBadge = usePolitics((s) => Boolean(s.status?.cycle && ((s.status.cycle.voting_open && s.status.me.voted.length < 3) || (s.status.cycle.status === 'registration' && !s.status.me.candidacy))));
   const wardrobeOn = useConfig().cfg<boolean>('wardrobe.enabled', true);
   const billboardsOn = useConfig().cfg<boolean>('billboards.enabled', true);
   const yahooOn = useConfig().cfg<boolean>('yahoo.enabled', true);
   const loveOn = useConfig().cfg<boolean>('love.enabled', true);
+  const kidsOn = useConfig().cfg<boolean>('kids.enabled', true);
   const { mounted, closing } = usePresence(open, 200);
   const [screen, setScreen] = useState<'lock' | 'home' | string>('lock');
   const [wasOpen, setWasOpen] = useState(open);
@@ -185,6 +190,17 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   }
   const close = () => setOverlay(null);
   useEscape(open, close);
+
+  // kids_status is cheap and read-only for most players; it runs only while the phone is open (visible tab, not AFK, slower when idle)
+  useEffect(() => {
+    if (!open || !loveOn || !kidsOn) return;
+    let period = 45_000;
+    const p = startPoller(async () => {
+      await useKids.getState().load();
+      period = Math.max(20, useKids.getState().status?.poll_seconds ?? 45) * 1000;
+    }, () => period, { immediate: true });
+    return () => p.stop();
+  }, [open, loveOn, kidsOn]);
 
   if (!mounted) return null;
 

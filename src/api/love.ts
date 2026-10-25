@@ -108,6 +108,7 @@ export const loveReport = (target: string, reason: string) => rpc<Msg>('love_rep
 /** Public bits of a player's profile that the Ask button needs (get_public_profile). */
 export interface PublicLove {
   love_open?: boolean;
+  proud_parent?: number;
   relationship?: { status: 'talking' | 'couple'; partner: { id: string; username: string } } | null;
 }
 export const lovePublic = (id: string) => rpc<PublicLove>('get_public_profile', { p_id: id });

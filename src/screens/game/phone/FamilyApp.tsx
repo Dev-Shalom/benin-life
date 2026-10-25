@@ -4,7 +4,6 @@
 // ONLY while the app is open (startPoller: visible tab, not AFK, backs off when idle) and refreshed at once when a love_* alert arrives.
 // The Link-ups list (love_candidates) is paged and loaded on demand, never polled.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AvatarPortrait } from '../../../art/avatar3d';
 import {
   loveAsk, loveBreakup, loveCandidates, loveDateInvite, loveDateRespond, loveFlirt, loveOverview, loveReport, loveRespond, loveSetOpen,
   loveSetShowRelationship, loveWithdraw, type LoveCandidate, type LoveDate, type LoveFlirt, type LoveFilter, type LoveOverview, type LoveRelationship,
@@ -17,34 +16,13 @@ import { useGame } from '../../../state/game';
 import { useUi } from '../../../state/ui';
 import { Button, CrewTag, EmptyState, Modal, OfficeTag, Spinner, Switch, Tabs, toast } from '../../../ui';
 import type { AvatarConfig } from '../../../lib/types';
+import { ago, dur, face, useTick } from './familyUtil';
+import { KidsSection } from './KidsSection';
+import { kidsName, type KidChild, type KidsStatus } from '../../../api/kids';
+import { useKids } from '../../../state/kids';
 import './FamilyApp.css';
 
 export type FamilyTab = 'linkups' | 'us' | 'family';
-
-/** 3725 -> "1 h 2 min", 130 -> "2 min 10 s", 40 -> "40 s". */
-function dur(sec: number): string {
-  const s = Math.max(0, Math.ceil(sec));
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (d > 0) return `${d} d ${h} h`;
-  if (h > 0) return `${h} h ${m} min`;
-  if (m > 0) return `${m} min${s % 60 ? ` ${s % 60} s` : ''}`;
-  return `${s} s`;
-}
-
-/** Re-render once a second while `active` (countdowns). */
-function useTick(active: boolean): number {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    if (!active) return;
-    const id = window.setInterval(() => setN((x) => x + 1), 1000);
-    return () => window.clearInterval(id);
-  }, [active]);
-  return n;
-}
-
-const face = (a: AvatarConfig | null | undefined, size: number) => <AvatarPortrait config={(a ?? {}) as AvatarConfig} size={size} className="fm-face" alt="" />;
 
 // ------------------------------------------------------------------------------------------------ Link-ups
 function AskInbox({ ov, run, busy, onReport }: { ov: LoveOverview; run: (k: string, fn: () => Promise<{ message?: string }>) => void; busy: string | null; onReport: (id: string, name: string) => void }) {
@@ -353,14 +331,6 @@ function RelCard({ r, ov, me, run, busy, loadedAt, onReport, onBreakup }: {
   );
 }
 
-const ago = (iso: string) => {
-  const s = Math.max(0, (serverNow() - Date.parse(iso)) / 1000);
-  if (s < 90) return 'just now';
-  if (s < 3600) return `${Math.round(s / 60)} min ago`;
-  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
-  return `${Math.round(s / 86400)} d ago`;
-};
-
 function UsTab({ ov, me, run, busy, loadedAt, goLinkups, onReport, onBreakup }: {
   ov: LoveOverview; me: { avatar: AvatarConfig | null; username: string }; run: (k: string, fn: () => Promise<{ message?: string }>) => void; busy: string | null;
   loadedAt: number; goLinkups: () => void; onReport: (id: string, name: string) => void; onBreakup: (r: LoveRelationship) => void;
@@ -382,9 +352,10 @@ function UsTab({ ov, me, run, busy, loadedAt, goLinkups, onReport, onBreakup }: 
 }
 
 // ------------------------------------------------------------------------------------------------ Family
-function FamilyTab({ ov, me, run, busy, goUs, goLinkups }: {
+function FamilyTab({ ov, me, run, busy, goUs, goLinkups, kids, kidsErr, kidsAt, runKids, onName }: {
   ov: LoveOverview; me: { avatar: AvatarConfig | null; username: string }; run: (k: string, fn: () => Promise<{ message?: string }>) => void; busy: string | null;
-  goUs: () => void; goLinkups: () => void;
+  goUs: () => void; goLinkups: () => void; kids: KidsStatus | null; kidsErr: string | null; kidsAt: number;
+  runKids: (k: string, fn: () => Promise<{ message?: string }>) => void; onName: (c: KidChild) => void;
 }) {
   const couples = ov.relationships.filter((r) => r.status === 'couple');
   const talking = ov.relationships.filter((r) => r.status === 'talking');
@@ -410,11 +381,7 @@ function FamilyTab({ ov, me, run, busy, goUs, goLinkups }: {
         </article>
       )}
 
-      <article className="fm-card fm-kids" data-testid="fm-kids">
-        <span className="fm-kids__icon" aria-hidden>🍼</span>
-        <b>Kids: coming soon</b>
-        <p>In a later update, couples will be able to have a child and look after them together. Nothing to do here yet.</p>
-      </article>
+      <KidsSection kids={kids} err={kidsErr} at={kidsAt} run={runKids} busy={busy} onName={onName} onRetry={() => void useKids.getState().load()} />
 
       <section className="fm-card fm-open">
         <Switch checked={ov.me.show_relationship} disabled={busy === 'show'} label="Show my relationship on my profile"
@@ -437,6 +404,12 @@ export default function FamilyApp({ initialTab = 'linkups' }: { initialTab?: Fam
   const [reason, setReason] = useState('');
   const [alsoBlock, setAlsoBlock] = useState(false);
   const [leave, setLeave] = useState<LoveRelationship | null>(null);
+  const [nameFor, setNameFor] = useState<KidChild | null>(null);
+  const [nameText, setNameText] = useState('');
+  const [nameGender, setNameGender] = useState<'boy' | 'girl' | null>(null);
+  const kids = useKids((s) => s.status);
+  const kidsAt = useKids((s) => s.at);
+  const kidsErr = useKids((s) => s.error);
   const periodRef = useRef(45_000);
   const pollRef = useRef<ReturnType<typeof startPoller> | null>(null);
   const profile = useGame((s) => s.state?.profile);
@@ -479,6 +452,38 @@ export default function FamilyApp({ initialTab = 'linkups' }: { initialTab?: Fam
       setBusy(null);
     }
   }, [load]);
+
+  // a kids action: show the answer, then re-read kids_status (and my money) at once
+  const runKids = useCallback(async (key: string, fn: () => Promise<{ message?: string }>) => {
+    setBusy(key);
+    try {
+      const r = await fn();
+      if (r?.message) toast(r.message, key.startsWith('kn:') || key.startsWith('kw:') ? 'info' : 'good');
+      await Promise.all([useKids.getState().load(), load()]);
+      void useGame.getState().refresh();
+    } catch (e) {
+      toast(errorMessage(e), 'bad');
+      void useKids.getState().load();
+    } finally {
+      setBusy(null);
+    }
+  }, [load]);
+
+  const doName = async () => {
+    if (!nameFor || !nameGender) return;
+    setBusy('kname');
+    try {
+      const r = await kidsName(nameFor.id, nameText.trim(), nameGender);
+      toast(r.message, 'good');
+      setNameFor(null);
+      await useKids.getState().load();
+    } catch (e) {
+      toast(errorMessage(e), 'bad');
+      void useKids.getState().load();
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const doReport = async () => {
     if (!report) return;
@@ -539,7 +544,7 @@ export default function FamilyApp({ initialTab = 'linkups' }: { initialTab?: Fam
       <div key={tab} className="fm-pane">
         {tab === 'linkups' && <LinkupsTab ov={ov} run={run} busy={busy} goUs={() => setTab('us')} onReport={(id, name) => setReport({ id, name })} reloadKey={reloadKey} />}
         {tab === 'us' && <UsTab ov={ov} me={me} run={run} busy={busy} loadedAt={loadedAt} goLinkups={() => setTab('linkups')} onReport={(id, name) => setReport({ id, name })} onBreakup={setLeave} />}
-        {tab === 'family' && <FamilyTab ov={ov} me={me} run={run} busy={busy} goUs={() => setTab('us')} goLinkups={() => setTab('linkups')} />}
+        {tab === 'family' && <FamilyTab ov={ov} me={me} run={run} busy={busy} goUs={() => setTab('us')} goLinkups={() => setTab('linkups')} kids={kids} kidsErr={kidsErr} kidsAt={kidsAt} runKids={runKids} onName={(c) => { setNameFor(c); setNameText(''); setNameGender(null); }} />}
       </div>
 
       <Modal open={Boolean(report)} onClose={() => busy !== 'report' && setReport(null)} title={report ? `Report @${report.name}` : ''}
@@ -551,6 +556,24 @@ export default function FamilyApp({ initialTab = 'linkups' }: { initialTab?: Fam
           <p className="fm-fine">A moderator reads every report. Tell us what happened, in your own words.</p>
           <textarea value={reason} maxLength={300} rows={3} onChange={(e) => setReason(e.target.value)} placeholder="What happened?" aria-label="What happened" />
           <label className="fm-check"><input type="checkbox" checked={alsoBlock} onChange={(e) => setAlsoBlock(e.target.checked)} /><span>Also block them (no more asks or messages)</span></label>
+        </div>
+      </Modal>
+
+      <Modal open={Boolean(nameFor)} onClose={() => busy !== 'kname' && setNameFor(null)} title="Name your baby"
+        actions={<>
+          <Button variant="ghost" disabled={busy === 'kname'} onClick={() => setNameFor(null)}>Not now</Button>
+          <Button variant="green" loading={busy === 'kname'} disabled={!/^\p{L}{3,16}$/u.test(nameText.trim()) || !nameGender} onClick={() => void doName()} data-testid="kids-name-save">Save name</Button>
+        </>}>
+        <div className="fm-form">
+          <p className="fm-fine">3 to 16 letters. The first parent to save a name picks it for both of you, so talk first.</p>
+          <input className="fm-input" value={nameText} maxLength={16} autoComplete="off" autoCapitalize="words" spellCheck={false} placeholder="Name"
+            aria-label="Baby name" onChange={(e) => setNameText(e.target.value.replace(/[^\p{L}]/gu, ''))} data-testid="kids-name-input" />
+          <div className="fm-filters" role="group" aria-label="Boy or girl">
+            {([['boy', 'Boy 👦'], ['girl', 'Girl 👧']] as const).map(([id, label]) => (
+              <button key={id} type="button" className={`fm-chip${nameGender === id ? ' is-on' : ''}`} aria-pressed={nameGender === id} onClick={() => setNameGender(id)} data-testid={`kids-gender-${id}`}>{label}</button>
+            ))}
+          </div>
+          <p className="fm-fine">Boy or Girl only changes how your child looks.</p>
         </div>
       </Modal>
 

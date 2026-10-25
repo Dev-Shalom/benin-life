@@ -1,5 +1,6 @@
 // Family & love admin (docs/LOVE.md): live counts, the report inbox and "end this link-up". Settings: Settings -> Family & love.
 // Flirt lines and dates: Content. Handling a report and ending a link-up are audited (love_report_*, love_end).
+import { adminKidsOverview, adminKidsRemove } from '../api/kids';
 import { adminLoveEnd, adminLoveOverview, adminLoveReportSet } from '../api/love';
 import { errorMessage } from '../lib/api';
 import { toast } from '../ui';
@@ -17,11 +18,14 @@ function Stat({ label, value, tone }: { label: string; value: number | string; t
 
 export default function Love() {
   const { data, error, loading, reload } = useLoad(() => adminLoveOverview());
+  const kidsLoad = useLoad(() => adminKidsOverview());
+  const kids = kidsLoad.data;
   if (error && !data) return <LoadError error={error} onRetry={() => void reload()} />;
   if (!data) return <Skeleton rows={5} />;
   const run = async (fn: () => Promise<{ message: string }>) => {
     try { toast((await fn()).message, 'good'); } catch (e) { toast(errorMessage(e), 'bad'); }
     void reload();
+    void kidsLoad.reload();
   };
   return (
     <div className="adm-page" data-testid="admin-love">
@@ -35,6 +39,39 @@ export default function Love() {
         <Stat label="Asks waiting" value={data.pending_asks} />
         <Stat label="Open reports" value={data.open_reports} tone={data.open_reports > 0 ? 'amber' : undefined} />
       </section>
+      {kids && (
+        <section className="adm-card" data-testid="admin-kids">
+          <h3>Kids {!kids.enabled && <Badge tone="amber">switched off</Badge>}</h3>
+          <section className="adm-stats">
+            <Stat label="Expecting" value={kids.expecting} />
+            <Stat label="At home" value={kids.home} tone="green" />
+            <Stat label="With relatives" value={kids.with_relatives} />
+            <Stat label="Alerted (24 h)" value={kids.needs_attention} />
+            <Stat label="Unwell" value={kids.sick} tone={kids.sick > 0 ? 'amber' : undefined} />
+            <Stat label="Grown up" value={kids.grown} />
+            <Stat label="Gone" value={kids.gone} />
+            <Stat label="Due for the sweep" value={kids.due_now} tone={kids.due_now > 50 ? 'amber' : undefined} />
+          </section>
+          <p className="adm-sub">"Due for the sweep" stays near 0 when the player-push Cron job runs every minute (docs/LOVE.md). Removing a child tells both parents and is audited (kids_remove).</p>
+          {kids.children.length === 0 ? <p className="adm-sub">No active children yet.</p> : (
+            <div className="adm-scroll">
+              <table className="adm-table">
+                <thead><tr><th>Child</th><th>Parents</th><th>Status</th><th /></tr></thead>
+                <tbody>
+                  {kids.children.map((c) => (
+                    <tr key={c.id}>
+                      <td><b>{c.name ?? 'No name yet'}</b> <span className="adm-sub">#{c.id}</span></td>
+                      <td>@{c.a ?? 'gone'} · @{c.b ?? 'gone'}</td>
+                      <td><Badge tone={c.sick ? 'amber' : 'grey'}>{c.status}{c.sick ? ' · unwell' : ''}</Badge></td>
+                      <td className="adm-actions"><ConfirmButton small confirmText="Tap again: remove" onConfirm={() => run(() => adminKidsRemove(c.id, 'admin'))}>Remove</ConfirmButton></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
       <section className="adm-card">
         <h3>Reports</h3>
         {data.reports.length === 0 ? <p className="adm-sub">No reports. Good.</p> : (

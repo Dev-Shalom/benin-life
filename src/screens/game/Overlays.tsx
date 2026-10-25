@@ -39,11 +39,11 @@ export function AlertsList({ active }: { active: boolean }) {
               <div className="alert__title">{e.title}</div>
               {e.body && <div className="alert__body">{e.body}</div>}
               <div className="alert__meta">{titleCase(e.kind)} · {timeAgo(e.created_at)}</div>
-              {e.kind.startsWith('love_') && (
+              {(e.kind.startsWith('love_') || e.kind.startsWith('kids_')) && (
                 <button type="button" className="alert__go" onClick={() => {
                   const ui = useUi.getState();
                   ui.closeAll();
-                  ui.openPhone(e.kind === 'love_ask' ? 'family:linkups' : e.kind === 'love_couple' ? 'family:family' : 'family:us');
+                  ui.openPhone(e.kind === 'love_ask' ? 'family:linkups' : e.kind === 'love_couple' || e.kind.startsWith('kids_') ? 'family:family' : 'family:us');
                 }}>Open Family</button>
               )}
               {(e.kind === 'place_invite' || e.kind === 'lounge_guest') && typeof e.data?.location_id === 'string' && (

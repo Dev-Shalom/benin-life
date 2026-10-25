@@ -21,10 +21,14 @@ export function LoveAskButton({ userId }: { userId: string }) {
   }, [userId]);
 
   if (!info) return null;
+  const proud = (info.proud_parent ?? 0) > 0 ? <span className="love-with" title="Raised a child who grew up">🏅 Proud parent{(info.proud_parent ?? 0) > 1 ? ` × ${info.proud_parent}` : ''}</span> : null;
   if (info.relationship) {
-    return <span className="love-with" title="Relationship status">{info.relationship.status === 'couple' ? '💞 With' : '💬 Talking to'} @{info.relationship.partner.username}</span>;
+    return <>
+      <span className="love-with" title="Relationship status">{info.relationship.status === 'couple' ? '💞 With' : '💬 Talking to'} @{info.relationship.partner.username}</span>
+      {proud}
+    </>;
   }
-  if (!info.love_open) return null;
+  if (!info.love_open) return proud;
   const ask = async () => {
     setBusy(true);
     try {
@@ -37,7 +41,10 @@ export function LoveAskButton({ userId }: { userId: string }) {
       setBusy(false);
     }
   };
-  return sent
-    ? <Button size="sm" variant="ghost" onClick={() => openPhone('family:linkups')}>Asked 💞</Button>
-    : <Button size="sm" variant="green" loading={busy} disabled={busy} onClick={() => void ask()} data-testid="love-ask-profile">Ask out 💞</Button>;
+  return <>
+    {proud}
+    {sent
+      ? <Button size="sm" variant="ghost" onClick={() => openPhone('family:linkups')}>Asked 💞</Button>
+      : <Button size="sm" variant="green" loading={busy} disabled={busy} onClick={() => void ask()} data-testid="love-ask-profile">Ask out 💞</Button>}
+  </>;
 }
