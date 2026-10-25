@@ -30,7 +30,7 @@ Avoid betting and alcohol brands: many players are young and it can get the app 
 
 Hi [Name],
 
-I'm [Your name], the creator of **Benin Life**, a free life game set in Benin City. No download: it opens in any phone browser.
+I'm Shalom Uwagboe, the creator of **Benin Life**, a free life game set in Benin City. No download: it opens in any phone browser.
 
 **Try it in 2 minutes:** open **playbeninlife.app** on your phone, sign up, and walk around GRA, Ring Road and Ugbowo. Here's a 30-second trailer if you're busy: [trailer link].
 
@@ -50,12 +50,12 @@ Players hustle, open businesses, go to school, party in the clubs, join gangs, a
 
 Packages start from ₦30,000 for one day on a billboard. I'm happy to build something around your budget.
 
-If you like what you see after playing, just reply here or on WhatsApp ([number]) and I'll send a short plan.
+If you like what you see after playing, just reply here and I'll send a short plan.
 
 Thanks,
-[Your name]
+Shalom Uwagboe
 Creator, Benin Life
-playbeninlife.app · TikTok [@handle] · WhatsApp [number]
+playbeninlife.app · TikTok @beninlife_official_
 
 ### Tips so it sounds like you
 - Change the subject line and one sentence for each company ("your customers are the same young Benin crowd").
@@ -64,7 +64,7 @@ playbeninlife.app · TikTok [@handle] · WhatsApp [number]
 - Strongest move: put their logo on a free in-game billboard for a day, screenshot it, and send that.
 
 ## Short DM (Instagram / WhatsApp / LinkedIn)
-> Hi [Name]! I'm [Your name] from Benin City. I built Benin Life, a free game set in our city: 4,200+ players so far. Try it on your phone in 2 minutes: playbeninlife.app 🎮
+> Hi [Name]! I'm Shalom Uwagboe from Benin City. I built Benin Life, a free game set in our city: 4,200+ players so far. Try it on your phone in 2 minutes: playbeninlife.app 🎮
 > I'd love to put [Brand] inside the game: billboards on the 3D streets, a sponsored club night, a message to every player. From ₦30k. Can I send you a quick mock-up of your logo in the city?
 
 ## Image prompt: "who I am" card (ChatGPT)
