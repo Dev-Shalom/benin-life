@@ -162,3 +162,13 @@ switch off, removing a Governor.
 
 ## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
 Salary is paid for holding the seat. Per day: Councillor ₦20k -> **₦10k**, Chairman ₦50k -> **₦25k**, Governor ₦100k -> **₦50k**, each Commissioner (appointed, so an alt can hold one) ₦40k -> **₦15k**. The fees (₦10k / ₦50k / ₦250k), rally and poster costs are unchanged. `politics_test` pins the old salaries.
+
+## More seats (migration `20261025000100_more_seats.sql`, test `more_seats_test.sql`)
+Three new city-wide elected seats, kind `chairman` (a plain seat: title, badge, salary, a race on every ballot, no powers), sorted after the Governor:
+| Office | Title | Fee | Needs | Salary / day | Godfather ticket |
+|---|---|---|---|---|---|
+| Youth Leader of Benin | Youth Ldr. | 5,000 | account 1 d | 5,000 | 1B |
+| Speaker of the House | Rt. Hon. | 30,000 | account 5 d, Charisma 2 | 20,000 | 15B |
+| Deputy Governor | Dep. Gov. | 150,000 | account 7 d, Charisma 3 | 35,000 | 35B |
+All editable in Content -> Offices. A seat added while an election is past registration has no candidates that cycle (vacant until the next one).
+`politics_test.sql` switches the three off to keep testing the original three races.
