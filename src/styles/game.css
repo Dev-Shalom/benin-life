@@ -4600,7 +4600,7 @@ kbd {
 .welcome__title {
   margin: 6px 0 0;
   font-family: var(--font-display);
-  font-size: clamp(2.25rem, 11vw, 3.25rem);
+  font-size: clamp(1.75rem, 8.5vw, 2.5rem);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.025em;
@@ -4608,7 +4608,7 @@ kbd {
 }
 .welcome__tag {
   margin: 4px 0 0;
-  font-size: var(--fs-lg, 1.125rem);
+  font-size: var(--fs-md, 1rem);
   font-weight: 500;
   color: #4a566b;
 }
@@ -4874,7 +4874,7 @@ kbd {
 }
 @media (max-height: 640px) and (max-width: 899px) {
   .welcome__title {
-    font-size: 2rem;
+    font-size: 1.6rem;
   }
   .welcome__card {
     gap: 10px;

@@ -94,7 +94,7 @@ function HaveBaby({ couple, kids, at, run, busy }: { couple: KidCouple; kids: Ki
     <article className="fm-card fm-baby" data-testid="kids-have-baby">
       <span className="fm-baby__icon" aria-hidden>👶</span>
       <b>Have a baby</b>
-      <p className="fm-fine">Ask @{name} to try for a baby. You both have to say yes{rules ? `, and you each pay ${naira(rules.try_cost_each)}` : ''}. Then you wait about {rules?.pregnancy_days ?? 3} days for your little one, and look after them together.</p>
+      <p className="fm-fine">Ask @{name} to try for a baby. You both have to say yes{rules && rules.try_cost_each > 0 ? `, and you each pay ${naira(rules.try_cost_each)}` : ''}. Then you wait about {rules?.pregnancy_days ?? 7} days for your little one, and look after them together.</p>
       {declined && <p className="fm-warn">@{name} would like to wait a little. That is okay.</p>}
       <Button variant="green" size="lg" loading={busy === `try:${couple.rel_id}`} disabled={busy !== null || wait > 0} onClick={() => run(`try:${couple.rel_id}`, () => kidsTry(couple.rel_id))} data-testid="kids-try">
         {wait > 0 ? `Ask again in ${dur(wait)}` : `Ask @${name} 👶`}
@@ -115,7 +115,7 @@ function Invite({ kids, run, busy }: { kids: KidsStatus; run: Run; busy: string 
             {face(i.from.avatar, 48)}
             <span className="fm-ask__txt">
               <b>@{i.from.username} would like a baby 👶</b>
-              <small>You both have to agree{kids.rules ? ` and you each pay ${naira(kids.rules.try_cost_each)}` : ''}. {dur(hoursLeft(i.expires_at))} left to answer.</small>
+              <small>You both have to agree{kids.rules && kids.rules.try_cost_each > 0 ? ` and you each pay ${naira(kids.rules.try_cost_each)}` : ''}. {dur(hoursLeft(i.expires_at))} left to answer.</small>
             </span>
           </span>
           <span className="fm-ask__btns">

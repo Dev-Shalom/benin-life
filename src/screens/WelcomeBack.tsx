@@ -230,7 +230,7 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
       </div>
 
       <header className="welcome__head">
-        <Logo size={52} title="" className="welcome__logo" />
+        <Logo size={40} title="" className="welcome__logo" />
         <h1 className="welcome__title">Benin Life</h1>
         <p className="welcome__tag">Live your Benin story.</p>
       </header>

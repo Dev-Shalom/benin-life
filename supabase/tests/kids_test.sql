@@ -158,9 +158,12 @@ begin
   select count(*) into n from game_config where key like 'kids.%' and category = 'kids' and label <> '' and description <> '';
   perform pg_temp.assert(n = 39 and n = (select count(*) from game_config where key like 'kids.%'), 'every kids setting has a label and description (' || n || ')');
   perform pg_temp.assert(bl_cfg_bool('kids.enabled') and bl_cfg('kids.min_couple_days') = 2 and bl_cfg('kids.max_children_per_couple') = 3 and bl_cfg('kids.max_children_per_player') = 5
-                         and bl_cfg('kids.invite_expire_hours') = 24 and bl_cfg('kids.try_cost_each') = 5000 and bl_cfg('kids.pregnancy_days') = 3 and bl_cfg('kids.name_grace_hours') = 24
+                         and bl_cfg('kids.invite_expire_hours') = 24 and bl_cfg('kids.try_cost_each') = 0 and bl_cfg('kids.pregnancy_days') = 7 and bl_cfg('kids.name_grace_hours') = 24
                          and bl_cfg('kids.grow_days') = 21 and bl_cfg('kids.alert_below') = 30 and bl_cfg('kids.alert_cooldown_hours') = 3 and bl_cfg('kids.sweep_batch') = 200
                          and bl_cfg('kids.neglect_hours') = 24 and bl_cfg('kids.removal_days') = 7, 'defaults');
+  -- owner defaults are free / 7 days; the maths below is tested on the first numbers (rolled back)
+  update game_config set value = '5000'::jsonb where key = 'kids.try_cost_each';
+  update game_config set value = '3'::jsonb where key = 'kids.pregnancy_days';
   perform pg_temp.assert((select count(*) from kids_stages where active) = 4 and (select min(from_days) from kids_stages) = 0
                          and (select array_agg(from_days order by from_days) from kids_stages) = array[0, 3, 8, 14], 'stages: Baby 0, Toddler 3, Child 8, Teen 14');
   perform pg_temp.assert((select rate_hunger from kids_stages where id = 'baby') > (select rate_hunger from kids_stages where id = 'teen'), 'a baby loses hunger faster than a teen');
