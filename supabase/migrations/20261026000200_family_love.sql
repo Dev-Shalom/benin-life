@@ -1,6 +1,6 @@
 -- Family & Love, stage 1 (docs/LOVE.md). One phone app "Family" (Link-ups, Us, Family).
 --   * Players opt in ("Open to link-ups"), ask each other out, the other accepts (status talking), both send PRESET flirts (a menu,
---     never free text) that raise a shared level 0-100; at love.couple_level (30) the pair becomes a couple. Dates ("go out together")
+--     never free text) that raise a shared level 0-100; at love.couple_level (75) the pair becomes a couple. Dates ("go out together")
 --     at real Benin places add bond points and fun / social. Break-up with cooldowns. Reports reuse the chat block list.
 --   * Server-authoritative and lazy: no cron. Decay (idle days) is applied on read (display) and on write (stored) for the pair touched only.
 --   * Clients never touch the tables: every table has RLS on and no grant; everything goes through security-definer RPCs.
@@ -46,7 +46,7 @@ insert into public.game_config (key, value, category, label, description, kind, 
  'If the pair does no flirt and no date for this many days, the level begins to drop.', 'number', 0, 60),
 ('love.decay_per_day', '2', 'love', 'Level lost per idle day',
  'Points lost for each idle day after the grace days. A couple never falls below the couple level (they stay a couple); a talking pair can fall to 0.', 'number', 0, 50),
-('love.couple_level', '30', 'love', 'Level where they become a couple',
+('love.couple_level', '75', 'love', 'Level where they become a couple',
  'When the shared level reaches this, status flips from talking to couple and both get an alert. The level keeps counting up to 100 as "bond".', 'number', 5, 100),
 ('love.date_invite_expire_minutes', '30', 'love', 'A date invite waits for (minutes)',
  'The partner has this long to accept a date invite (and be at the place).', 'number', 1, 1440),

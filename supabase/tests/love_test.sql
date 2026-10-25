@@ -117,8 +117,10 @@ begin
   perform pg_temp.assert(bl_cfg_bool('love.enabled') and bl_cfg('love.min_account_days') = 2 and bl_cfg('love.max_partners') = 1 and bl_cfg('love.asks_per_day') = 5
                          and bl_cfg('love.decline_cooldown_days') = 3 and bl_cfg('love.ask_expire_hours') = 48 and bl_cfg('love.flirt_daily_cap') = 20
                          and bl_cfg('love.flirt_cooldown_minutes') = 20 and bl_cfg('love.decay_after_days') = 3 and bl_cfg('love.decay_per_day') = 2
-                         and bl_cfg('love.couple_level') = 30 and bl_cfg('love.date_invite_expire_minutes') = 30 and bl_cfg('love.breakup_cooldown_days') = 3
+                         and bl_cfg('love.couple_level') = 75 and bl_cfg('love.date_invite_expire_minutes') = 30 and bl_cfg('love.breakup_cooldown_days') = 3
                          and bl_cfg('love.breakup_global_cooldown_hours') = 24, 'defaults');
+  -- the default is 75 (owner); the mechanics below are tested at the original 30 so the flirt maths stays small (rolled back)
+  update game_config set value = '30'::jsonb where key = 'love.couple_level';
   perform pg_temp.assert((select count(*) from love_flirts where active) = 12 and (select count(*) from love_flirts where cost = 0) >= 2, '12 flirt lines, some free');
   perform pg_temp.assert((select count(*) from love_dates where active) >= 8
                          and not exists (select 1 from love_dates where place_id is not null and not exists (select 1 from locations l where l.id = love_dates.place_id))
