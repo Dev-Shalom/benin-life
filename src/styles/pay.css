@@ -206,7 +206,8 @@
   font-size: 12px;
   font-weight: 800;
 }
-.rk-pod__val { font-size: 12px; font-weight: 700; color: var(--rk-gold); font-variant-numeric: tabular-nums; }
+.rk-pod__val { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; color: var(--rk-gold); font-variant-numeric: tabular-nums; }
+.rk-pod__val.is-band { font-size: 10px; letter-spacing: -0.01em; }
 .rk-pod__step {
   align-self: stretch;
   display: grid;
@@ -283,6 +284,8 @@
 }
 .rk-row__sub { font-size: 11px; color: rgba(243, 241, 234, 0.55); }
 .rk-row__val { flex: none; font-size: 13px; font-weight: 800; color: var(--rk-gold); font-variant-numeric: tabular-nums; }
+/* money ranges ("₦100M – ₦1B") are longer than "₦5M": smaller, right aligned, never wider than the name needs */
+.rk-row__val.is-band { flex: 0 1 auto; min-width: 0; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; font-size: 11px; }
 .rk-list--me {
   position: sticky;
   bottom: -20px;

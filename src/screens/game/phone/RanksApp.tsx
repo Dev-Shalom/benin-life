@@ -1,5 +1,5 @@
 // Phone "Ranks" app (PAY, docs/PAYMENTS.md): Rich list (cash + bank) and VIP list (real money spent on
-// top-ups, tiers only unless leaderboard.vip_show_amounts). Top 3 on a podium, the rest in a list, your
+// top-ups, tiers only unless leaderboard.vip_show_amounts). Money shows as a range ("₦1M – ₦10M", ranks.hide_amounts). Top 3 on a podium, the rest in a list, your
 // own row pinned at the bottom. Data: leaderboard_rich / leaderboard_vip RPCs (no emails ever).
 import { useCallback, useEffect, useState } from 'react';
 import { AvatarPortrait } from '../../../art/avatar3d';
@@ -18,11 +18,12 @@ interface RankRow {
   avatar: unknown;
   origin: string;
   tier: string | null;
-  total?: number;
+  total?: number | null;
   amount?: number | null;
+  band?: string | null; // money range, set while ranks.hide_amounts is on (then total / amount are null)
   me?: boolean;
 }
-interface WeekExtra { week_start: string; ends_at: string; prizes: { rank: number; amount: number }[]; min_earned: number; last_week: { week_start: string; winners: { rank: number; username: string; total: number; prize: number }[] } | null; enabled: boolean }
+interface WeekExtra { week_start: string; ends_at: string; prizes: { rank: number; amount: number }[]; min_earned: number; last_week: { week_start: string; winners: { rank: number; username: string; total?: number | null; band?: string | null; prize: number }[] } | null; enabled: boolean }
 interface BoardData extends Partial<WeekExtra> { rows: RankRow[]; me: RankRow | null; players: number; show_amounts?: boolean; tiers: { name: string; min: number }[] }
 
 const MEDAL = ['🥇', '🥈', '🥉'];
@@ -33,6 +34,7 @@ function tierIndex(tiers: BoardData['tiers'], name: string | null) {
 }
 
 function value(board: Board, r: RankRow, show: boolean): string | null {
+  if (r.band) return r.band;
   if (board === 'rich' || board === 'week') return r.total != null ? nairaShort(r.total) : null;
   return show && r.amount != null ? nairaShort(r.amount) : null;
 }
@@ -62,7 +64,7 @@ function Podium({ board, data }: { board: Board; data: BoardData }) {
             <span className="rk-pod__medal" aria-hidden>{MEDAL[place - 1]}</span>
             <span className="rk-pod__name">@{r.username}</span>
             <TierBadge data={data} name={r.tier} />
-            {v && <span className="rk-pod__val">{v}</span>}
+            {v && <span className={`rk-pod__val${r.band ? ' is-band' : ''}`}>{v}</span>}
             <span className="rk-pod__step"><span>{place}</span></span>
           </div>
         );
@@ -81,7 +83,7 @@ function Row({ board, data, r, pinned }: { board: Board; data: BoardData; r: Ran
         <span className="rk-row__name">@{r.username}{pinned ? <span className="rk-row__you">You</span> : null}</span>
         {r.tier ? <TierBadge data={data} name={r.tier} /> : board === 'week' && r.rank != null ? null : <span className="rk-row__sub">{board === 'vip' ? 'Top up to join the VIP list' : board === 'week' ? 'Earn something to rank' : 'Not ranked'}</span>}
       </span>
-      {v && <span className="rk-row__val">{v}</span>}
+      {v && <span className={`rk-row__val${r.band ? ' is-band' : ''}`}>{v}</span>}
     </li>
   );
 }
@@ -113,16 +115,16 @@ function CrewsBoard() {
                   <span className="rk-row__name" style={{ whiteSpace: 'normal' }}><CrewTag tag={r.tag} color={r.color} />{r.name}{r.mine ? <span className="rk-row__you">You</span> : null}</span>
                   <span className="rk-row__sub">Level {r.level} · {r.jobs} job{r.jobs === 1 ? '' : 's'}</span>
                 </span>
-                <span className="rk-row__val">{nairaShort(r.loot)}</span>
+                <span className={`rk-row__val${r.band ? ' is-band' : ''}`}>{r.band ?? (r.loot != null ? nairaShort(r.loot) : '')}</span>
               </li>
             ))}
           </ol>
         )}
-      {d.mine && !d.rows.some((r) => r.mine) && <p className="rk-foot">Your gang is #{d.mine.rank} with {d.mine.jobs} jobs.</p>}
+      {d.mine && !d.rows.some((r) => r.mine) && <p className="rk-foot">Your gang is #{d.mine.rank} with {d.mine.jobs} jobs{d.mine.band ? ` (${d.mine.band})` : ''}.</p>}
       {d.last_week && d.last_week.winners.length > 0 && (
         <div className="rk-week rk-week--last">
           <b>Last week's top gangs</b>
-          {d.last_week.winners.map((w) => <small key={w.rank}>{MEDAL[w.rank - 1]} [{w.tag}] {w.name} · {w.jobs} jobs · {nairaShort(w.loot)} · prize {nairaShort(w.prize)}</small>)}
+          {d.last_week.winners.map((w) => <small key={w.rank}>{MEDAL[w.rank - 1]} [{w.tag}] {w.name} · {w.jobs} jobs · {w.band ?? (w.loot != null ? nairaShort(w.loot) : '')} · prize {nairaShort(w.prize)}</small>)}
         </div>
       )}
     </div>
@@ -198,7 +200,7 @@ export default function RanksApp() {
           {board === 'week' && d.last_week && d.last_week.winners.length > 0 && (
             <div className="rk-week rk-week--last">
               <b>Last week's winners</b>
-              {d.last_week.winners.map((w) => <small key={w.rank}>{MEDAL[w.rank - 1]} @{w.username} · {nairaShort(w.total)} earned · prize {nairaShort(w.prize)}</small>)}
+              {d.last_week.winners.map((w) => <small key={w.rank}>{MEDAL[w.rank - 1]} @{w.username} · {w.band ?? (w.total != null ? nairaShort(w.total) : '')} earned · prize {nairaShort(w.prize)}</small>)}
             </div>
           )}
           {d.me && meInList === false && d.me.rank == null && board === 'rich' && <p className="rk-foot">Admins and banned players are hidden from the ranks.</p>}

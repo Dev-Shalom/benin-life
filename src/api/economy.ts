@@ -36,7 +36,7 @@ export const billsPay = (id: number) => rpc<{ message: string; paid: number }>('
 export const billsPayAll = () => rpc<{ message: string; paid: number; count: number; left: number }>('bills_pay_all');
 export const taxPay = (amount?: number) => rpc<{ message: string; paid: number; owed: number }>('tax_pay', { p_amount: amount ?? null });
 
-export interface DonorRow { rank: number; username: string; total: number; badge: string | null; title: string | null; me: boolean }
+export interface DonorRow { rank: number; username: string; total: number | null; band?: string | null; badge: string | null; title: string | null; me: boolean }
 export interface DonorsTop {
   tiers: { name: string; amount: number }[]; min: number; rows: DonorRow[];
   me: { total: number; donations: number; badge: string | null } | null;

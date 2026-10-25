@@ -6693,5 +6693,6 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .bills__paid summary { cursor: pointer; font-size: 12.5px; color: var(--ink-2); padding: 4px 0; }
 .bills__board li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); }
 .bills__board li.is-me { background: #e4f6e6; font-weight: 700; }
+.bills__board .bills__band { flex: 0 1 auto; min-width: 0; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .bills__rank { width: 20px; text-align: center; font-weight: 800; color: var(--ink-3); }
 .bills__badge { margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: #fff4d6; color: #8a6200; font-size: 10.5px; font-weight: 700; }

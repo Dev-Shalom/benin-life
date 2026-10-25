@@ -6,6 +6,8 @@
 
 create temp table t_pay (name text primary key, id uuid not null) on commit drop;
 grant select on t_pay to authenticated;
+-- exact leaderboard numbers are asserted below (rank_bands_test covers the money ranges)
+update game_config set value = 'false' where key = 'ranks.hide_amounts';
 create or replace function pg_temp.pp(p_name text) returns uuid
 language sql as $$ select id from t_pay where name = p_name $$;
 

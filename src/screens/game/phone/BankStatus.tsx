@@ -67,7 +67,7 @@ export function StatusTab({ active }: { active: boolean }) {
               <li key={r.rank} className={r.me ? 'is-me' : ''}>
                 <span className="bills__rank">{r.rank}</span>
                 <span className="grow">{r.title ? `${r.title} ` : ''}@{r.username}{r.badge && <small className="bills__badge">{r.badge}</small>}</span>
-                <b>{nairaShort(r.total)}</b>
+                <b className="bills__band">{r.band ?? (r.total != null ? nairaShort(r.total) : '')}</b>
               </li>
             ))}
           </ol>

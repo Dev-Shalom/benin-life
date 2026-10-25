@@ -3,6 +3,8 @@
 -- Groups: 1 world_counts · 2 leaderboards still rank · 3 admin_delete_user_start refusals + audit snapshot ·
 -- 4 deleting the auth.users row removes every row of the player (generic FK sweep + client_errors), sends a guest
 -- in their home back to the guest's own home, keeps payments (user_id null) and the audit row · 5 grants.
+-- exact leaderboard numbers are asserted below (rank_bands_test covers the money ranges)
+update game_config set value = 'false' where key = 'ranks.hide_amounts';
 create or replace function pg_temp.hint_of(p_sql text) returns text
 language plpgsql as $$
 declare v_h text;

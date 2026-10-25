@@ -3,6 +3,8 @@
 update crew_jobs set
   reward_min = case id when 'market_shakedown' then 300000 when 'port_container' then 1200000 when 'ring_road_warehouse' then 2000000 when 'bank_van' then 8000000 else reward_min end,
   reward_max = case id when 'market_shakedown' then 900000 when 'port_container' then 3500000 when 'ring_road_warehouse' then 5000000 when 'bank_van' then 25000000 else reward_max end;
+-- exact leaderboard numbers are asserted below (rank_bands_test covers the money ranges)
+update game_config set value = 'false' where key = 'ranks.hide_amounts';
 update game_config set value = '8' where key = 'crew.max_jobs_per_day';
 update game_config set value = '0' where key = 'crew.disband_fee_pct';
 update game_config set value = '2' where key = 'crew.weekly_min_jobs';

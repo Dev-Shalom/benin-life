@@ -100,7 +100,7 @@ export interface ReferralStatus {
   referred_by: { username: string; status: 'pending' | 'rewarded' | 'rejected'; bonus: number; progress: ReferralProgress } | null;
 }
 
-export interface WeeklyRow { rank: number | null; id: string; username: string; avatar: unknown; origin: string; total: number; me?: boolean }
+export interface WeeklyRow { rank: number | null; id: string; username: string; avatar: unknown; origin: string; total?: number | null; band?: string | null; me?: boolean }
 export interface WeeklyBoard {
   enabled: boolean;
   week_start: string;
@@ -111,7 +111,7 @@ export interface WeeklyBoard {
   prizes: { rank: number; amount: number }[];
   min_earned: number;
   reasons: string[];
-  last_week: { week_start: string; winners: { rank: number; username: string; total: number; prize: number }[] } | null;
+  last_week: { week_start: string; winners: { rank: number; username: string; total?: number | null; band?: string | null; prize: number }[] } | null;
 }
 
 export const HUSTLE_LABEL_PREFIX = 'Hustle: ';

@@ -49,11 +49,11 @@ export interface CrewListed { id: number; name: string; tag: string; color: stri
 export interface Candidate { id: string; username: string; avatar: unknown; online: boolean; friend: boolean; invited: boolean; eligible: boolean; why: string | null }
 export interface BankRow { id: number; kind: string; amount: number; balance_after: number; note: string; username: string | null; created_at: string }
 export interface ChatRow { id: number; user_id: string; username: string; body: string; created_at: string; mine: boolean; rank: CrewRank | null }
-export interface TopRow { rank: number; crew_id: number; name: string; tag: string; emblem: string; color: string; level: number; jobs: number; loot: number; mine: boolean }
+export interface TopRow { rank: number; crew_id: number; name: string; tag: string; emblem: string; color: string; level: number; jobs: number; loot: number | null; band?: string | null; mine: boolean }
 export interface CrewTop {
   enabled: boolean; week_start: string; ends_at: string; rows: TopRow[]; prizes: { rank: number; amount: number }[]; min_jobs: number;
-  mine: { rank: number; jobs: number; loot: number } | null;
-  last_week: { week_start: string; winners: { rank: number; name: string; tag: string; jobs: number; loot: number; prize: number }[] } | null;
+  mine: { rank: number; jobs: number; loot: number | null; band?: string | null } | null;
+  last_week: { week_start: string; winners: { rank: number; name: string; tag: string; jobs: number; loot: number | null; band?: string | null; prize: number }[] } | null;
 }
 type Msg = { message: string };
 type WithCrew = Msg & { crew?: Crew };

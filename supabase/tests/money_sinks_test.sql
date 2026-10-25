@@ -9,6 +9,8 @@
 -- Time travel with bl.test_offset_seconds. Markets / shops are pinned open.
 update public.locations set open_hour = null, close_hour = null where id in ('bronze_tech_hub', 'benin_city_mall', 'mama_osas_buka', 'ighodalo_cars', 'oba_market');
 
+-- exact leaderboard numbers are asserted below (rank_bands_test covers the money ranges)
+update game_config set value = 'false' where key = 'ranks.hide_amounts';
 create or replace function pg_temp.hint_of(p_sql text) returns text
 language plpgsql as $$
 declare v_h text;
