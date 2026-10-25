@@ -50,9 +50,16 @@ export default function Love() {
             <Stat label="Unwell" value={kids.sick} tone={kids.sick > 0 ? 'amber' : undefined} />
             <Stat label="Grown up" value={kids.grown} />
             <Stat label="Gone" value={kids.gone} />
+            <Stat label="Passed away" value={kids.passed} />
             <Stat label="Due for the sweep" value={kids.due_now} tone={kids.due_now > 50 ? 'amber' : undefined} />
           </section>
           <p className="adm-sub">"Due for the sweep" stays near 0 when the player-push Cron job runs every minute (docs/LOVE.md). Removing a child tells both parents and is audited (kids_remove).</p>
+          {kids.passed_list.length > 0 && (
+            <div data-testid="admin-kids-passed">
+              <p className="adm-sub">Passing away is {kids.passing_enabled ? 'ON' : 'OFF'} (Settings, Kids). Children who passed:</p>
+              <ul className="adm-sub">{kids.passed_list.map((p) => <li key={p.id}>{p.name ?? 'No name'} · {p.days_lived} days · {p.warnings} warnings · @{p.a ?? 'gone'} / @{p.b ?? 'gone'}</li>)}</ul>
+            </div>
+          )}
           {kids.children.length === 0 ? <p className="adm-sub">No active children yet.</p> : (
             <div className="adm-scroll">
               <table className="adm-table">

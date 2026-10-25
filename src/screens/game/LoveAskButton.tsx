@@ -21,7 +21,7 @@ export function LoveAskButton({ userId }: { userId: string }) {
   }, [userId]);
 
   if (!info) return null;
-  const proud = (info.proud_parent ?? 0) > 0 ? <span className="love-with" title="Raised a child who grew up">🏅 Proud parent{(info.proud_parent ?? 0) > 1 ? ` × ${info.proud_parent}` : ''}</span> : null;
+  const proud = (info.proud_parent ?? 0) > 0 ? <span className="love-with" title="Raised a child who grew up">{info.proud_tier === 'gold' ? '🥇 Gold' : info.proud_tier === 'silver' ? '🥈 Silver' : info.proud_tier === 'bronze' ? '🥉 Bronze' : '🏅'} Proud parent{(info.proud_parent ?? 0) > 1 ? ` × ${info.proud_parent}` : ''}</span> : null;
   if (info.relationship) {
     return <>
       <span className="love-with" title="Relationship status">{info.relationship.status === 'couple' ? '💞 With' : '💬 Talking to'} @{info.relationship.partner.username}</span>

@@ -185,7 +185,7 @@
 
 .fm-care { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .fm-care__btn { grid-column: span 2; }
-.fm-care__btn:nth-child(n + 4) { grid-column: span 3; }
+.fm-care--5 .fm-care__btn:nth-child(n + 4), .fm-care--4 .fm-care__btn { grid-column: span 3; }
 .fm-care__btn { display: grid; justify-items: center; align-content: center; gap: 1px; min-height: 68px; padding: 6px 4px; border: 0; border-radius: 16px; background: var(--green-50); color: var(--ink); cursor: pointer; transition: transform 160ms var(--fm-ease), opacity 160ms var(--fm-ease); -webkit-tap-highlight-color: transparent; }
 .fm-care__btn:active { transform: scale(0.97); }
 .fm-care__btn.is-off { background: var(--surface-2); opacity: .6; }
@@ -207,3 +207,44 @@
 .fm-kid > * { min-width: 0; max-width: 100%; }
 .fm-kid__banner { box-sizing: border-box; }
 .fm-kid__banner .bl-btn { width: 100%; max-width: 100%; white-space: normal; }
+
+/* Kids v2: supplies, buy panel, relatives shares, memorial, tiers */
+.fm-care__btn.is-missing { background: var(--amber-50); box-shadow: inset 0 0 0 2px #f2a916; opacity: 1; }
+.fm-care__btn.is-missing small { color: var(--amber-800); font-weight: 800; }
+.fm-care__btn.is-open { box-shadow: inset 0 0 0 2px var(--amber-800); }
+.fm-supplies { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.fm-supply { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 3px 10px; border-radius: 99px; background: var(--surface-2); font: 700 12px var(--font-display); color: var(--ink-2); }
+.fm-supply > span:first-child { font-family: var(--font-emoji); }
+.fm-supply b { font-variant-numeric: tabular-nums; color: var(--ink); }
+.fm-supply.is-low { background: var(--amber-50); }
+.fm-supply.is-out { background: #ffe9e6; color: var(--red-600); }
+.fm-supply.is-out b { color: var(--red-600); }
+.fm-supply.is-toy { background: #fff4d1; }
+.fm-buy { display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--amber-50); }
+.fm-buy__msg { margin: 0; font-size: 13.5px; line-height: 1.4; }
+.fm-buy__list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.fm-buy__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--surface); }
+.fm-buy__who { display: grid; gap: 1px; min-width: 0; grid-column: 1 / -1; }
+.fm-buy__who b { font: 800 14px var(--font-display); }
+.fm-buy__who small { font-size: 12px; color: var(--ink-3); line-height: 1.3; }
+.fm-buy__price { font: 900 15px var(--font-display); font-variant-numeric: tabular-nums; }
+.fm-buy__row .bl-btn { min-height: 44px; justify-self: end; }
+.fm-buy__close { justify-self: start; min-height: 44px; border: 0; background: none; color: var(--ink-2); font: 700 13px var(--font-display); text-decoration: underline; cursor: pointer; }
+.fm-shares { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.fm-share { display: grid; gap: 1px; padding: 8px 10px; border-radius: 12px; background: var(--surface); box-shadow: inset 0 0 0 2px var(--surface-3); }
+.fm-share b { font: 800 13px var(--font-display); overflow-wrap: anywhere; }
+.fm-share span { font: 900 16px var(--font-display); font-variant-numeric: tabular-nums; }
+.fm-share small { font-size: 12px; color: var(--ink-3); }
+.fm-share.is-paid { box-shadow: inset 0 0 0 2px var(--green-600, #1f9d55); background: var(--green-50); }
+.fm-share.is-paid small { color: var(--green-700); font-weight: 800; }
+.fm-memorial { justify-items: center; text-align: center; gap: 4px; padding: 16px 14px; background: linear-gradient(180deg, #f3eefb, var(--surface) 80%); }
+.fm-memorial__candle { font-family: var(--font-emoji); font-size: 34px; line-height: 1; }
+.fm-memorial b { font: 900 17px var(--font-display); }
+.fm-proud__badge[data-tier='gold'] { background: #fff1b8; box-shadow: inset 0 0 0 2px #d4a017; }
+.fm-proud__badge[data-tier='silver'] { background: #eef1f5; box-shadow: inset 0 0 0 2px #98a2b3; }
+.fm-proud__badge[data-tier='bronze'] { background: #fbe6d3; box-shadow: inset 0 0 0 2px #b9763a; }
+@media (prefers-reduced-motion: reduce) { .fm-care__btn.is-missing { transition: none; } }
+.fm-supply i { font-style: normal; color: var(--ink-3); }
+.fm-recent li.fm-grown { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+.fm-grown__t { display: grid; gap: 2px; min-width: 0; }
+.fm-grown__t small { color: var(--ink-3); font-size: 12px; }

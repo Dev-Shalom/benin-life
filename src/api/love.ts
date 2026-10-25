@@ -109,6 +109,7 @@ export const loveReport = (target: string, reason: string) => rpc<Msg>('love_rep
 export interface PublicLove {
   love_open?: boolean;
   proud_parent?: number;
+  proud_tier?: 'gold' | 'silver' | 'bronze' | null;
   relationship?: { status: 'talking' | 'couple'; partner: { id: string; username: string } } | null;
 }
 export const lovePublic = (id: string) => rpc<PublicLove>('get_public_profile', { p_id: id });
