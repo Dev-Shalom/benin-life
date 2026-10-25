@@ -1,34 +1,48 @@
 // Kids (docs/LOVE.md, stage 2): the "Kids" part of the Family tab. Everything is decided on the server (kids_*): this file only shows it.
 // The needs bars, the cooldowns and the reasons all come from ONE read, kids_status(), loaded while the phone is open.
+import { useState } from 'react';
 import {
-  kidsAccept, kidsCare, kidsReclaim, kidsTry, kidsWithdraw,
-  type KidAction, type KidChild, type KidCouple, type KidNeed, type KidsStatus,
+  kidsAccept, kidsCallDoctor, kidsCare, kidsReclaim, kidsTry, kidsWithdraw,
+  type KidAction, type KidActionInfo, type KidBuyPlace, type KidChild, type KidCouple, type KidNeed, type KidTier, type KidsStatus,
 } from '../../../api/kids';
+import { errorMessage } from '../../../lib/api';
 import { serverNow } from '../../../lib/clock';
 import { naira } from '../../../lib/format';
+import { openMoment } from '../../../state/moments';
+import { useUi } from '../../../state/ui';
 import { Button, EmptyState, toast } from '../../../ui';
 import { ago, dur, face, useTick } from './familyUtil';
 
 type Run = (key: string, fn: () => Promise<{ message?: string }>) => void;
 
+// the needs of a child, in the order the card shows them (only the ones the current stage has are listed)
 const NEEDS: { key: KidNeed; icon: string; label: string }[] = [
   { key: 'hunger', icon: '🍼', label: 'Hunger' },
   { key: 'sleep', icon: '😴', label: 'Sleep' },
+  { key: 'clean', icon: '🧷', label: 'Diaper' },
   { key: 'fun', icon: '🎈', label: 'Fun' },
   { key: 'health', icon: '🩺', label: 'Health' },
   { key: 'love', icon: '🤗', label: 'Love' },
 ];
 const ACTIONS: { key: KidAction; icon: string; label: string }[] = [
   { key: 'feed', icon: '🍼', label: 'Feed' },
+  { key: 'change', icon: '🧷', label: 'Change' },
   { key: 'sleep', icon: '😴', label: 'Sleep' },
   { key: 'play', icon: '🎈', label: 'Play' },
   { key: 'medicine', icon: '💊', label: 'Medicine' },
   { key: 'cuddle', icon: '🤗', label: 'Cuddle' },
 ];
-const DID: Record<KidAction, string> = { feed: 'fed', sleep: 'put to bed', play: 'played with', medicine: 'gave medicine to', cuddle: 'cuddled' };
+const DID: Record<KidAction, string> = { feed: 'fed', change: 'changed', sleep: 'put to bed', play: 'played with', medicine: 'gave medicine to', cuddle: 'cuddled' };
+const TIER: Record<KidTier, { icon: string; name: string }> = {
+  gold: { icon: '🥇', name: 'Gold' }, silver: { icon: '🥈', name: 'Silver' }, bronze: { icon: '🥉', name: 'Bronze' }, none: { icon: '🏅', name: '' },
+};
 
 const tone = (v: number, low: number) => (v < low ? 'low' : v < 60 ? 'mid' : 'ok');
 const hoursLeft = (iso: string | null) => (iso ? (Date.parse(iso) - serverNow()) / 1000 : 0);
+
+function bestTier(ts: (KidTier | null)[]): KidTier {
+  return (['gold', 'silver', 'bronze'] as KidTier[]).find((t) => ts.includes(t)) ?? 'none';
+}
 
 function Bar({ pct, cls = '' }: { pct: number; cls?: string }) {
   return <div className={`fm-bar ${cls}`} aria-hidden><span className="fm-bar__fill" style={{ transform: `scaleX(${Math.max(0, Math.min(100, pct)) / 100})` }} /></div>;
@@ -128,8 +142,39 @@ function Invite({ kids, run, busy }: { kids: KidsStatus; run: Run; busy: string 
   );
 }
 
+/** Where to buy a missing supply. The shop is at the place (you buy there, Shop tab), so the button takes you to the map. */
+function BuyPanel({ info, name, onClose }: { info: KidActionInfo; name: string; onClose: () => void }) {
+  const go = (p: KidBuyPlace) => {
+    const ui = useUi.getState();
+    ui.closeAll();
+    ui.setMapOpen(true);
+    ui.select(p.id);
+  };
+  return (
+    <div className="fm-buy" data-testid="kids-buy">
+      <p className="fm-buy__msg"><b>{info.msg}</b></p>
+      <ul className="fm-buy__list">
+        {(info.buy ?? []).map((p) => (
+          <li key={p.id} className="fm-buy__row">
+            <span className="fm-buy__who">
+              <b>{p.name}</b>
+              <small>{p.kind === 'market' ? 'Cheaper. Price moves a little each day.' : 'Fixed price. Never closes.'} {p.open ? 'Open now.' : 'Closed right now.'}</small>
+            </span>
+            <span className="fm-buy__price">{naira(p.price)}</span>
+            <Button variant={p.open ? 'green' : 'ghost'} size="sm" onClick={() => go(p)} data-testid={`kids-buy-${p.id}`}>Go there</Button>
+          </li>
+        ))}
+      </ul>
+      <p className="fm-fine">You buy it at the shop when you are there (Shop tab). Then come back and look after {name}.</p>
+      <button type="button" className="fm-buy__close" onClick={onClose}>Close</button>
+    </div>
+  );
+}
+
 function ChildCard({ c, kids, at, run, busy, onName }: { c: KidChild; kids: KidsStatus; at: number; run: Run; busy: string | null; onName: (c: KidChild) => void }) {
   useTick(true);
+  const [buyFor, setBuyFor] = useState<KidAction | null>(null);
+  const [doc, setDoc] = useState(false);
   const rules = kids.rules;
   const low = rules?.alert_below ?? 30;
   const name = c.name ?? 'Your baby';
@@ -140,19 +185,37 @@ function ChildCard({ c, kids, at, run, busy, onName }: { c: KidChild; kids: Kids
   const removalLeft = c.removal_at ? hoursLeft(c.removal_at) : null;
   const nameLeft = !c.name && c.name_due_at ? hoursLeft(c.name_due_at) : null;
   const cls = `fm-kid${c.gender ? ` is-${c.gender}` : ''}${needsYou ? ' is-needy' : ''}${c.sick ? ' is-sick' : ''}${away ? ' is-away' : ''}`;
+  const stageNeeds = c.stage?.needs ?? [];
+  const needRows = NEEDS.filter((n) => stageNeeds.includes(n.key) && c.needs[n.key] !== undefined);
+  const actions = ACTIONS.filter((a) => c.actions[a.key]);
+  const medSupply = c.supplies.find((x) => x.role === 'illness_med');
 
   const press = (a: KidAction, info: KidChild['actions'][KidAction], left: number) => {
     if (!info) return;
+    if (info.code === 'no_item') { setBuyFor(buyFor === a ? null : a); return; }
     if (!info.ok && !(info.code === 'cooldown' && left <= 0)) { toast(info.code === 'cooldown' ? `Easy. You can do that again in ${dur(left)}.` : info.msg, 'info'); return; }
+    setBuyFor(null);
     run(`care:${c.id}:${a}`, () => kidsCare(c.id, a));
+  };
+  const seeDoctor = async () => {
+    if (doc) return;
+    setDoc(true);
+    try {
+      const id = c.doctor_moment ?? (await kidsCallDoctor(c.id)).moment;
+      await openMoment(id);
+    } catch (e) {
+      toast(errorMessage(e), 'bad');
+    } finally {
+      setDoc(false);
+    }
   };
 
   return (
-    <article className={cls} data-testid="kids-child" data-child={c.id}>
+    <article className={cls} data-testid="kids-child" data-child={c.id} data-stage={c.stage?.id}>
       <div className="fm-kid__head">
         <span className="fm-kid__face" aria-hidden>
           <span className="fm-kid__emoji">{c.stage?.emoji ?? '👶'}</span>
-          {c.sick && <span className="fm-kid__badge">🤒</span>}
+          {c.sick && <span className="fm-kid__badge">{c.illness?.emoji ?? '🤒'}</span>}
           {away && <span className="fm-kid__badge">🏠</span>}
         </span>
         <span className="fm-kid__who">
@@ -170,33 +233,25 @@ function ChildCard({ c, kids, at, run, busy, onName }: { c: KidChild; kids: Kids
         </button>
       )}
 
-      {away && c.relatives && (
-        <div className="fm-kid__banner">
-          <b>💛 {name} is staying with relatives</b>
-          <p className="fm-fine">Nobody could look after them for a while, so family stepped in. They are safe and loved.{c.relatives.can_reclaim ? ` You can bring ${name} home once.` : ''}</p>
-          {c.relatives.can_reclaim ? (
-            <Button variant="green" size="lg" loading={busy === `rc:${c.id}`} disabled={busy !== null} onClick={() => run(`rc:${c.id}`, () => kidsReclaim(c.id))} data-testid="kids-reclaim">
-              Bring {name} home {c.relatives.cost > 0 ? naira(c.relatives.cost) : ''}
-            </Button>
-          ) : <p className="fm-fine">{c.relatives.wait_seconds - elapsed > 0 ? `You can bring them home in ${dur(c.relatives.wait_seconds - elapsed)}.` : 'Open the app again to bring them home.'}</p>}
-        </div>
-      )}
+      {away && c.relatives && <RelativesBox c={c} name={name} elapsed={elapsed} run={run} busy={busy} />}
 
       {c.sick && !away && (
         <div className="fm-kid__banner is-sick" data-testid="kids-sick">
-          <b>🤒 {name} is unwell</b>
-          <p className="fm-fine">To help {name} get better, give medicine and a cuddle. Either parent can do it.</p>
+          <b>{c.illness?.emoji ?? '🤒'} {c.illness ? `${name} has ${c.illness.name.toLowerCase()}` : `${name} is unwell`}</b>
+          <p className="fm-fine">{c.illness ? `${c.illness.blurb} ` : ''}Dr. Osagie at Central Hospital can treat {name}, or you can give medicine{medSupply ? ` (${medSupply.name.toLowerCase()})` : ''} and a cuddle at home.</p>
           <span className="fm-steps"><span className={c.sick_med ? 'is-done' : ''}>{c.sick_med ? '✓' : '○'} Medicine</span><span className={c.sick_cuddle ? 'is-done' : ''}>{c.sick_cuddle ? '✓' : '○'} Cuddle</span></span>
+          <Button variant="green" size="lg" loading={doc} onClick={() => void seeDoctor()} data-testid="kids-doctor">👩🏾‍⚕️ See the doctor</Button>
         </div>
       )}
 
       {!away && (
         <ul className="fm-needs" aria-label="Needs">
-          {NEEDS.map((n) => {
+          {needRows.map((n) => {
             const v = c.needs[n.key] ?? 0;
+            const label = n.key === 'love' && c.stage?.id === 'secondary' ? 'Attention' : n.label;
             return (
               <li key={n.key} className={`fm-need is-${tone(v, low)}`} data-need={n.key}>
-                <span className="fm-need__label"><span aria-hidden>{n.icon}</span> {n.label}</span>
+                <span className="fm-need__label"><span aria-hidden>{n.icon}</span> {label}</span>
                 <Bar pct={v} cls="fm-bar--need" />
                 <span className="fm-need__num">{v}</span>
               </li>
@@ -205,17 +260,34 @@ function ChildCard({ c, kids, at, run, busy, onName }: { c: KidChild; kids: Kids
         </ul>
       )}
 
+      {!away && (c.supplies.length > 0 || c.toy) && (
+        <ul className="fm-supplies" aria-label="Supplies" data-testid="kids-supplies">
+          {c.supplies.filter((x) => x.role !== 'paracetamol' || c.sick || (c.needs.health ?? 100) < 60 || x.left === 0).map((x) => (
+            <li key={x.item} className={`fm-supply${x.left <= 0 ? ' is-out' : x.left <= 2 ? ' is-low' : ''}`} data-role={x.role} data-left={x.left}>
+              <span aria-hidden>{x.icon ?? '📦'}</span>
+              <span>{x.name.replace(/, 1 tin| tin$/i, '')}</span>
+              <b>{x.left <= 0 ? 'none' : `${x.left} ${x.left === 1 ? x.unit.replace(/s$/, '') : x.unit}`}</b>
+            </li>
+          ))}
+          {c.toy && <li className="fm-supply is-toy"><span aria-hidden>🧸</span><span>{c.toy.name}</span><b>play +{Math.round(c.toy.boost)}%</b></li>}
+        </ul>
+      )}
+
       {!away && (
-        <div className="fm-care" role="group" aria-label={`Look after ${name}`}>
-          {ACTIONS.map((a) => {
-            const info = c.actions[a.key];
-            if (!info) return null;
+        <div className={`fm-care fm-care--${Math.min(6, actions.length)}`} role="group" aria-label={`Look after ${name}`}>
+          {actions.map((a) => {
+            const info = c.actions[a.key] as KidActionInfo;
             const left = info.code === 'cooldown' ? info.wait - elapsed : 0;
             const ok = info.ok || (info.code === 'cooldown' && left <= 0);
-            const sub = ok ? (info.cost > 0 ? naira(info.cost) : 'Free') : info.code === 'cooldown' ? dur(left) : info.code === 'not_needed' ? (a.key === 'medicine' ? 'Not unwell' : 'All good') : '';
+            const missing = info.code === 'no_item';
+            const unit = a.key === 'feed' ? 'feeds' : a.key === 'change' ? 'changes' : 'doses';
+            const sub = ok
+              ? (info.cost > 0 ? naira(info.cost) : info.item && info.left !== undefined ? `${info.left} ${unit}` : 'Free')
+              : missing ? (a.key === 'feed' ? 'No formula' : a.key === 'change' ? 'No diapers' : 'No medicine')
+              : info.code === 'cooldown' ? dur(left) : info.code === 'not_needed' ? (a.key === 'medicine' ? 'Not unwell' : 'All good') : '';
             return (
-              <button key={a.key} type="button" className={`fm-care__btn${ok ? '' : ' is-off'}`} aria-disabled={!ok || busy !== null} disabled={busy !== null && busy.startsWith('care:')}
-                onClick={() => press(a.key, info, left)} data-testid={`kids-${a.key}`} data-ok={ok ? '1' : '0'}
+              <button key={a.key} type="button" className={`fm-care__btn${ok ? '' : ' is-off'}${missing ? ' is-missing' : ''}${buyFor === a.key ? ' is-open' : ''}`} aria-disabled={(!ok && !missing) || busy !== null}
+                disabled={busy !== null && busy.startsWith('care:')} onClick={() => press(a.key, info, left)} data-testid={`kids-${a.key}`} data-ok={ok ? '1' : '0'} data-code={info.code}
                 title={ok ? undefined : info.msg}>
                 <span className="fm-care__icon" aria-hidden>{a.icon}</span>
                 <span className="fm-care__label">{a.label}</span>
@@ -225,6 +297,8 @@ function ChildCard({ c, kids, at, run, busy, onName }: { c: KidChild; kids: Kids
           })}
         </div>
       )}
+
+      {!away && buyFor && c.actions[buyFor]?.code === 'no_item' && <BuyPanel info={c.actions[buyFor] as KidActionInfo} name={name} onClose={() => setBuyFor(null)} />}
 
       {!away && removalLeft !== null && removalLeft < 3 * 86400 && (
         <p className="fm-warn">Nobody has looked after {name} for a while. If it stays that way, relatives take them in in about {dur(removalLeft)}.</p>
@@ -242,6 +316,36 @@ function ChildCard({ c, kids, at, run, busy, onName }: { c: KidChild; kids: Kids
         </details>
       )}
     </article>
+  );
+}
+
+/** With relatives: each parent pays a share; the child comes home when every parent has paid (a lone parent pays only theirs). */
+function RelativesBox({ c, name, elapsed, run, busy }: { c: KidChild; name: string; elapsed: number; run: Run; busy: string | null }) {
+  const r = c.relatives;
+  if (!r) return null;
+  const wait = r.wait_seconds - elapsed;
+  const refund = r.refund_at ? hoursLeft(r.refund_at) : null;
+  return (
+    <div className="fm-kid__banner fm-rel" data-testid="kids-relatives">
+      <b>💛 {name} is staying with relatives</b>
+      <p className="fm-fine">
+        Nobody could look after them for a while, so family stepped in. They are safe and loved.
+        {r.lone ? ` You are looking after ${name} on your own, so you pay your share only.` : ` Each parent pays a share to bring ${name} home, and ${name} comes home when both shares are paid.`}
+      </p>
+      <ul className="fm-shares" aria-label="Shares">
+        <li className={`fm-share${r.mine_paid ? ' is-paid' : ''}`} data-testid="kids-share-mine"><b>You</b><span>{naira(r.cost_each)}</span><small>{r.mine_paid ? 'Paid ✓' : 'Not paid yet'}</small></li>
+        {r.partner && <li className={`fm-share${r.partner.paid ? ' is-paid' : ''}`} data-testid="kids-share-partner"><b>@{r.partner.username}</b><span>{naira(r.cost_each)}</span><small>{r.partner.paid ? 'Paid ✓' : 'Not paid yet'}</small></li>}
+      </ul>
+      {r.can_pay ? (
+        <Button variant="green" size="lg" loading={busy === `rc:${c.id}`} disabled={busy !== null} onClick={() => run(`rc:${c.id}`, () => kidsReclaim(c.id))} data-testid="kids-reclaim">
+          Pay my share {r.cost_each > 0 ? naira(r.cost_each) : ''}
+        </Button>
+      ) : r.mine_paid ? (
+        <p className="fm-fine">Your share is paid.{refund !== null && refund > 0 ? ` If the other parent has not paid in ${dur(refund)}, your money goes back to your bank.` : ''}</p>
+      ) : wait > 0 ? (
+        <p className="fm-fine">You can pay your share in {dur(wait)}.</p>
+      ) : <p className="fm-fine">Open the app again to pay your share.</p>}
+    </div>
   );
 }
 
@@ -282,11 +386,26 @@ export function KidsSection({ kids, err, at, run, busy, onName, onRetry }: {
           <p>When you and somebody you like become a couple, you can try for a baby together and look after them. Build your bond in Us first.</p>
         </article>
       )}
+      {kids.memorials.map((m) => (
+        <article key={m.id} className="fm-card fm-memorial" data-testid="kids-memorial">
+          <span className="fm-memorial__candle" aria-hidden>🕯️</span>
+          <b>{m.name ?? 'Our little one'}</b>
+          <p className="fm-fine">{m.days_lived} {m.days_lived === 1 ? 'day' : 'days'} in our hearts. Rest well, little one 🕊️</p>
+        </article>
+      ))}
       {kids.grown.length > 0 && (
         <article className="fm-card fm-proud" data-testid="kids-proud">
-          <span className="fm-proud__badge">🏅 Proud parent{kids.proud > 1 ? ` × ${kids.proud}` : ''}</span>
+          <span className="fm-proud__badge" data-tier={bestTier(kids.grown.map((g) => g.tier))}>
+            {TIER[bestTier(kids.grown.map((g) => g.tier))].icon} {TIER[bestTier(kids.grown.map((g) => g.tier))].name ? `${TIER[bestTier(kids.grown.map((g) => g.tier))].name} ` : ''}Proud parent{kids.proud > 1 ? ` × ${kids.proud}` : ''}
+          </span>
           <ul className="fm-recent">
-            {kids.grown.map((g) => <li key={g.id}><span aria-hidden>🎓</span><b>{g.name ?? 'Your child'} grew up and moved out</b><small>{ago(g.grown_at)}</small></li>)}
+            {kids.grown.map((g) => (
+              <li key={g.id} data-tier={g.tier ?? ''}>
+                <span aria-hidden>🎓</span>
+                <b>{g.name ?? 'Your child'} grew up and moved out{g.tier && g.tier !== 'none' ? ` · ${TIER[g.tier].name}` : ''}</b>
+                <small>{g.gift ? `Thank-you gift ${naira(g.gift)} · ` : ''}{ago(g.grown_at)}</small>
+              </li>
+            ))}
           </ul>
           <p className="fm-fine">Your name shows the badge on your profile if you share your relationship.</p>
         </article>

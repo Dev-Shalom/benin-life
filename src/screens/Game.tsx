@@ -5,6 +5,7 @@ import { useBroadcasts } from '../state/broadcasts';
 import { BroadcastHost } from './game/Broadcasts';
 import { CrimeHost, PlacePlayerSheet } from './game/Crime';
 import { ShrineHost } from './game/Shrine';
+import { MomentsHost } from './game/MomentsHost';
 import { CrewHost, YahooHost } from './game/Yahoo';
 import { HustleHost } from './game/Hustles';
 import { SkillHost } from './game/Skills';
@@ -986,6 +987,7 @@ export default function Game() {
       <BroadcastHost />
       <CrimeHost />
       <ShrineHost />
+      <MomentsHost />
       <YahooHost />
       <CrewHost />
       <PoliticsHost />

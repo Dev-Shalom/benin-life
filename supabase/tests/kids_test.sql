@@ -1,4 +1,6 @@
--- Family & Love, stage 2: kids (20261027000100_family_kids.sql). Rolled back. Run (migration applied):
+-- Family & Love, stage 2: kids (20261027000100_family_kids.sql) as changed by Kids v2 (20261028000100/200). The v2 rules have their own file,
+-- kids_v2_test.sql; this one keeps the stage 2 flows (births, naming, alerts, sweep, co-parenting, pause) green on the new stages and items.
+-- Rolled back. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/kids_test.sql
 -- Time moves with bl.test_offset_seconds (the clock is pinned to 10:00 Benin time first, so a game day never flips by surprise).
 -- Groups: 1 grants / RLS / private helpers / settings / seeds / ledger · 2 eligibility + consent + costs + pregnancy · 3 lazy birth ·
@@ -7,6 +9,8 @@
 -- growing up + badge · 10 caps, break-up keeps co-parenting · 11 new life hand-over · 12 kill switch pause · 13 batch limit, index, 20 rows ·
 -- 14 no client access to the tables.
 update game_config set value = 'false' where key in ('economy.transfer_fees_enabled', 'economy.tax_enabled', 'economy.bills_enabled', 'economy.vat_enabled', 'economy.luxury_enabled');
+-- chance illness is tested in kids_v2_test.sql; here it is off so the stage 2 flows are deterministic
+update game_config set value = '0' where key = 'kids.daily_sick_pct';
 
 create or replace function pg_temp.hint_of(p_sql text) returns text
 language plpgsql as $$
@@ -82,9 +86,10 @@ language plpgsql as $$
 declare v bigint; c kids_children;
 begin
   insert into kids_children (rel_id, parent_a, parent_b, proposed_by, status, name, gender, conceived_at, due_at, born_at,
-                             hunger, hunger_at, sleep, sleep_at, fun, fun_at, health, health_at, love, love_at, last_care_at)
+                             hunger, hunger_at, sleep, sleep_at, fun, fun_at, health, health_at, love, love_at, clean, clean_at, last_care_at, score_at)
   values (pg_temp.rel(p_a, p_b), least(p_a, p_b), greatest(p_a, p_b), p_a, 'home', p_name, 'girl', bl_now() - p_age - interval '3 days', bl_now() - p_age, bl_now() - p_age,
-          100, bl_now(), 100, bl_now(), 100, bl_now(), 100, bl_now(), 100, bl_now(), bl_now()) returning id into v;
+          100, bl_now(), 100, bl_now(), 100, bl_now(), 100, bl_now(), 100, bl_now(), 100, bl_now(), bl_now(), bl_now()) returning id into v;
+  update kids_children set next_roll_at = bl_kids_roll_time(v, bl_now()) where id = v;
   select * into c from kids_children where id = v;
   update kids_children set next_alert_at = bl_kids_next(c) where id = v;
   return v;
@@ -95,6 +100,17 @@ create or replace function pg_temp.kid(p_id bigint) returns kids_children langua
 -- the child json for a player from kids_status
 create or replace function pg_temp.cj(p_child bigint) returns jsonb language sql as $$
   select x from jsonb_array_elements(kids_status() -> 'children') x where (x ->> 'id')::bigint = p_child $$;
+
+-- supplies for care: formula, diapers, syrup, malaria drugs (a few of each)
+create or replace function pg_temp.stock(p_uid uuid, p_qty int default 5) returns void
+language plpgsql as $$
+declare i text;
+begin
+  foreach i in array array['kid_formula', 'kid_diapers', 'kid_paracetamol', 'kid_malaria'] loop
+    insert into inventory (user_id, item_id, qty) values (p_uid, i, p_qty) on conflict (user_id, item_id) do update set qty = p_qty;
+  end loop;
+  delete from kids_charges where user_id = p_uid;
+end $$;
 
 create or replace function pg_temp.sub(p_user uuid) returns void
 language plpgsql as $$
@@ -120,6 +136,7 @@ begin
     perform set_config('kd.' || k, u::text, true);
   end loop;
   update profiles set is_admin = true where id = pg_temp.u('adm');
+  foreach k in array array['a', 'b', 'c', 'd', 'e', 'f', 'g'] loop perform pg_temp.stock(pg_temp.u(k)); end loop;
   -- a and b are a couple of 5 days; c and d too
   perform pg_temp.couple(pg_temp.u('a'), pg_temp.u('b'), 5);
   perform pg_temp.couple(pg_temp.u('c'), pg_temp.u('d'), 5);
@@ -149,14 +166,14 @@ begin
      and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'));
   perform pg_temp.assert(v is null, 'every bl_kids_* helper is private: ' || coalesce(v, ''));
   perform pg_temp.assert(has_function_privilege('service_role', 'public.bl_kids_alert_sweep()', 'execute'), 'the sweep can be called by the service role');
-  select string_agg(t, ', ') into v from unnest(array['kids_stages', 'kids_auto_names', 'kids_children', 'kids_invites', 'kids_care_log', 'kids_pause']) t
+  select string_agg(t, ', ') into v from unnest(array['kids_stages', 'kids_auto_names', 'kids_children', 'kids_invites', 'kids_care_log', 'kids_pause', 'kids_items', 'kids_illnesses', 'kids_charges', 'shop_price_rules']) t
    where not (select relrowsecurity from pg_class where oid = ('public.' || t)::regclass)
       or has_table_privilege('authenticated', 'public.' || t, 'select') or has_table_privilege('anon', 'public.' || t, 'select')
       or has_table_privilege('authenticated', 'public.' || t, 'insert') or has_table_privilege('authenticated', 'public.' || t, 'update')
       or has_table_privilege('authenticated', 'public.' || t, 'delete');
   perform pg_temp.assert(v is null, 'kids tables: RLS on, no grants: ' || coalesce(v, ''));
   select count(*) into n from game_config where key like 'kids.%' and category = 'kids' and label <> '' and description <> '';
-  perform pg_temp.assert(n = 39 and n = (select count(*) from game_config where key like 'kids.%'), 'every kids setting has a label and description (' || n || ')');
+  perform pg_temp.assert(n = 56 and n = (select count(*) from game_config where key like 'kids.%'), 'every kids setting has a label and description (' || n || ')');
   perform pg_temp.assert(bl_cfg_bool('kids.enabled') and bl_cfg('kids.min_couple_days') = 2 and bl_cfg('kids.max_children_per_couple') = 3 and bl_cfg('kids.max_children_per_player') = 5
                          and bl_cfg('kids.invite_expire_hours') = 24 and bl_cfg('kids.try_cost_each') = 0 and bl_cfg('kids.pregnancy_days') = 7 and bl_cfg('kids.name_grace_hours') = 24
                          and bl_cfg('kids.grow_days') = 21 and bl_cfg('kids.alert_below') = 30 and bl_cfg('kids.alert_cooldown_hours') = 3 and bl_cfg('kids.sweep_batch') = 200
@@ -164,14 +181,15 @@ begin
   -- owner defaults are free / 7 days; the maths below is tested on the first numbers (rolled back)
   update game_config set value = '5000'::jsonb where key = 'kids.try_cost_each';
   update game_config set value = '3'::jsonb where key = 'kids.pregnancy_days';
-  perform pg_temp.assert((select count(*) from kids_stages where active) = 4 and (select min(from_days) from kids_stages) = 0
-                         and (select array_agg(from_days order by from_days) from kids_stages) = array[0, 3, 8, 14], 'stages: Baby 0, Toddler 3, Child 8, Teen 14');
-  perform pg_temp.assert((select rate_hunger from kids_stages where id = 'baby') > (select rate_hunger from kids_stages where id = 'teen'), 'a baby loses hunger faster than a teen');
+  perform pg_temp.assert((select count(*) from kids_stages where active) = 5 and (select array_agg(from_days order by from_days) from kids_stages where active) = array[0, 2, 5, 8, 14],
+                         'five stages: Newborn 0, Baby 2, Nursery 5, Primary 8, Secondary 14');
+  perform pg_temp.assert((select rate_hunger from kids_stages where id = 'newborn') > (select rate_hunger from kids_stages where id = 'secondary'), 'a newborn loses hunger faster than a teen');
   perform pg_temp.assert((select count(*) from kids_auto_names where active) >= 20 and not exists (select 1 from kids_auto_names where bl_chat_mask(name) <> name), 'auto names: enough and clean');
   perform pg_temp.assert(pg_temp.hint_of($q$insert into kids_auto_names (name) values ('Ab1')$q$) <> 'ok', 'an auto name must be letters only');
   perform pg_temp.assert(not ('kid_try' = any (bl_earn_reasons())) and not ('kid_care' = any (bl_earn_reasons())) and not ('kid_reclaim' = any (bl_earn_reasons())), 'kid ledger reasons are not earned');
-  perform pg_temp.cfg('leaderboard.earn_reasons', '"salary,hustle,kid_try,kid_care,kid_reclaim"');
-  perform pg_temp.assert(not ('kid_try' = any (bl_earn_reasons())) and not ('kid_care' = any (bl_earn_reasons())) and not ('kid_reclaim' = any (bl_earn_reasons())), 'not earned even if an admin lists them');
+  perform pg_temp.cfg('leaderboard.earn_reasons', '"salary,hustle,kid_try,kid_care,kid_reclaim,kid_gift,kid_reclaim_refund,life_moment"');
+  perform pg_temp.assert(not ('kid_try' = any (bl_earn_reasons())) and not ('kid_care' = any (bl_earn_reasons())) and not ('kid_reclaim' = any (bl_earn_reasons()))
+                         and not ('kid_gift' = any (bl_earn_reasons())) and not ('kid_reclaim_refund' = any (bl_earn_reasons())) and not ('life_moment' = any (bl_earn_reasons())), 'not earned even if an admin lists them');
   perform pg_temp.assert(bl_econ_category('kid_try') <> 'Other' and bl_econ_category('kid_care') <> 'Other' and bl_econ_category('kid_reclaim') <> 'Other', 'Admin economy categories');
   perform pg_temp.assert(bl_ledger_label('kid_try', '{}') = 'Baby plans' and bl_ledger_label('kid_care', '{"label":"Feeding Ada"}') = 'Feeding Ada' and bl_ledger_label('kid_reclaim', '{}') <> 'kid_reclaim', 'ledger labels');
   perform pg_temp.assert(bl_ledger_label('love_date', '{}') = 'Date' and bl_econ_category('love_flirt') <> 'Other' and 'love_flirt' <> all (bl_earn_reasons()), 'stage 1 love reasons still work');
@@ -263,7 +281,7 @@ begin
   perform pg_temp.assert(pg_temp.cj(v_ca)->>'status' = 'expecting', 'still expecting after 2 days');
   perform pg_temp.hours(24 + 0.02);
   v := pg_temp.cj(v_ca);   -- the first read after the due time gives birth
-  perform pg_temp.assert(v->>'status' = 'home' and v->>'name' is null and v->'stage'->>'id' = 'baby' and (v->>'age_days')::int = 0, 'born on the first read: ' || v::text);
+  perform pg_temp.assert(v->>'status' = 'home' and v->>'name' is null and v->'stage'->>'id' = 'newborn' and (v->>'age_days')::int = 0, 'born on the first read: ' || v::text);
   perform pg_temp.assert(pg_temp.ev(pg_temp.u('a'), 'kids_born') = 1 and pg_temp.ev(pg_temp.u('b'), 'kids_born') = 1, 'both parents get the alert');
   perform pg_temp.assert((select title from events where user_id = pg_temp.u('a') and kind = 'kids_born') like 'Your baby is here!%', 'alert text');
   perform pg_temp.assert(exists (select 1 from push_outbox where user_id = pg_temp.u('b') and kind = 'kids_born'), 'and a push (friends category)');
@@ -271,7 +289,7 @@ begin
   v := pg_temp.cj(v_ca);
   perform pg_temp.assert(pg_temp.ev(pg_temp.u('b'), 'kids_born') = 1, 'no second birth alert');
   select * into c from kids_children where id = v_ca;
-  perform pg_temp.assert(c.hunger = 80 and c.sleep = 80 and c.fun = 80 and c.health = 80 and c.love = 80 and c.born_at = bl_now(), 'needs start at 80');
+  perform pg_temp.assert(c.hunger = 80 and c.sleep = 80 and c.fun = 80 and c.health = 80 and c.love = 80 and c.clean = 80 and c.born_at = bl_now(), 'needs start at 80');
   perform pg_temp.assert(c.next_alert_at between c.born_at + interval '16 hours 40 minutes' - interval '10 seconds' and c.born_at + interval '16 hours 40 minutes' + interval '10 seconds',
                          'next_alert_at = the hunger crossing (80 -> 30 at 3 a hour is 16h40): ' || c.next_alert_at::text || ' vs born ' || c.born_at::text);
   raise notice 'ok 3: lazy birth';
@@ -313,16 +331,16 @@ begin
   perform pg_temp.hours(6);
   perform pg_temp.login_as('a');
   n := pg_temp.cj(v_ca)->'needs';
-  perform pg_temp.assert((n->>'hunger')::int = 62 and (n->>'sleep')::int = 68 and (n->>'fun')::int = 71 and (n->>'health')::int = 77 and (n->>'love')::int = 68,
-                         'baby needs after 6 h (3, 2, 1.5, 0.5, 2 an hour): ' || n::text);
+  perform pg_temp.assert((n->>'hunger')::int = 62 and (n->>'sleep')::int = 68 and (n->>'clean')::int = 65 and (n->>'health')::int = 77 and (n->>'love')::int = 68 and not (n ? 'fun'),
+                         'newborn needs after 6 h (3, 2, 2.5 clean, 0.5, 2 an hour, no fun yet): ' || n::text);
   perform pg_temp.assert((select hunger from kids_children where id = v_ca) = 80, 'nothing was written: the value is computed');
   -- feeding: costs money (sink), restores, cooldown
   b0 := pg_temp.cash(pg_temp.u('a'));
   v := kids_care(v_ca, 'feed');
-  perform pg_temp.assert((v->>'spent')::int = 400 and (v->>'value')::int = 100 and pg_temp.cash(pg_temp.u('a')) = b0 - 400, 'feed: 400, hunger back to 100: ' || v::text);
-  perform pg_temp.assert(pg_temp.ledger_n(pg_temp.u('a'), 'kid_care') = 1 and pg_temp.ledger_sum(pg_temp.u('a'), 'kid_care') = -400, 'ledger kid_care');
+  perform pg_temp.assert((v->>'spent')::int = 0 and (v->>'value')::int = 100 and pg_temp.cash(pg_temp.u('a')) = b0 and v->>'item' = 'kid_formula', 'feed uses formula from the bag, no cash: hunger back to 100: ' || v::text);
+  perform pg_temp.assert(pg_temp.ledger_n(pg_temp.u('a'), 'kid_care') = 0, 'no money moved');
   perform pg_temp.assert(pg_temp.hint_of(format('select kids_care(%s, %L)', v_ca, 'feed')) = 'cooldown', 'feeding has a short cooldown');
-  perform pg_temp.assert(pg_temp.cash(pg_temp.u('a')) = b0 - 400, 'a refused action costs nothing');
+  perform pg_temp.assert(pg_temp.cash(pg_temp.u('a')) = b0 and bl_kids_left(pg_temp.u('a'), 'kid_formula') = 5 * 8 - 1, 'a refused action costs nothing and uses nothing');
   -- free actions: no money, per-child cooldown shared by both parents
   b0 := pg_temp.cash(pg_temp.u('a'));
   v := kids_care(v_ca, 'sleep');
@@ -330,8 +348,9 @@ begin
   perform pg_temp.assert(pg_temp.hint_of(format('select kids_care(%s, %L)', v_ca, 'sleep')) = 'cooldown', 'sleep: cooldown for me');
   perform pg_temp.login_as('b');
   perform pg_temp.assert(pg_temp.hint_of(format('select kids_care(%s, %L)', v_ca, 'sleep')) = 'cooldown', 'and for the other parent (per child)');
-  v := kids_care(v_ca, 'play');
-  perform pg_temp.assert((v->>'value')::int = 100 and (v->>'spent')::int = 0, 'either parent can care: b plays (71 + 40, capped at 100)');
+  v := kids_care(v_ca, 'change');
+  perform pg_temp.assert((v->>'value')::int = 100 and (v->>'spent')::int = 0 and v->>'item' = 'kid_diapers', 'either parent can care: b changes a diaper (65 + 60, capped at 100)');
+  perform pg_temp.assert(pg_temp.hint_of(format('select kids_care(%s, %L)', v_ca, 'play')) = 'na', 'a newborn has no Play');
   v := kids_care(v_ca, 'cuddle');
   perform pg_temp.assert((v->>'value')::int = 100, 'b cuddles (68 + 40 = 108 capped)');
   perform pg_temp.assert(pg_temp.ledger_n(pg_temp.u('b'), 'kid_care') = 0, 'free actions leave no ledger row');
@@ -347,20 +366,20 @@ begin
   perform pg_temp.assert((v->'actions'->'feed'->>'ok')::boolean = false and v->'actions'->'feed'->>'code' in ('cooldown', 'not_needed'), 'the app gets the reason as well');
   -- either parent resets the "nobody cared" clock
   perform pg_temp.assert((select last_care_at from kids_children where id = v_ca) = bl_now(), 'last_care_at moves with any care');
-  -- poor parent: feeding needs money
+  -- no formula in the bag: feeding says so and nothing is charged
   perform pg_temp.hours(8);
-  update profiles set cash = 100, bank = 0 where id = pg_temp.u('a');
-  perform pg_temp.assert(pg_temp.hint_of(format('select kids_care(%s, %L)', v_ca, 'feed')) = 'not_enough_money', 'not enough money to feed');
-  update profiles set cash = 1000000 where id = pg_temp.u('a');
-  -- the stage maths adds the stage rates across a boundary: health 100 at the birth, baby 0.5/h for 72 h then toddler 0.4/h for 24 h = 45.6
+  delete from inventory where user_id = pg_temp.u('a') and item_id = 'kid_formula'; delete from kids_charges where user_id = pg_temp.u('a');
+  perform pg_temp.assert(pg_temp.hint_of(format('select kids_care(%s, %L)', v_ca, 'feed')) = 'no_item', 'no formula, no feed');
+  perform pg_temp.stock(pg_temp.u('a'));
+  -- the stage maths adds the stage rates across a boundary: health 100 at the birth, newborn 0.5/h for 48 h, baby 0.45/h for 48 h = 54.4
   update kids_children set health = 100, health_at = born_at where id = v_ca;
   update kids_children set born_at = bl_now() - interval '96 hours' where id = v_ca;
   update kids_children set health_at = born_at where id = v_ca;
   select * into c from kids_children where id = v_ca;
   perform pg_temp.assert(round(bl_kids_val(c, 'health', bl_now()), 1) = 54.4, 'health over two stages: ' || bl_kids_val(c, 'health', bl_now())::text);
-  perform pg_temp.assert(pg_temp.cj(v_ca)->'stage'->>'id' = 'toddler' and (pg_temp.cj(v_ca)->>'age_days')::int = 4, 'age 4 days is a toddler');
-  -- crossing time is on the same maths: 100 -> under 30 needs 70 points: 36 in the baby stage, 34 left at 0.4 = 85 h into the toddler stage
-  perform pg_temp.assert(abs(extract(epoch from (bl_kids_cross(c, 'health', 30) - (c.born_at + interval '72 hours' + interval '85 hours' + interval '1 second')))) < 5, 'cross over two stages');
+  perform pg_temp.assert(pg_temp.cj(v_ca)->'stage'->>'id' = 'baby' and (pg_temp.cj(v_ca)->>'age_days')::int = 4, 'age 4 days is a baby');
+  -- crossing time is on the same maths: 100 -> under 30 needs 70 points: 24 in the newborn stage, 32.4 in the baby stage, 13.6 left at 0.4 = 34 h into Nursery
+  perform pg_temp.assert(abs(extract(epoch from (bl_kids_cross(c, 'health', 30) - (c.born_at + interval '48 hours' + interval '72 hours' + interval '34 hours' + interval '1 second')))) < 5, 'cross over three stages');
   perform pg_temp.assert(bl_kids_val(c, 'health', c.born_at) = 100 and bl_kids_val(c, 'health', c.born_at - interval '1 hour') = 100, 'never above the stored value');
   update kids_children set born_at = (select born_at from kids_children where id = v_ca) where id = v_ca;
   raise notice 'ok 5: needs maths and care';
@@ -549,14 +568,14 @@ declare v_c bigint; v jsonb; c kids_children; b0 bigint; v_n int; v_e int;
 begin
   perform pg_temp.login_as('c');
   -- stage names by age
-  foreach v_n in array array[0, 2, 3, 7, 8, 13, 14, 20] loop
+  foreach v_n in array array[0, 1, 2, 4, 5, 7, 8, 13, 14, 20] loop
     v_c := pg_temp.mkchild(pg_temp.u('c'), pg_temp.u('d'), make_interval(days => v_n) + interval '1 hour', 'Stagey');
     v := pg_temp.cj(v_c);
-    perform pg_temp.assert(v->'stage'->>'id' = case when v_n < 3 then 'baby' when v_n < 8 then 'toddler' when v_n < 14 then 'child' else 'teen' end, 'stage at day ' || v_n || ': ' || (v->'stage')::text);
+    perform pg_temp.assert(v->'stage'->>'id' = case when v_n < 2 then 'newborn' when v_n < 5 then 'baby' when v_n < 8 then 'nursery' when v_n < 14 then 'primary' else 'secondary' end, 'stage at day ' || v_n || ': ' || (v->'stage')::text);
     update kids_children set status = 'gone', gone_reason = 'admin', next_alert_at = null where id = v_c;
   end loop;
   v := pg_temp.cj(current_setting('kd.cd_child')::bigint);
-  perform pg_temp.assert(v->'stage'->>'emoji' = '👶', 'the baby emoji');
+  perform pg_temp.assert(v->'stage'->>'emoji' = '🍼', 'the newborn emoji');
   update kids_children set status = 'gone', gone_reason = 'admin', next_alert_at = null where id = current_setting('kd.cd_child')::bigint;
 
   -- sickness: a need at 0 for 24 hours
@@ -576,7 +595,7 @@ begin
   perform pg_temp.login_as('d');
   v := kids_care(v_c, 'cuddle');
   perform pg_temp.assert((v->>'cured')::boolean and (select sick_since from kids_children where id = v_c) is null and (select cured_at from kids_children where id = v_c) = bl_now(), 'medicine + a cuddle (from the other parent) cure: ' || v::text);
-  perform pg_temp.assert(pg_temp.ledger_sum(pg_temp.u('c'), 'kid_care') <= -1500, 'medicine cost money (ledger kid_care)');
+  perform pg_temp.assert(bl_kids_left(pg_temp.u('c'), 'kid_paracetamol') = 5 * 6 - 1, 'medicine used one dose of syrup from the bag');
   -- the hunger is still at 0: it does not make the child sick again right away (safe time), but it does after
   perform pg_temp.hours(1);
   perform pg_temp.assert(not (pg_temp.cj(v_c)->>'sick')::boolean, 'safe time after getting better');
@@ -598,22 +617,26 @@ begin
   update kids_children set last_care_at = bl_now() - interval '7 days 1 minute', hunger = 100, hunger_at = bl_now(), sleep = 100, sleep_at = bl_now(), fun = 100, fun_at = bl_now(), love = 100, love_at = bl_now() where id = v_c;
   update kids_children set next_alert_at = bl_kids_next(pg_temp.kid(v_c)) where id = v_c;
   v := pg_temp.cj(v_c);
-  perform pg_temp.assert(v->>'status' = 'with_relatives' and (v->'relatives'->>'removals')::int = 1 and not (v->'relatives'->>'can_reclaim')::boolean, 'with relatives: ' || v::text);
+  perform pg_temp.assert(v->>'status' = 'with_relatives' and (v->'relatives'->>'removals')::int = 1 and not (v->'relatives'->>'can_pay')::boolean, 'with relatives: ' || v::text);
   perform pg_temp.assert(pg_temp.ev(pg_temp.u('c'), 'kids_relatives') = 1 and pg_temp.ev(pg_temp.u('d'), 'kids_relatives') = 1, 'both told, kindly');
   perform pg_temp.assert((select body from events where kind = 'kids_relatives' and user_id = pg_temp.u('c') limit 1) not ilike '%died%' and (select title from events where kind = 'kids_relatives' and user_id = pg_temp.u('c') limit 1) like '%with relatives%', 'wording is warm');
   perform pg_temp.assert(pg_temp.hint_of(format('select kids_care(%s, %L)', v_c, 'play')) = 'not_home', 'no care while away');
   perform pg_temp.assert(pg_temp.hint_of(format('select kids_reclaim(%s)', v_c)) = 'cooldown', 'relatives keep them a while first');
   perform pg_temp.hours(13);
   b0 := pg_temp.cash(pg_temp.u('c'));
-  perform pg_temp.assert((pg_temp.cj(v_c)->'relatives'->>'can_reclaim')::boolean, 'can bring home now');
+  perform pg_temp.assert((pg_temp.cj(v_c)->'relatives'->>'can_pay')::boolean, 'can pay a share now');
   perform pg_temp.login_as('h');
   perform pg_temp.assert(pg_temp.hint_of(format('select kids_reclaim(%s)', v_c)) = 'not_parent', 'only a parent');
   perform pg_temp.login_as('c');
   update profiles set cash = 100, bank = 0 where id = pg_temp.u('c');
-  perform pg_temp.assert(pg_temp.hint_of(format('select kids_reclaim(%s)', v_c)) = 'not_enough_money', 'it costs 10,000');
+  perform pg_temp.assert(pg_temp.hint_of(format('select kids_reclaim(%s)', v_c)) = 'not_enough_money', 'a share costs 200,000');
   update profiles set cash = b0 where id = pg_temp.u('c');
   v := kids_reclaim(v_c);
-  perform pg_temp.assert(pg_temp.cash(pg_temp.u('c')) = b0 - 10000 and pg_temp.ledger_sum(pg_temp.u('c'), 'kid_reclaim') = -10000, 'reclaim cost, ledger kid_reclaim: ' || v::text);
+  perform pg_temp.assert(pg_temp.cash(pg_temp.u('c')) = b0 - 200000 and pg_temp.ledger_sum(pg_temp.u('c'), 'kid_reclaim') = -200000 and not (v->>'home')::boolean, 'one share paid, ledger kid_reclaim: ' || v::text);
+  perform pg_temp.login_as('d');
+  v := kids_reclaim(v_c);
+  perform pg_temp.assert((v->>'home')::boolean, 'the second share brings the child home: ' || v::text);
+  perform pg_temp.login_as('c');
   select * into c from kids_children where id = v_c;
   perform pg_temp.assert(c.status = 'home' and c.reclaims = 1 and c.hunger = 60 and c.love = 60 and c.last_care_at = bl_now() and c.sick_since is null, 'home again with needs at 60');
   perform pg_temp.assert(pg_temp.hint_of(format('select kids_reclaim(%s)', v_c)) = 'not_away', 'cannot reclaim a child who is home');
@@ -682,10 +705,10 @@ begin
   perform pg_temp.assert(not (v->>'accepted')::boolean and (v->>'expired')::boolean and not exists (select 1 from kids_children where status = 'expecting' and parent_a in (pg_temp.u('e'), pg_temp.u('f'))),
                          'an invite cannot be accepted after a break-up: ' || v::text);
   perform pg_temp.assert((select status from kids_invites where id = v_inv) = 'cancelled', 'and it is cancelled');
-  update kids_children set fun = 40, fun_at = bl_now(), love = 40, love_at = bl_now() where id = v_c;
+  update kids_children set sleep = 40, sleep_at = bl_now(), love = 40, love_at = bl_now() where id = v_c;
   perform pg_temp.assert(pg_temp.cj(v_c)->>'status' = 'home', 'e still has the child');
   perform pg_temp.assert((pg_temp.cj(v_c)->'partner'->>'username') = 'KD_f', 'with f as the other parent');
-  v := kids_care(v_c, 'play');
+  v := kids_care(v_c, 'sleep');
   perform pg_temp.assert(v->>'child' = v_c::text, 'e can still care');
   perform pg_temp.login_as('f');
   perform pg_temp.assert(pg_temp.cj(v_c)->>'status' = 'home', 'f still has the child');
@@ -721,8 +744,8 @@ begin
   perform pg_temp.login_as('g');
   v := pg_temp.cj(v_c);
   perform pg_temp.assert(v->>'status' = 'home' and v->'partner' = 'null'::jsonb, 'g sees the child, no other parent: ' || v::text);
-  update kids_children set fun = 40, fun_at = bl_now() where id = v_c;
-  v := kids_care(v_c, 'play');
+  update kids_children set sleep = 40, sleep_at = bl_now() where id = v_c;
+  v := kids_care(v_c, 'sleep');
   perform pg_temp.assert(v->>'child' = v_c::text, 'g can look after them alone');
   -- when the last parent leaves, relatives take the child for good
   delete from profiles where id = pg_temp.u('g');
@@ -812,7 +835,7 @@ declare t text; v boolean;
 begin
   perform pg_temp.login_as('a');
   set local role authenticated;
-  foreach t in array array['kids_stages', 'kids_auto_names', 'kids_children', 'kids_invites', 'kids_care_log', 'kids_pause'] loop
+  foreach t in array array['kids_stages', 'kids_auto_names', 'kids_children', 'kids_invites', 'kids_care_log', 'kids_pause', 'kids_items', 'kids_illnesses', 'kids_charges', 'shop_price_rules'] loop
     begin
       execute format('select * from public.%I limit 1', t);
       v := false;
