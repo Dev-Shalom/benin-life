@@ -32,7 +32,7 @@ import {
 
 const PAGE_SIZE = 50;
 const QUICK_REPLIES = ['How far? 👋', 'I dey o 😄', 'Wetin dey happen?', 'Where you dey?', 'Come my house 🏠', 'LOL 😂', 'On my way 🚶🏾', 'Thank you o 🙏🏾'];
-const EMOJI = ['😀', '😂', '🤣', '😊', '😍', '😘', '😎', '🤔', '😅', '😭', '😡', '🥺', '🙄', '😴', '🤗', '👍', '👎', '👋', '🙏🏾', '👏🏾',
+export const EMOJI = ['😀', '😂', '🤣', '😊', '😍', '😘', '😎', '🤔', '😅', '😭', '😡', '🥺', '🙄', '😴', '🤗', '👍', '👎', '👋', '🙏🏾', '👏🏾',
   '💪🏾', '🔥', '❤️', '💯', '🎉', '🏠', '🚗', '💸', '🍲', '⚽'];
 /** Prefix of the DM sent after a Send money transfer; the list turns it into "@x sent you ₦…". */
 export const MONEY_PREFIX = '💸 Sent you ';
@@ -104,8 +104,9 @@ function DmThread({ messages, listRef, hasOlder, loadingOlder, loadOlder, initia
   );
 }
 
-function SendMoneySheet({ state, friend, onClose, onSent }: {
-  state: GameState; friend: SocialFriend; onClose: () => void; onSent: (amount: number, note: string) => void;
+/** Also used by Benin Gist (a profile's Send money): any player by @username, the normal bank_transfer rules. */
+export function SendMoneySheet({ state, friend, onClose, onSent }: {
+  state: GameState; friend: Pick<SocialFriend, 'username'>; onClose: () => void; onSent: (amount: number, note: string) => void;
 }) {
   const refresh = useGame((s) => s.refresh);
   const { info, err } = useBankInfo();

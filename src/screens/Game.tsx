@@ -64,6 +64,7 @@ import { HouseInteractSheet, InteractPrompts, type Prompt, type Waiting } from '
 import { HypeStrip, HypeTakeover } from './game/Hype';
 import { MoneyPickLayer } from './game/MoneyPick';
 import { useHypeLive } from '../state/hype';
+import { useGistLive } from '../state/gist';
 import { useEventsLive } from '../state/events';
 import { EventBanner, useEventBadges } from './game/Events';
 import OnboardingHost from '../onboarding/OnboardingHost';
@@ -403,6 +404,8 @@ export default function Game() {
   // V1-6: stay subscribed to the chat of the place you are at (unread dot while the sheet is closed).
   useChatLive(state && !state.travel ? state.location.id : null, p?.id ?? null);
   const chatUnread = useChat((s) => s.unread);
+  // Benin Gist: the unread-groups badge (one cheap RPC on a slow poll; no Realtime)
+  useGistLive(p?.id ?? null);
   // L3: the last location chat lines float over the speaker's head inside a place
   const chatMsgs = useChat((s) => s.messages);
   const speech = useMemo(() => chatMsgs.slice(-8).map((m) => ({ id: m.id, who: m.mine ? 'me' : m.user_id, text: m.body ?? 'Voice message' })), [chatMsgs]);

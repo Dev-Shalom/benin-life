@@ -92,6 +92,21 @@ export interface PaymentsData {
 
 type Msg = { message: string };
 
+export type GistKind = 'post' | 'comment' | 'group' | 'message';
+export interface GistOverview {
+  posts: number; posts_24h: number; comments_24h: number; hidden_posts: number; groups: number; public_groups: number; messages_24h: number;
+  open_reports: number; bans: number; photos: number;
+}
+export interface GistReportRow {
+  kind: GistKind; target_id: number; reports: number; last_report: string; status: 'open' | 'done'; reasons: string[] | null; reporters: (string | null)[];
+  content: { text: string | null; photo_path?: string | null; author_id: string | null; author: string | null; hidden: boolean; at: string; group?: string; group_id?: number; post_id?: number; members?: number } | null;
+}
+export interface GistBanRow { user_id: string; username: string | null; until_at: string | null; reason: string | null; created_at: string }
+export interface GistGroupRow {
+  id: number; name: string; emoji: string; description: string; is_public: boolean; system: boolean; hidden: boolean; members: number;
+  member_cap: number | null; owner: string | null; last_msg_at: string | null; created_at: string;
+}
+
 /** B2: a player's charm (Admin → Players → Charms). */
 export interface PlayerSkillRow { skill: string; name: string; icon: string; xp: number; level: number; next_xp: number | null }
 
@@ -176,6 +191,19 @@ export const adminApi = {
   payments: (status: string | null, search: string | null) => rpc<PaymentsData>('admin_payments', { p_status: status, p_search: search, p_limit: 200 }),
   chatReports: () => rpc<ChatReport[]>('admin_chat_reports', { p_include_hidden: true }),
   chatHide: (id: number, hidden: boolean) => rpc<Msg>('admin_chat_hide', { p_message_id: id, p_hidden: hidden }),
+  /** Benin Gist (docs/GIST.md): reports, hide / delete, bans, groups, photo clean-up. All audited. */
+  gistOverview: () => rpc<GistOverview>('admin_gist_overview'),
+  gistReports: (status: 'open' | 'all' = 'open') => rpc<GistReportRow[]>('admin_gist_reports', { p_status: status }),
+  gistHide: (kind: GistKind, id: number, hidden: boolean) => rpc<Msg & { hidden: boolean }>('admin_gist_hide', { p_kind: kind, p_id: id, p_hidden: hidden }),
+  gistDelete: (kind: GistKind, id: number) => rpc<Msg & { photo_path: string | null }>('admin_gist_delete', { p_kind: kind, p_id: id }),
+  gistDismiss: (kind: GistKind, id: number) => rpc<Msg>('admin_gist_dismiss', { p_kind: kind, p_id: id }),
+  gistBan: (user: string, banned: boolean, hours: number | null = null, reason: string | null = null, hide = false) =>
+    rpc<Msg>('admin_gist_ban', { p_user: user, p_banned: banned, p_hours: hours, p_reason: reason, p_hide: hide }),
+  gistBans: () => rpc<GistBanRow[]>('admin_gist_bans'),
+  gistGroups: (query: string | null) => rpc<GistGroupRow[]>('admin_gist_groups', { p_query: query, p_limit: 80 }),
+  gistGroupSet: (id: number, p: { name?: string; emoji?: string; description?: string; cap?: number; hidden?: boolean; isPublic?: boolean }) =>
+    rpc<Msg>('admin_gist_group_set', { p_id: id, p_name: p.name ?? null, p_emoji: p.emoji ?? null, p_description: p.description ?? null, p_cap: p.cap ?? null, p_hidden: p.hidden ?? null, p_public: p.isPublic ?? null }),
+  gistOrphanPhotos: () => rpc<{ name: string; bytes: number | null; created_at: string }[]>('admin_gist_orphan_photos', { p_limit: 200 }),
   claim: () => rpc<Msg & { is_admin: boolean }>('admin_claim'),
   /** C1: jail cases (open by default) and admin release (audited). */
   jailCases: (status = 'open') => rpc<{ rows: JailCaseRow[] }>('admin_jail_cases', { p_status: status, p_limit: 100 }),

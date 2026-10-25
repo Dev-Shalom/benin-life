@@ -94,3 +94,6 @@ To turn it all off in an emergency: Admin -> Settings -> Push notifications -> `
 ## Sound and vibration (25 Oct 2026)
 - **Game closed or in the background:** the phone itself plays the notification sound. A web page cannot choose a custom sound for a closed app (Chrome, Safari and Firefox do not allow it); it can only ask for the default sound and a vibration. `public/sw.js` now sets `silent: false` and `vibrate: [180, 80, 180]`. If a player hears nothing, it is the phone: Android Settings > Apps > Chrome (or the installed Benin Life app) > Notifications > the site's channel must be on with sound; the phone must not be in silent / Do Not Disturb. On iPhone the game must be added to the Home Screen (Share > Add to Home Screen) for push to work at all.
 - **Game open and in front:** the service worker shows no system notification (the game shows it live) and posts `bl-push`; `Game.tsx` now plays the in-game `alert` cue for it (same cue as an `events` row; `playCue` already drops duplicates within 0.7 s).
+
+## Benin Gist alerts (2026-10-31)
+Likes (Game events category), comments, replies, mentions and replies in a group (Messages), being added to a group (Friends) and tips (Money) send an `events` row and a push. Many on one gist inside `gist.notify_window_minutes` become one alert that counts up ("5 people liked your gist"). See docs/GIST.md.

@@ -1,6 +1,8 @@
-// M4 Phone → Messages (docs/CHAT.md "M4", docs/SOCIAL.md). List screen: header with the alerts bell, Chats / Groups
-// tabs, the pinned "Benin Life team" news card, "Message someone: @username", All / Unread / Read filters,
-// Message requests, chat search and conversation rows. A row opens DmConversation; Groups opens the place / house chat.
+// Benin Gist (docs/GIST.md): the old Messages / Friends phone app, merged into ONE social app with four tabs:
+//   Feed (gists: like, comment, tip, For you / Following)  ·  Groups (group chats, Discover, "chat where you are")
+//   Chats (the M4 DMs, unchanged: docs/CHAT.md "M4")        ·  Friends (R7 friends and requests).
+// Header with the alerts bell, then the active tab. A gist opens its post page, a name opens a profile, a group opens its chat.
+// Old links keep working: the phone app id 'messages' is an alias of 'gist', and messages:dm:<id> / messages:house / messages:requests.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { AvatarPortrait } from '../../../art/avatar3d';
@@ -19,6 +21,10 @@ import { SocialPlayerButton } from '../SocialPlayerButton';
 import ChatPanel from '../../../panels/ChatPanel';
 import { DmConversation, MiniSheet, MONEY_PREFIX } from './DmConversation';
 import { FriendsTab } from './FriendsTab';
+import { FeedTab, PostPage, ProfilePage, type FeedNav } from './gist/GistFeed';
+import { GroupsTab } from './gist/GistGroups';
+import { GroupChat } from './gist/GroupChat';
+import { useGist } from '../../../state/gist';
 import type { FriendCard } from '../../../api/friends';
 import { usePollMode } from '../../../lib/realtime';
 
@@ -32,6 +38,8 @@ interface SocialAppProps {
 }
 
 type Filter = 'all' | 'unread' | 'read';
+/** A full page over the tabs (post, profile, group chat). Back pops it; the tab underneath keeps its place. */
+type Route = { t: 'post'; id: number } | { t: 'profile'; id: string | null; name?: string } | { t: 'group'; id: number };
 
 /** "14:05" today, "Yesterday", else "6 Oct". */
 function rowDate(iso: string | null) {
@@ -68,7 +76,12 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
   const [requests, setRequests] = useState<FriendRequest[] | null>(null);
   const [invites, setInvites] = useState<HouseInvite[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [tab, setTab] = useState<'chats' | 'friends' | 'groups'>('chats');
+  const [tab, setTab] = useState<'feed' | 'groups' | 'chats' | 'friends'>('feed');
+  const [route, setRoute] = useState<Route | null>(null);
+  const [tag, setTag] = useState<string | null>(null);
+  const [groupsKey, setGroupsKey] = useState(0);
+  const summary = useGist((g) => g.summary);
+  const unreadGroups = useGist((g) => g.unreadGroups);
   const [filter, setFilter] = useState<Filter>('all');
   const [chatSearch, setChatSearch] = useState('');
   const [who, setWho] = useState('');
@@ -107,24 +120,34 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
   // Friend requests, knocks and new DMs arrive through the existing per-player events channel.
   useEffect(() => { if (eventsRevision) void reload(); }, [eventsRevision, reload]);
 
-  // P1: a tapped notification asks for a screen: messages:dm:<conversation>, messages:house, messages:requests
+  // P1: a tapped notification asks for a screen: messages:dm:<conversation>, messages:house, messages:requests,
+  // and the Benin Gist links gist:post:<id>, gist:group:<id>, gist:feed|groups|chats|friends
   const phoneApp = useUi((s) => s.phoneApp);
+  useEffect(() => { void useGist.getState().load(); }, []);
   useEffect(() => {
-    if (!phoneApp?.startsWith('messages:')) return;
-    const want = phoneApp.slice('messages:'.length);
-    const done = () => useUi.setState({ phoneApp: 'messages' });
-    if (want === 'house') {
-      if (!state.travel) setView('group');
+    if (!phoneApp || !(phoneApp.startsWith('messages:') || phoneApp.startsWith('gist:'))) return;
+    const gist = phoneApp.startsWith('gist:');
+    const want = phoneApp.slice(gist ? 'gist:'.length : 'messages:'.length);
+    const done = () => useUi.setState({ phoneApp: 'gist' });
+    if (gist) {
+      if (want.startsWith('post:')) { setRoute({ t: 'post', id: Number(want.slice(5)) }); setTab('feed'); }
+      else if (want.startsWith('group:')) { setRoute({ t: 'group', id: Number(want.slice(6)) }); setTab('groups'); }
+      else if (want === 'feed' || want === 'groups' || want === 'chats' || want === 'friends') { setRoute(null); setTab(want); }
+      done();
+    } else if (want === 'house') {
+      if (!state.travel) { setTab('groups'); setView('group'); }
       done();
     } else if (want === 'requests') {
       if (!requests || !invites) return; // wait for the lists
       const waiting = requests.some((r) => r.direction === 'incoming') || invites.some((i) => (i.role === 'host' && i.status === 'knocking') || (i.role === 'guest' && i.status === 'invited'));
-      if (waiting) setView('requests'); else setTab('friends');
+      setTab(waiting ? 'chats' : 'friends');
+      if (waiting) setView('requests');
       done();
     } else if (want.startsWith('dm:')) {
       if (!friends) return;
       const friend = friends.find((f) => f.conversation_id === Number(want.slice(3)));
       done();
+      setTab('chats');
       if (friend) void openConversation(friend);
     } else done();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -209,6 +232,20 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
     toast(open.length ? 'All chats marked as read.' : 'You have no unread chats.', 'info');
   };
 
+  const nav: FeedNav = {
+    openPost: (id) => setRoute({ t: 'post', id }),
+    openProfile: (id) => setRoute({ t: 'profile', id }),
+    openProfileByName: (name) => setRoute({ t: 'profile', id: null, name }),
+    openTag: (t) => { setTag(t); setTab('feed'); setRoute(null); },
+  };
+  const messageUser = (userId: string) => {
+    const friend = friends?.find((f) => f.id === userId);
+    if (!friend) { toast('Add them as a friend first, then you can message.', 'info'); return; }
+    setRoute(null);
+    setTab('chats');
+    void openConversation(friend);
+  };
+
   if (conversation) {
     const fresh = friends?.find((f) => f.id === conversation.friendId) ?? conversation.friend;
     return (
@@ -291,15 +328,20 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
     );
   }
 
+  const mainHidden = route !== null;
   return (
-    <div className="phone-app__body social-app msgs">
+    <>
+    {route?.t === 'post' && <PostPage state={state} id={route.id} nav={nav} onBack={() => setRoute(null)} />}
+    {route?.t === 'profile' && <ProfilePage state={state} userId={route.id} username={route.name} nav={nav} onBack={() => setRoute(null)} onMessage={messageUser} onChanged={() => void reload()} />}
+    {route?.t === 'group' && <GroupChat key={route.id} state={state} groupId={route.id} nav={nav} onBack={() => { setRoute(null); setGroupsKey((k) => k + 1); }} onChanged={() => setGroupsKey((k) => k + 1)} />}
+    <div className="phone-app__body social-app msgs gist-app" style={mainHidden ? { display: 'none' } : undefined}>
       <header className="msgs-head">
         {onBack && (
           <button type="button" className="msgs-iconbtn msgs-iconbtn--bare" onClick={onBack} aria-label="Back to apps">
             <Icon name="back" size={22} stroke={2.6} />
           </button>
         )}
-        <h2 className="msgs-head__title">Messages</h2>
+        <h2 className="msgs-head__title">Benin Gist</h2>
         {onOpenAlerts && (
           <button type="button" className="msgs-iconbtn msgs-bell" onClick={onOpenAlerts} aria-label={`Alerts${alertsUnread ? `, ${alertsUnread} new` : ''}`}>
             <Icon name="bell" size={21} />
@@ -308,36 +350,29 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
         )}
       </header>
 
-      <div className="msgs-tabs" role="tablist">
+      <div className="msgs-tabs gist-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === 'feed'} className={tab === 'feed' ? 'is-on' : ''} onClick={() => setTab('feed')}>Feed</button>
+        <button type="button" role="tab" aria-selected={tab === 'groups'} className={tab === 'groups' ? 'is-on' : ''} onClick={() => setTab('groups')}>
+          Groups <Badge n={unreadGroups} />
+        </button>
         <button type="button" role="tab" aria-selected={tab === 'chats'} className={tab === 'chats' ? 'is-on' : ''} onClick={() => setTab('chats')}>
           Chats <Badge n={unreadChats} />
         </button>
         <button type="button" role="tab" aria-selected={tab === 'friends'} className={tab === 'friends' ? 'is-on' : ''} onClick={() => setTab('friends')}>
           Friends <Badge n={incoming.length} />
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'groups'} className={tab === 'groups' ? 'is-on' : ''} onClick={() => setTab('groups')}>
-          Groups
-        </button>
+      </div>
+
+      <div hidden={tab !== 'feed'}>
+        <FeedTab state={state} summary={summary} nav={nav} tag={tag} setTag={setTag} refreshKey={0} />
       </div>
 
       {loadError && <div className="social-error" role="alert">{loadError}<Button size="sm" variant="ghost" onClick={() => void reload()}>Retry</Button></div>}
 
-      {tab === 'friends' ? (
+      {tab === 'feed' ? null : tab === 'friends' ? (
         <FriendsTab onMessage={(c) => void openFromCard(c)} onRefreshAll={() => void reload()} />
       ) : tab === 'groups' ? (
-        <div className="msgs-groups">
-          {state.travel ? <p className="msgs-empty">You're on the move. Group chats open when you arrive.</p> : (
-            <button type="button" className="msgs-row" onClick={() => setView('group')}>
-              <span className="msgs-face msgs-face--group" aria-hidden>{homeNow ? '🏠' : '📍'}</span>
-              <span className="msgs-row__main">
-                <b>{homeNow ? 'House chat' : `Chat at ${state.location.name}`}</b>
-                <span>{homeNow ? 'Everyone inside the house right now' : 'Everyone at this place right now'}</span>
-              </span>
-              <Icon name="chevronRight" size={18} />
-            </button>
-          )}
-          <p className="msgs-muted">Group chats follow where you are: the house you're in, or the place you're visiting.</p>
-        </div>
+        <GroupsTab state={state} summary={summary} homeNow={homeNow} refreshKey={groupsKey} onOpenGroup={(id) => setRoute({ t: 'group', id })} onOpenPlaceChat={() => setView('group')} />
       ) : <>
         {newsTitle && (
           <button type="button" className="msgs-news" onClick={() => setSheet('news')}>
@@ -432,5 +467,6 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
         </MiniSheet>
       )}
     </div>
+    </>
   );
 }

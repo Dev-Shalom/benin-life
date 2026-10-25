@@ -8,13 +8,15 @@
 //   go=crew / go=gang        the Gang app (an invite, a job lobby); gang is an alias, the app id stays crew
 //   go=politics              the Benin Votes app (registration, voting day, results); go=politics:vote opens the Vote tab
 //   go=family                the Family app (Link-ups); go=family:us / go=family:family open that tab (asks, flirts, dates, a new couple)
+//   go=gist                  Benin Gist (the old Messages app); go=gist:post:<id> opens that gist, go=gist:group:<id> that group chat,
+//                            go=gist:feed|groups|chats|friends a tab. Old go=dm:, go=house and go=friends links keep working.
 //   go=help                  the Help app          go=help:<article id>  that article (src/onboarding/helpArticles.ts)
 // Cold start: main.tsx captures ?go= (it survives the login redirect in sessionStorage) and the game runs it once the
 // Sim is ready. Game already open: the service worker posts { type: 'bl-go', go } and the same code runs.
 import { useUi } from '../state/ui';
 
 const KEY = 'bl.go';
-const SAFE = /^(dm:\d{1,12}|house|friends|bank|alerts|ranks|hustles|school|yahoo|market|business(?::(?:mine|plots|discover|real))?|company(?::(?:plots|discover|real))?|crew|gang|politics(?::(?:gov|elect|vote|results))?|family(?::(?:linkups|us|family))?|help(?::[a-z0-9-]{1,40})?|place:[a-z0-9_]{1,40})$/;
+const SAFE = /^(dm:\d{1,12}|house|friends|gist(?::(?:feed|groups|chats|friends|post:\d{1,12}|group:\d{1,12}))?|bank|alerts|ranks|hustles|school|yahoo|market|business(?::(?:mine|plots|discover|real))?|company(?::(?:plots|discover|real))?|crew|gang|politics(?::(?:gov|elect|vote|results))?|family(?::(?:linkups|us|family))?|help(?::[a-z0-9-]{1,40})?|place:[a-z0-9_]{1,40})$/;
 
 /** Remember ?go= from the address bar and clean the URL. Call once at startup. */
 export function captureDeepLink(): void {
@@ -56,6 +58,7 @@ export function runDeepLink(go: string): void {
     ui.setMapOpen(true);
     ui.select(arg);
   } else if (kind === 'help' || kind === 'politics' || kind === 'family' || kind === 'business' || kind === 'company') ui.openPhone(go); // 'help:<article id>', 'politics:vote', 'business:discover', 'family:us'
+  else if (kind === 'gist') ui.openPhone(go); // 'gist', 'gist:post:12', 'gist:group:3'
   else if (kind === 'gang') ui.openPhone('crew'); // alias of go=crew
   else ui.openPhone(kind); // bank, alerts, ranks, hustles are phone apps
 }

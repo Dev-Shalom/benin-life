@@ -11,6 +11,7 @@ import { Icon, Spinner } from '../ui';
 import { VoicePlayer } from '../ui/VoicePlayer';
 import { useEscape } from '../ui/presence';
 import { useKeyboardInset } from '../lib/keyboard';
+import { naira } from '../lib/format';
 
 export type { ReplyPreview };
 
@@ -29,6 +30,8 @@ export interface ThreadMessage {
   crewTag?: string | null;
   /** R12: the sender's office title. */
   officeTitle?: string | null;
+  /** Benin Gist group chat: a money bubble ("₦2,000 sent to @name"). */
+  money?: { amount: number; to: string; note: string | null } | null;
 }
 
 export function timeOf(iso: string) {
@@ -58,7 +61,10 @@ export function DaySep({ iso, prevIso }: { iso: string; prevIso: string | null }
 
 /** Build a quote preview for `m` (used for the composer and for live rows the server didn't decorate). */
 export function previewOf(m: ThreadMessage): ReplyPreview {
-  return { id: m.id, username: m.name, snippet: m.body ? m.body.slice(0, 140) : null, voice: Boolean(m.audioPath), deleted: Boolean(m.deletedAt) };
+  return {
+    id: m.id, username: m.name, snippet: m.body ? m.body.slice(0, 140) : m.money ? `💸 ${naira(m.money.amount)} to @${m.money.to}` : null,
+    voice: Boolean(m.audioPath), deleted: Boolean(m.deletedAt),
+  };
 }
 
 /** Server preview, else one built from the loaded list, else a bare "earlier message". */
@@ -96,6 +102,20 @@ const SWIPE_TRIGGER = 56;
 const SWIPE_MAX = 76;
 const LONG_PRESS_MS = 450;
 
+/** Benin Gist: the money bubble inside a group chat. */
+export function MoneyCard({ money, mine }: { money: { amount: number; to: string; note: string | null }; mine: boolean }) {
+  return (
+    <span className={`msg-money${mine ? ' is-mine' : ''}`}>
+      <span className="msg-money__icon" aria-hidden>💸</span>
+      <span className="msg-money__text">
+        <b>{naira(money.amount)}</b>
+        <small>{mine ? 'You sent' : 'Sent'} to @{money.to}</small>
+        {money.note && <i>“{money.note}”</i>}
+      </span>
+    </span>
+  );
+}
+
 /** M4 DM receipt: ✓ sent, ✓✓ delivered (grey), ✓✓ read (blue). */
 export type Receipt = 'sent' | 'delivered' | 'read';
 
@@ -116,6 +136,8 @@ interface RowProps {
   showFace?: boolean;
   /** M4 DM look: no name line, time (and receipt on mine) inside the bubble at the bottom right. */
   dm?: boolean;
+  /** Benin Gist group chat: with `dm`, also show the sender's name above the text of other people's messages. */
+  senderName?: boolean;
   receipt?: Receipt | null;
   onReply: (m: ThreadMessage) => void;
   onMenu: (m: ThreadMessage) => void;
@@ -123,7 +145,7 @@ interface RowProps {
 }
 
 /** One message: bubble with name + time, optional quote, body / voice / tombstone, swipe + long-press. */
-export function MessageRow({ m, reply, showFace, dm, receipt, onReply, onMenu, onQuote }: RowProps) {
+export function MessageRow({ m, reply, showFace, dm, senderName, receipt, onReply, onMenu, onQuote }: RowProps) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLSpanElement>(null);
   const g = useRef<{ x: number; y: number; dx: number; lock: 'x' | 'y' | null; id: number; timer: number; long: boolean } | null>(null);
@@ -162,7 +184,7 @@ export function MessageRow({ m, reply, showFace, dm, receipt, onReply, onMenu, o
         <div className="msg-row__wrap">
         {canReply && <span className="msg-row__swipe" ref={hintRef} aria-hidden><Icon name="reply" size={16} /></span>}
         <div ref={bubbleRef} className="msg-bubble" tabIndex={0}
-          aria-label={`${m.mine ? 'You' : m.name}, ${timeOf(m.createdAt)}: ${m.deletedAt ? 'This message was deleted' : m.body ?? 'Voice note'}`}
+          aria-label={`${m.mine ? 'You' : m.name}, ${timeOf(m.createdAt)}: ${m.deletedAt ? 'This message was deleted' : m.money ? `sent ${naira(m.money.amount)} to ${m.money.to}` : m.body ?? 'Voice note'}`}
           onContextMenu={(e) => { e.preventDefault(); onMenu(m); }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ' || e.key === 'ContextMenu') { e.preventDefault(); onMenu(m); }
@@ -208,6 +230,7 @@ export function MessageRow({ m, reply, showFace, dm, receipt, onReply, onMenu, o
               <time dateTime={m.createdAt}>{timeOf(m.createdAt)}</time>
             </span>
           )}
+          {dm && senderName && !m.mine && !m.deletedAt && <span className="msg-bubble__sender">{m.crewTag ? `[${m.crewTag}] ` : ''}{m.name}</span>}
           {reply && !m.deletedAt && (
             <button type="button" className={`msg-quote${reply.deleted || reply.unavailable ? ' is-muted' : ''}`}
               onClick={(e) => { e.stopPropagation(); onQuote(reply.id); }}
@@ -218,6 +241,7 @@ export function MessageRow({ m, reply, showFace, dm, receipt, onReply, onMenu, o
             </button>
           )}
           {m.deletedAt ? <span className="msg-bubble__deleted"><Icon name="ban" size={14} /> This message was deleted</span>
+            : m.money ? <MoneyCard money={m.money} mine={m.mine} />
             : m.body !== null ? <span className="msg-bubble__body">{m.body}</span>
               : m.audioPath ? <VoiceNote path={m.audioPath} mine={m.mine} /> : null}
           {dm && (
@@ -267,7 +291,7 @@ export function MessageMenu({ m, actions, onClose, children }: { m: ThreadMessag
     <div className="msg-menu" role="dialog" aria-label="Message actions">
       <div className="msg-menu__backdrop" onClick={onClose} />
       <div className="msg-menu__card">
-        <p className="msg-menu__preview"><b>{m.mine ? 'You' : m.name}</b> {m.deletedAt ? 'This message was deleted' : m.body ?? 'Voice note'}</p>
+        <p className="msg-menu__preview"><b>{m.mine ? 'You' : m.name}</b> {m.deletedAt ? 'This message was deleted' : m.body ?? (m.money ? `💸 ${naira(m.money.amount)} to @${m.money.to}` : 'Voice note')}</p>
         {children ?? actions.map((a, i) => (
           <button key={a.label} ref={i === 0 ? first : undefined} type="button" className={`msg-menu__item${a.tone === 'danger' ? ' is-danger' : ''}`}
             onClick={a.onSelect}>

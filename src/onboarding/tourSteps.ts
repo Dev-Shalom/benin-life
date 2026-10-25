@@ -125,9 +125,9 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: 'phone',
-    target: '[data-tour="app-messages"]',
-    title: 'Your phone: Messages & Friends',
-    body: 'Messages is where you add friends, chat in private and invite them home. The rest of your phone is full of apps.',
+    target: '[data-tour="app-gist"]',
+    title: 'Your phone: Benin Gist',
+    body: 'Benin Gist is one place to post gists, like and comment, chat in groups, message friends, send money and invite people home. The rest of your phone is full of apps.',
     points: [
       'Bank & Invest, Jobs, Hustles, School, Yahoo, Ranks.',
       'Houses, Cars, Chowdeck for food, and Help.',

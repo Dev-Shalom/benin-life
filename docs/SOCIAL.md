@@ -67,3 +67,6 @@ Full notes in docs/LOUNGE.md. Short version:
   Invite here (`friend_invite_place`: alert + `friends` push "@x wants you at <place>", tap = that place's travel picker), Invite home (existing house invites),
   Yahoo group (opens the Yahoo app), Bring to Lounge (VIP guest pass).
 - Friend search and requests reuse `social_search_players`, `social_add_friend`, `social_respond_friend`, `social_cancel_friend_request`.
+
+## Benin Gist (2026-10-31)
+The Messages / Friends phone app is now **Benin Gist** (docs/GIST.md): tabs Feed, Groups, Chats, Friends. Chats and Friends behave exactly as described above (M3, M4, R7). The phone app id is `gist` (`messages` is an alias; `go=dm:`, `go=house`, `go=friends` still work). Tapping a name in the feed opens a profile with Follow, Add friend / Message and Send money. "Chat where you are" (place and house chat) is the first row of the Groups tab.

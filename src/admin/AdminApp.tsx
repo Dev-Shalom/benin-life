@@ -27,6 +27,7 @@ import Crews from './Crews';
 import Elections from './Elections';
 import Economy from './Economy';
 import Love from './Love';
+import Gist from './Gist';
 import './admin.css';
 
 const NAV = [
@@ -49,6 +50,7 @@ const NAV = [
   { to: '/admin/ads', label: 'Ads', icon: 'bell' },
   { to: '/admin/feedback', label: 'Feedback', icon: 'mail' },
   { to: '/admin/chat', label: 'Chat', icon: 'chat' },
+  { to: '/admin/gist', label: 'Gist', icon: 'sparkle' },
   { to: '/admin/audit', label: 'Audit', icon: 'clock' },
 ];
 
@@ -133,6 +135,7 @@ export default function AdminApp() {
           <Route path="content" element={<Content />} />
           <Route path="players" element={<Players />} />
           <Route path="chat" element={<Chat />} />
+          <Route path="gist" element={<Gist />} />
           <Route path="audit" element={<Audit />} />
           <Route path="payments" element={<Payments />} />
           <Route path="ads" element={<Ads />} />
