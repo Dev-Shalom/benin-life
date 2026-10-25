@@ -7,6 +7,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase, supabaseConfigured } from '../lib/supabase';
 import { startPresence, stopPresence } from './presence';
 import { useTasks } from './tasks';
+import { useKids } from './kids';
 import { playCue } from '../lib/sound';
 import { rpc, errorMessage, GameError } from '../lib/api';
 import { syncServerTime } from '../lib/clock';
@@ -76,6 +77,9 @@ function normalizeState(raw: GameState): GameState {
 /** Guess a toast tone from an event kind. */
 export function eventTone(kind: string): ToastKind {
   const k = kind.toLowerCase();
+  // kids (docs/LOVE.md): good news is green, a child that needs you or is unwell is a warning, the rest is plain
+  if (k === 'kids_born' || k === 'kids_grown' || k === 'kids_expecting' || k === 'kids_home') return 'good';
+  if (k === 'kids_needs' || k === 'kids_sick' || k === 'kids_relatives' || k === 'kids_gone' || k === 'kids_cancelled') return 'bad';
   if (/rob|arrest|jail|raid|injur|hospital|theft|stolen|fine|ban|loss|fail|caught|wanted|debt|default|owed|levy|outage|removed/.test(k)) return 'bad';
   if (/pay|salary|wage|harvest|reward|win|bonus|deposit|credit|topup|top_up|gift|grant|promot|level|sold|release|goodday|couple|accept/.test(k)) return 'good';
   return 'info';
@@ -218,6 +222,8 @@ function onEventRow(ev: GameEvent) {
   }));
   // Street robbery already has its own modal (StatusBanners); hire/promotion already toast from the
   // RPC result (job_apply / work_finish), and so do pay_rent (data.settle) and bank_transfer (transfer_out). The events stay in Alerts.
+  // a child event (born, needs you, unwell...): refresh the kids read, but only if the phone has loaded it before (no calls for players without kids)
+  if (ev.kind.startsWith('kids_') && useKids.getState().status) void useKids.getState().load();
   if (ev.kind === 'skill_up') {
     showLevelUp(ev.data as Record<string, unknown>, ev.title);
     scheduleRefresh(600);
@@ -312,6 +318,7 @@ export function initAuth(): void {
     if (uid !== prevUid) {
       stopLive();
       useTasks.getState().clear();
+      useKids.getState().reset();
       useGame.setState({ state: null, status: uid ? 'loading' : 'idle', events: [], unread: 0, error: null });
       if (uid) void useGame.getState().refresh();
     }
