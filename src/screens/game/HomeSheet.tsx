@@ -99,6 +99,12 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
         </div>
       }>
       {blocked && status.blockedReason && <p className="travel-blocked"><Icon name="info" size={16} /> {status.blockedReason}</p>}
+      {group === 'kitchen' && (
+        <div className="home-sheet__cook" data-testid="home-kitchen">
+          <p className="muted">Cook a proper pot with real ingredients: more portions, better food, and you can share it.</p>
+          <Button variant="green" block onClick={() => { close(); useUi.getState().openPhone('food:kitchen'); }}>🍳 Open the kitchen</Button>
+        </div>
+      )}
       {group === 'wardrobe' ? (
         <div className="stack">
           <p className="muted">Try on a new look. Your outfit, hair and accessories can all change.</p>

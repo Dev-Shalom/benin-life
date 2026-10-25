@@ -3721,17 +3721,22 @@ kbd {
 .chop__tabs {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   margin: 12px 0 10px;
 }
 .chop__tab {
-  padding: 7px 13px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 2px;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 12px;
   border: 0;
   border-radius: var(--r-pill);
   background: #fff;
   color: var(--ink-2);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 12px;
   font-weight: 700;
   box-shadow: var(--e1);
   cursor: pointer;
@@ -3744,9 +3749,13 @@ kbd {
   background: var(--ink);
   color: #fff;
 }
-.chop__money {
+.chop__money,
+.chop__moneyline {
   font-size: 12px;
   color: var(--ink-3);
+}
+.chop__moneyline {
+  margin: -2px 2px 8px;
 }
 .chop .item,
 .houses .item {
@@ -6825,3 +6834,15 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 }
 .mm-later:disabled { opacity: 0.5; }
 @media (prefers-reduced-motion: reduce) { .mm-choice { transition: none; } }
+.home-sheet__cook {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--green-50);
+}
+.home-sheet__cook p {
+  margin: 0;
+  font-size: 13px;
+}
