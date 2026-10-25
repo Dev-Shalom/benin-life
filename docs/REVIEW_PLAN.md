@@ -62,4 +62,4 @@ The owner decided:
    All prices are admin-tunable.
 15. **Later, from the earlier queue:** Link-ups, Church/prophet, Benin Gist.
 
-**Company app (paused, wip/companies):** owner wants it INSIDE the existing Business app (tabs: My companies · Map plots · Discover · Real business), not a separate phone app. Merge similar apps instead of adding new ones.
+**Company app (DONE 2026-10-26, docs/COMPANIES.md):** merged INTO the Business app, one phone icon, tabs My companies · Map plots · Discover (with Rankings) · Real business. Migration 20261020000100_companies, test companies_test. Real-money Paystack path reviewed; one test-mode payment is still to be checked by the owner before launch.

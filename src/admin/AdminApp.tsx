@@ -21,6 +21,8 @@ import Earn from './Earn';
 import Music from './Music';
 import Market from './Market';
 import Business from './Business';
+import Companies from './Companies';
+import RealBusiness from './RealBusiness';
 import Crews from './Crews';
 import Elections from './Elections';
 import Economy from './Economy';
@@ -36,6 +38,8 @@ const NAV = [
   { to: '/admin/music', label: 'Music', icon: 'music' },
   { to: '/admin/market', label: 'Market', icon: 'cash' },
   { to: '/admin/business', label: 'Business', icon: 'cash' },
+  { to: '/admin/companies', label: 'Companies', icon: 'cash' },
+  { to: '/admin/real-business', label: 'Real business', icon: 'bell' },
   { to: '/admin/crews', label: 'Gangs', icon: 'people' },
   { to: '/admin/elections', label: 'Elections', icon: 'star' },
   { to: '/admin/economy', label: 'Economy', icon: 'cash' },
@@ -102,7 +106,7 @@ export default function AdminApp() {
             <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `adm-nav__item${isActive ? ' is-active' : ''}`}>
               <Icon name={n.icon} size={18} />
               <span>{n.label}</span>
-              {n.to === '/admin/ads' && unread > 0 && <span className="adm-nav__badge" aria-label={`${unread} new alerts`}>{unread > 99 ? '99+' : unread}</span>}
+              {(n.to === '/admin/ads' || n.to === '/admin/real-business') && unread > 0 && <span className="adm-nav__badge" aria-label={`${unread} new alerts`}>{unread > 99 ? '99+' : unread}</span>}
             </NavLink>
           ))}
         </nav>
@@ -136,6 +140,8 @@ export default function AdminApp() {
           <Route path="music" element={<Music />} />
           <Route path="market" element={<Market />} />
           <Route path="business" element={<Business />} />
+          <Route path="companies" element={<Companies />} />
+          <Route path="real-business" element={<RealBusiness />} />
           <Route path="crews" element={<Crews />} />
           <Route path="elections" element={<Elections />} />
           <Route path="economy" element={<Economy />} />
@@ -148,7 +154,7 @@ export default function AdminApp() {
           <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `adm-tabbar__item${isActive ? ' is-active' : ''}`}>
             <Icon name={n.icon} size={20} />
             <span>{n.label}</span>
-            {n.to === '/admin/ads' && unread > 0 && <span className="adm-tabbar__badge">{unread > 9 ? '9+' : unread}</span>}
+            {(n.to === '/admin/ads' || n.to === '/admin/real-business') && unread > 0 && <span className="adm-tabbar__badge">{unread > 9 ? '9+' : unread}</span>}
           </NavLink>
         ))}
       </nav>

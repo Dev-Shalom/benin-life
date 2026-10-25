@@ -244,7 +244,7 @@ function TypeCard({ t, onPick }: { t: BusinessTypeInfo; onPick: (t: BusinessType
   );
 }
 
-export default function BusinessApp({ state, onGo }: { state: GameState; onGo: (id: string) => void }) {
+export default function BusinessApp({ state, onGo, embedded = false }: { state: GameState; onGo: (id: string) => void; embedded?: boolean }) {
   const [tab, setTab] = useState<Tab>('mine');
   const [mine, setMine] = useState<BusinessMine | null>(null);
   const [cat, setCat] = useState<BusinessCatalog | null>(null);
@@ -282,7 +282,7 @@ export default function BusinessApp({ state, onGo }: { state: GameState; onGo: (
   const there = !state.travel;
 
   return (
-    <div className="phone-app__body bz-app" data-testid="business-app">
+    <div className={`${embedded ? '' : 'phone-app__body '}bz-app`} data-testid="business-app">
       {mine && !mine.enabled && <p className="bz-err" role="status">Business ownership is closed for now. You can still collect and sell.</p>}
       <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as Tab)} className="bz-tabs" tourPrefix="business" />
       {err && !mine && <p className="bz-err" role="alert">{err}</p>}

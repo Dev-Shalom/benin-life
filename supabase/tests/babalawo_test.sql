@@ -1,3 +1,5 @@
+-- E4 (money sinks): the weekly house bill autopays inside this suite's time travel on some weekdays (-450), so bills and tax are pinned off here.
+update game_config set value = 'false'::jsonb where key in ('economy.bills_enabled', 'economy.tax_enabled');
 -- Markets close at 8 PM since 20261012001550; this test buys offerings at Oba Market at any hour, so keep markets open here.
 update locations set open_hour = null, close_hour = null where scene = 'market';
 -- B2 Babalawo shrine (20261012001500_babalawo.sql). Rolled back. Run (migrations applied):

@@ -1,9 +1,10 @@
 // P1-MAP — the main game screen: illustrated, pannable, zoomable map of Benin City.
 // Layers: static art (memo, rendered once) → light grade (day/night) → labels → pins → travel.
-import { memo, useMemo, type CSSProperties, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
 import type { Location } from '../../lib/types';
 import { MapArt, MapLabels, MapLight } from './MapArt';
-import { MAP_CSS, MapPins, PinDefs, TravelLayer } from './MapPins';
+import { MAP_CSS, MapPins, PinDefs, RealBizPins, TravelLayer } from './MapPins';
+import { useRealBiz } from '../../lib/realBiz';
 import { getMapModel } from './mapModel';
 import { useMapViewport } from './useMapViewport';
 
@@ -50,6 +51,7 @@ export function BeninMapSvg({ locations, currentId, selectedId, onSelect, night,
   const byId = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
   const from = travel ? byId.get(travel.from) : undefined;
   const to = travel ? byId.get(travel.to) : undefined;
+  const realPins = useRealBiz((s) => s.pins);
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -63,6 +65,7 @@ export function BeninMapSvg({ locations, currentId, selectedId, onSelect, night,
       <StaticLayers night={night} />
       {from && to && travel && <TravelLayer from={from} to={to} progress={travel.progress} zoom={zoom} />}
       <MapPins locations={locations} currentId={currentId} selectedId={selectedId} night={night} crowd={crowd} zoom={zoom} onSelect={onSelect} />
+      <RealBizPins pins={realPins} zoom={zoom} />
     </svg>
   );
 }
@@ -99,7 +102,8 @@ function CtrlButton({ label, onClick, children }: { label: string; onClick: () =
 export function BeninMap(props: BeninMapProps) {
   const { locations, currentId, night } = props;
   const current = useMemo(() => locations.find((l) => l.id === currentId), [locations, currentId]);
-  const vp = useMapViewport({ focus: current ? { x: current.x, y: current.y } : null, onTapPin: props.onSelect });
+  useEffect(() => { useRealBiz.getState().load(); }, []);
+  const vp = useMapViewport({ focus: current ? { x: current.x, y: current.y } : null, onTapPin: (id) => (id.startsWith('rb:') ? useRealBiz.getState().open(id.slice(3)) : props.onSelect(id)) });
 
   return (
     <div

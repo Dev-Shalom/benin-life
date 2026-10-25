@@ -75,8 +75,10 @@ begin
                          and not has_table_privilege('authenticated', 'public.market_reports', 'select'), 'trades and reports are admin-only');
   select count(*) into v_n from pg_proc where pronamespace = 'public'::regnamespace and proname like 'market\_%' and prosecdef;
   perform pg_temp.assert(v_n >= 11, 'market RPCs are security definer');
-  perform pg_temp.assert((select count(*) from market_settings) = 5 and (select bool_and(fee_pct = 5 and floor_pct = 20 and ceiling_pct = 300) from market_settings where kind <> 'business'),
-                         'defaults: 5% fee, 20-300% band, four kinds (+ R10 businesses: 8%, 50-250%)');
+  perform pg_temp.assert((select count(*) from market_settings) = 6 and (select bool_and(fee_pct = 5 and floor_pct = 20 and ceiling_pct = 300) from market_settings where kind not in ('business', 'company')),
+                         'defaults: 5% fee, 20-300% band, four kinds (+ R10 businesses and Companies: 8%, 50-250%)');
+  perform pg_temp.assert((select count(*) from market_settings where kind in ('business', 'company') and fee_pct = 8 and floor_pct = 50 and ceiling_pct = 250 and enabled) = 2,
+                         'business and company kinds are on with the 8% fee and 50-250% band (the company listing flow itself is in companies_test group 11)');
   perform pg_temp.assert(not (select tradeable from items where id = 'soap') and not (select tradeable from items where id = 'airtime')
                          and (select tradeable from items where id = 'fish_catfish') and (select tradeable from items where id = 'laptop')
                          and (select tradeable from items where id = 'tokunbo_car'), 'tradeable defaults');
@@ -762,7 +764,7 @@ begin
   perform pg_temp.login(adm);
   r := admin_row_upsert('market_settings', '{"kind":"car","fee_pct":7.5,"floor_pct":30,"ceiling_pct":200,"enabled":true}'::jsonb);
   perform pg_temp.assert((select fee_pct = 7.5 and floor_pct = 30 and ceiling_pct = 200 from market_settings where kind = 'car'), 'admin edits a kind (Content -> Market settings)');
-  perform pg_temp.assert(jsonb_array_length(admin_table_rows('market_settings')) = 5, 'admin lists the kinds (four + R10 businesses)');
+  perform pg_temp.assert(jsonb_array_length(admin_table_rows('market_settings')) = 6, 'admin lists the kinds (four + R10 businesses + Companies)');
   perform admin_row_upsert('items', '{"id":"fish_catfish","tradeable":false}'::jsonb);
   perform pg_temp.assert(not (select tradeable from items where id = 'fish_catfish'), 'admin can flag an item untradeable');
   perform pg_temp.login(current_setting('mk.s')::uuid);

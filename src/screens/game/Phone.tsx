@@ -40,7 +40,14 @@ const HustlesApp = lazy(() => import('./phone/HustlesApp'));
 const SchoolApp = lazy(() => import('./phone/SchoolApp'));
 const HelpApp = lazy(() => import('./phone/HelpApp'));
 const MarketApp = lazy(() => import('./phone/MarketApp'));
-const BusinessApp = lazy(() => import('./phone/BusinessApp'));
+const CompanyApp = lazy(() => import('./phone/CompanyApp'));
+type CoTab = 'mine' | 'plots' | 'discover' | 'real';
+function coTabFor(app: string | null): CoTab {
+  const [id, sub] = (app ?? '').split(':');
+  if (id === 'company') return sub === 'plots' || sub === 'discover' || sub === 'real' ? sub : 'mine';
+  if (id === 'business') return sub === 'mine' || sub === 'discover' || sub === 'real' ? sub : 'plots';
+  return 'mine';
+}
 const CrewApp = lazy(() => import('./phone/CrewApp'));
 const PoliticsApp = lazy(() => import('./phone/PoliticsApp'));
 
@@ -65,7 +72,7 @@ const APPS: App[] = [
   { id: 'houses', name: 'Houses', emoji: '🔑', bg: 'linear-gradient(160deg,#f2a65a,#c96a1f)', pitch: 'Rent a bigger place, from a self-contain in Uselu to a duplex in GRA.' },
   { id: 'cars', name: 'Cars', emoji: '🚗', bg: 'linear-gradient(160deg,#4aa3ff,#1f62c9)', pitch: 'Buy a tokunbo or a brand-new ride. Fuel money not included.' },
   { id: 'market', name: 'Market', emoji: '🏷️', bg: 'linear-gradient(160deg,#2fb7a6,#127a6e)', pitch: 'Buy and sell cars, land, furniture and gadgets with other players.' },
-  { id: 'business', name: 'Business', emoji: '🏪', bg: 'linear-gradient(160deg,#f0b43a,#b86a12)', pitch: 'Own a shop, a buka, a bar or a filling station. Collect takings, restock, hire and upgrade.' },
+  { id: 'business', name: 'Business', emoji: '🏪', bg: 'linear-gradient(160deg,#f0b43a,#b86a12)', pitch: 'Start an online company with no plot, own a shop on a map plot, discover and rank other companies, or put your real business on the map.' },
   { id: 'crew', name: 'Gang', emoji: '🤝', bg: 'linear-gradient(160deg,#3b3f58,#16182a)', pitch: 'Start a gang, recruit players and pull group jobs for big loot. The police can catch everybody.' },
   { id: 'politics', name: 'Benin Votes', emoji: '🗳️', bg: 'linear-gradient(160deg,#2f9e6b,#0e5a3a)', pitch: 'Run for councillor, chairman or governor, campaign, and vote at your ward polling unit. Fictional parties only.' },
   { id: 'billboards', name: 'Billboards', emoji: '📺', bg: 'linear-gradient(160deg,#ff6b78,#d93646)', pitch: '' },
@@ -152,12 +159,16 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const [wasOpen, setWasOpen] = useState(open);
   const [seenNonce, setSeenNonce] = useState(phoneNonce);
   const [bbTab, setBbTab] = useState<'boards' | 'mine'>('boards');
+  const [coTab, setCoTab] = useState<CoTab>('mine');
   const touch = useRef<number | null>(null);
   if (open !== wasOpen || (open && phoneNonce !== seenNonce)) {
     setWasOpen(open);
     setSeenNonce(phoneNonce);
     if (open) {
-      setScreen((phoneApp ?? 'lock').replace(/:.*$/, ''));
+      // ONE icon, "Business". Old links: business / business:* (takings ready) open Map plots, company / company:* open My companies,
+      // and business:mine|plots|discover|real picks a tab.
+      setScreen((phoneApp ?? 'lock').replace(/:.*$/, '').replace(/^company$/, 'business'));
+      setCoTab(coTabFor(phoneApp));
       setBbTab(phoneApp === 'billboards:mine' ? 'mine' : 'boards');
     }
   }
@@ -266,7 +277,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
                   : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' || app.id === 'market' || app.id === 'business' || app.id === 'crew' || app.id === 'politics' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
-                        {app.id === 'help' ? <HelpApp /> : app.id === 'politics' ? <PoliticsApp onGo={goToPlace} /> : app.id === 'crew' ? <CrewApp onGo={goToPlace} /> : app.id === 'market' ? <MarketApp /> : app.id === 'business' ? <BusinessApp state={state} onGo={goToPlace} /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
+                        {app.id === 'help' ? <HelpApp /> : app.id === 'politics' ? <PoliticsApp onGo={goToPlace} /> : app.id === 'crew' ? <CrewApp onGo={goToPlace} /> : app.id === 'market' ? <MarketApp /> : app.id === 'business' ? <CompanyApp key={coTab} initialTab={coTab} state={state} onGo={goToPlace} /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
                           : app.id === 'billboards' ? <BillboardsApp key={bbTab} initialTab={bbTab} onOpenBoard={openBoard} />
                           : app.id === 'cars' ? <CarsApp state={state} onGo={goToPlace} />
                             : app.id === 'police' ? <PoliceApp state={state} onGo={goToPlace} />

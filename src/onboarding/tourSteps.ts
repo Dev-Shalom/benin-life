@@ -200,12 +200,12 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: 'business',
     target: '[data-tour="app-business"]',
-    title: 'Own a business',
-    body: 'Buy a shop, a buka, a bar or a filling station on a plot in Ring Road, Uselu, GRA and more. It earns while you hustle: collect your takings, restock, hire staff and upgrade.',
+    title: 'Business: four tabs',
+    body: 'One app for everything you own. My companies: start an online company with no plot. Map plots: shops, bukas and bars on the map. Discover: every company, plus Rankings. Real business: put your real shop on the map.',
     points: [
-      'Takings stop growing after about two days, so log in often.',
-      'Other players who spend at your place pay you a share.',
-      'Bigger ones need the Business skill or a School certificate.',
+      'A company settles every evening at 6 PM into your till, so cash out often.',
+      'Discover shows real Benin businesses marked Verified.',
+      'A real shop in Benin? List it for 30 days from the Real business tab.',
     ],
     isNew: true,
     before: () => toPhone('home'),

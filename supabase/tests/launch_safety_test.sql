@@ -29,7 +29,9 @@ begin
   select string_agg(p.proname, ', ') into v
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute')
-     and p.proname not in ('creator_catalog', 'client_error_log', 'bl_social_can_view_private_home');
+     -- company_public: the share page /c/<id> (src/screens/CompanyPage.tsx) works for logged-out visitors. It returns only what the in-game
+     -- Rankings already show (name, logo, industry, areas, stars, owner username, 7-evening sales, rank); never ids of the owner, till or money.
+     and p.proname not in ('creator_catalog', 'client_error_log', 'bl_social_can_view_private_home', 'company_public');
   perform pg_temp.assert(v is null, 'anon can execute: ' || coalesce(v, ''));
 
   select string_agg(p.proname, ', ') into v
