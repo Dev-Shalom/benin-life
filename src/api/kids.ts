@@ -5,8 +5,8 @@ import type { AvatarConfig } from '../lib/types';
 
 export type KidNeed = 'hunger' | 'sleep' | 'clean' | 'fun' | 'health' | 'love';
 export type KidAction = 'feed' | 'change' | 'sleep' | 'play' | 'medicine' | 'cuddle';
-export type KidStatus = 'expecting' | 'home' | 'with_relatives';
-export type KidTier = 'gold' | 'silver' | 'bronze' | 'none';
+export type KidStatus = 'expecting' | 'home' | 'with_relatives' | 'university';
+export type KidTier = 'graduate' | 'gold' | 'silver' | 'bronze' | 'none';
 
 export interface KidPerson { id: string; username: string; avatar: AvatarConfig | null }
 
@@ -23,6 +23,49 @@ export interface KidActionInfo {
 
 export interface KidSupply { role: 'formula' | 'cereal' | 'diaper' | 'paracetamol' | 'illness_med'; item: string; name: string; icon: string | null; left: number; unit: 'feeds' | 'changes' | 'doses' }
 export interface KidIllness { id: string; name: string; emoji: string; blurb: string; med_item: string | null }
+
+
+// ---- School and university (docs/KIDS_SCHOOL.md). The school block comes with each child in kids_status; schools and report cards are separate reads.
+export type SchoolState = 'none' | 'waiting' | 'need_school' | 'learning' | 'finished' | 'deciding' | 'university' | 'done';
+export type SchoolLevel = 'nursery' | 'primary' | 'secondary' | 'university';
+export interface SchoolGrade { name: string; g: number; last: number | null }
+export interface SchoolBuy { id: string; name: string; open: boolean; price: number; kind: 'market' | 'supermarket' }
+export interface SchoolGear { kind: 'books' | 'uniform'; item: string; name: string; icon: string | null; have: boolean; applied: boolean; pts: number; buy: SchoolBuy[] }
+export interface WaecPaper { id: string; name: string; score: number; letter: string; credit: boolean }
+export interface Waec { papers: WaecPaper[]; credits: number; pass: boolean; text: string; need: number }
+export interface SchoolResult { class_name: string; avg: number; promoted: boolean; attended: boolean; attempt: number; level?: SchoolLevel; at?: string }
+export interface KidSchool {
+  enabled: boolean;
+  state: SchoolState;
+  level: SchoolLevel | null;
+  can_enrol?: boolean;
+  starts_at?: string | null;
+  pass_mark: number;
+  cards: number;
+  attempt?: number;
+  missed?: number;
+  class?: { seq: number; code: string; name: string; level: SchoolLevel; stage: string } | null;
+  school?: { id: string; name: string; icon: string; tier: string; quality: number; fee: number } | null;
+  started_at?: string | null;
+  ends_at?: string | null;
+  fee?: { amount: number; paid: boolean; paid_at: string | null; paid_by_me: boolean; on_time: boolean; can_pay: boolean } | null;
+  grades?: SchoolGrade[];
+  avg_now?: number | null;
+  homework?: { count: number; mine_done: boolean; wait: number; max: number; pts: number; can: boolean } | null;
+  lessons?: { bought: boolean; cost: number; can: boolean } | null;
+  gear?: SchoolGear[];
+  request?: { type: string; status: 'open' | 'paid' | 'ignored' } | null;
+  last?: SchoolResult | null;
+  history?: SchoolResult[];
+  waec?: Waec | null;
+  uni?: { state: 'deciding' | 'studying' | 'graduated' | 'dropped' | 'working'; level: number; level_name: string | null; course: string | null; repeats: number; max_repeats: number; degree: string | null; avg: number | null; deadline: string | null; ends_at: string | null } | null;
+  can_switch?: boolean;
+}
+export interface SchoolOption { id: string; name: string; icon: string; tier: string; levels: SchoolLevel[]; area: string; fee: number; quality: number; blurb: string; current: boolean }
+export interface ReportCard {
+  id: number; stage: 'nursery' | 'primary' | 'jss' | 'sss' | 'university'; title: string; school: string; grades: { name: string; g: number }[]; avg: number;
+  position: 'Excellent' | 'Very good' | 'Good' | 'Needs help'; remark: string; teacher: string; promoted: boolean; extra: string | null; at: string;
+}
 
 export interface KidChild {
   id: number;
@@ -64,6 +107,8 @@ export interface KidChild {
     refund_at: string | null;
   } | null;
   proposed_by_me?: boolean;
+  /** School and university (null when school is switched off or the child is with relatives and not enrolled). */
+  school?: KidSchool | null;
 }
 
 export interface KidCouple {
@@ -95,7 +140,7 @@ export interface KidsStatus {
   couples: KidCouple[];
   incoming: KidInvite[];
   outgoing: KidOutgoing[];
-  grown: { id: number; name: string | null; gender: 'boy' | 'girl' | null; grown_at: string; tier: KidTier | null; score: number | null; gift: number | null }[];
+  grown: { id: number; name: string | null; gender: 'boy' | 'girl' | null; grown_at: string; tier: KidTier | null; score: number | null; gift: number | null; outcome: string | null; cards: number }[];
   /** Children who passed away (a small candle on the Family tab). */
   memorials: { id: number; name: string | null; gender: 'boy' | 'girl' | null; born_at: string | null; passed_at: string; days_lived: number }[];
   proud: number;
@@ -112,12 +157,20 @@ export const kidsWithdraw = (invite: number) => rpc<Msg>('kids_withdraw', { p_in
 export const kidsName = (child: number, name: string, gender: 'boy' | 'girl') => rpc<Msg & { name: string }>('kids_name', { p_child: child, p_name: name, p_gender: gender });
 export const kidsCare = (child: number, action: KidAction) => rpc<CareResult>('kids_care', { p_child: child, p_action: action });
 export const kidsReclaim = (child: number) => rpc<Msg & { home: boolean }>('kids_reclaim', { p_child: child });
+export const kidsSchoolSchools = (child: number) => rpc<{ level: SchoolLevel | null; schools: SchoolOption[] }>('kids_school_schools', { p_child: child });
+export const kidsSchoolEnrol = (child: number, school: string) => rpc<Msg & { school: string }>('kids_school_enrol', { p_child: child, p_school: school });
+export const kidsSchoolPay = (child: number) => rpc<Msg & { spent: number }>('kids_school_pay', { p_child: child });
+export const kidsSchoolHomework = (child: number) => rpc<Msg & { helps: number }>('kids_school_homework', { p_child: child });
+export const kidsSchoolLessons = (child: number) => rpc<Msg & { spent: number }>('kids_school_lessons', { p_child: child });
+export const kidsSchoolGear = (child: number, kind: 'books' | 'uniform') => rpc<Msg>('kids_school_gear', { p_child: child, p_kind: kind });
+export const kidsReportCards = (child: number) => rpc<{ child: { id: number; name: string | null; gender: 'boy' | 'girl' | null }; cards: ReportCard[] }>('kids_report_cards', { p_child: child });
 /** "See the doctor" when no doctor card is open: Dr. Osagie sends a new one. Returns the card's id. */
 export const kidsCallDoctor = (child: number) => rpc<{ moment: number }>('kids_call_doctor', { p_child: child });
 
 // admin
 export interface AdminKidsOverview {
   enabled: boolean; expecting: number; home: number; with_relatives: number; needs_attention: number; sick: number; grown: number; gone: number; passed: number; passing_enabled: boolean; due_now: number;
+  university: number; at_school: number; waec_passed: number; graduated: number; dropped_uni: number; school_enabled: boolean;
   children: { id: number; name: string | null; status: string; born_at: string | null; due_at: string; sick: boolean; illness: string | null; removals: number; a: string | null; b: string | null }[];
   passed_list: { id: number; name: string | null; born_at: string | null; passed_at: string; days_lived: number; warnings: number; a: string | null; b: string | null }[];
 }

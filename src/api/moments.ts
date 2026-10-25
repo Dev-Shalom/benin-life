@@ -17,7 +17,7 @@ export interface Moment {
   id: number;
   /** The moment's own id (doc_malaria, landlord_levy ...). */
   moment: string;
-  kind: 'random' | 'kids_ill' | 'system';
+  kind: 'random' | 'kids_ill' | 'kids_school' | 'kids_uni' | 'system';
   title: string;
   body: string;
   icon: string;

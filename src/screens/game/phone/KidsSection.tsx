@@ -3,17 +3,16 @@
 import { useState } from 'react';
 import {
   kidsAccept, kidsCallDoctor, kidsCare, kidsReclaim, kidsTry, kidsWithdraw,
-  type KidAction, type KidActionInfo, type KidBuyPlace, type KidChild, type KidCouple, type KidNeed, type KidTier, type KidsStatus,
+  type KidAction, type KidActionInfo, type KidChild, type KidCouple, type KidNeed, type KidTier, type KidsStatus,
 } from '../../../api/kids';
 import { errorMessage } from '../../../lib/api';
 import { serverNow } from '../../../lib/clock';
 import { naira } from '../../../lib/format';
 import { openMoment } from '../../../state/moments';
-import { useUi } from '../../../state/ui';
 import { Button, EmptyState, toast } from '../../../ui';
 import { ago, dur, face, useTick } from './familyUtil';
-
-type Run = (key: string, fn: () => Promise<{ message?: string }>) => void;
+import { Bar, BuyPanel, type Run } from './kidsShared';
+import { ReportCardsButton, SchoolPanel } from './SchoolPanel';
 
 // the needs of a child, in the order the card shows them (only the ones the current stage has are listed)
 const NEEDS: { key: KidNeed; icon: string; label: string }[] = [
@@ -34,18 +33,14 @@ const ACTIONS: { key: KidAction; icon: string; label: string }[] = [
 ];
 const DID: Record<KidAction, string> = { feed: 'fed', change: 'changed', sleep: 'put to bed', play: 'played with', medicine: 'gave medicine to', cuddle: 'cuddled' };
 const TIER: Record<KidTier, { icon: string; name: string }> = {
-  gold: { icon: '🥇', name: 'Gold' }, silver: { icon: '🥈', name: 'Silver' }, bronze: { icon: '🥉', name: 'Bronze' }, none: { icon: '🏅', name: '' },
+  graduate: { icon: '🎓', name: 'Graduate' }, gold: { icon: '🥇', name: 'Gold' }, silver: { icon: '🥈', name: 'Silver' }, bronze: { icon: '🥉', name: 'Bronze' }, none: { icon: '🏅', name: '' },
 };
 
 const tone = (v: number, low: number) => (v < low ? 'low' : v < 60 ? 'mid' : 'ok');
 const hoursLeft = (iso: string | null) => (iso ? (Date.parse(iso) - serverNow()) / 1000 : 0);
 
 function bestTier(ts: (KidTier | null)[]): KidTier {
-  return (['gold', 'silver', 'bronze'] as KidTier[]).find((t) => ts.includes(t)) ?? 'none';
-}
-
-function Bar({ pct, cls = '' }: { pct: number; cls?: string }) {
-  return <div className={`fm-bar ${cls}`} aria-hidden><span className="fm-bar__fill" style={{ transform: `scaleX(${Math.max(0, Math.min(100, pct)) / 100})` }} /></div>;
+  return (['graduate', 'gold', 'silver', 'bronze'] as KidTier[]).find((t) => ts.includes(t)) ?? 'none';
 }
 
 // ------------------------------------------------------------------------------------------------ pieces
@@ -142,35 +137,6 @@ function Invite({ kids, run, busy }: { kids: KidsStatus; run: Run; busy: string 
   );
 }
 
-/** Where to buy a missing supply. The shop is at the place (you buy there, Shop tab), so the button takes you to the map. */
-function BuyPanel({ info, name, onClose }: { info: KidActionInfo; name: string; onClose: () => void }) {
-  const go = (p: KidBuyPlace) => {
-    const ui = useUi.getState();
-    ui.closeAll();
-    ui.setMapOpen(true);
-    ui.select(p.id);
-  };
-  return (
-    <div className="fm-buy" data-testid="kids-buy">
-      <p className="fm-buy__msg"><b>{info.msg}</b></p>
-      <ul className="fm-buy__list">
-        {(info.buy ?? []).map((p) => (
-          <li key={p.id} className="fm-buy__row">
-            <span className="fm-buy__who">
-              <b>{p.name}</b>
-              <small>{p.kind === 'market' ? 'Cheaper. Price moves a little each day.' : 'Fixed price. Never closes.'} {p.open ? 'Open now.' : 'Closed right now.'}</small>
-            </span>
-            <span className="fm-buy__price">{naira(p.price)}</span>
-            <Button variant={p.open ? 'green' : 'ghost'} size="sm" onClick={() => go(p)} data-testid={`kids-buy-${p.id}`}>Go there</Button>
-          </li>
-        ))}
-      </ul>
-      <p className="fm-fine">You buy it at the shop when you are there (Shop tab). Then come back and look after {name}.</p>
-      <button type="button" className="fm-buy__close" onClick={onClose}>Close</button>
-    </div>
-  );
-}
-
 function ChildCard({ c, kids, at, run, busy, onName }: { c: KidChild; kids: KidsStatus; at: number; run: Run; busy: string | null; onName: (c: KidChild) => void }) {
   useTick(true);
   const [buyFor, setBuyFor] = useState<KidAction | null>(null);
@@ -187,7 +153,8 @@ function ChildCard({ c, kids, at, run, busy, onName }: { c: KidChild; kids: Kids
   const cls = `fm-kid${c.gender ? ` is-${c.gender}` : ''}${needsYou ? ' is-needy' : ''}${c.sick ? ' is-sick' : ''}${away ? ' is-away' : ''}`;
   const stageNeeds = c.stage?.needs ?? [];
   const needRows = NEEDS.filter((n) => stageNeeds.includes(n.key) && c.needs[n.key] !== undefined);
-  const actions = ACTIONS.filter((a) => c.actions[a.key]);
+  const uniKid = c.stage?.id === 'university';
+  const actions = ACTIONS.filter((a) => c.actions[a.key]).map((a) => (uniKid && a.key === 'feed' ? { ...a, icon: '💵', label: 'Pocket money' } : a));
   const medSupply = c.supplies.find((x) => x.role === 'illness_med');
 
   const press = (a: KidAction, info: KidChild['actions'][KidAction], left: number) => {
@@ -248,10 +215,11 @@ function ChildCard({ c, kids, at, run, busy, onName }: { c: KidChild; kids: Kids
         <ul className="fm-needs" aria-label="Needs">
           {needRows.map((n) => {
             const v = c.needs[n.key] ?? 0;
-            const label = n.key === 'love' && c.stage?.id === 'secondary' ? 'Attention' : n.label;
+            const uni = c.stage?.id === 'university';
+            const label = uni && n.key === 'hunger' ? 'Allowance' : (n.key === 'love' && (c.stage?.id === 'secondary' || uni)) ? 'Attention' : n.label;
             return (
               <li key={n.key} className={`fm-need is-${tone(v, low)}`} data-need={n.key}>
-                <span className="fm-need__label"><span aria-hidden>{n.icon}</span> {label}</span>
+                <span className="fm-need__label"><span aria-hidden>{uni && n.key === 'hunger' ? '💵' : n.icon}</span> {label}</span>
                 <Bar pct={v} cls="fm-bar--need" />
                 <span className="fm-need__num">{v}</span>
               </li>
@@ -299,12 +267,14 @@ function ChildCard({ c, kids, at, run, busy, onName }: { c: KidChild; kids: Kids
         </div>
       )}
 
-      {!away && buyFor && c.actions[buyFor]?.code === 'no_item' && <BuyPanel info={c.actions[buyFor] as KidActionInfo} name={name} onClose={() => setBuyFor(null)} />}
+      {!away && buyFor && c.actions[buyFor]?.code === 'no_item' && <BuyPanel msg={(c.actions[buyFor] as KidActionInfo).msg} places={(c.actions[buyFor] as KidActionInfo).buy ?? []} name={name} onClose={() => setBuyFor(null)} />}
 
-      {!away && removalLeft !== null && removalLeft < 3 * 86400 && (
+      {c.school && c.school.enabled && <SchoolPanel c={c} run={run} busy={busy} at={at} />}
+
+      {!away && c.status === 'home' && removalLeft !== null && removalLeft < 3 * 86400 && (
         <p className="fm-warn">Nobody has looked after {name} for a while. If it stays that way, relatives take them in in about {dur(removalLeft)}.</p>
       )}
-      {!away && grows !== null && <p className="fm-fine">{grows > 0 ? `Grows up in about ${grows} ${grows === 1 ? 'day' : 'days'}.` : 'Almost grown up.'}</p>}
+      {!away && c.status === 'home' && grows !== null && <p className="fm-fine">{grows > 0 ? `Grows up in about ${grows} ${grows === 1 ? 'day' : 'days'}.` : 'Almost grown up.'}</p>}
 
       {c.log.length > 0 && (
         <details className="fm-kid__log">
@@ -401,11 +371,13 @@ export function KidsSection({ kids, err, at, run, busy, onName, onRetry }: {
           </span>
           <ul className="fm-recent">
             {kids.grown.map((g) => (
-              <li key={g.id} data-tier={g.tier ?? ''} className="fm-grown">
-                <span aria-hidden>🎓</span>
+              <li key={g.id} data-tier={g.tier ?? ''} className={`fm-grown${g.tier === 'graduate' ? ' is-grad' : ''}`} data-testid={g.tier === 'graduate' ? 'kids-graduation' : 'kids-grown'}>
+                <span className="fm-grown__icon" aria-hidden>{g.tier === 'graduate' ? '🎓' : '🏅'}</span>
                 <span className="fm-grown__t">
-                  <b>{g.name ?? 'Your child'} grew up and moved out{g.tier && g.tier !== 'none' ? ` · ${TIER[g.tier].name}` : ''}</b>
+                  <b>{g.name ?? 'Your child'}{g.tier && g.tier !== 'none' ? ` · ${TIER[g.tier].name}` : ''}</b>
+                  <span className="fm-grown__outcome" data-testid="kids-outcome">{g.outcome ?? 'Grew up and moved out'}</span>
                   <small>{g.gift ? `Thank-you gift ${naira(g.gift)} · ` : ''}{ago(g.grown_at)}</small>
+                  <ReportCardsButton childId={g.id} name={g.name ?? 'Your child'} count={g.cards ?? 0} />
                 </span>
               </li>
             ))}

@@ -155,8 +155,8 @@ do $$
 declare v jsonb; v_c bigint; r record; v_keys text[]; v_acts text[]; c kids_children; v_nb timestamptz;
 begin
   perform pg_temp.login_as('a');
-  perform pg_temp.assert((select array_agg(id order by from_days) from kids_stages where active) = array['newborn', 'baby', 'nursery', 'primary', 'secondary'], 'five active stages');
-  perform pg_temp.assert((select array_agg(from_days order by from_days) from kids_stages where active) = array[0, 2, 5, 8, 14], 'Newborn 0-2, Baby 2-5, Nursery 5-8, Primary 8-14, Secondary 14-21');
+  perform pg_temp.assert((select array_agg(id order by from_days) from kids_stages where active) = array['newborn', 'baby', 'nursery', 'primary', 'secondary', 'university'], 'six active stages (the last is the university stage after day 21)');
+  perform pg_temp.assert((select array_agg(from_days order by from_days) from kids_stages where active) = array[0, 2, 5, 8, 14, 21], 'Newborn 0-2, Baby 2-5, Nursery 5-8, Primary 8-14, Secondary 14-21, University from 21');
   perform pg_temp.assert(bl_cfg('kids.grow_days') = 21, 'grown at 21 days');
   for r in select * from (values
       (0, 'newborn',   '{clean,health,hunger,love,sleep}', '{change,cuddle,feed,medicine,sleep}'),
@@ -200,7 +200,7 @@ declare
   v_c bigint; ca bigint; v_t0 text := current_setting('bl.test_offset_seconds');
 begin
   perform pg_temp.login_as('a');
-  perform pg_temp.assert((select count(*) from items where category in ('baby', 'kids')) = 9 and (select count(*) from kids_items where active) = 9, 'nine baby and kids items');
+  perform pg_temp.assert((select count(*) from items where category in ('baby', 'kids')) = 12 and (select count(*) from kids_items where active) = 12, 'twelve baby and kids items (nine care items and three school items)');
   perform pg_temp.assert(not exists (select 1 from items where category in ('baby', 'kids') and (not ('oba_market' = any (sold_at)) or not ('edo_fresh_supermarket' = any (sold_at)))), 'all sold at Oba Market and the supermarket');
   perform pg_temp.assert((select scene from locations where id = 'edo_fresh_supermarket') = 'mall' and (select open_hour from locations where id = 'edo_fresh_supermarket') is null
                          and (select 'shop' = any (actions) from locations where id = 'edo_fresh_supermarket'), 'the supermarket is a place with a shop tab, always open');
@@ -241,7 +241,7 @@ begin
   perform pg_temp.login_as('a');
   v := shop_list('oba_market');
   perform pg_temp.assert((select (x->>'price')::bigint from jsonb_array_elements(v->'items') x where x->>'id' = 'kid_formula') = bl_dealer_price((select i2 from items i2 where id = 'kid_formula'), 'oba_market')
-                         and (select count(*) from jsonb_array_elements(v->'items') x where x->>'category' in ('baby', 'kids')) = 9, 'Oba shop list shows the day price');
+                         and (select count(*) from jsonb_array_elements(v->'items') x where x->>'category' in ('baby', 'kids')) = 12, 'Oba shop list shows the day price');
   -- opening hours: Oba follows its hours, the supermarket never closes
   perform pg_temp.cfg('places.hours_enabled', 'true');
   update locations set open_hour = ((extract(hour from (bl_now() at time zone bl_clock_tz()))::int + 2) % 24), close_hour = ((extract(hour from (bl_now() at time zone bl_clock_tz()))::int + 4) % 24) where id = 'oba_market';

@@ -103,3 +103,6 @@ Owner plan: docs/MOMENTS.md and the family plan (stages, items, illness, relativ
 
 ### New tables (RLS on, no grants, no foreign key to profiles)
 `kids_items`, `kids_illnesses`, `kids_charges`, `shop_price_rules`. New `kids_children` columns: clean, illness, doctor_ignored, next_roll_at, score, tier, gifts, spent, reclaim shares, passed_at. New RPC `kids_call_doctor`. Settings: 17 new `kids.*`; `kids.reclaim_cost` and `kids.medicine_cost` are gone (or relabelled "not used" if an admin had changed them); `kids.feed_cost` moved 400 -> 1,500 only while untouched.
+
+## Kids school and university (built 2026-10-29)
+Step B: enrol, pay class fees, grades, promotion or repeating, school requests, report cards (with Share), WAEC, university (UNIBEN or Edo Royal University), the Graduate tier and the school outcome line. Full rules, tables, RPCs and decisions: **docs/KIDS_SCHOOL.md** (migration `20261029000100_kids_school.sql`, test `kids_school_test.sql`). Status `university` and tier `graduate` are new; the gift cap now counts school spend.

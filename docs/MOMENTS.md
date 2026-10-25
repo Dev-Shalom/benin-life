@@ -23,3 +23,6 @@ Everyday: landlord levy, NEPA takes light (evening), a friend needs a loan (lend
 
 ## Decisions
 Random cards are never rolled in clubs, lounges, or while busy; doctor cards are held on the client in a club. No push for random cards (they only exist when the player is online); doctor cards push through the Friends category.
+
+## School cards (step B, docs/KIDS_SCHOOL.md)
+Kinds `kids_school` (PTA levy, excursion, sports wear, party, WAEC fee: both parents get the card, the first to Pay settles it, Ignore needs both parents) and `kids_uni` ("Send {child} to university?"). Both are shown first, like the doctor. New effects: `kid_school_pay`, `kid_school_ignore`, `kid_uni {school}` (a university id or `work`). New label placeholder `{fee:<school id>}`. School requests respect the daily cap (retried later in the class); the university card does not count towards it.

@@ -78,8 +78,8 @@ function normalizeState(raw: GameState): GameState {
 export function eventTone(kind: string): ToastKind {
   const k = kind.toLowerCase();
   // kids (docs/LOVE.md): good news is green, a child that needs you or is unwell is a warning, the rest is plain
-  if (k === 'kids_born' || k === 'kids_grown' || k === 'kids_expecting' || k === 'kids_home') return 'good';
-  if (k === 'kids_needs' || k === 'kids_sick' || k === 'kids_relatives' || k === 'kids_gone' || k === 'kids_cancelled') return 'bad';
+  if (k === 'kids_born' || k === 'kids_grown' || k === 'kids_expecting' || k === 'kids_home' || k === 'kids_waec' || k === 'kids_report' || k === 'kids_school_paid' || k === 'kids_uni_start') return 'good';
+  if (k === 'kids_school_fee' || k === 'kids_school_pick' || k === 'kids_needs' || k === 'kids_sick' || k === 'kids_relatives' || k === 'kids_gone' || k === 'kids_cancelled') return 'bad';
   if (/rob|arrest|jail|raid|injur|hospital|theft|stolen|fine|ban|loss|fail|caught|wanted|debt|default|owed|levy|outage|removed/.test(k)) return 'bad';
   if (/pay|salary|wage|harvest|reward|win|bonus|deposit|credit|topup|top_up|gift|grant|promot|level|sold|release|goodday|couple|accept/.test(k)) return 'good';
   return 'info';
