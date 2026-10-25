@@ -573,6 +573,8 @@ export interface ShopItem extends ItemBase {
   /** E4: the VAT and luxury levy percent inside `price` (price is what you pay). */
   vat_pct?: number;
   lux_pct?: number;
+  /** Step C: yesterday's shelf price at a market for groceries (null for anything that does not move). */
+  yesterday?: number | null;
 }
 
 /** H2: a car dealer's tier (car_dealers table; price = base x multiplier). */

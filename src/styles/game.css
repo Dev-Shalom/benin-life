@@ -3720,6 +3720,7 @@ kbd {
 }
 .chop__tabs {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   margin: 12px 0 10px;
@@ -6825,3 +6826,15 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 }
 .mm-later:disabled { opacity: 0.5; }
 @media (prefers-reduced-motion: reduce) { .mm-choice { transition: none; } }
+.home-sheet__cook {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--green-50);
+}
+.home-sheet__cook p {
+  margin: 0;
+  font-size: 13px;
+}

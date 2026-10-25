@@ -376,6 +376,28 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: 'gang crew group job heist boss lieutenant member prospect tag emblem bank invite recruit loot police jail top gangs crews',
   },
   {
+    id: 'cooking',
+    topic: 'buying',
+    title: 'Cooking and market prices',
+    summary: 'Buy ingredients, cook at home on your stove, and eat, share or feed the kids. Open Phone, then Chowdeck: the Kitchen and Prices tabs.',
+    steps: [
+      'Buy ingredients (rice, beans, yam, palm oil, pepper, crayfish and more) in small portions: a cup, a derica, a tuber, a bunch, a sachet. Go to Oba Market or Edo Fresh Supermarket and open the Shop tab.',
+      'Oba Market is cheaper but only open in the day, and its prices move a little every Benin day. The supermarket is dearer, always open and its prices never change. The Prices tab in Chowdeck shows today\'s prices and whether each one is up or down since yesterday.',
+      'Go home, then open Phone, Chowdeck, Kitchen (or tap your cooker and choose Open the kitchen). Pick a pot size and tap Cook on a dish. The server checks and takes the ingredients and puts the portions in your Bag.',
+      'Eat a portion from the Bag (or Eat one right after cooking) to fill Hunger and get a little Energy and Mood.',
+      'With a partner, tap Send to give them portions. Feeding a child from Nursery up? A cooked portion in your Bag is used instead of lunch money, and fills them up more.',
+    ],
+    where: 'Phone, then Chowdeck: Food, Drinks, Kitchen, Prices. Ingredients: the Shop tab at Oba Market and Edo Fresh Supermarket.',
+    tips: [
+      'You need to be at your own home with a stove or cooker.',
+      'Cooking raises your Cooking skill. Harder dishes need a higher level, and Black soup needs the Catering certificate from the School app. Catering also cooks faster.',
+      'Cooking XP has a daily limit, and easy dishes give less, so the best way to level is to try new dishes.',
+      'Cooked food cannot be sold. Ingredients cannot be sold back. Check the app for current prices and limits.',
+    ],
+    tour: ['cooking'],
+    keywords: 'cook cooking kitchen recipe ingredients food rice beans yam soup jollof egusi owo banga black soup stove oba market supermarket edo fresh prices groceries catering share kids feed',
+  },
+  {
     id: 'market',
     topic: 'buying',
     title: 'Benin Market: buy and sell with players',

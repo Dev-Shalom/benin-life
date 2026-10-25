@@ -251,7 +251,7 @@ function ChildCard({ c, kids, at, run, busy, onName }: { c: KidChild; kids: Kids
             const missing = info.code === 'no_item';
             const unit = a.key === 'feed' ? 'feeds' : a.key === 'change' ? 'changes' : 'doses';
             const sub = ok
-              ? (info.cost > 0 ? naira(info.cost) : info.item && info.left !== undefined ? `${info.left} ${unit}` : 'Free')
+              ? (info.cost > 0 ? naira(info.cost) : info.item && info.left !== undefined ? (info.item.startsWith('dish_') ? `${info.left} ${info.left === 1 ? 'portion' : 'portions'}` : `${info.left} ${unit}`) : 'Free')
               : missing ? (a.key === 'feed' ? 'No formula' : a.key === 'change' ? 'No diapers' : 'No medicine')
               : info.code === 'cooldown' ? dur(left) : info.code === 'not_needed' ? (a.key === 'medicine' ? 'Not unwell' : 'All good') : '';
             return (
