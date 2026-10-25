@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { AvatarPortrait } from '../art/avatar3d';
 import { HomeView, LAYOUTS, activityGroup, furnishLayout, homeLayoutFor } from '../art/home3d';
 import { rpc, errorMessage, GameError } from '../lib/api';
-import { serverNow, useGameClock } from '../lib/clock';
+import { dateLabel, serverNow, useGameClock, weekdayOf } from '../lib/clock';
 import { useConfig } from '../lib/config';
 import { devHourOverride, looksNight } from '../lib/daylight';
 import { naira, nairaShort, timeAgo } from '../lib/format';
@@ -19,9 +19,19 @@ import { originCopy } from '../lib/pidgin';
 import { homeLight } from '../art/home3d/engine/light';
 import { useCatalog } from '../state/catalog';
 import { useGame } from '../state/game';
-import { Button, Icon, Modal, toast } from '../ui';
+import { Button, Icon, Logo, Modal, toast } from '../ui';
 
 const ORBIT_SECONDS = 52;
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const TIKTOK_URL = 'https://www.tiktok.com/@beninlife_official_';
+
+function TikTokGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="currentColor">
+      <path d="M16.6 3c.3 2.4 1.7 4 4 4.2v3.1c-1.5.1-2.9-.4-4-1.1v6.1c0 3.2-2.5 5.7-5.7 5.7S5.2 18.5 5.2 15.3s2.6-5.8 5.9-5.7v3.2a2.6 2.6 0 1 0 1.9 2.5V3h3.6z" />
+    </svg>
+  );
+}
 
 function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(() => {
@@ -159,6 +169,7 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
       ? `At home${home ? `, ${home.name.replace(/ \(.*\)$/, '')}` : ''}`
       : `Out at ${state.location.name.replace(/ \(.*\)$/, '')}`;
   const away = lastSeenAt && Date.now() - lastSeenAt > 5 * 60_000 ? timeAgo(new Date(lastSeenAt).toISOString()) : null;
+  const dateText = `${clock.date ? `${WEEKDAYS[weekdayOf(clock)] ?? ''} ` : ''}${dateLabel(clock)}`.trim();
   const restartOn = cfg('life.restart_enabled', true);
   const confirmWord = p.username;
   const typedOk = typed.trim().toLowerCase() === confirmWord.toLowerCase();
@@ -192,7 +203,7 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
     }
   };
 
-  const insetTop = wide ? 40 : 28;
+  const insetTop = wide ? 170 : 168;
   const insetBottom = wide ? 40 : cardBox.h + 12;
   const insetLeft = wide ? cardBox.w + 48 : 0;
 
@@ -218,47 +229,52 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
         )}
       </div>
 
-      <section ref={card} className="welcome__card" aria-labelledby="welcome-name">
-        <div className="welcome__who">
-          <span className="welcome__face">
-            <AvatarPortrait config={p.avatar} size={72} alt="" />
-            {badge && (
-              <span className={`origin-chip origin-chip--${tier === 'nepo' ? 'nepo' : tier === 'lapo' ? 'lapo' : 'other'}`} title={origin?.name}>
-                {badge}
-              </span>
-            )}
-          </span>
-          <span className="welcome__id">
-            <span className="welcome__eyebrow">Welcome back</span>
-            <h1 id="welcome-name" className="welcome__name">{p.username}</h1>
-            <span className="welcome__where">{where}</span>
-            {away && <span className="welcome__away">Last played {away}</span>}
-          </span>
-        </div>
+      <header className="welcome__head">
+        <Logo size={52} title="" className="welcome__logo" />
+        <h1 className="welcome__title">Benin Life</h1>
+        <p className="welcome__tag">Live your Benin story.</p>
+      </header>
 
-        <div className="welcome__money">
-          <span className="welcome__money-label">Your money</span>
-          <span className="welcome__total" title={naira(total)}>{nairaShort(total)}</span>
-          <span className="welcome__split">
-            <span title={naira(p.cash)}><Icon name="cash" size={15} /> Cash {nairaShort(p.cash)}</span>
-            <span title={naira(p.bank)}><Icon name="bank" size={15} /> Bank {nairaShort(p.bank)}</span>
-          </span>
-        </div>
+      <div className="welcome__dock">
+        <section ref={card} className="welcome__card" aria-labelledby="welcome-name">
+          <div className="welcome__who">
+            <span className="welcome__face">
+              <AvatarPortrait config={p.avatar} size={52} alt="" />
+              {badge && (
+                <span className={`origin-chip origin-chip--${tier === 'nepo' ? 'nepo' : tier === 'lapo' ? 'lapo' : 'other'}`} title={origin?.name}>
+                  {badge}
+                </span>
+              )}
+            </span>
+            <span className="welcome__id">
+              <span id="welcome-name" className="welcome__name">{p.username}</span>
+              <span className="welcome__meta" title={naira(total)}>{dateText} · {nairaShort(total)}</span>
+              <span className="welcome__where">{away ? `Last played ${away}` : where}</span>
+            </span>
+          </div>
 
-        <div className="welcome__actions">
-          <Button size="lg" block onClick={onContinue} className="welcome__go">
-            Continue
-          </Button>
+          <button type="button" className="welcome__go" onClick={onContinue}>Continue</button>
+
+          <div className="welcome__foot">
+            <span className="welcome__signed">Signed in as <strong>@{p.username}</strong></span>
+            <button type="button" className="welcome__link" onClick={() => void logout()} disabled={busy !== null}>
+              Log out
+            </button>
+          </div>
           {restartOn && (
-            <Button variant="ghost" block onClick={() => { setTyped(''); setStep(1); }}>
-              New life
-            </Button>
+            <button type="button" className="welcome__link welcome__link--quiet welcome__newlife" onClick={() => { setTyped(''); setStep(1); }}>
+              Start a new life
+            </button>
           )}
-          <button type="button" className="welcome__logout" onClick={() => void logout()} disabled={busy !== null}>
-            <Icon name="logout" size={15} /> Log out
-          </button>
+        </section>
+
+        <div className="welcome__social">
+          <span className="welcome__official"><Icon name="check" size={14} /> Official</span>
+          <a className="welcome__chip" href={TIKTOK_URL} target="_blank" rel="noopener noreferrer" aria-label="Benin Life on TikTok">
+            <TikTokGlyph />
+          </a>
         </div>
-      </section>
+      </div>
 
       <Modal
         open={step === 1}

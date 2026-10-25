@@ -1,5 +1,3 @@
-import { Logo } from './Logo';
-
 export function Spinner({ size = 20, label }: { size?: number; label?: string }) {
   return (
     <span className="bl-spinner" role="status" aria-label={label ?? 'Loading'} style={{ width: size, height: size }}>
@@ -11,17 +9,12 @@ export function Spinner({ size = 20, label }: { size?: number; label?: string })
   );
 }
 
-/** Full-area loader (splash): the Benin Life mark inside a pulsing ring of coral beads. */
-export function LoadingScreen({ text = 'Loading…' }: { text?: string }) {
+/** Full-area loader (splash): plain light page, "Benin Life" and a muted status line, gentle fade-in. */
+export function LoadingScreen({ text = 'Loading your game…' }: { text?: string }) {
   return (
-    <div className="bl-loading">
-      <div className="bl-loading__beads" aria-hidden>
-        <Logo size={68} title="" className="bl-loading__logo" />
-        {Array.from({ length: 12 }, (_, i) => (
-          <span key={i} style={{ transform: `rotate(${i * 30}deg) translateY(-54px)`, animationDelay: `${i * 0.08}s` }} />
-        ))}
-      </div>
-      <p>{text}</p>
+    <div className="bl-loading" role="status" aria-live="polite">
+      <h1 className="bl-loading__title">Benin Life</h1>
+      <p className="bl-loading__text">{text}</p>
     </div>
   );
 }

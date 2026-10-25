@@ -201,37 +201,34 @@
 }
 .bl-loading {
   display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 22px;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
   min-height: 100dvh;
-  padding: 24px;
-  background: var(--grad-sky);
-  color: var(--text-2);
-  font-family: var(--font-display);
-  font-weight: 600;
+  padding: 24px calc(24px + var(--sar, 0px)) calc(24px + var(--sab, 0px)) calc(24px + var(--sal, 0px));
+  background: #eef1f6;
   text-align: center;
+  animation: bl-loading-in 260ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) both;
 }
-.bl-loading__beads {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 128px;
-  height: 128px;
+.bl-loading__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 9vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: #1a2233;
 }
-.bl-loading__logo {
-  filter: drop-shadow(0 6px 14px rgba(30, 20, 16, 0.25));
+.bl-loading__text {
+  margin: 0;
+  font-size: var(--fs-lg, 1.125rem);
+  font-weight: 500;
+  color: #7a8599;
 }
-.bl-loading__beads span {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  margin: -4px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ff9b84, var(--coral) 55%, var(--coral-deep));
-  animation: bl-pulse 0.96s ease-in-out infinite;
+@keyframes bl-loading-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* ---------- Logo (src/ui/Logo.tsx) ---------- */

@@ -40,8 +40,8 @@ export function randomTip(): string {
 }
 
 export const P = {
-  loading: 'Loading…',
-  loadingGame: 'Loading Benin City…',
+  loading: 'Loading your game…',
+  loadingGame: 'Loading your game…',
   retry: 'Try again',
   close: 'Close',
   cancel: 'Cancel',
