@@ -134,8 +134,8 @@ create table if not exists public.kids_auto_names (
 create table if not exists public.kids_children (
   id               bigserial primary key,
   rel_id           bigint references public.love_relationships(id) on delete set null,
-  parent_a         uuid references public.profiles(id) on delete set null,
-  parent_b         uuid references public.profiles(id) on delete set null,
+  parent_a         uuid,
+  parent_b         uuid,
   proposed_by      uuid,
   status           text not null default 'expecting' check (status in ('expecting', 'home', 'with_relatives', 'grown', 'gone')),
   gone_reason      text check (gone_reason in ('relatives', 'admin', 'no_parents', 'cancelled')),
@@ -182,8 +182,8 @@ create unique index if not exists kids_one_expecting on public.kids_children (pa
 create table if not exists public.kids_invites (
   id           bigserial primary key,
   rel_id       bigint not null references public.love_relationships(id) on delete cascade,
-  from_user    uuid not null references public.profiles(id) on delete cascade,
-  to_user      uuid not null references public.profiles(id) on delete cascade,
+  from_user    uuid not null,
+  to_user      uuid not null,
   status       text not null default 'pending' check (status in ('pending', 'accepted', 'declined', 'expired', 'withdrawn', 'cancelled')),
   created_at   timestamptz not null default now(),
   expires_at   timestamptz not null,
@@ -199,7 +199,7 @@ create index if not exists kids_invites_from on public.kids_invites (from_user, 
 create table if not exists public.kids_care_log (
   id         bigserial primary key,
   child_id   bigint not null references public.kids_children(id) on delete cascade,
-  user_id    uuid references public.profiles(id) on delete set null,
+  user_id    uuid,
   action     text not null check (action in ('feed', 'sleep', 'play', 'medicine', 'cuddle')),
   cost       bigint not null default 0,
   created_at timestamptz not null default now()
@@ -732,8 +732,8 @@ begin
   end loop;
   return old;
 end $$;
-drop trigger if exists kids_parent_left on public.profiles;
-create trigger kids_parent_left before delete on public.profiles for each row execute function public.bl_kids_parent_left();
+-- the trigger kids_parent_left and the foreign keys from these tables to profiles live in 20261027000200_family_kids_links.sql:
+-- they need a lock on the busy profiles table, so they are taken in short retried steps (a deadlock failed the first live deploy).
 
 -- Kill switch: remember when it went off; when it comes back, push every running clock forward by the pause.
 create or replace function public.bl_kids_switch() returns trigger
