@@ -44,9 +44,9 @@ function obstacles(id) {
     if (gm?.room) out.push(infl(gm.room.rect, 0.3));
   }
   // the parking pad (duplex keeps it inside the lot; other homes park beyond the east edge)
-  if (id === 'duplex') out.push([14.9, 9.6, 14.9 + 3 * BAY, 14.2]);
+  if (id === 'duplex') out.push([L.w + 0.5, L.d - 0.4, L.w + 0.5 + 3 * BAY, L.d + 4.2]);
   // other homes park beyond the east edge of the (grown) lot: the pad moves with it, so it is no obstacle
-  if (id === 'duplex') out.push([0.3, 10.8, 4.9, 14.0]); // pool deck
+  if (id === 'duplex') out.push([0.3, L.d + 0.6, 5.9, L.d + 4.2]); // pool deck
   return out;
 }
 

@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { defaultAvatar } from '../../avatar3d';
 import { HomeView } from '../HomeView';
 import { applyUpgrades } from '../upgrades';
+import { placementIssue } from '../arrange';
 import { furnishLayout, KINDS, LAYOUTS, type FurnitureItem, type FurnitureKind, type HomeGroup, type HomeLayout, type HomeLayoutId, type OwnedPiece } from '../model';
 
 /** B1: ?show=1 lays every furniture kind out in rows on the duplex lot (model check). */
@@ -67,9 +68,16 @@ export default function HomeLab() {
     const [style, cap] = (q.get('garage') ?? '').split(':');
     return { cars, names: cars.map((c) => c.replace(/_/g, ' ')), garage: style ? { style: style as 'garage' | 'carport', capacity: Number(cap) || 1 } : null };
   }, [q]);
+  // ?arr=sofa&ax=3&az=3&ar=0 shows the Arrange ghost (red when the spot is refused) for a piece of that kind
+  const ghost = useMemo(() => {
+    const kind = q.get('arr') as FurnitureKind | null;
+    if (!kind || !(kind in KINDS)) return null;
+    const item: FurnitureItem = { id: 'own_ghost', kind, x: Number(q.get('ax') ?? 3), z: Number(q.get('az') ?? 3), rot: Number(q.get('ar') ?? 0) };
+    return { item, invalid: Boolean(placementIssue(upgraded, item, furnished.furniture)) };
+  }, [q, upgraded, furnished]);
   return (
     <div style={{ position: 'fixed', inset: 0 }}>
-      <HomeView layoutId={layout} parking={parking} layout={furnished} origin={origin === 'nepo' ? 'nepo' : origin === 'lapo' ? 'lapo' : undefined} avatar={avatar} hour={hour} busy={busy ? { group: busy, key: busy } : null}
+      <HomeView layoutId={layout} ghost={ghost} parking={parking} layout={furnished} origin={origin === 'nepo' ? 'nepo' : origin === 'lapo' ? 'lapo' : undefined} avatar={avatar} hour={hour} busy={busy ? { group: busy, key: busy } : null}
         selectedId={picked} onPick={(f) => setPicked(f.id)} fallbackScene="home_flat" insetTop={70} insetBottom={110} />
       <div style={{ position: 'fixed', left: 8, top: 8, display: 'flex', gap: 6, flexWrap: 'wrap', zIndex: 5 }}>
         {(Object.keys(LAYOUTS) as HomeLayoutId[]).map((l) => (

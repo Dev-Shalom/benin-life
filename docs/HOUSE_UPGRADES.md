@@ -44,7 +44,7 @@ Face-me -> self-contain -> mini-flat -> duplex at the **same address** (same pri
 
 ## 3D
 Pure data in `src/art/home3d/upgrades.ts`: `applyUpgrades(baseLayout, done, building)` returns the layout with finished upgrades built in and scaffolding for builds in progress.
-- Extension rooms attach to the south wall (`HomeLayout.rooms`: rect + doorway). The lot grows to hold them. Furniture is untouched; the room is just more floor, furnished through the usual Buy / Arrange flow. Wall pieces (curtains, ACs, wall art) only hang on the north or west wall, so a south room with x0 = 0 has the west wall for them.
+- Extension rooms (sizes after the 2026-11-02 bigger homes: face-me 6.8 x 3.2, self-contain 7.2 x 3.2, mini-flat 8 x 3.4, duplex guest wing 10 x 3.8) attach to the south wall (`HomeLayout.rooms`: rect + doorway). The lot grows to hold them. Furniture is untouched; the room is just more floor, furnished through the usual Buy / Arrange flow. Wall pieces (curtains, ACs, wall art) only hang on the north or west wall, so a south room with x0 = 0 has the west wall for them.
 - Yard buildings (`HomeLayout.structs`): boys' quarters, generator house, solar rack, borehole tank. They block walking and solid furniture.
 - Finish level changes floor and wall materials and colours (level 2+ gets the tiled "rich" look and POP cornice; level 3 marble-look floors and gold skirting). Security draws the compound wall, then gate pillars, a sliding gate and a CCTV mast.
 - A garage upgrade shows the garage through the existing parking code. Builds show scaffolding: round the new room, building spot or parking pad; a tier upgrade scaffolds the front of the house.

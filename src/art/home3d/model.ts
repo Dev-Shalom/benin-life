@@ -308,236 +308,247 @@ export interface HomeStruct {
 
 const Q = 1; // quarter turn
 
+// Home sizes (docs/HUD_HOME.md "Home sizes"): every tier is roomy and each is clearly bigger than the one below.
+//   hostel 6.2 x 5.0, face-me 6.8 x 5.6 (LAPO start), self-contain 9.0 x 6.8, mini-flat 13.0 x 9.4, duplex 19.0 x 13.4.
+// Rules the plans follow: 0.8 m or more between big pieces, 1.1+ m doorways, the north / west walls stay free for
+// wall pieces, the compound (lot) keeps the same margins as before, and every default slot is valid for the starter
+// sets (scripts/home-space-check.mjs checks all of it, and home_layouts in SQL is generated from this file).
 export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
   // UNIBEN hostel: a shared room with bunks, desks and lockers; bathroom stalls down the corridor.
   hostel: {
     id: 'hostel',
     label: 'UNIBEN hostel room',
-    w: 5.2,
-    d: 4.4,
-    lot: [0, 0, 7.6, 5.6],
+    w: 6.2,
+    d: 5.0,
+    lot: [0, 0, 9.0, 6.6],
     floor: { a: '#a9b4ad', b: '#9da9a2', tile: 0.6 },
     wall: '#5a6b7a',
     wallInner: '#d9e4ec',
     wallH: 2.5,
     partitions: [],
-    doors: [['e', 3.1, 4.1]],
-    windows: [['n', 1.4, 3.0], ['w', 1.2, 2.6]],
+    doors: [['e', 3.5, 4.6]],
+    windows: [['n', 1.4, 3.2], ['n', 4.3, 5.5], ['w', 1.4, 3.2], ['w', 3.8, 4.8]],
     yard: { colour: '#c98a5e' },
-    home: [3.6, 3.4, -Math.PI / 4],
-    slots: { bed: [0.75, 1.1, 0], seat: [3.2, 2.9, 0], sofa: [2.0, 3.4, 3], tv: [0.3, 3.4, 1], stove: [4.7, 0.4, 0], fridge: [4.85, 1.45, 3], wardrobe: [3.4, 0.35, 0], bath: [6.8, 3.55, 3] },
+    home: [4.2, 3.4, -Math.PI / 4],
+    slots: { bed: [0.75, 1.2, 0], seat: [4.3, 4.1, 0], sofa: [2.9, 3.5, 3], tv: [0.3, 3.5, 1], rug: [1.7, 3.5, 0], ctable: [1.55, 3.5, 1], stove: [4.2, 0.4, 0], fridge: [5.5, 0.45, 0], wardrobe: [2.7, 0.35, 0], bath: [7.6, 3.8, 3] },
     furniture: [
-      { id: 'bunk1', kind: 'bunk', x: 0.6, z: 1.1, color: '#2f6fb3' },
-      { id: 'bunk2', kind: 'bunk', x: 2.0, z: 1.1, color: '#b33f3f' },
-      { id: 'locker1', kind: 'locker', x: 3.3, z: 0.35 },
-      { id: 'locker2', kind: 'locker', x: 3.95, z: 0.35 },
-      { id: 'desk1', kind: 'desk', x: 0.6, z: 3.6, rot: 2 * Q },
-      { id: 'chair1', kind: 'plastic_chair', x: 0.6, z: 3.0, color: '#e8e4dc' },
-      { id: 'radio', kind: 'radio', x: 0.95, z: 3.62, y: 0.75, rot: 2 * Q },
-      { id: 'desk2', kind: 'desk', x: 4.6, z: 1.6, rot: 3 * Q },
-      { id: 'chair2', kind: 'plastic_chair', x: 4.0, z: 1.6, rot: 1 * Q, color: '#3e8f5a', actorFor: ['media', 'seat'] },
-      { id: 'hotplate', kind: 'hotplate', x: 4.7, z: 0.4 },
-      { id: 'fan', kind: 'fan', x: 2.9, z: 2.6 },
-      { id: 'bucket', kind: 'bucket_bath', x: 6.6, z: 1.0, rot: 3 * Q },
-      { id: 'toilet', kind: 'pit_toilet', x: 6.6, z: 2.4, rot: 3 * Q },
-      { id: 'drum', kind: 'drum', x: 6.6, z: 4.6 },
+      { id: 'bunk1', kind: 'bunk', x: 0.65, z: 1.2, color: '#2f6fb3' },
+      { id: 'bunk2', kind: 'bunk', x: 2.5, z: 1.2, color: '#b33f3f' },
+      { id: 'locker1', kind: 'locker', x: 4.1, z: 0.35 },
+      { id: 'locker2', kind: 'locker', x: 4.75, z: 0.35 },
+      { id: 'desk1', kind: 'desk', x: 0.65, z: 4.4, rot: 2 * Q },
+      { id: 'chair1', kind: 'plastic_chair', x: 0.65, z: 3.65, color: '#e8e4dc' },
+      { id: 'radio', kind: 'radio', x: 1.0, z: 4.42, y: 0.75, rot: 2 * Q },
+      { id: 'desk2', kind: 'desk', x: 5.75, z: 2.0, rot: 3 * Q },
+      { id: 'chair2', kind: 'plastic_chair', x: 5.05, z: 2.0, rot: 1 * Q, color: '#3e8f5a', actorFor: ['media', 'seat'] },
+      { id: 'hotplate', kind: 'hotplate', x: 5.6, z: 0.4 },
+      { id: 'fan', kind: 'fan', x: 3.3, z: 2.9 },
+      { id: 'bucket', kind: 'bucket_bath', x: 7.6, z: 1.1, rot: 3 * Q },
+      { id: 'toilet', kind: 'pit_toilet', x: 7.6, z: 2.45, rot: 3 * Q },
+      { id: 'drum', kind: 'drum', x: 7.6, z: 5.4 },
     ],
   },
 
-  // Face-me-I-face-you single room; the bathroom, toilet and generator are shared in the compound.
+  // Face-me-I-face-you single room (the LAPO start home): a medium, roomy room; the bathroom, toilet and
+  // generator are shared in the compound.
   face_me: {
     id: 'face_me',
     label: 'Face-me-I-face-you room',
-    w: 4.2,
-    d: 3.8,
-    lot: [0, 0, 7.2, 5.4],
+    w: 6.8,
+    d: 5.6,
+    lot: [0, 0, 9.8, 7.2],
     floor: { a: '#9e9a92', b: '#97938b', tile: 1.2 },
     wall: '#6b5e4e',
     wallInner: '#cfe3cf',
     wallH: 2.5,
     partitions: [],
-    doors: [['e', 2.4, 3.3]],
-    windows: [['n', 2.3, 3.4]],
+    doors: [['e', 3.9, 5.0]],
+    windows: [['n', 1.5, 3.1], ['n', 4.4, 5.8], ['w', 4.3, 5.2]],
     yard: { colour: '#bf7a4c', fence: true },
-    home: [2.6, 2.6, -Math.PI / 4],
-    slots: { bed: [0.85, 1.1, 0], seat: [1.3, 3.2, 3], sofa: [1.7, 3.3, 2], tv: [2.75, 0.3, 0], rug: [2.2, 2.4, 0], stove: [3.6, 2.0, 3], fridge: [3.75, 0.4, 0], wardrobe: [0.35, 3.0, 1], bath: [5.7, 3.5, 3] },
+    home: [4.3, 3.0, -Math.PI / 4],
+    slots: { bed: [0.85, 1.2, 0], seat: [4.6, 4.45, 0], sofa: [2.9, 3.6, 3], tv: [0.3, 3.6, 1], rug: [1.9, 3.6, 0], ctable: [1.6, 3.6, 1], stove: [5.25, 0.4, 0], fridge: [6.4, 0.45, 0], wardrobe: [3.0, 0.35, 0], bath: [8.5, 3.6, 3] },
     furniture: [
-      { id: 'rug', kind: 'rug', x: 2.1, z: 2.7, color: '#9c3b33' },
-      { id: 'bed', kind: 'bed_double', x: 0.85, z: 1.1, color: '#6d4aa0' },
-      { id: 'wardrobe', kind: 'wardrobe', x: 2.2, z: 0.35, color: '#8a5a33' },
-      { id: 'fan', kind: 'fan', x: 3.6, z: 0.5 },
-      { id: 'table', kind: 'table', x: 0.6, z: 3.25, rot: 1 * Q },
-      { id: 'radio', kind: 'radio', x: 0.6, z: 3.45, y: 0.75, rot: 1 * Q },
-      { id: 'chair', kind: 'plastic_chair', x: 1.25, z: 3.2, rot: 3 * Q, color: '#e8e4dc', actorFor: ['media', 'seat'] },
-      { id: 'stove', kind: 'kerosene_stove', x: 3.6, z: 1.6, rot: 3 * Q },
-      { id: 'bucket', kind: 'bucket_bath', x: 6.2, z: 0.9, rot: 3 * Q },
-      { id: 'toilet', kind: 'pit_toilet', x: 6.2, z: 2.25, rot: 3 * Q },
-      { id: 'gen', kind: 'generator', x: 5.0, z: 4.7 },
-      { id: 'drum', kind: 'drum', x: 6.4, z: 4.6 },
-      { id: 'line', kind: 'clothesline', x: 4.9, z: 0.5, rot: 1 * Q },
+      { id: 'rug', kind: 'rug', x: 1.9, z: 3.6, color: '#9c3b33' },
+      { id: 'bed', kind: 'bed_double', x: 0.85, z: 1.2, color: '#6d4aa0' },
+      { id: 'wardrobe', kind: 'wardrobe', x: 3.0, z: 0.35, color: '#8a5a33' },
+      { id: 'fan', kind: 'fan', x: 4.3, z: 0.55 },
+      { id: 'table', kind: 'table', x: 4.6, z: 5.15 },
+      { id: 'radio', kind: 'radio', x: 4.6, z: 5.15, y: 0.75 },
+      { id: 'chair', kind: 'plastic_chair', x: 4.6, z: 4.45, color: '#e8e4dc', actorFor: ['media', 'seat'] },
+      { id: 'stove', kind: 'kerosene_stove', x: 5.25, z: 0.45 },
+      { id: 'bucket', kind: 'bucket_bath', x: 8.4, z: 0.95, rot: 3 * Q },
+      { id: 'toilet', kind: 'pit_toilet', x: 8.4, z: 2.2, rot: 3 * Q },
+      { id: 'gen', kind: 'generator', x: 8.0, z: 6.5 },
+      { id: 'drum', kind: 'drum', x: 9.2, z: 6.4 },
+      { id: 'line', kind: 'clothesline', x: 7.2, z: 0.9, rot: 1 * Q },
     ],
   },
 
-  // Self-contain in Uselu: one room with its own kitchenette and bathroom.
+  // Self-contain in Uselu: a bathroom corner, kitchen row, sleeping corner and a proper sitting area.
   self_contain: {
     id: 'self_contain',
     label: 'Self-contain',
-    w: 6.0,
-    d: 4.8,
-    lot: [0, 0, 7.4, 6.0],
+    w: 9.0,
+    d: 6.8,
+    lot: [0, 0, 11.4, 8.4],
     floor: { a: '#e9e1d2', b: '#ddd3c1', tile: 0.6 },
-    patches: [[0, 0, 1.9, 2.0, '#cfe0e6', '#bdd2d9', 0.3]],
+    patches: [[0, 0, 2.6, 2.6, '#cfe0e6', '#bdd2d9', 0.3]],
     wall: '#4f5d6b',
     wallInner: '#f1ead9',
     wallH: 2.6,
-    partitions: [[1.9, 0, 1.9, 1.1], [0, 2.0, 1.2, 2.0]],
-    doors: [['e', 2.55, 3.45]],
-    windows: [['n', 2.6, 4.0], ['w', 2.8, 4.0]],
+    partitions: [[2.6, 0, 2.6, 1.7], [0, 2.6, 1.4, 2.6]],
+    doors: [['e', 4.9, 6.0]],
+    windows: [['n', 0.7, 1.9], ['n', 3.4, 5.6], ['n', 6.8, 8.4], ['w', 2.9, 4.1], ['w', 5.9, 6.5]],
     yard: { colour: '#c4875a' },
-    home: [3.8, 3.2, -Math.PI / 4],
-    slots: { bed: [4.95, 1.5, 3], seat: [2.6, 3.5, 3], sofa: [2.6, 3.5, 3], tv: [0.3, 3.5, 1], ctable: [1.45, 3.5, 1], rug: [1.6, 3.5, 1], stove: [2.7, 0.35, 0], fridge: [3.55, 0.4, 0], wardrobe: [5.3, 0.35, 0], bath: [6.7, 2.0, 0] },
+    home: [4.4, 3.2, -Math.PI / 4],
+    slots: { bed: [7.95, 1.6, 3], seat: [4.8, 3.55, 0], sofa: [3.0, 4.9, 3], tv: [0.3, 4.9, 1], ctable: [1.65, 4.9, 1], rug: [1.8, 4.9, 0], stove: [3.7, 0.4, 0], fridge: [5.0, 0.45, 0], wardrobe: [8.7, 3.7, 3], bath: [10.2, 2.4, 0] },
     furniture: [
-      { id: 'toilet', kind: 'toilet', x: 0.45, z: 0.5 },
-      { id: 'shower', kind: 'shower', x: 1.3, z: 0.65 },
-      { id: 'sink', kind: 'sink', x: 0.35, z: 1.5, rot: 1 * Q },
-      { id: 'kitchen', kind: 'kitchen', x: 3.4, z: 0.35, color: '#f4f1ea' },
-      { id: 'gas', kind: 'gas', x: 2.1, z: 0.3 },
-      { id: 'bed', kind: 'bed_double', x: 4.95, z: 1.5, rot: 3 * Q, color: '#2e7d6b' },
-      { id: 'wardrobe', kind: 'wardrobe', x: 5.3, z: 0.35, color: '#7b4f2e' },
-      { id: 'tv', kind: 'tv', x: 0.3, z: 3.5, rot: 1 * Q },
-      { id: 'sofa', kind: 'sofa', x: 2.6, z: 3.5, rot: 3 * Q, color: '#b0473c', actorFor: ['media', 'seat'] },
-      { id: 'ctable', kind: 'centre_table', x: 1.45, z: 3.5, rot: 1 * Q },
-      { id: 'fan', kind: 'fan', x: 3.2, z: 2.0 },
-      { id: 'gen', kind: 'generator', x: 6.8, z: 1.0, rot: 1 * Q },
-      { id: 'plant', kind: 'plant', x: 6.8, z: 5.4 },
+      { id: 'toilet', kind: 'toilet', x: 0.5, z: 0.55 },
+      { id: 'shower', kind: 'shower', x: 1.9, z: 0.75 },
+      { id: 'sink', kind: 'sink', x: 0.3, z: 1.8, rot: 1 * Q },
+      { id: 'kitchen', kind: 'kitchen', x: 4.7, z: 0.35, color: '#f4f1ea' },
+      { id: 'gas', kind: 'gas', x: 3.3, z: 0.3 },
+      { id: 'bed', kind: 'bed_double', x: 7.95, z: 1.6, rot: 3 * Q, color: '#2e7d6b' },
+      { id: 'wardrobe', kind: 'wardrobe', x: 8.7, z: 3.7, rot: 3 * Q, color: '#7b4f2e' },
+      { id: 'tv', kind: 'tv', x: 0.3, z: 4.9, rot: 1 * Q },
+      { id: 'rug', kind: 'rug', x: 1.8, z: 4.9, color: '#9c3b33' },
+      { id: 'sofa', kind: 'sofa', x: 3.0, z: 4.9, rot: 3 * Q, color: '#b0473c', actorFor: ['media', 'seat'] },
+      { id: 'ctable', kind: 'centre_table', x: 1.65, z: 4.9, rot: 1 * Q },
+      { id: 'fan', kind: 'fan', x: 6.0, z: 3.4 },
+      { id: 'gen', kind: 'generator', x: 10.2, z: 0.9, rot: 1 * Q },
+      { id: 'plant', kind: 'plant', x: 10.6, z: 7.4 },
     ],
   },
 
-  // H1 mid tier: mini-flat on Mission Road, 9.6 x 7.2 m. Bedroom (NW), kitchen (N), bathroom (NE),
+  // H1 mid tier: mini-flat on Mission Road, 13 x 9.4 m. Bedroom (NW), kitchen (N), bathroom (NE),
   // parlour (SW) and a dining corner by the side door. Comes with a kitchen cabinet, a bedroom AC, a
   // ceiling fan and a dining set.
   flat: {
     id: 'flat',
     label: 'Mini-flat',
-    w: 9.6,
-    d: 7.2,
-    lot: [0, 0, 11.4, 8.6],
+    w: 13.0,
+    d: 9.4,
+    lot: [0, 0, 15.2, 11.0],
     floor: { a: '#f2f0ec', b: '#e4e0d8', tile: 0.8 },
     patches: [
-      [0, 0, 3.8, 3.2, '#efe6d6', '#e1d5c0', 0.5], // bedroom
-      [3.8, 0, 6.8, 3.2, '#e9ece9', '#d9dedb', 0.4], // kitchen
-      [6.8, 0, 9.6, 2.6, '#d4e4ea', '#c2d6de', 0.3], // bathroom
+      [0, 0, 5.0, 4.2, '#efe6d6', '#e1d5c0', 0.5], // bedroom
+      [5.0, 0, 9.2, 3.6, '#e9ece9', '#d9dedb', 0.4], // kitchen
+      [9.2, 0, 13.0, 3.2, '#d4e4ea', '#c2d6de', 0.3], // bathroom
     ],
     wall: '#3b4350',
     wallInner: '#eef0f3',
     wallH: 2.7,
     partitions: [
-      [3.8, 0, 3.8, 3.2], [0, 3.2, 2.8, 3.2], // bedroom (door to the parlour 2.8-3.8)
-      [6.8, 0, 6.8, 2.6], [6.8, 2.6, 7.6, 2.6], [8.6, 2.6, 9.6, 2.6], // bathroom (door 7.6-8.6)
-      [3.8, 3.2, 4.4, 3.2], // kitchen stub
+      [5.0, 0, 5.0, 4.2], [0, 4.2, 3.6, 4.2], // bedroom (door to the parlour 3.6-5.0)
+      [9.2, 0, 9.2, 3.2], [9.2, 3.2, 10.3, 3.2], [11.5, 3.2, 13.0, 3.2], // bathroom (door 10.3-11.5)
+      [5.0, 4.2, 5.9, 4.2], // kitchen stub
     ],
-    doors: [['e', 4.0, 5.2]],
-    windows: [['n', 0.8, 2.6], ['n', 4.4, 5.6], ['w', 4.0, 6.4]],
+    doors: [['e', 5.0, 6.2]],
+    windows: [['n', 2.4, 4.2], ['n', 6.0, 8.4], ['w', 1.4, 3.0], ['w', 5.4, 8.2]],
     yard: { colour: '#7aa35a' },
-    home: [6.2, 6.2, -Math.PI / 4],
-    slots: { bed: [1.15, 1.25, 0], seat: [2.0, 6.7, 2], sofa: [3.4, 5.2, 3], tv: [0.3, 5.2, 1], ctable: [1.9, 5.2, 1], rug: [2.0, 5.2, 0], stove: [4.4, 0.35, 0], fridge: [4.25, 1.75, 1], wardrobe: [3.42, 1.6, 3], bath: [7.25, 1.9, 1] },
+    home: [7.0, 7.2, -Math.PI / 4],
+    slots: { bed: [1.35, 1.35, 0], seat: [2.3, 8.5, 2], sofa: [3.6, 6.6, 3], tv: [0.3, 6.6, 1], ctable: [1.8, 6.6, 1], rug: [2.0, 6.6, 0], stove: [5.9, 0.4, 0], fridge: [5.45, 1.9, 1], wardrobe: [4.62, 1.8, 3], bath: [9.8, 2.2, 1] },
     furniture: [
-      { id: 'toilet', kind: 'toilet', x: 7.25, z: 0.5 },
-      { id: 'sink', kind: 'sink', x: 8.0, z: 0.3 },
-      { id: 'shower', kind: 'shower', x: 9.05, z: 0.6 },
-      { id: 'cab', kind: 'kitchen_cab', x: 6.12, z: 0.33, color: '#f4f1ea', included: 'kitchen_cabinet' },
-      { id: 'ac', kind: 'ac', x: 1.2, z: 0.15, included: 'ac_split' },
-      { id: 'cfan', kind: 'fan_ceiling', x: 2.2, z: 5.2, included: 'fan_ceiling' },
-      { id: 'dining', kind: 'dining4', x: 7.6, z: 4.7, color: '#8a5a33', included: 'dining_4' },
-      { id: 'gen', kind: 'generator', x: 10.6, z: 1.2, rot: 1 * Q, included: 'gen_firman' },
+      { id: 'toilet', kind: 'toilet', x: 9.85, z: 0.55 },
+      { id: 'sink', kind: 'sink', x: 10.95, z: 0.3 },
+      { id: 'shower', kind: 'shower', x: 12.0, z: 0.65 },
+      { id: 'cab', kind: 'kitchen_cab', x: 7.4, z: 0.33, color: '#f4f1ea', included: 'kitchen_cabinet' },
+      { id: 'ac', kind: 'ac', x: 1.4, z: 0.15, included: 'ac_split' },
+      { id: 'cfan', kind: 'fan_ceiling', x: 2.0, z: 6.6, included: 'fan_ceiling' },
+      { id: 'dining', kind: 'dining4', x: 9.9, z: 6.4, color: '#8a5a33', included: 'dining_4' },
+      { id: 'gen', kind: 'generator', x: 14.2, z: 1.4, rot: 1 * Q, included: 'gen_firman' },
       // default set (replaced by the player's own furniture)
-      { id: 'bed', kind: 'bed_double', x: 1.15, z: 1.25, color: '#5b3fa0' },
-      { id: 'wardrobe', kind: 'wardrobe', x: 3.42, z: 1.6, rot: 3 * Q, color: '#8a5a33' },
-      { id: 'stove', kind: 'gas_cooker', x: 4.4, z: 0.35 },
-      { id: 'fridge', kind: 'fridge', x: 4.25, z: 1.75, rot: 1 * Q },
-      { id: 'rug', kind: 'rug', x: 2.0, z: 5.2, color: '#b3332c' },
-      { id: 'tv', kind: 'tv', x: 0.3, z: 5.2, rot: 1 * Q },
-      { id: 'sofa', kind: 'sofa', x: 3.4, z: 5.2, rot: 3 * Q, color: '#7a1f2b', actorFor: ['media', 'seat'] },
-      { id: 'arm', kind: 'armchair', x: 2.0, z: 6.7, rot: 2 * Q, color: '#7a1f2b' },
-      { id: 'ctable', kind: 'centre_table', x: 1.9, z: 5.2, rot: 1 * Q },
-      { id: 'plant', kind: 'plant', x: 5.6, z: 6.8 },
+      { id: 'bed', kind: 'bed_double', x: 1.35, z: 1.35, color: '#5b3fa0' },
+      { id: 'wardrobe', kind: 'wardrobe', x: 4.62, z: 1.8, rot: 3 * Q, color: '#8a5a33' },
+      { id: 'stove', kind: 'gas_cooker', x: 5.9, z: 0.4 },
+      { id: 'fridge', kind: 'fridge', x: 5.45, z: 1.9, rot: 1 * Q },
+      { id: 'rug', kind: 'rug', x: 2.0, z: 6.6, color: '#b3332c' },
+      { id: 'tv', kind: 'tv', x: 0.3, z: 6.6, rot: 1 * Q },
+      { id: 'sofa', kind: 'sofa', x: 3.6, z: 6.6, rot: 3 * Q, color: '#7a1f2b', actorFor: ['media', 'seat'] },
+      { id: 'arm', kind: 'armchair', x: 2.3, z: 8.5, rot: 2 * Q, color: '#7a1f2b' },
+      { id: 'ctable', kind: 'centre_table', x: 1.8, z: 6.6, rot: 1 * Q },
+      { id: 'plant', kind: 'plant', x: 7.2, z: 8.7 },
     ],
   },
 
-  // H1 top tier: GRA duplex (ground floor), 14.4 x 10 m, by far the widest. Master bedroom (NW), fitted
-  // kitchen with an island (N), bathroom with a tub, laundry + staircase (NE), a furnished guest bedroom
-  // (SE), dining and a big parlour (S). Comes with the fitted kitchen, ACs, chandelier, ceiling fan,
-  // water heater, the dining set and the guest room.
+  // H1 top tier: GRA duplex (ground floor), 19 x 13.4 m, by far the widest. Master bedroom (NW), fitted
+  // kitchen with an island (N), bathroom with a tub, laundry + staircase (NE), a wide hall and entrance lobby,
+  // a study, a furnished guest bedroom (SE), dining and a big parlour (S). Comes with the fitted kitchen, ACs,
+  // chandelier, ceiling fan, water heater, the dining set and the guest room.
   duplex: {
     id: 'duplex',
     label: 'GRA duplex',
-    w: 14.4,
-    d: 10.0,
+    w: 19.0,
+    d: 13.4,
     // GRA compound: a pool deck in front, the paved parking bay by the gate (east), lawn round the house.
-    lot: [-1, -0.5, 18.6, 14.6],
+    lot: [-1, -0.5, 23.2, 18.0],
     floor: { a: '#f4f1ec', b: '#e8e3da', tile: 1.0 },
     patches: [
-      [0, 0, 4.4, 3.8, '#c9a27a', '#bf976e', 0.4], // master bedroom (wood)
-      [4.4, 0, 9.2, 3.6, '#e7e3dc', '#d8d2c8', 0.5], // kitchen
-      [9.2, 0, 11.8, 3.0, '#dfe9ee', '#cfdde4', 0.4], // bathroom
-      [11.8, 0, 14.4, 3.0, '#d9d6cf', '#cbc7bf', 0.4], // laundry
-      [10.4, 5.4, 14.4, 10.0, '#c9a27a', '#bf976e', 0.4], // guest bedroom (wood)
+      [0, 0, 6.0, 5.0, '#c9a27a', '#bf976e', 0.4], // master bedroom (wood)
+      [6.0, 0, 12.2, 4.2, '#e7e3dc', '#d8d2c8', 0.5], // kitchen
+      [12.2, 0, 15.4, 3.6, '#dfe9ee', '#cfdde4', 0.4], // bathroom
+      [15.4, 0, 19.0, 3.6, '#d9d6cf', '#cbc7bf', 0.4], // laundry
+      [15.2, 6.6, 19.0, 9.8, '#d3b48c', '#c9a97f', 0.4], // study (wood)
+      [13.6, 9.8, 19.0, 13.4, '#c9a27a', '#bf976e', 0.4], // guest bedroom (wood)
     ],
     wall: '#2f3640',
     wallInner: '#f6f3ee',
     wallH: 2.9,
     partitions: [
-      [4.4, 0, 4.4, 3.8], [0, 3.8, 3.2, 3.8], // master bedroom (door 3.2-4.4)
-      [9.2, 0, 9.2, 3.0], [9.2, 3.0, 9.9, 3.0], [10.9, 3.0, 11.8, 3.0], // bathroom (door 9.9-10.9)
-      [11.8, 0, 11.8, 3.0], [11.8, 3.0, 12.2, 3.0], // laundry + stairs (open 12.2-14.4)
-      [10.4, 5.4, 14.4, 5.4], [10.4, 5.4, 10.4, 6.2], [10.4, 7.2, 10.4, 10.0], // guest bedroom (door 6.2-7.2)
-      [7.2, 8.6, 7.2, 10.0], // parlour / dining divider
+      [6.0, 0, 6.0, 5.0], [0, 5.0, 4.4, 5.0], // master bedroom (door 4.4-6.0)
+      [12.2, 0, 12.2, 3.6], [12.2, 3.6, 13.4, 3.6], [14.6, 3.6, 15.4, 3.6], // bathroom (door 13.4-14.6)
+      [15.4, 0, 15.4, 3.6], [15.4, 3.6, 16.0, 3.6], // laundry + stairs (open 16.0-19.0)
+      [15.2, 6.6, 19.0, 6.6], [15.2, 6.6, 15.2, 7.4], [15.2, 8.6, 15.2, 9.8], // study (door 7.4-8.6)
+      [13.6, 9.8, 19.0, 9.8], [13.6, 9.8, 13.6, 10.8], [13.6, 12.0, 13.6, 13.4], // guest bedroom (door 10.8-12.0)
+      [9.6, 10.8, 9.6, 13.4], // parlour / dining divider
     ],
-    doors: [['s', 5.4, 6.6], ['e', 3.6, 4.8]],
-    windows: [['n', 0.8, 3.0], ['n', 5.6, 8.0], ['n', 10.0, 11.0], ['w', 5.0, 8.4], ['w', 1.0, 3.0]],
+    doors: [['s', 7.0, 8.4], ['e', 4.6, 5.9]],
+    windows: [['n', 1.0, 4.2], ['n', 7.8, 10.4], ['n', 13.0, 14.6], ['n', 16.2, 18.0], ['w', 6.6, 11.4], ['w', 1.2, 3.8]],
     yard: { colour: '#6fa052' },
-    home: [6.0, 8.6, -Math.PI / 4],
-    slots: { bed: [1.4, 1.35, 0], seat: [2.2, 9.2, 2], sofa: [3.7, 6.9, 3], tv: [0.3, 6.9, 1], ctable: [1.9, 6.9, 1], rug: [2.1, 6.9, 0], stove: [5.1, 0.35, 0], fridge: [4.85, 1.75, 1], wardrobe: [3.4, 0.35, 0], bath: [9.75, 2.2, 1] },
+    home: [7.2, 6.6, -Math.PI / 4],
+    slots: { bed: [1.6, 1.5, 0], seat: [2.4, 11.9, 2], sofa: [4.2, 9.4, 3], tv: [0.3, 9.4, 1], ctable: [2.1, 9.4, 1], rug: [2.3, 9.4, 0], stove: [6.9, 0.4, 0], fridge: [6.4, 2.0, 1], wardrobe: [4.0, 0.35, 0], bath: [13.2, 2.4, 1] },
     furniture: [
       // bathroom
-      { id: 'toilet', kind: 'toilet', x: 9.7, z: 0.5 },
-      { id: 'sink', kind: 'sink', x: 10.6, z: 0.3 },
-      { id: 'tub', kind: 'bathtub', x: 11.3, z: 1.2 },
-      { id: 'heater', kind: 'water_heater', x: 10.3, z: 0.15, included: 'water_heater' },
+      { id: 'toilet', kind: 'toilet', x: 12.75, z: 0.55 },
+      { id: 'sink', kind: 'sink', x: 13.75, z: 0.3 },
+      { id: 'tub', kind: 'bathtub', x: 14.85, z: 1.3 },
+      { id: 'heater', kind: 'water_heater', x: 14.5, z: 0.15, included: 'water_heater' },
       // fitted kitchen
-      { id: 'kitchen', kind: 'kitchen', x: 6.75, z: 0.35, color: '#2f3640', fixed: true },
-      { id: 'cab', kind: 'kitchen_cab', x: 8.5, z: 0.33, color: '#2f3640', included: 'kitchen_cabinet' },
-      { id: 'island', kind: 'island', x: 6.9, z: 2.3, color: '#e9e4dc', fixed: true },
+      { id: 'kitchen', kind: 'kitchen', x: 9.0, z: 0.35, color: '#2f3640', fixed: true },
+      { id: 'cab', kind: 'kitchen_cab', x: 11.2, z: 0.33, color: '#2f3640', included: 'kitchen_cabinet' },
+      { id: 'island', kind: 'island', x: 9.0, z: 2.5, color: '#e9e4dc', fixed: true },
       // laundry + staircase
-      { id: 'washer', kind: 'washer', x: 12.3, z: 0.4, included: 'washing_machine' },
-      { id: 'stairs', kind: 'stairs', x: 13.8, z: 1.5, fixed: true },
+      { id: 'washer', kind: 'washer', x: 16.0, z: 0.45, included: 'washing_machine' },
+      { id: 'stairs', kind: 'stairs', x: 18.45, z: 1.6, fixed: true },
       // master bedroom + parlour comfort
-      { id: 'ac1', kind: 'ac', x: 1.4, z: 0.15, included: 'ac_split' },
-      { id: 'ac2', kind: 'ac', x: 0.15, z: 5.2, rot: 1 * Q, included: 'ac_split' },
-      { id: 'chand', kind: 'chandelier', x: 2.2, z: 6.9, included: 'chandelier' },
-      { id: 'cfan', kind: 'fan_ceiling', x: 8.2, z: 6.4, included: 'fan_ceiling' },
-      // dining (kept clear of the guest bedroom door at x 10.4, z 6.2-7.2: at x 8.8 it left a 0.27 m squeeze)
-      { id: 'dining', kind: 'dining6', x: 8.2, z: 6.4, color: '#5b3a24', included: 'dining_6' },
+      { id: 'ac1', kind: 'ac', x: 1.6, z: 0.15, included: 'ac_split' },
+      { id: 'ac2', kind: 'ac', x: 0.15, z: 7.6, rot: 1 * Q, included: 'ac_split' },
+      { id: 'chand', kind: 'chandelier', x: 2.3, z: 9.4, included: 'chandelier' },
+      { id: 'cfan', kind: 'fan_ceiling', x: 11.4, z: 8.8, included: 'fan_ceiling' },
+      // dining (kept clear of the study and guest bedroom doors)
+      { id: 'dining', kind: 'dining6', x: 11.4, z: 8.8, color: '#5b3a24', included: 'dining_6' },
       // guest bedroom (furnished)
-      { id: 'gbed', kind: 'bed_double', x: 13.4, z: 7.6, rot: 3 * Q, color: '#e8dccb', included: 'bed_double' },
-      { id: 'gside', kind: 'bedside', x: 13.9, z: 6.2, included: 'bedside' },
-      { id: 'gward', kind: 'wardrobe_big', x: 11.5, z: 9.65, rot: 2 * Q, color: '#5b3a24', included: 'wardrobe_big' },
+      { id: 'gbed', kind: 'bed_double', x: 18.0, z: 11.6, rot: 3 * Q, color: '#e8dccb', included: 'bed_double' },
+      { id: 'gside', kind: 'bedside', x: 18.5, z: 10.4, included: 'bedside' },
+      { id: 'gward', kind: 'wardrobe_big', x: 15.1, z: 13.05, rot: 2 * Q, color: '#5b3a24', included: 'wardrobe_big' },
       // compound
-      { id: 'gen', kind: 'generator', x: 16.6, z: 1.2, rot: 1 * Q, included: 'gen_firman' },
-      { id: 'palm1', kind: 'plant_big', x: -0.5, z: 13.8, included: 'plant_palm' },
-      { id: 'palm2', kind: 'plant_big', x: 17.9, z: 6.2, included: 'plant_palm' },
+      { id: 'gen', kind: 'generator', x: 21.2, z: 1.2, rot: 1 * Q, included: 'gen_firman' },
+      { id: 'palm1', kind: 'plant_big', x: -0.5, z: 17.2, included: 'plant_palm' },
+      { id: 'palm2', kind: 'plant_big', x: 22.6, z: 5.2, included: 'plant_palm' },
       // default set (replaced by the player's own furniture)
-      { id: 'bed', kind: 'bed_king', x: 1.4, z: 1.35, color: '#efe9df' },
-      { id: 'wardrobe', kind: 'wardrobe', x: 3.4, z: 0.35, color: '#5b3a24' },
-      { id: 'stove', kind: 'gas_cooker', x: 5.1, z: 0.35 },
-      { id: 'fridge', kind: 'fridge', x: 4.85, z: 1.75, rot: 1 * Q },
-      { id: 'rug', kind: 'rug', x: 2.1, z: 6.9, color: '#d4b26a' },
-      { id: 'tv', kind: 'tv_big', x: 0.3, z: 6.9, rot: 1 * Q },
-      { id: 'sofa', kind: 'sofa_l', x: 3.7, z: 6.9, rot: 3 * Q, color: '#e6e0d6', actorFor: ['media', 'seat'] },
-      { id: 'arm', kind: 'armchair', x: 2.2, z: 9.2, rot: 2 * Q, color: '#a0703c' },
-      { id: 'ctable', kind: 'centre_table', x: 1.9, z: 6.9, rot: 1 * Q },
-      { id: 'lamp2', kind: 'lamp', x: 0.35, z: 9.6 },
-      { id: 'plant1', kind: 'plant', x: 6.9, z: 9.6 },
+      { id: 'bed', kind: 'bed_king', x: 1.6, z: 1.5, color: '#efe9df' },
+      { id: 'wardrobe', kind: 'wardrobe', x: 4.0, z: 0.35, color: '#5b3a24' },
+      { id: 'stove', kind: 'gas_cooker', x: 6.9, z: 0.4 },
+      { id: 'fridge', kind: 'fridge', x: 6.4, z: 2.0, rot: 1 * Q },
+      { id: 'rug', kind: 'rug', x: 2.3, z: 9.4, color: '#d4b26a' },
+      { id: 'tv', kind: 'tv_big', x: 0.3, z: 9.4, rot: 1 * Q },
+      { id: 'sofa', kind: 'sofa_l', x: 4.2, z: 9.4, rot: 3 * Q, color: '#e6e0d6', actorFor: ['media', 'seat'] },
+      { id: 'arm', kind: 'armchair', x: 2.4, z: 11.9, rot: 2 * Q, color: '#a0703c' },
+      { id: 'ctable', kind: 'centre_table', x: 2.1, z: 9.4, rot: 1 * Q },
+      { id: 'lamp2', kind: 'lamp', x: 0.35, z: 12.9 },
+      { id: 'plant1', kind: 'plant', x: 8.9, z: 12.8 },
+      { id: 'desk', kind: 'desk', x: 18.45, z: 7.0, rot: 2 * Q },
+      { id: 'deskchair', kind: 'plastic_chair', x: 18.45, z: 7.6, rot: 2 * Q, color: '#e8e4dc' },
     ],
   },
 };
