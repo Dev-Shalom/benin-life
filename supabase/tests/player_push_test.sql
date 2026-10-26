@@ -34,6 +34,8 @@ declare v uuid := pg_temp.new_user(lower(p_name) || '@pp.bl');
 begin
   perform pg_temp.login(v);
   update game_config set value = '""' where key = 'origin.force_next';
+  -- the daily-story push (after 17:00 Benin time) would queue its own rows and skew the counts below
+  update game_config set value = 'false' where key = 'stories.push_enabled';
   perform set_config('bl.test_rand', '0.99', true);
   perform create_profile_v2(p_name, 'female', '{"gender":"female"}', '{hustler,bini_pride}', 'oga_at_the_top');
   perform set_config('bl.test_rand', '', true);
