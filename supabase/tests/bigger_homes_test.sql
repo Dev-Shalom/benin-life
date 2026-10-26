@@ -116,4 +116,38 @@ begin
                                        and bl_furniture_check(h.owner_id, h.layout, h.furniture_key, h.x, h.z, h.rotation) is not null), 'every placed piece is valid in the new plan');
 end $$;
 
+-- ---------- 4. the migration only queues players; each is re-checked the first time they load their home ----------
+do $$
+declare l uuid := pg_temp.make_home('LapoLazy', 'lapo', 'ekenwan_face_me'); v_layout text; v_n int;
+begin
+  perform pg_temp.login(l);
+  perform bl_furniture_materialize(l);
+  select layout into v_layout from player_house_furniture where owner_id = l limit 1;
+  -- stage what the migration leaves behind: the old plans, and this player waiting in the queue with old-plan rows
+  insert into home_layouts_prev (id, w, d, slots, included, queued)
+  select e->>'id', (e->>'w')::numeric, (e->>'d')::numeric, e->'slots', e->'included', true
+    from t_old, jsonb_array_elements(snap) e
+  on conflict (id) do update set w = excluded.w, d = excluded.d, slots = excluded.slots, included = excluded.included, queued = true;
+  update player_house_furniture set x = 0.85, z = 1.1, rotation = 0, stored = false where owner_id = l and furniture_key = 'own_foam_mat';
+  insert into home_resize_pending (owner_id, layout) values (l, v_layout);
+  -- not re-checked yet: the migration itself touched nobody
+  perform pg_temp.assert((select x = 0.85 and z = 1.1 from player_house_furniture where owner_id = l and furniture_key = 'own_foam_mat'), 'queued, not touched yet');
+  -- the sign-in call (house_upgrade_state) re-checks this player
+  perform house_upgrade_state();
+  perform pg_temp.assert(not exists (select 1 from home_resize_pending where owner_id = l), 'sign-in took the player off the queue');
+  perform pg_temp.assert((select x = 0.85 and z = 1.2 and not stored from player_house_furniture where owner_id = l and furniture_key = 'own_foam_mat'), 'mat follows the new bed slot');
+  -- a second call does nothing
+  perform pg_temp.assert(bl_home_resize_owner(l) = 0, 'nothing left to do');
+  -- any furniture action re-checks too (materialize hook)
+  update player_house_furniture set x = 0.85, z = 1.1, rotation = 0, stored = false where owner_id = l and furniture_key = 'own_foam_mat';
+  insert into home_resize_pending (owner_id, layout) values (l, v_layout);
+  perform bl_furniture_materialize(l);
+  perform pg_temp.assert(not exists (select 1 from home_resize_pending where owner_id = l), 'a furniture action took the player off the queue');
+  perform pg_temp.assert((select x = 0.85 and z = 1.2 from player_house_furniture where owner_id = l and furniture_key = 'own_foam_mat'), 'mat moved by the furniture action');
+  -- the queue and the old plans are private
+  perform pg_temp.assert(not has_table_privilege('authenticated', 'public.home_resize_pending', 'select')
+                         and not has_table_privilege('anon', 'public.home_layouts_prev', 'select'), 'queue tables are private');
+  perform pg_temp.assert(not has_function_privilege('authenticated', 'public.bl_home_resize_owner(uuid)', 'execute'), 'bl_home_resize_owner is not callable by players');
+end $$;
+
 select 'bigger_homes_test OK' as result;
