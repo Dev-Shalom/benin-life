@@ -39,7 +39,7 @@ declare
   ad uuid := pg_temp.new_user('r8_admin@house.bl');
   r jsonb; v jsonb; n int; b0 bigint; c0 bigint; p0 profiles; p1 profiles; paid bigint; w0 bigint;
   v_cost bigint; v_fee bigint; rent0 bigint; k0 int; k1 int; hyg0 numeric; hyg1 numeric; d0 numeric; d1 numeric;
-  a_home text; mv jsonb; bank_before bigint;
+  a_home text; mv jsonb; bank_before bigint; old_home text;
 begin
   update game_config set value = 'true' where key = 'house.upgrades_enabled';
   update game_config set value = '100' where key = 'house.upgrade_time_pct';
@@ -247,15 +247,23 @@ begin
   perform pg_temp.assert((house_upgrade_state()->>'sale_value')::bigint = floor(paid * 0.3), 'resale % is admin-tunable');
   update game_config set value = '50' where key = 'house.upgrade_resale_pct';
   update profiles set cash = 0, bank = 5000000, rent_owed = 0, location_id = home_location_id, busy_until = null, travel_to = null where id = a;
-  select bank into bank_before from profiles where id = a;
+  select bank, start_home into bank_before, old_home from profiles where id = a;
   mv := house_move('mission_rd_mini_flat');
-  perform pg_temp.assert((mv->>'upgrade_refund')::bigint = floor(paid * 0.5), 'move result reports the upgrade refund');
-  perform pg_temp.assert((select bank from profiles where id = a) = bank_before - (mv->>'from_bank')::bigint + floor(paid * 0.5), 'refund paid into the bank');
-  perform pg_temp.assert(not exists (select 1 from player_house_upgrades where user_id = a), 'upgrades cleared with the old home');
+  -- own-your-home: the upgrades stay with the old home (a past home); nothing is sold when you move out
+  perform pg_temp.assert((mv->>'upgrade_refund')::bigint = 0, 'moving out sells nothing');
+  perform pg_temp.assert((select bank from profiles where id = a) = bank_before - (mv->>'from_bank')::bigint, 'no refund paid on moving');
+  perform pg_temp.assert(not exists (select 1 from player_house_upgrades where user_id = a), 'new home starts with no upgrades');
+  perform pg_temp.assert(exists (select 1 from player_past_homes where user_id = a and start_home = old_home and bl_stash_value(stash) = floor(paid * 0.5)), 'upgrades wait in the past home');
+  perform pg_temp.assert(jsonb_array_length(house_upgrade_home()->'done') = 0, 'new home starts plain');
+  -- giving the past home up pays the resale % into the bank, once
+  bank_before := (select bank from profiles where id = a);
+  r := house_past_release(old_home);
+  perform pg_temp.assert((r->>'refund')::bigint = floor(paid * 0.5), 'giving up pays 50% of the upgrades');
+  perform pg_temp.assert((select bank from profiles where id = a) = bank_before + floor(paid * 0.5), 'refund paid into the bank');
   perform pg_temp.assert(exists (select 1 from ledger where user_id = a and reason = 'house_upgrade' and delta = floor(paid * 0.5)), 'refund is on the ledger');
   perform pg_temp.assert(bl_ledger_label('house_upgrade', '{"refund":true}') = 'Upgrades sold with your old home', 'refund label');
-  perform pg_temp.assert(jsonb_array_length(house_upgrade_home()->'done') = 0, 'new home starts plain');
-  -- an unfinished build is refunded in full when you move
+  perform pg_temp.assert(not exists (select 1 from player_past_homes where user_id = a and start_home = old_home), 'the slot is gone');
+  -- an unfinished build keeps building in the home while you are away (it counts in full when the home is given up)
   update profiles set bank = 80000000 where id = a;
   perform house_upgrade_buy('paint_fresh');
   perform pg_temp.assert((house_upgrade_state()->>'sale_value')::bigint = (select price_paid from player_house_upgrades where user_id = a and upgrade_id = 'paint_fresh'), 'unfinished build: full value');

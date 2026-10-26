@@ -28,6 +28,7 @@ import Elections from './Elections';
 import Economy from './Economy';
 import Love from './Love';
 import Gist from './Gist';
+import Property from './Property';
 import './admin.css';
 
 const NAV = [
@@ -40,6 +41,7 @@ const NAV = [
   { to: '/admin/music', label: 'Music', icon: 'music' },
   { to: '/admin/market', label: 'Market', icon: 'cash' },
   { to: '/admin/business', label: 'Business', icon: 'cash' },
+  { to: '/admin/property', label: 'Property', icon: 'home' },
   { to: '/admin/companies', label: 'Companies', icon: 'cash' },
   { to: '/admin/real-business', label: 'Real business', icon: 'bell' },
   { to: '/admin/crews', label: 'Gangs', icon: 'people' },
@@ -136,6 +138,7 @@ export default function AdminApp() {
           <Route path="players" element={<Players />} />
           <Route path="chat" element={<Chat />} />
           <Route path="gist" element={<Gist />} />
+          <Route path="property" element={<Property />} />
           <Route path="audit" element={<Audit />} />
           <Route path="payments" element={<Payments />} />
           <Route path="ads" element={<Ads />} />

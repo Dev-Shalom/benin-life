@@ -249,8 +249,8 @@ begin
   perform pg_temp.assert(v_earn <= 24000 + (select allowance - 0 from player_house_grants where user_id = l and home_key = 'starter'),
                          'earned from the flat: ' || v_earn);
   perform pg_temp.assert((select sum(paid) from player_house_grants where user_id = l and home_key = 'mission_rd_mini_flat') <= 24000, 'flat pays <= 24,000');
-  -- can't go back to the face-me (no second chance at its pieces), and the flat grant can't repeat
-  perform pg_temp.assert(pg_temp.hint_of($q$ select house_move('ekenwan_face_me') $q$) = 'old_home', 'no going back');
+  -- the face-me is a past home now (own-your-home): you may go back, but there is no second chance at its pieces (grants are once per home)
+  perform pg_temp.assert((select hh->>'status' from jsonb_array_elements(house_options()->'homes') hh where hh->>'id' = 'ekenwan_face_me') = 'past', 'face-me is a past home');
   -- move on to the duplex: its pieces once, allowance capped at 75% of 100,000
   update profiles set rent_owed = 0 where id = l;
   r := house_move('gra_duplex');

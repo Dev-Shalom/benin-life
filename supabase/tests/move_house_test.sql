@@ -115,12 +115,13 @@ begin
   perform pg_temp.assert(not exists (select 1 from player_house_furniture where owner_id = a and stored and furniture_key = 'own_stool'), 'stool takes the flat''s seat slot');
   perform pg_temp.assert(pg_temp.all_valid(a), 'placements valid in the flat');
 
-  -- 6. can't go back
+  -- 6. a home you left is a past home for house.return_days: you can go back (own-your-home)
   update profiles set bank = 10000000 where id = a;
   r := house_options();
-  perform pg_temp.assert((select h->>'status' from jsonb_array_elements(r->'homes') h where h->>'id' = 'ekenwan_face_me') = 'released', 'old home released');
-  perform pg_temp.assert(pg_temp.hint_of('select house_move(''ekenwan_face_me'')') = 'old_home', 'can''t move back');
-  perform pg_temp.assert(exists (select 1 from player_released_homes where user_id = a and start_home = 'ekenwan_face_me'), 'released row');
+  perform pg_temp.assert((select h->>'status' from jsonb_array_elements(r->'homes') h where h->>'id' = 'ekenwan_face_me') = 'past', 'old home is a past home');
+  perform pg_temp.assert((select h->>'past_until' from jsonb_array_elements(r->'homes') h where h->>'id' = 'ekenwan_face_me') is not null, 'it has a clock');
+  perform pg_temp.assert(exists (select 1 from player_past_homes where user_id = a and start_home = 'ekenwan_face_me' and expires_at > bl_now() + interval '29 days'), 'past row, 30 days');
+  perform pg_temp.assert(not exists (select 1 from player_released_homes where user_id = a and start_home = 'ekenwan_face_me'), 'no more released rows for a move');
 
   -- 7. a big furnished move: buy a lot for the flat, then move into the duplex
   update profiles set location_id = home_location_id, bank = 500000000 where id = a;
@@ -139,7 +140,7 @@ begin
   perform pg_temp.assert(pg_temp.all_valid(a), 'placements valid in the duplex');
   perform pg_temp.assert((r->>'in_items')::int = (select count(*) from player_house_furniture where owner_id = a and stored), 'in_items count');
   perform pg_temp.assert(((r->>'in_items')::int = 0) = (position('My items' in r->>'message') = 0), 'message names My items only when needed');
-  perform pg_temp.assert((select count(*) from player_released_homes where user_id = a) = 2, 'two homes released');
+  perform pg_temp.assert((select count(*) from player_past_homes where user_id = a) = 2, 'two past homes');
   -- arranging still works in the new home
   perform pg_temp.assert(pg_temp.hint_of('select furniture_store(''own_foam_mat'')') = 'ok', 'store works after the move');
 
