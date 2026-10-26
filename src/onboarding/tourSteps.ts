@@ -262,6 +262,19 @@ export const TOUR_STEPS: TourStep[] = [
     before: () => toPhone('home'),
   },
   {
+    id: 'cooking',
+    target: '[data-tour="app-food"]',
+    title: 'Chowdeck: order food, or cook your own',
+    body: 'Hungry? Order food to your door, or buy ingredients at Oba Market and cook at home. Chowdeck now has a Kitchen and today\'s market prices.',
+    points: [
+      'Oba Market is cheaper but only open in the day, and its prices move a little every day. The supermarket is dearer and never closes.',
+      'Cook on your stove at home. The pot makes several portions: eat them, send some to your partner, or feed your children.',
+      'Cooking raises your Cooking skill and unlocks harder dishes. Check the app for current prices.',
+    ],
+    isNew: true,
+    before: () => toPhone('home'),
+  },
+  {
     id: 'help',
     target: '[data-tour="app-help"]',
     title: 'Help is on your phone',

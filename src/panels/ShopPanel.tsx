@@ -7,7 +7,7 @@ import { useGameClock } from '../lib/clock';
 import { getCfg } from '../lib/config';
 import { naira, nairaShort } from '../lib/format';
 import type { PanelProps, ShopList } from '../lib/types';
-import { openPanel } from '../state/ui';
+import { openPanel, useUi } from '../state/ui';
 import { Button, EmptyState, toast } from '../ui';
 import { ItemCard } from './shop/ShopUI';
 import { taxNote } from '../lib/tax';
@@ -23,6 +23,14 @@ const GREETING: Record<string, string> = {
   salon: 'Soap, toothpaste and small things for looking fresh.',
   workshop: 'The guild sells small castings to visitors.',
 };
+
+/** Step C: how a grocery price moved since yesterday (only markets send `yesterday`). */
+function trendNote(price: number, yesterday: number | null | undefined): string | undefined {
+  if (!yesterday || yesterday <= 0) return undefined;
+  const pct = Math.round(((price - yesterday) * 1000) / yesterday) / 10;
+  if (Math.abs(pct) < 0.05) return 'same as yesterday';
+  return `${pct > 0 ? '▲' : '▼'} ${Math.abs(pct)}% vs yesterday`;
+}
 
 export default function ShopPanel({ state, location, refresh }: PanelProps) {
   const [list, setList] = useState<ShopList | null>(null);
@@ -73,6 +81,7 @@ export default function ShopPanel({ state, location, refresh }: PanelProps) {
     return <EmptyState icon="bag" title="Nothing for sale here" body="Try a market or a buka. Benin City is big." />;
   }
 
+  const hasGroceries = list.items.some((i) => i.category === 'ingredient');
   const sellable = list.sell_here && (state.inventory ?? []).some((i) => i.sellable && i.resale_price > 0);
   return (
     <div className="shop stack">
@@ -81,6 +90,12 @@ export default function ShopPanel({ state, location, refresh }: PanelProps) {
         <span className="shop__cash" title={naira(p.cash)}>Cash <b>{nairaShort(p.cash)}</b></span>
       </div>
       {list.weekend_price && <p className="weekend-badge"><span aria-hidden>🥂</span> Weekend price tonight: club prices are higher on Friday and Saturday nights.</p>}
+      {hasGroceries && (
+        <div className="shop__sell" data-testid="shop-groceries">
+          <span className="grow">🍳 Groceries for your Kitchen. {location.scene === 'market' ? 'Prices change a little every day.' : 'Fixed price, open all day.'}</span>
+          <Button size="sm" variant="ghost" onClick={() => { useUi.getState().closePanel(); useUi.getState().openPhone('food:prices'); }}>Today's prices</Button>
+        </div>
+      )}
       {groups.map((g) => (
         <section key={g.id} className="shop__group">
           <h4 className="shop__cat">{g.label}</h4>
@@ -88,7 +103,7 @@ export default function ShopPanel({ state, location, refresh }: PanelProps) {
             {g.items.map((it) => {
               const blocked = busyNow ? 'Busy right now' : p.cash < it.price ? 'Not enough cash' : null;
               return (
-                <ItemCard key={it.id} item={it} price={it.price} taxNote={taxNote(it.vat_pct ?? 0, it.lux_pct ?? 0)} owned={owned[it.id] ?? 0} kind={it.kind}
+                <ItemCard key={it.id} item={it} price={it.price} priceNote={trendNote(it.price, it.yesterday)} taxNote={taxNote(it.vat_pct ?? 0, it.lux_pct ?? 0)} owned={owned[it.id] ?? 0} kind={it.kind}
                   maxQty={it.kind === 'keep' ? 1 : Math.max(1, Math.min(maxQty, Math.floor(p.cash / Math.max(1, it.price))))}
                   action="Buy" blocked={blocked} busy={busy === it.id}
                   onAction={(q) => void buy(it.id, q)} />
