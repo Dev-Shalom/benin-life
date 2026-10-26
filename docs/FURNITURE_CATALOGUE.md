@@ -35,11 +35,11 @@ Admin → Content → Furniture.
 - **Moving house** (H1, `house_move`): every piece that stood in the old home is placed again in the new one: its
   default slot when valid, else the nearest free spot to where it stood (relative position), else My items. Pieces
   already in My items take a free default slot of the new home when valid. The toast says how many wait in My items.
-- **Home sizes (H1):** hostel 5.2×4.4, face-me 4.2×3.8, self-contain 6.0×4.8 (unchanged), mini-flat 9.6×7.2 (bedroom,
-  kitchen, bathroom, parlour, dining), GRA duplex 14.4×10 (master bedroom, fitted kitchen + island, bathroom with
-  tub, laundry + staircase, furnished guest bedroom, dining, big parlour). Bigger homes come with furniture (H4: yours,
+- **Home sizes (H1, made bigger on 2026-11-02, see `docs/HUD_HOME.md` "bigger homes"):** hostel 6.2×5.0, face-me 6.8×5.6, self-contain 9.0×6.8,
+  mini-flat 13×9.4 (bedroom, kitchen, bathroom, parlour, dining), GRA duplex 19×13.4 (master bedroom, fitted kitchen + island,
+  bathroom with tub, laundry + staircase, study, furnished guest bedroom, dining, big parlour). Bigger homes come with furniture (H4: yours,
   see below) and a little architecture (`fixed: true`: the fitted kitchen counter, the island, the staircase) that
-  blocks placement like fixtures. `home_layouts` is regenerated from `model.ts` (H1, then H4 for `included`).
+  blocks placement like fixtures. `home_layouts` is regenerated from `model.ts` (H1, then H4 for `included`, then the bigger-homes migration).
 - **Need bonuses** come only from placed pieces:
   - `rest_pct` scales sleep energy, as before (beds from 90 % to 140 %).
   - `bonus` adds need effects to a home activity, using the strongest value per need, so bonuses never

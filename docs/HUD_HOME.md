@@ -1,5 +1,23 @@
 # 3D home, HUD, Sim sheet and phone (R4)
 
+## 2026-11-02: bigger homes (home sizes)
+Every home got a bigger floor plan, with more walking space between pieces. Each tier is clearly bigger than the one below it.
+
+| Home (layout) | Old size (m) | New size (m) | New area | What changed |
+|---|---|---|---|---|
+| UNIBEN hostel (`hostel`) | 5.2 x 4.4 (23 m2) | 6.2 x 5.0 | 31 m2 | roomier shared room, 4 windows, door 1.1 m |
+| Face-me-I-face-you (`face_me`, LAPO start) | 4.2 x 3.8 (16 m2) | 6.8 x 5.6 | 38 m2 | now a medium room: bed corner, sitting area, kitchen wall, 1.1 m door |
+| Self-contain (`self_contain`) | 6.0 x 4.8 (29 m2) | 9.0 x 6.8 | 61 m2 | bathroom corner, kitchen row, sleeping corner, big sitting area |
+| Mini-flat (`flat`) | 9.6 x 7.2 (69 m2) | 13.0 x 9.4 | 122 m2 | bigger bedroom, kitchen, bathroom and parlour, dining by the side door |
+| GRA duplex (`duplex`, NEPO start) | 14.4 x 10 (144 m2) | 19.0 x 13.4 | 255 m2 | 2 more rooms (study, wider guest bedroom), wide hall and entrance lobby, 1.2-1.6 m doorways, bigger pool deck and compound |
+
+- Plans live in `src/art/home3d/model.ts` (`LAYOUTS`). Walls, doors, windows, floor patches, default slots, the pieces that came with the house, the nav grid (`nav.ts`), wall pieces (north / west wall only) and the Buy / Arrange bounds (`arrange.ts`) all read from that one table, so they stay in step. The camera fits the lot by itself (house-only framing on a phone for the big homes, pinch out to see the whole compound).
+- Extension rooms (`ext_bedroom`, `ext_guest_wing`) and yard buildings (`upgrades.ts` `GEOM`) were moved to the new plans: face-me room 6.8 x 3.2, self-contain 7.2 x 3.2, flat 8.0 x 3.4, duplex guest wing 10 x 3.8. Parking is placed from the lot (the duplex bay is at `w + 0.5`), the pool deck follows the house depth.
+- Server: migration `20261102000100_bigger_homes.sql` rewrites `home_layouts` (size, lot, blocks, doors, slots, included) and the `geom` of `house_upgrades`. Data only, no function changes, nothing on `profiles`. The rows are generated: `node scripts/home-space-check.mjs --sql` and `node scripts/home-upgrade-check.mjs --sql`.
+- **Saved furniture** (`bl_homes_replace_after_resize`, run once by the migration; a second run does nothing): a piece still on its old default slot (or the old spot of a piece that came with the house) goes to the new default spot; yard pieces move out with the east / south wall and pieces in an extension room move with the room; any piece the player placed stays exactly where it is when that is still valid. A piece that no longer fits takes the nearest free spot to where it stood, else it goes to My items (never deleted). Same rule as moving house.
+- Checks: `node scripts/home-space-check.mjs` (tier sizes, every piece inside the plan, server placement rule for the LAPO / NEPO starter sets, no overlaps, door-to-every-spot walking, tight-gap warnings), `node scripts/nav-check.mjs`, `node scripts/home-upgrade-check.mjs`, `bash scripts/sql-test.sh supabase/migrations/20261102000100_bigger_homes.sql -- supabase/tests/bigger_homes_test.sql`.
+- Cost: draw calls unchanged (45), triangles +20% (face-me 15.4k -> 18.5k, duplex 33k -> 38k with the Sim and clutter). Dev page extras: `/dev/home?l=duplex&o=nepo&arr=sofa&ax=6&az=9` shows the Arrange ghost (red when refused); `window.__blHomeApi.stats()` gives draw calls and triangles in dev.
+
 ## 2026-10-09: shared private-home visits
 Admitted visitors render the host's housing layout, owned furniture, and saved furniture placements. The homeowner can tap an owned movable piece, then tap a floor position to move it or use the rotate control; these placements are stored server-side and broadcast to admitted people in that home. Structural fixtures and non-owned pieces are not movable through this editor. Host and visitor avatars broadcast their positions and interpolate other players' movement. Guests can use normal home activities but cannot edit the homeowner's furniture. A private house chat opens from the home chip or Phone → Messages and uses the same text/voice composer as place chat. See `docs/SOCIAL.md` and migration `20261008000400_shared_house_and_voice_chat.sql`.
 

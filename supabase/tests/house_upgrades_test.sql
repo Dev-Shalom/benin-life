@@ -72,7 +72,7 @@ begin
   -- 1. catalogue + the Upgrade list ------------------------------------------------------------------------
   perform pg_temp.assert((select count(*) from house_upgrades where active) >= 19, 'catalogue seeded');
   perform pg_temp.assert(not exists (select 1 from house_upgrades where 'hostel' = any (tiers)), 'no upgrade is for a hostel');
-  perform pg_temp.assert((select effect->'geom'->'face_me'->'room'->'rect' from house_upgrades where id = 'ext_bedroom') = '[0,3.8,4.2,6.6]'::jsonb,
+  perform pg_temp.assert((select effect->'geom'->'face_me'->'room'->'rect' from house_upgrades where id = 'ext_bedroom') = '[0,5.6,6.8,8.8]'::jsonb,
                          'extension geometry seeded for the server check');
   perform pg_temp.login(a);
   update profiles set cash = 0, bank = 60000000, rent_due_at = null where id = a;
@@ -136,7 +136,7 @@ begin
   perform pg_temp.assert(pg_temp.hint_of('select house_upgrade_buy(''borehole'')') = 'builders_busy', 'one build at a time');
   perform pg_temp.assert((house_upgrade_home()->'building'->0->>'id') = 'ext_bedroom' and jsonb_array_length(house_upgrade_home()->'done') = 0, 'home read: scaffolding only');
   -- before it is finished the new room is not floor
-  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 6.0, 0) is not null, 'no room yet: nothing to stand on south of the house (refused)');
+  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 7.6, 0) is not null, 'no room yet: nothing to stand on south of the house (refused)');
   perform pg_temp.warp(60 * 60);  -- one hour: half way
   r := house_upgrade_state();
   perform pg_temp.assert((r->'building'->0->>'progress')::int between 40 and 60, 'half way after an hour');
@@ -151,13 +151,13 @@ begin
 
   -- 6. effects ---------------------------------------------------------------------------------------------
   -- the new room is floor the server lets you furnish; the doorway and the shared wall are not
-  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 6.0, 0) is null, 'stool can stand in the new room');
-  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 3.0, 4.0, 0) like 'blocks_door|%', 'doorway is kept clear');
-  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 3.8, 0) like 'overlap|%'
-                         or bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 3.8, 0) is not null, 'the shared wall blocks');
-  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 8.5, 0) is not null, 'beyond the room: still refused');
-  r := furniture_place('own_stool', 1.0, 6.0, 0);
-  perform pg_temp.assert((select x = 1.0 and z = 6.0 and not stored from player_house_furniture where owner_id = a and furniture_key = 'own_stool'), 'furniture_place into the new room');
+  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 7.6, 0) is null, 'stool can stand in the new room');
+  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 3.8, 5.9, 0) like 'blocks_door|%', 'doorway is kept clear');
+  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 5.6, 0) like 'overlap|%'
+                         or bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 5.6, 0) is not null, 'the shared wall blocks');
+  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 10.0, 0) is not null, 'beyond the room: still refused');
+  r := furniture_place('own_stool', 1.0, 7.6, 0);
+  perform pg_temp.assert((select x = 1.0 and z = 7.6 and not stored from player_house_furniture where owner_id = a and furniture_key = 'own_stool'), 'furniture_place into the new room');
   perform pg_temp.assert(bl_house_bonus(a, 'sleep') = '{"stress": -2}'::jsonb, 'bedroom bonus: calmer sleep');
 
   -- bonuses reach do_activity: a borehole makes the bucket bath cleaner
