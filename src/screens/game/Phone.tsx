@@ -72,7 +72,8 @@ interface App {
 
 const APPS: App[] = [
   { id: 'jobs', name: 'Jobs', emoji: '💼', bg: 'linear-gradient(160deg,#34c77f,#0e874e)', pitch: 'Find work across Benin City: shop hands, PoS agents, nurses, tech interns and more.' },
-  { id: 'gist', name: 'Benin Gist', emoji: '🗣️', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Post gists, chat in groups, message friends and send money, all in one place.' },
+  { id: 'messages', name: 'Messages', emoji: '💬', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Add friends, message them, chat in groups and invite them over.' },
+  { id: 'gist', name: 'Benin Gist', emoji: '🗣️', bg: 'linear-gradient(160deg,#ff9a5a,#d6452f)', pitch: 'Post gists, like and comment, tip people and join group chats.' },
   { id: 'family', name: 'Family', emoji: '💞', bg: 'linear-gradient(160deg,#ff8fa3,#d6336c)', pitch: 'Ask somebody out, flirt, go on dates and build a life together.' },
   { id: 'stories', name: 'Stories', emoji: '📖', bg: 'linear-gradient(160deg,#f0a45a,#d66830)', pitch: 'A new story every day, with a twist. What you choose shapes your path.' },
   { id: 'boutique', name: 'Boutique', emoji: '🛒', bg: 'linear-gradient(160deg,#3a7bd5,#1e3c72)', pitch: '' },
@@ -159,7 +160,8 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const chatUnread = useChat((s) => s.unread);
   const events = useGame((s) => s.events);
   const lastReadEventId = useGame((s) => s.lastReadEventId);
-  const socialUnread = events.filter((e) => (['friend_request', 'house_invite', 'house_knock', 'private_message', 'place_invite', 'lounge_guest'].includes(e.kind) || e.kind.startsWith('gist_')) && e.id > lastReadEventId).length;
+  const socialUnread = events.filter((e) => ['friend_request', 'house_invite', 'house_knock', 'private_message', 'place_invite', 'lounge_guest'].includes(e.kind) && e.id > lastReadEventId).length;
+  const gistUnread = events.filter((e) => e.kind.startsWith('gist_') && e.id > lastReadEventId).length;
   const gistGroupsUnread = useGist((g) => g.unreadGroups);
   // Family dot: unread love / kids alerts, plus every child that needs its parents right now (kids_status, polled only while the phone is open)
   const kidsAttention = useKids((s) => s.status?.attention ?? 0);
@@ -186,8 +188,8 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
     if (open) {
       // ONE icon, "Business". Old links: business / business:* (takings ready) open Map plots, company / company:* open My companies,
       // and business:mine|plots|discover|real picks a tab.
-      // Benin Gist replaces Messages: the old id 'messages' (and messages:dm:12 ...) is an alias of 'gist'.
-      setScreen((phoneApp ?? 'lock').replace(/:.*$/, '').replace(/^company$/, 'business').replace(/^messages$/, 'gist'));
+      // Messages (DMs, friends, groups) and Benin Gist (feed, groups) are two apps; gist:chats / gist:friends open Messages.
+      setScreen((phoneApp ?? 'lock').replace(/^gist:(chats|friends)$/, 'messages').replace(/:.*$/, '').replace(/^company$/, 'business'));
       setCoTab(coTabFor(phoneApp));
       setFamTab(famTabFor(phoneApp));
       setBbTab(phoneApp === 'billboards:mine' ? 'mine' : 'boards');
@@ -286,7 +288,8 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                     <span className="app-icon__tile" style={{ background: a.bg }} aria-hidden>
                       {a.emoji}
                       {a.id === 'alerts' && unread > 0 && <span className="app-icon__badge">{unread > 99 ? '99+' : unread}</span>}
-                      {a.id === 'gist' && chatUnread + socialUnread + gistGroupsUnread > 0 && <span className="app-icon__badge">{chatUnread + socialUnread + gistGroupsUnread > 9 ? '9+' : chatUnread + socialUnread + gistGroupsUnread}</span>}
+                      {a.id === 'messages' && chatUnread + socialUnread + gistGroupsUnread > 0 && <span className="app-icon__badge">{chatUnread + socialUnread + gistGroupsUnread > 9 ? '9+' : chatUnread + socialUnread + gistGroupsUnread}</span>}
+                      {a.id === 'gist' && gistUnread > 0 && <span className="app-icon__badge">{gistUnread > 9 ? '9+' : gistUnread}</span>}
                       {a.id === 'houses' && (state.rent?.owed ?? 0) > 0 && <span className="app-icon__badge">!</span>}
                       {a.id === 'family' && familyUnread > 0 && <span className="app-icon__badge">{familyUnread > 9 ? '9+' : familyUnread}</span>}
                       {a.id === 'politics' && polBadge && <span className="app-icon__badge">!</span>}
@@ -299,15 +302,15 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
             </div>
           )}
           {app && (
-            <div className={`phone-app${app.id === 'gist' ? ' phone-app--messages' : ''}${app.id === 'ride' ? ' phone-app--bolt' : ''}${app.id === 'yahoo' ? ' phone-app--yahoo' : ''}`}>
-              {app.id !== 'gist' && <div className="phone-app__bar">
+            <div className={`phone-app${app.id === 'gist' || app.id === 'messages' ? ' phone-app--messages' : ''}${app.id === 'ride' ? ' phone-app--bolt' : ''}${app.id === 'yahoo' ? ' phone-app--yahoo' : ''}`}>
+              {app.id !== 'gist' && app.id !== 'messages' && <div className="phone-app__bar">
                 <button type="button" className="phone-app__back" onClick={() => setScreen('home')} aria-label="Back to apps">
                   <Icon name="back" size={20} stroke={2.6} />
                 </button>
                 <span className="phone-app__title"><span aria-hidden>{app.emoji}</span> {app.name}</span>
               </div>}
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
-                : app.id === 'gist' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp state={state} onGoHome={goHome} onBack={() => setScreen('home')} onOpenAlerts={() => setScreen('alerts')} alertsUnread={unread} /></Suspense>
+                : app.id === 'gist' || app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp key={app.id} mode={app.id} state={state} onGoHome={goHome} onBack={() => setScreen('home')} onOpenAlerts={() => setScreen('alerts')} alertsUnread={unread} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
                   : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' || app.id === 'market' || app.id === 'business' || app.id === 'crew' || app.id === 'politics' || app.id === 'family' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>

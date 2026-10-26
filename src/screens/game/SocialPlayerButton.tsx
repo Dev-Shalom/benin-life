@@ -20,7 +20,7 @@ export function SocialPlayerButton({ userId, onChanged }: { userId: string; onCh
   const act = async () => {
     if (!status || status === 'self' || status === 'blocked') return;
     if (status === 'friend') {
-      openPhone('gist:chats');
+      openPhone('messages');
       return;
     }
     setBusy(true);

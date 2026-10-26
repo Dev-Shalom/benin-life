@@ -1,6 +1,6 @@
 # Benin Gist
 
-One phone app where everyone in Benin Life can post, like, comment, tip, chat in groups and send money. It **replaces the old Messages app** (owner's rule: merge similar apps). DMs and Friends are unchanged and live in the same app.
+One phone app where everyone in Benin Life can post, like, comment, tip and chat in groups. **Messages is its own app again** (26 Oct 2026, players asked for it back): Messages has Chats, Groups and Friends; Benin Gist has Feed and Groups. Both are `SocialApp.tsx` with `mode='messages' | 'gist'`. `gist:chats` and `gist:friends` links open Messages.
 
 - Server: `supabase/migrations/20261031000100_benin_gist.sql`, links to profiles: `20261031000200_gist_links.sql`
 - Tests: `supabase/tests/gist_test.sql` (18 groups)

@@ -1,6 +1,6 @@
-// Benin Gist (docs/GIST.md): the old Messages / Friends phone app, merged into ONE social app with four tabs:
-//   Feed (gists: like, comment, tip, For you / Following)  ·  Groups (group chats, Discover, "chat where you are")
-//   Chats (the M4 DMs, unchanged: docs/CHAT.md "M4")        ·  Friends (R7 friends and requests).
+// Two phone apps share this screen (docs/GIST.md):
+//   Messages (mode 'messages'): Chats (the M4 DMs: docs/CHAT.md "M4") · Groups (group chats, Discover, "chat where you are") · Friends.
+//   Benin Gist (mode 'gist'):   Feed (gists: like, comment, tip, For you / Following) · Groups.
 // Header with the alerts bell, then the active tab. A gist opens its post page, a name opens a profile, a group opens its chat.
 // Old links keep working: the phone app id 'messages' is an alias of 'gist', and messages:dm:<id> / messages:house / messages:requests.
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -35,6 +35,8 @@ interface SocialAppProps {
   onBack?: () => void;
   onOpenAlerts?: () => void;
   alertsUnread?: number;
+  /** Which phone app this is: Messages (chats, groups, friends) or Benin Gist (feed, groups). */
+  mode?: 'messages' | 'gist';
 }
 
 type Filter = 'all' | 'unread' | 'read';
@@ -70,13 +72,13 @@ function Badge({ n }: { n: number }) {
   return <span className="msgs-badge">{n > 9 ? '9+' : n}</span>;
 }
 
-export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alertsUnread = 0 }: SocialAppProps) {
+export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alertsUnread = 0, mode = 'messages' }: SocialAppProps) {
   const me = state.profile;
   const [friends, setFriends] = useState<SocialFriend[] | null>(null);
   const [requests, setRequests] = useState<FriendRequest[] | null>(null);
   const [invites, setInvites] = useState<HouseInvite[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [tab, setTab] = useState<'feed' | 'groups' | 'chats' | 'friends'>('feed');
+  const [tab, setTab] = useState<'feed' | 'groups' | 'chats' | 'friends'>(mode === 'gist' ? 'feed' : 'chats');
   const [route, setRoute] = useState<Route | null>(null);
   const [tag, setTag] = useState<string | null>(null);
   const [groupsKey, setGroupsKey] = useState(0);
@@ -125,10 +127,10 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
   const phoneApp = useUi((s) => s.phoneApp);
   useEffect(() => { void useGist.getState().load(); }, []);
   useEffect(() => {
-    if (!phoneApp || !(phoneApp.startsWith('messages:') || phoneApp.startsWith('gist:'))) return;
+    if (!phoneApp || !phoneApp.startsWith(`${mode}:`) && !(mode === 'messages' && /^gist:(chats|friends)$/.test(phoneApp))) return;
     const gist = phoneApp.startsWith('gist:');
     const want = phoneApp.slice(gist ? 'gist:'.length : 'messages:'.length);
-    const done = () => useUi.setState({ phoneApp: 'gist' });
+    const done = () => useUi.setState({ phoneApp: mode });
     if (gist) {
       if (want.startsWith('post:')) { setRoute({ t: 'post', id: Number(want.slice(5)) }); setTab('feed'); }
       else if (want.startsWith('group:')) { setRoute({ t: 'group', id: Number(want.slice(6)) }); setTab('groups'); }
@@ -242,7 +244,7 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
     const friend = friends?.find((f) => f.id === userId);
     if (!friend) { toast('Add them as a friend first, then you can message.', 'info'); return; }
     setRoute(null);
-    setTab('chats');
+    if (mode === 'messages') setTab('chats');
     void openConversation(friend);
   };
 
@@ -341,7 +343,7 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
             <Icon name="back" size={22} stroke={2.6} />
           </button>
         )}
-        <h2 className="msgs-head__title">Benin Gist</h2>
+        <h2 className="msgs-head__title">{mode === 'gist' ? 'Benin Gist' : 'Messages'}</h2>
         {onOpenAlerts && (
           <button type="button" className="msgs-iconbtn msgs-bell" onClick={onOpenAlerts} aria-label={`Alerts${alertsUnread ? `, ${alertsUnread} new` : ''}`}>
             <Icon name="bell" size={21} />
@@ -351,21 +353,21 @@ export default function SocialApp({ state, onGoHome, onBack, onOpenAlerts, alert
       </header>
 
       <div className="msgs-tabs gist-tabs" role="tablist">
-        <button type="button" role="tab" aria-selected={tab === 'feed'} className={tab === 'feed' ? 'is-on' : ''} onClick={() => setTab('feed')}>Feed</button>
+        {mode === 'gist' && <button type="button" role="tab" aria-selected={tab === 'feed'} className={tab === 'feed' ? 'is-on' : ''} onClick={() => setTab('feed')}>Feed</button>}
+        {mode === 'messages' && <button type="button" role="tab" aria-selected={tab === 'chats'} className={tab === 'chats' ? 'is-on' : ''} onClick={() => setTab('chats')}>
+          Chats <Badge n={unreadChats} />
+        </button>}
         <button type="button" role="tab" aria-selected={tab === 'groups'} className={tab === 'groups' ? 'is-on' : ''} onClick={() => setTab('groups')}>
           Groups <Badge n={unreadGroups} />
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'chats'} className={tab === 'chats' ? 'is-on' : ''} onClick={() => setTab('chats')}>
-          Chats <Badge n={unreadChats} />
-        </button>
-        <button type="button" role="tab" aria-selected={tab === 'friends'} className={tab === 'friends' ? 'is-on' : ''} onClick={() => setTab('friends')}>
+        {mode === 'messages' && <button type="button" role="tab" aria-selected={tab === 'friends'} className={tab === 'friends' ? 'is-on' : ''} onClick={() => setTab('friends')}>
           Friends <Badge n={incoming.length} />
-        </button>
+        </button>}
       </div>
 
-      <div hidden={tab !== 'feed'}>
+      {mode === 'gist' && <div hidden={tab !== 'feed'}>
         <FeedTab state={state} summary={summary} nav={nav} tag={tag} setTag={setTag} refreshKey={0} />
-      </div>
+      </div>}
 
       {loadError && <div className="social-error" role="alert">{loadError}<Button size="sm" variant="ghost" onClick={() => void reload()}>Retry</Button></div>}
 
