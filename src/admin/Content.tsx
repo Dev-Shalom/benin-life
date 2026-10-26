@@ -11,7 +11,7 @@ import { useLoad } from './util';
 import { musicApi } from './musicApi';
 import { PlaylistSelect } from './Music';
 
-type FieldType = 'text' | 'long' | 'int' | 'money' | 'num' | 'bool' | 'json' | 'list' | 'intnull' | 'numnull' | 'textnull' | 'time';
+type FieldType = 'text' | 'long' | 'int' | 'money' | 'num' | 'bool' | 'json' | 'jarr' | 'list' | 'intnull' | 'numnull' | 'textnull' | 'time';
 interface Field { key: string; label: string; type: FieldType; help?: string; /** text length limit (also enforced by a check constraint on the table) */ maxLength?: number; /** height of a JSON box, in lines */ rows?: number }
 interface TableDef {
   id: string; table: AdminTable; title: string; emoji: string; blurb: string; pk: string[]; insert: boolean;
@@ -851,6 +851,64 @@ const DEFS: TableDef[] = [
     newRow: { id: '', name: '', emoji: '🏗️', category: 'extension', description: '', preview: '', tiers: [], price: 500000, tier_prices: {}, build_minutes: 60, requires: null, effect: {}, sort: 100, active: true },
   },
   {
+    id: 'property_areas', table: 'property_areas', title: 'Property areas', emoji: '🗺️', blurb: 'Own your home (docs/PROPERTY.md). The areas where players can buy and build. Plot market = the Invest land market whose plots a player must hold to build there (land_gra, land_ugbowo ...; empty = no building). Build cost factor multiplies every design\'s base cost (GRA dearer, Ekenwan cheaper). Rent yield % = the market rent a week as a % of the home\'s value (landlords may list inside the band set in Settings → Own your home). X and Y are where a home sits on the map. District is the map neighbourhood id used for the private home (gra, ugbowo, sapele_rd, airport_rd, ikpoba_hill, ekenwan ...). No deletes: switch Active off.',
+    pk: ['id'], insert: true, inline: ['build_factor', 'rent_yield_pct'],
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => r.name as string, subOf: (r) => `build x${r.build_factor} · rent yield ${r.rent_yield_pct}% a week · ${r.land_market ?? 'no plots'}`,
+    fields: [
+      { key: 'id', label: 'Area id', type: 'text', help: 'e.g. gra (new areas: lowercase, no spaces)' },
+      { key: 'name', label: 'Name', type: 'text' }, { key: 'district', label: 'Map district id', type: 'text' },
+      { key: 'land_market', label: 'Plot market (Invest land id)', type: 'textnull', help: 'land_gra, land_ugbowo, land_sapele, land_airport, land_ikpoba, land_okhoro, land_ekenwan' },
+      { key: 'build_factor', label: 'Build cost factor', type: 'num', help: '1 = the design\'s base cost, 1.4 = 40% dearer' },
+      { key: 'rent_yield_pct', label: 'Market rent a week (% of value)', type: 'num', help: '0.3 = a N10,000,000 home rents for N30,000 a week' },
+      { key: 'x', label: 'Map X', type: 'num' }, { key: 'y', label: 'Map Y', type: 'num' },
+      { key: 'blurb', label: 'Blurb', type: 'long' }, { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { id: '', name: '', district: '', land_market: null, build_factor: 1, rent_yield_pct: 0.3, x: 500, y: 500, blurb: '', sort: 100, active: true },
+  },
+  {
+    id: 'property_types', table: 'property_types', title: 'Home types', emoji: '🏘️', blurb: 'Own your home. The kinds of home a player can buy or build. "Looks like" is the existing home (a start home id) whose 3D layout, scene and house bill the type uses: ekenwan_face_me (room), uselu_self_contain, mission_rd_mini_flat (flats and bungalows), gra_duplex (duplexes). Bigger layouts come from the home layouts, not from here. No deletes: switch Active off.',
+    pk: ['id'], insert: true,
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => `${r.emoji} ${r.name}`, subOf: (r) => `${r.bedrooms} bedroom${r.bedrooms === 1 ? '' : 's'} · looks like ${r.template_home}`,
+    fields: [
+      { key: 'id', label: 'Type id', type: 'text', help: 'e.g. bungalow_3 (new types: lowercase, no spaces)' },
+      { key: 'name', label: 'Name', type: 'text' }, { key: 'emoji', label: 'Emoji', type: 'text' },
+      { key: 'template_home', label: 'Looks like (home id)', type: 'text', help: 'ekenwan_face_me, uselu_self_contain, mission_rd_mini_flat or gra_duplex' },
+      { key: 'bedrooms', label: 'Bedrooms', type: 'int' }, { key: 'blurb', label: 'Blurb', type: 'long' }, { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { id: '', name: '', emoji: '🏠', template_home: 'mission_rd_mini_flat', bedrooms: 2, blurb: '', sort: 100, active: true },
+  },
+  {
+    id: 'property_offers', table: 'property_offers', title: 'Home prices', emoji: '🏷️', blurb: 'Own your home. The price of each home type in each area (Buy tab). Real Benin City 2026 prices, in line with the Invest land prices. A buyer pays the price plus the agent and legal fees (Settings → Own your home). The market rent a landlord can ask follows this price. One row per area and type. Prices are plain naira: 3000000 = ₦3,000,000. No deletes: switch For sale off.',
+    pk: ['id'], insert: true, inline: ['price'],
+    toggle: { key: 'active', label: 'For sale' },
+    titleOf: (r) => `${r.area} · ${r.type_id}`, subOf: (r) => naira(Number(r.price)),
+    fields: [
+      { key: 'id', label: 'Offer id', type: 'text', help: 'area_type, e.g. ugbowo_flat_2bed' },
+      { key: 'area', label: 'Area id', type: 'text', help: 'gra, ugbowo, sapele, airport, ikpoba, okhoro, ekenwan' },
+      { key: 'type_id', label: 'Home type id', type: 'text' }, { key: 'price', label: 'Price', type: 'money' }, { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { id: '', area: 'ekenwan', type_id: 'room_fmiyf', price: 3000000, sort: 100, active: true },
+  },
+  {
+    id: 'property_designs', table: 'property_designs', title: 'Build designs', emoji: '🏗️', blurb: 'Own your home. What a player can build on plots they own (Build tab). Base cost is for an area with build factor 1 (Content → Property areas scales it: GRA dearer, Ekenwan cheaper). Plots = how many plots of the area it needs. Units = how many homes come out (a block of flats is several). Each unit is the Home type shown. Build hours are real hours (Settings → Own your home → Building: time % scales all). Stages (JSON list) split the time: [{"name":"Foundation","pct":25},{"name":"Blockwork","pct":35},{"name":"Roofing","pct":20},{"name":"Finishing","pct":20}]. Costs are plain naira. No deletes: switch Active off.',
+    pk: ['id'], insert: true, inline: ['base_cost', 'build_hours'],
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => `${r.emoji} ${r.name}`, subOf: (r) => `${naira(Number(r.base_cost))} base · ${r.plots} plot${r.plots === 1 ? '' : 's'} · ${r.units} unit${r.units === 1 ? '' : 's'} · ${r.build_hours} h`,
+    fields: [
+      { key: 'id', label: 'Design id', type: 'text', help: 'e.g. bungalow_3 (new designs: lowercase, no spaces)' },
+      { key: 'name', label: 'Name', type: 'text' }, { key: 'emoji', label: 'Emoji', type: 'text' }, { key: 'description', label: 'Description', type: 'long' },
+      { key: 'type_id', label: 'Home type of each unit', type: 'text' }, { key: 'units', label: 'Units (homes it makes)', type: 'int' },
+      { key: 'plots', label: 'Plots needed', type: 'int' }, { key: 'base_cost', label: 'Base cost (works)', type: 'money' },
+      { key: 'build_hours', label: 'Build time (real hours)', type: 'num' },
+      { key: 'stages', label: 'Stages (JSON list)', type: 'jarr', help: '[{"name":"Foundation","pct":25}, ...]' },
+      { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { id: '', name: '', emoji: '🏗️', description: '', type_id: 'bungalow_3', units: 1, plots: 1, base_cost: 40000000, build_hours: 18,
+      stages: [{ name: 'Foundation', pct: 25 }, { name: 'Blockwork', pct: 35 }, { name: 'Roofing', pct: 20 }, { name: 'Finishing', pct: 20 }], sort: 100, active: true },
+  },
+  {
     id: 'business_types', table: 'business_types', title: 'Business types', emoji: '🏪', blurb: 'R10 own a business (docs/BUSINESS.md). One row per kind of business a player can buy. Price is the base buy price (each plot multiplies it, see Business plots). Setup minutes: real minutes before income starts. Areas: plot areas it may be built in (ring_road, uselu, ugbowo, sapele_rd, airport_rd, gra, new_benin, ikpoba_hill, or any area you add). Income min / max: gross naira per real 24 hours at level 1; each business rolls its own base income in that range when bought. Rent and NEPA / diesel are charged per day while it runs; every staff member costs Staff wage a day and adds Staff income % to income. Restock cost: price of one restock (x the level multiplier); 0 = the business needs no stock; without stock income slides to the floor in Settings -> Business. Needs Business skill level (1 = none) and Needs certificate id(s) (comma = either, e.g. business_mgmt or accounting,business_mgmt). Levels (JSON): {"2": {"cost": 240000, "mult": 1.4}, "3": {...}} = what it costs to reach each level and the income multiplier; Max level cannot go above the highest level listed + 1. Shift boost %: income boost after the owner works a shift. Events (JSON, optional): per business overrides of the Settings chances, e.g. {"robbery": {"chance_pct": 9, "loss_pct": 40}, "goodday": {"chance_pct": 35, "bonus_pct": 120}} (robbery, outage, levy, theft, goodday; chance_pct per business day, loss_pct / bonus_pct). Scene = which existing place interior it uses (market, buka, lounge, salon, pos, street, motorpark, hotel ...). Prices are plain naira. No deletes: switch Active off (owners keep what they bought).',
     pk: ['id'], insert: true, inline: ['price'],
     toggle: { key: 'active', label: 'On' },
@@ -1320,7 +1378,7 @@ const SHORT: Record<string, string> = {
   pay_per_shift: 'Pay', shift_game_minutes: 'Minutes', xp_per_shift: 'XP', xp_to_next: 'XP to next', x: 'x', z: 'z',
 };
 const rowKey = (def: TableDef, r: Row) => def.pk.map((k) => String(r[k])).join('|');
-const fmtField = (f: Field, v: unknown): string => (f.type === 'time' ? hourToTime(v) : v === null || v === undefined ? '' : f.type === 'list' ? (v as string[]).join(', ') : f.type === 'json' ? JSON.stringify(v, null, 2) : String(v));
+const fmtField = (f: Field, v: unknown): string => (f.type === 'time' ? hourToTime(v) : v === null || v === undefined ? '' : f.type === 'list' ? (v as string[]).join(', ') : (f.type === 'json' || f.type === 'jarr') ? JSON.stringify(v, null, 2) : String(v));
 
 /** Convert a form string into the value we send; returns [value, error]. */
 function parseField(f: Field, raw: unknown): [unknown, string | null] {
@@ -1342,6 +1400,12 @@ function parseField(f: Field, raw: unknown): [unknown, string | null] {
         if (p === null || typeof p !== 'object' || Array.isArray(p)) return [null, 'Must be a JSON object { … }'];
         return [p, null];
       } catch { return [null, 'Invalid JSON']; }
+    case 'jarr':
+      try {
+        const p = JSON.parse(String(raw));
+        if (!Array.isArray(p)) return [null, 'Must be a JSON list [ … ]'];
+        return [p, null];
+      } catch { return [null, 'Invalid JSON']; }
     default: {
       const s = String(raw ?? '').trim();
       if (s === '' && (f.type === 'intnull' || f.type === 'numnull')) return [null, null];
@@ -1357,6 +1421,7 @@ function parseField(f: Field, raw: unknown): [unknown, string | null] {
 function FieldInput({ f, value, onChange }: { f: Field; value: unknown; onChange: (v: unknown) => void }) {
   if (f.type === 'bool') return <Toggle checked={value === true} onChange={onChange} label={f.label} />;
   if (f.type === 'json') return <JsonControl rows={f.rows ?? 5} value={String(value ?? '')} onChange={(t) => onChange(t)} />;
+  if (f.type === 'jarr') return <JsonControl rows={f.rows ?? 7} expect="any" value={String(value ?? '')} onChange={(t) => onChange(t)} />;
   if (f.type === 'time') {
     return (
       <span className="adm-timebox">

@@ -87,26 +87,27 @@ export function drawVehicle(b: HomeBuilder, id: string, x: number, z: number, ry
   b.resetFrame();
 }
 
-function buildDuplexYard(b: HomeBuilder) {
+function buildDuplexYard(b: HomeBuilder, L: HomeLayout) {
   // A pool deck in front of the parlour makes the GRA plot feel lived in without adding a second renderer
   // or a large per-frame cost. The parking bay (east, by the gate) is drawn by buildParking.
-  const pz = 12.4; // pool centre (the house is 10 m deep)
-  b.box(4.6, 0.035, 3.2, 2.6, -0.005, pz, '#c9c2b5', { mat: 'concrete', noOcc: true });
-  b.box(4.0, 0.32, 2.6, 2.6, -0.19, pz, '#60767a', { mat: 'tiles' });
-  b.box(3.8, 0.025, 2.4, 2.6, -0.025, pz, '#54a9bd', { layer: 'glass', noOcc: true });
-  for (let i = -1; i <= 1; i++) b.box(0.72, 0.008, 0.025, 2.6 + i * 0.92, -0.008, pz + (i % 2) * 0.34, '#d4f1ee', { layer: 'glass', noOcc: true });
+  const pz = L.d + 2.4; // pool centre (south of the house)
+  const px = 3.1;
+  b.box(5.4, 0.035, 3.6, px, -0.005, pz, '#c9c2b5', { mat: 'concrete', noOcc: true });
+  b.box(4.8, 0.32, 3.0, px, -0.19, pz, '#60767a', { mat: 'tiles' });
+  b.box(4.6, 0.025, 2.8, px, -0.025, pz, '#54a9bd', { layer: 'glass', noOcc: true });
+  for (let i = -1; i <= 1; i++) b.box(0.8, 0.008, 0.025, px + i * 1.1, -0.008, pz + (i % 2) * 0.38, '#d4f1ee', { layer: 'glass', noOcc: true });
   // Two understated loungers on the lawn side, with the path from the south door left open.
-  for (const x of [0.6, 4.6]) {
-    b.box(0.66, 0.1, 1.5, x, 0.04, pz - 1.0, '#eee8dc', { mat: 'plain' });
-    b.box(0.66, 0.36, 0.1, x, 0.23, pz - 1.69, '#eee8dc', { mat: 'plain', rx: -0.18 });
-    for (const dx of [-0.25, 0.25]) b.box(0.04, 0.23, 0.04, x + dx, -0.05, pz - 1.55, '#6b6256');
+  for (const x of [px - 2.3, px + 2.3]) {
+    b.box(0.66, 0.1, 1.5, x, 0.04, pz - 1.1, '#eee8dc', { mat: 'plain' });
+    b.box(0.66, 0.36, 0.1, x, 0.23, pz - 1.79, '#eee8dc', { mat: 'plain', rx: -0.18 });
+    for (const dx of [-0.25, 0.25]) b.box(0.04, 0.23, 0.04, x + dx, -0.05, pz - 1.65, '#6b6256');
   }
   // Small tropical planting softens the paved edges of the estate yard, and a lawn strip by the fence.
-  for (const [x, z] of [[-0.45, pz - 0.8], [-0.45, pz + 0.9], [5.1, pz - 0.5], [5.1, pz + 1.1]] as const) {
+  for (const [x, z] of [[px - 3.55, pz - 0.8], [px - 3.55, pz + 0.9], [px + 3.0, pz - 0.5], [px + 3.0, pz + 1.1]] as const) {
     b.box(0.5, 0.23, 0.5, x, 0.05, z, '#a99a83', { mat: 'concrete' });
     b.cyl(0.34, 0.2, 0.72, x, 0.28, z, '#4d8a45', { seg: 7, mat: 'grass' });
   }
-  b.box(7.4, 0.03, 1.4, 10.4, -0.02, 13.6, '#6f9a4f', { mat: 'grass', noOcc: true });
+  b.box(9.4, 0.03, 1.4, 12.7, -0.02, L.d + 3.6, '#6f9a4f', { mat: 'grass', noOcc: true });
 }
 
 const BAY = 2.9; // one parking bay (m)
@@ -115,7 +116,7 @@ const BAY_D = 4.6;
 /** G1: where the parking pad / garage goes: the duplex keeps its bay by the gate (inside the lot); smaller homes
  * park just east of the compound, nose to the street. Returns [x0, zBack, zFront]. */
 function parkingSpot(L: HomeLayout): [number, number, number] {
-  if (L.id === 'duplex') return [14.9, 9.6, 14.2];
+  if (L.id === 'duplex') return [L.w + 0.5, L.d - 0.4, L.d + 4.2];
   const zf = L.lot[3] + 0.3;
   return [L.lot[2] + 0.7, zf - BAY_D, zf];
 }
@@ -208,7 +209,7 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
     buildOutside(b, { x0: lx0, z0: lz0, x1: lx1, z1: lz1, seed, style: neighbourhoodOf(L.id), density: opts.density, eastClear: Boolean(opts.parking) && L.id !== 'duplex' });
   }
   b.box(lx1 - lx0 + 0.5, 0.02, lz1 - lz0 + 0.5, cx, -0.03, cz, L.yard?.colour ?? '#b98a5e', { mat: rich ? 'concrete' : 'ground' });
-  if (L.id === 'duplex' && !doll) buildDuplexYard(b);
+  if (L.id === 'duplex' && !doll) buildDuplexYard(b, L);
   let frame: [number, number, number, number] = [lx0, lz0, lx1, lz1];
   const vehicles: BuiltRoom['vehicles'] = [];
   if (!doll && (opts.parking || L.id === 'duplex')) {

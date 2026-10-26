@@ -107,21 +107,21 @@ do $$
 declare n uuid := current_setting('h4.n')::uuid; r jsonb;
 begin
   perform pg_temp.login(n);
-  r := furniture_place('own_chandelier', 2.2, 5.0, 0);
-  perform pg_temp.assert((select x = 2.2 and z = 5.0 and not stored from player_house_furniture where owner_id = n and furniture_key = 'own_chandelier'), 'chandelier moved');
+  r := furniture_place('own_chandelier', 2.2, 8.0, 0);
+  perform pg_temp.assert((select x = 2.2 and z = 8.0 and not stored from player_house_furniture where owner_id = n and furniture_key = 'own_chandelier'), 'chandelier moved');
   -- the dining set: nudge + quarter turn (2.1 x 1.7 -> 1.7 x 2.1)
-  r := furniture_place('own_dining_6', 8.75, 6.5, 1);
+  r := furniture_place('own_dining_6', 11.6, 8.8, 1);
   perform pg_temp.assert((r->>'rotation')::int = 1, 'dining rotated');
   r := furniture_store('own_washing_machine');
   perform pg_temp.assert((select stored from player_house_furniture where owner_id = n and furniture_key = 'own_washing_machine'), 'washer stored');
-  r := furniture_place('own_washing_machine', 12.3, 0.4, 0);
+  r := furniture_place('own_washing_machine', 16.0, 0.45, 0);
   perform pg_temp.assert(not (select stored from player_house_furniture where owner_id = n and furniture_key = 'own_washing_machine'), 'washer back');
   -- the guest bed (copy 2 of bed_double) moves like any piece
-  r := furniture_place('own_bed_double-2', 12.9, 8.6, 3);
+  r := furniture_place('own_bed_double-2', 17.8, 11.6, 3);
   perform pg_temp.assert(r->>'furniture_key' = 'own_bed_double-2', 'guest bed moved');
   -- server validation unchanged: overlaps and doors are refused
-  perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_place('own_dining_6', 6.0, 8.9, 0) $q$) = 'blocks_door', 'door zone refused');
-  perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_place('own_wardrobe_big', 6.9, 2.3, 0) $q$) = 'overlap', 'kitchen island refused');
+  perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_place('own_dining_6', 7.7, 12.2, 0) $q$) = 'blocks_door', 'door zone refused');
+  perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_place('own_wardrobe_big', 9.0, 2.5, 0) $q$) = 'overlap', 'kitchen island refused');
   perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_place('own_gen_firman', 5, 5, 0) $q$) = 'outside_home', 'generator stays outside');
   perform pg_temp.assert(pg_temp.all_valid(n), 'still valid');
   raise notice 'ok 2: move / rotate / store';
@@ -142,7 +142,7 @@ begin
   -- a bought extra AC is a normal copy: it takes key 1, the first came-with-house AC moves to the end with its spot
   r := furniture_buy('ac_split');
   perform pg_temp.assert(r->>'furniture_key' = 'own_ac_split', 'bought copy takes key 1: ' || r::text);
-  perform pg_temp.assert((select x = 1.4 and z = 0.15 and not stored from player_house_furniture where owner_id = n and furniture_key = 'own_ac_split-3'),
+  perform pg_temp.assert((select x = 1.6 and z = 0.15 and not stored from player_house_furniture where owner_id = n and furniture_key = 'own_ac_split-3'),
                          'came-with AC moved to key 3 with its spot');
   perform pg_temp.assert((select stored from player_house_furniture where owner_id = n and furniture_key = 'own_ac_split'), 'bought AC in My items');
   perform pg_temp.assert(not (furniture_sell_quote('own_ac_split')->>'included')::boolean
@@ -154,7 +154,7 @@ begin
   perform pg_temp.assert((r->>'earned')::bigint = pg_temp.resale('ac_split', 45) and not (r->>'included')::boolean, 'bought AC 45%: ' || r::text);
   perform pg_temp.assert(bl_house_resale_left(n) = v_left, 'allowance untouched by a bought sale');
   perform pg_temp.assert((select qty = 2 and house_qty = 2 from player_furniture where user_id = n and furniture_id = 'ac_split'), 'two came-with ACs left');
-  perform pg_temp.assert((select x = 1.4 and z = 0.15 from player_house_furniture where owner_id = n and furniture_key = 'own_ac_split'), 'AC back on key 1');
+  perform pg_temp.assert((select x = 1.6 and z = 0.15 from player_house_furniture where owner_id = n and furniture_key = 'own_ac_split'), 'AC back on key 1');
   -- sell the chandelier (came with the house)
   select cash into c0 from profiles where id = n;
   r := furniture_sell('own_chandelier');
@@ -228,7 +228,7 @@ begin
   perform pg_temp.assert((select allowance from player_house_grants where user_id = l and home_key = 'mission_rd_mini_flat')
                          = least(pg_temp.layout_value('flat', v_pct), floor(32000 * v_cap / 100)::bigint), 'flat allowance capped at 75% of 32,000');
   perform pg_temp.assert(exists (select 1 from player_house_furniture where owner_id = l and furniture_key = 'own_dining_4'
-                                   and x = 7.6 and z = 4.7 and not stored), 'dining set at its spot');
+                                   and x = 9.9 and z = 6.4 and not stored), 'dining set at its spot');
   -- no re-grant: calling again (or any furniture action) gives nothing more
   select qty into v_q0 from player_furniture where user_id = l and furniture_id = 'ac_split';
   perform pg_temp.assert(bl_house_items_grant(l, 32000) = 0, 'no second grant');
@@ -249,8 +249,8 @@ begin
   perform pg_temp.assert(v_earn <= 24000 + (select allowance - 0 from player_house_grants where user_id = l and home_key = 'starter'),
                          'earned from the flat: ' || v_earn);
   perform pg_temp.assert((select sum(paid) from player_house_grants where user_id = l and home_key = 'mission_rd_mini_flat') <= 24000, 'flat pays <= 24,000');
-  -- can't go back to the face-me (no second chance at its pieces), and the flat grant can't repeat
-  perform pg_temp.assert(pg_temp.hint_of($q$ select house_move('ekenwan_face_me') $q$) = 'old_home', 'no going back');
+  -- the face-me is a past home now (own-your-home): you may go back, but there is no second chance at its pieces (grants are once per home)
+  perform pg_temp.assert((select hh->>'status' from jsonb_array_elements(house_options()->'homes') hh where hh->>'id' = 'ekenwan_face_me') = 'past', 'face-me is a past home');
   -- move on to the duplex: its pieces once, allowance capped at 75% of 100,000
   update profiles set rent_owed = 0 where id = l;
   r := house_move('gra_duplex');
@@ -292,13 +292,13 @@ begin
   perform pg_temp.assert(not exists (select 1 from home_layouts hl, jsonb_array_elements(hl.included) i
                                       where i->>'kind' in ('kitchen', 'island', 'stairs', 'toilet', 'sink', 'shower', 'bathtub',
                                                            'pit_toilet', 'bucket_bath', 'clothesline', 'stall', 'drum')), 'architecture never included');
-  perform pg_temp.assert((select blocks @> '[[13.3,0.2,14.3,2.8]]'::jsonb and blocks @> '[[6.1,1.9,7.7,2.7]]'::jsonb
-                                 and blocks @> '[[5.65,0.04,7.85,0.66]]'::jsonb from home_layouts where id = 'duplex'),
+  perform pg_temp.assert((select blocks @> '[[17.95,0.3,18.95,2.9]]'::jsonb and blocks @> '[[8.2,2.1,9.8,2.9]]'::jsonb
+                                 and blocks @> '[[7.9,0.04,10.1,0.66]]'::jsonb from home_layouts where id = 'duplex'),
                          'staircase, island and fitted kitchen still block');
-  perform pg_temp.assert(not (select blocks @> '[[7.75,5.55,9.85,7.25]]'::jsonb from home_layouts where id = 'duplex'), 'the dining set no longer blocks');
+  perform pg_temp.assert(not (select blocks @> '[[10.35,7.95,12.45,9.65]]'::jsonb from home_layouts where id = 'duplex'), 'the dining set no longer blocks');
   perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_place('stairs', 5, 5, 0) $q$) = 'fixed_furniture', 'staircase not movable');
   perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_sell('island') $q$) = 'fixed_furniture', 'island not sellable');
-  perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_place('own_wardrobe_big', 13.8, 1.5, 1) $q$) = 'overlap', 'nothing on the stairs');
+  perform pg_temp.assert(pg_temp.hint_of($q$ select furniture_place('own_wardrobe_big', 18.45, 1.5, 1) $q$) = 'overlap', 'nothing on the stairs');
   -- shared compound things in the small homes stay part of the house
   perform pg_temp.assert((select included = '[]'::jsonb from home_layouts where id = 'face_me')
                          and (select included = '[]'::jsonb from home_layouts where id = 'hostel')

@@ -51,3 +51,11 @@ Migration above; tests `money_sinks_test.sql` (and pins at the top of `bank, buy
 - **Mid-game** (about N189k a day gross, N1.3M a week): income tax about N41k a week, bills about N58k a week (flat + Bolt car + one business + some land), VAT on the non-food part of about N150k a day of buys. Roughly **10 %** of daily money creation leaves (about N19k a day).
 - **Rich** (about N1.14M a day, N8M a week): tax about N525k a week, bills about N1.0M a week (a N150M car alone is N750k), VAT + luxury on big buys. Roughly **20-25 %** (about N260k a day), before voluntary donations, parties and titles.
 - **New / low earners**: nothing for 7 days, then tax 0 under N500k a week and bills of a few hundred naira a week.
+
+## 7. Own your home (docs/PROPERTY.md)
+New sinks and moves, all in Settings -> Own your home (category `property`):
+- **Agent fee** (3 %) and **legal fee** (1.5 %, at least N20,000) on every home bought: ledger `agent_fee`, `legal_fee`. Building adds a **plan approval fee** (2 % of the works, `legal_fee`).
+- **Selling**: the market pays 85 % of the value (never above what the home cost), minus a 2 % agent fee (`agent_fee`). The 15 % loss is the sink.
+- **Landlord**: every rent received loses a 5 % agent cut / rental tax (`agent_fee`); tenants pay an agent and legal fee of 1 week of rent at move-in (`agent_fee`). Rent received (`rent_income`) counts as earnings for the weekly income tax and the weekly top earners; rent paid (`rent_paid_player`) is a move between players.
+- **Bills**: an owner pays the house bill of the same home type, and a bought home pays **ground rent** (0.1 % of its value a week, bill kind `property`). A built home pays ground rent through its land plots.
+- `house_buy`, `house_sell`, `build_cost`, `build_refund`, `rent_paid_player`, `rent_income`, `rent_caution` are in `economy.internal_reasons` (asset swaps and player-to-player moves, not new money); none of the sinks is ever earned.

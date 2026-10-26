@@ -6,7 +6,7 @@ import { naira, nairaShort } from '../../../lib/format';
 import { useGame } from '../../../state/game';
 import { Button, toast } from '../../../ui';
 
-const KIND_ICON: Record<string, string> = { house: '🏠', car: '🚗', business: '🏪', land: '🌍' };
+const KIND_ICON: Record<string, string> = { house: '🏠', car: '🚗', business: '🏪', land: '🌍', property: '🏡' };
 
 const dueText = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Africa/Lagos' });

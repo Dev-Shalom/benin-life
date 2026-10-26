@@ -79,7 +79,7 @@ begin
   perform pg_temp.assert(r->>'furniture_key' = 'own_plastic_chair_white-2' and (r->>'qty')::int = 2, 'second copy key: ' || r::text);
   perform pg_temp.assert((select qty from player_furniture where user_id = l and furniture_id = 'plastic_chair_white') = 2, 'qty 2');
   -- buying gave the starter pieces their rows (defaults), the mat sits at the bed slot
-  perform pg_temp.assert((select not stored and x = 0.85 and z = 1.1 from player_house_furniture
+  perform pg_temp.assert((select not stored and x = 0.85 and z = 1.2 from player_house_furniture
                            where owner_id = l and furniture_key = 'own_foam_mat'), 'starter mat materialised at its slot');
 
   -- not enough money: cash + bank short
@@ -102,7 +102,7 @@ do $$
 declare l uuid := pg_temp.bu('LapoBuy'); r jsonb;
 begin
   perform pg_temp.login(l);
-  -- valid: an empty floor spot (face_me room is 4.2 x 3.8, door on the east wall z 2.4..3.3)
+  -- valid: an empty floor spot (face_me room is 6.8 x 5.6, door on the east wall z 3.9..5.0)
   r := furniture_place('own_plastic_chair_white', 2.5, 1.0, 5);
   perform pg_temp.assert((r->>'rotation')::int = 1 and not (r->>'stored')::boolean, 'placed, rotation in quarter turns: ' || r::text);
   perform pg_temp.assert((select not stored and x = 2.5 and z = 1.0 and rotation = 1 and layout = 'face_me'
@@ -111,15 +111,15 @@ begin
   perform pg_temp.expect_hint($q$select furniture_place('own_plastic_chair_white-2', 20, 20, 0)$q$, 'outside_home');
   perform pg_temp.expect_hint($q$select furniture_place('own_plastic_chair_white-2', 0.8, 1.0, 0)$q$, 'overlap');   -- on the mat
   perform pg_temp.expect_hint($q$select furniture_place('own_plastic_chair_white-2', 2.55, 1.05, 0)$q$, 'overlap'); -- on chair 1
-  perform pg_temp.expect_hint($q$select furniture_place('own_plastic_chair_white-2', 3.8, 2.85, 0)$q$, 'blocks_door');
-  perform pg_temp.expect_hint($q$select furniture_place('own_plastic_chair_white-2', 4.1, 1.0, 0)$q$, 'outside_home'); -- across the wall
+  perform pg_temp.expect_hint($q$select furniture_place('own_plastic_chair_white-2', 6.5, 4.4, 0)$q$, 'blocks_door');
+  perform pg_temp.expect_hint($q$select furniture_place('own_plastic_chair_white-2', 6.7, 1.0, 0)$q$, 'outside_home'); -- across the wall
   perform pg_temp.assert((pg_temp.row_of(l, 'own_plastic_chair_white-2')).stored, 'a refused placement leaves it in the inventory');
   -- chairs may also stand in the compound
-  r := furniture_place('own_plastic_chair_white-2', 4.8, 3.9, 0);
+  r := furniture_place('own_plastic_chair_white-2', 7.2, 3.0, 0);
   -- outdoor-only and wall pieces
   perform furniture_buy('gen_tiger');
   perform pg_temp.expect_hint($q$select furniture_place('own_gen_tiger', 2.5, 2.0, 0)$q$, 'outside_home');
-  r := furniture_place('own_gen_tiger', 4.8, 1.0, 0);
+  r := furniture_place('own_gen_tiger', 7.3, 1.0, 0);
   perform furniture_buy('wall_clock');
   perform pg_temp.expect_hint($q$select furniture_place('own_wall_clock', 2.0, 2.0, 0)$q$, 'not_on_wall');
   r := furniture_place('own_wall_clock', 2.0, 0.04, 0);
@@ -186,7 +186,7 @@ begin
   perform furniture_buy('sofa_italian');
   perform furniture_buy('ac_inverter');
   r := furniture_place('own_ac_inverter', 0.14, 2.0, 1);    -- on the west wall
-  r := furniture_place('own_sofa_italian', 5.5, 5.0, 0);
+  r := furniture_place('own_sofa_italian', 6.0, 9.0, 0);
   perform pg_temp.assert((select count(*) from player_house_furniture where owner_id = n and not stored and layout = 'duplex'
                             and furniture_key in ('own_sofa_italian', 'own_ac_inverter')) = 2, 'Nepo pieces placed');
   perform pg_temp.assert((bl_furniture_for(n, 'sleep')->'bonus'->>'energy')::numeric = 12, 'inverter AC +12 sleep energy');

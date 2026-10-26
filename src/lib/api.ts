@@ -24,11 +24,11 @@ export class GameError extends Error {
 // (429 Too Many Requests, 503 Service Unavailable), so a transfer or purchase can never run twice.
 const READ_RPC = new RegExp(
   '^(get_|players_|leaderboard_|world_counts$|money_drops_live$|place_people$|place_interior$|shop_list$|club_prices$|jobs_catalog$|travel_quote$|house_options$|' +
-    'food_menu$|events_on_today$|club_music_for$|creator_catalog$|wardrobe_state$|storyline_current$|gem_hunt_status$|daily_reward_status$|' +
+    'property_(overview|listings|quote_buy|quote_build|rent_quote)$|food_menu$|events_on_today$|club_music_for$|creator_catalog$|wardrobe_state$|storyline_current$|gem_hunt_status$|daily_reward_status$|' +
     'challenge_status$|push_state$|market_(info|quote|browse|mine)$|bank_info$|bank_history$|bank_recipient$|chat_recent$|chat_history$|chat_blocked$|police_cases_list$|garage_home$|' +
     'billboard_list$|billboard_my_ads$|company_(status|rankings|discover|public)$|real_biz_(form|mine|map|get)$|feedback_mine$|house_room_state$|friends_overview$|lounge_status$|love_(overview|candidates)$|kids_status$|moments_pending$|story_today$|friend_join_check$|social_(friends|friend_requests|house_invites|house_info|friend_status|' +
     'message_history|search_players|streak)$|gist_(summary|feed|post_get|profile|user_posts|trending|comments|groups_mine|groups_discover|group_get|group_members|group_history|group_after)$|admin_(stats|push_stats|players|player_detail|lounge_get|house_upgrade_get|payments|notifications|table_rows|config_list|' +
-    'client_errors|love_overview|kids_overview|market_overview|chat_reports|billboard_queue|company_overview|real_biz_queue|real_biz_revenue|audit_list|feedback_list|music_overview|gist_overview|gist_reports|gist_bans|gist_groups|gist_orphan_photos)$)',
+    'client_errors|love_overview|kids_overview|market_overview|property_overview|chat_reports|billboard_queue|company_overview|real_biz_queue|real_biz_revenue|audit_list|feedback_list|music_overview|gist_overview|gist_reports|gist_bans|gist_groups|gist_orphan_photos)$)',
 );
 const MAX_TRIES = 3;
 const inflight = new Map<string, Promise<unknown>>();

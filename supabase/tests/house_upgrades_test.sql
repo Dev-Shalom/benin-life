@@ -39,7 +39,7 @@ declare
   ad uuid := pg_temp.new_user('r8_admin@house.bl');
   r jsonb; v jsonb; n int; b0 bigint; c0 bigint; p0 profiles; p1 profiles; paid bigint; w0 bigint;
   v_cost bigint; v_fee bigint; rent0 bigint; k0 int; k1 int; hyg0 numeric; hyg1 numeric; d0 numeric; d1 numeric;
-  a_home text; mv jsonb; bank_before bigint;
+  a_home text; mv jsonb; bank_before bigint; old_home text;
 begin
   update game_config set value = 'true' where key = 'house.upgrades_enabled';
   update game_config set value = '100' where key = 'house.upgrade_time_pct';
@@ -72,7 +72,7 @@ begin
   -- 1. catalogue + the Upgrade list ------------------------------------------------------------------------
   perform pg_temp.assert((select count(*) from house_upgrades where active) >= 19, 'catalogue seeded');
   perform pg_temp.assert(not exists (select 1 from house_upgrades where 'hostel' = any (tiers)), 'no upgrade is for a hostel');
-  perform pg_temp.assert((select effect->'geom'->'face_me'->'room'->'rect' from house_upgrades where id = 'ext_bedroom') = '[0,3.8,4.2,6.6]'::jsonb,
+  perform pg_temp.assert((select effect->'geom'->'face_me'->'room'->'rect' from house_upgrades where id = 'ext_bedroom') = '[0,5.6,6.8,8.8]'::jsonb,
                          'extension geometry seeded for the server check');
   perform pg_temp.login(a);
   update profiles set cash = 0, bank = 60000000, rent_due_at = null where id = a;
@@ -136,7 +136,7 @@ begin
   perform pg_temp.assert(pg_temp.hint_of('select house_upgrade_buy(''borehole'')') = 'builders_busy', 'one build at a time');
   perform pg_temp.assert((house_upgrade_home()->'building'->0->>'id') = 'ext_bedroom' and jsonb_array_length(house_upgrade_home()->'done') = 0, 'home read: scaffolding only');
   -- before it is finished the new room is not floor
-  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 6.0, 0) is not null, 'no room yet: nothing to stand on south of the house (refused)');
+  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 7.6, 0) is not null, 'no room yet: nothing to stand on south of the house (refused)');
   perform pg_temp.warp(60 * 60);  -- one hour: half way
   r := house_upgrade_state();
   perform pg_temp.assert((r->'building'->0->>'progress')::int between 40 and 60, 'half way after an hour');
@@ -151,13 +151,13 @@ begin
 
   -- 6. effects ---------------------------------------------------------------------------------------------
   -- the new room is floor the server lets you furnish; the doorway and the shared wall are not
-  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 6.0, 0) is null, 'stool can stand in the new room');
-  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 3.0, 4.0, 0) like 'blocks_door|%', 'doorway is kept clear');
-  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 3.8, 0) like 'overlap|%'
-                         or bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 3.8, 0) is not null, 'the shared wall blocks');
-  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 8.5, 0) is not null, 'beyond the room: still refused');
-  r := furniture_place('own_stool', 1.0, 6.0, 0);
-  perform pg_temp.assert((select x = 1.0 and z = 6.0 and not stored from player_house_furniture where owner_id = a and furniture_key = 'own_stool'), 'furniture_place into the new room');
+  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 7.6, 0) is null, 'stool can stand in the new room');
+  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 3.8, 5.9, 0) like 'blocks_door|%', 'doorway is kept clear');
+  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 5.6, 0) like 'overlap|%'
+                         or bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 5.6, 0) is not null, 'the shared wall blocks');
+  perform pg_temp.assert(bl_furniture_check(a, 'face_me', 'own_stool', 1.0, 10.0, 0) is not null, 'beyond the room: still refused');
+  r := furniture_place('own_stool', 1.0, 7.6, 0);
+  perform pg_temp.assert((select x = 1.0 and z = 7.6 and not stored from player_house_furniture where owner_id = a and furniture_key = 'own_stool'), 'furniture_place into the new room');
   perform pg_temp.assert(bl_house_bonus(a, 'sleep') = '{"stress": -2}'::jsonb, 'bedroom bonus: calmer sleep');
 
   -- bonuses reach do_activity: a borehole makes the bucket bath cleaner
@@ -247,15 +247,23 @@ begin
   perform pg_temp.assert((house_upgrade_state()->>'sale_value')::bigint = floor(paid * 0.3), 'resale % is admin-tunable');
   update game_config set value = '50' where key = 'house.upgrade_resale_pct';
   update profiles set cash = 0, bank = 5000000, rent_owed = 0, location_id = home_location_id, busy_until = null, travel_to = null where id = a;
-  select bank into bank_before from profiles where id = a;
+  select bank, start_home into bank_before, old_home from profiles where id = a;
   mv := house_move('mission_rd_mini_flat');
-  perform pg_temp.assert((mv->>'upgrade_refund')::bigint = floor(paid * 0.5), 'move result reports the upgrade refund');
-  perform pg_temp.assert((select bank from profiles where id = a) = bank_before - (mv->>'from_bank')::bigint + floor(paid * 0.5), 'refund paid into the bank');
-  perform pg_temp.assert(not exists (select 1 from player_house_upgrades where user_id = a), 'upgrades cleared with the old home');
+  -- own-your-home: the upgrades stay with the old home (a past home); nothing is sold when you move out
+  perform pg_temp.assert((mv->>'upgrade_refund')::bigint = 0, 'moving out sells nothing');
+  perform pg_temp.assert((select bank from profiles where id = a) = bank_before - (mv->>'from_bank')::bigint, 'no refund paid on moving');
+  perform pg_temp.assert(not exists (select 1 from player_house_upgrades where user_id = a), 'new home starts with no upgrades');
+  perform pg_temp.assert(exists (select 1 from player_past_homes where user_id = a and start_home = old_home and bl_stash_value(stash) = floor(paid * 0.5)), 'upgrades wait in the past home');
+  perform pg_temp.assert(jsonb_array_length(house_upgrade_home()->'done') = 0, 'new home starts plain');
+  -- giving the past home up pays the resale % into the bank, once
+  bank_before := (select bank from profiles where id = a);
+  r := house_past_release(old_home);
+  perform pg_temp.assert((r->>'refund')::bigint = floor(paid * 0.5), 'giving up pays 50% of the upgrades');
+  perform pg_temp.assert((select bank from profiles where id = a) = bank_before + floor(paid * 0.5), 'refund paid into the bank');
   perform pg_temp.assert(exists (select 1 from ledger where user_id = a and reason = 'house_upgrade' and delta = floor(paid * 0.5)), 'refund is on the ledger');
   perform pg_temp.assert(bl_ledger_label('house_upgrade', '{"refund":true}') = 'Upgrades sold with your old home', 'refund label');
-  perform pg_temp.assert(jsonb_array_length(house_upgrade_home()->'done') = 0, 'new home starts plain');
-  -- an unfinished build is refunded in full when you move
+  perform pg_temp.assert(not exists (select 1 from player_past_homes where user_id = a and start_home = old_home), 'the slot is gone');
+  -- an unfinished build keeps building in the home while you are away (it counts in full when the home is given up)
   update profiles set bank = 80000000 where id = a;
   perform house_upgrade_buy('paint_fresh');
   perform pg_temp.assert((house_upgrade_state()->>'sale_value')::bigint = (select price_paid from player_house_upgrades where user_id = a and upgrade_id = 'paint_fresh'), 'unfinished build: full value');

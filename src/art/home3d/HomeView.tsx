@@ -41,6 +41,7 @@ export function HomeView({ suspended, paused, fallbackScene, fallbackAction, ...
 
   const onReady = useCallback((a: HomeApi) => {
     api.current = a;
+    if (import.meta.env.DEV) (window as { __blHomeApi?: HomeApi }).__blHomeApi = a; // dev only: scripts read draw calls / triangles
     // drop the still once the live canvas has drawn
     window.setTimeout(() => setStill(null), 120);
   }, []);

@@ -19,33 +19,33 @@ export interface UpgradeGeom {
 /** upgrade id -> layout id -> geometry. Only layouts listed here draw the upgrade (others keep it as a bonus only). */
 export const GEOM: Record<string, Partial<Record<HomeLayoutId, UpgradeGeom>>> = {
   ext_bedroom: {
-    face_me: { room: { rect: [0, 3.8, 4.2, 6.6], door: [2.6, 3.4] } },
-    self_contain: { room: { rect: [0, 4.8, 6, 7.6], door: [3.9, 4.9] } },
-    flat: { room: { rect: [0, 7.2, 6, 10], door: [3, 4] } },
+    face_me: { room: { rect: [0, 5.6, 6.8, 8.8], door: [3.2, 4.4] } },
+    self_contain: { room: { rect: [0, 6.8, 7.2, 10], door: [3.4, 4.6] } },
+    flat: { room: { rect: [0, 9.4, 8, 12.8], door: [3.4, 4.6] } },
   },
   ext_guest_wing: {
-    duplex: { room: { rect: [7.4, 10, 14.4, 13.4], door: [8, 9] } },
+    duplex: { room: { rect: [9, 13.4, 19, 17.2], door: [10.2, 11.4] } },
   },
   boys_quarters: {
-    duplex: { struct: { kind: 'bq', rect: [15, 7, 18.2, 9.4] } },
+    duplex: { struct: { kind: 'bq', rect: [20, 7.2, 23.2, 9.6] } },
   },
   gen_house: {
-    face_me: { struct: { kind: 'genhouse', rect: [7.15, 0.4, 8.45, 1.4] } },
-    self_contain: { struct: { kind: 'genhouse', rect: [7.4, 0.4, 8.7, 1.4] } },
-    flat: { struct: { kind: 'genhouse', rect: [11.15, 0.4, 12.45, 1.4] } },
-    duplex: { struct: { kind: 'genhouse', rect: [17.4, -0.1, 18.7, 0.9] } },
+    face_me: { struct: { kind: 'genhouse', rect: [9.4, 0.4, 10.7, 1.4] } },
+    self_contain: { struct: { kind: 'genhouse', rect: [10.9, 0.4, 12.2, 1.4] } },
+    flat: { struct: { kind: 'genhouse', rect: [14.9, 0.4, 16.2, 1.4] } },
+    duplex: { struct: { kind: 'genhouse', rect: [21.9, -0.1, 23.2, 0.9] } },
   },
   solar_system: {
-    face_me: { struct: { kind: 'solar', rect: [7.15, 3.9, 9.15, 5] } },
-    self_contain: { struct: { kind: 'solar', rect: [7.4, 4.65, 9.4, 5.75] } },
-    flat: { struct: { kind: 'solar', rect: [9.9, 7.15, 11.9, 8.25] } },
-    duplex: { struct: { kind: 'solar', rect: [18.65, 8.4, 20.65, 9.5] } },
+    face_me: { struct: { kind: 'solar', rect: [9.9, 5.9, 11.9, 7] } },
+    self_contain: { struct: { kind: 'solar', rect: [11.15, 6.9, 13.15, 8] } },
+    flat: { struct: { kind: 'solar', rect: [13.4, 9.65, 15.4, 10.75] } },
+    duplex: { struct: { kind: 'solar', rect: [21.15, 11.9, 23.15, 13] } },
   },
   borehole: {
-    face_me: { struct: { kind: 'borehole', rect: [7.9, 1.9, 9.5, 3.1] } },
-    self_contain: { struct: { kind: 'borehole', rect: [7.9, 2.15, 9.5, 3.35] } },
-    flat: { struct: { kind: 'borehole', rect: [9.9, 2.15, 11.5, 3.35] } },
-    duplex: { struct: { kind: 'borehole', rect: [15.65, 5.4, 17.25, 6.6] } },
+    face_me: { struct: { kind: 'borehole', rect: [9.4, 2.15, 11, 3.35] } },
+    self_contain: { struct: { kind: 'borehole', rect: [9.9, 3.15, 11.5, 4.35] } },
+    flat: { struct: { kind: 'borehole', rect: [13.65, 3.15, 15.25, 4.35] } },
+    duplex: { struct: { kind: 'borehole', rect: [20.6, 2.4, 22.2, 3.6] } },
   },
 };
 
