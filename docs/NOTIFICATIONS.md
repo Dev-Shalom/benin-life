@@ -97,3 +97,6 @@ To turn it all off in an emergency: Admin -> Settings -> Push notifications -> `
 
 ## Benin Gist alerts (2026-10-31)
 Likes (Game events category), comments, replies, mentions and replies in a group (Messages), being added to a group (Friends) and tips (Money) send an `events` row and a push. Many on one gist inside `gist.notify_window_minutes` become one alert that counts up ("5 people liked your gist"). See docs/GIST.md.
+
+## Daily story alerts (2026-11-01)
+"Your story for today is waiting" (once per Benin day, after `stories.push_hour`, only to players who have not read it yet and were seen in the last 3 days) and "Your story continues" (a follow-up is due) are sent from `bl_push_tick` through `bl_push_enqueue`, in the **Game events** category, so the master switch, the category switch, the hourly cap and deduping all apply. Admin switch `stories.push_enabled`. They open the Stories app (`go=stories`). See docs/DAILY_STORIES.md.

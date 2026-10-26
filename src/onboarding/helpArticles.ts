@@ -28,6 +28,7 @@ export const HELP_TOPICS = [
   { id: 'lounge', label: 'The Lounge', icon: '🥂' },
   { id: 'friends', label: 'Benin Gist, friends & messages', icon: '🗣️' },
   { id: 'family', label: 'Family & love', icon: '💞' },
+  { id: 'stories', label: 'Daily stories', icon: '📖' },
   { id: 'notifications', label: 'Notifications', icon: '🔔' },
   { id: 'invest', label: 'Invest & save', icon: '📈' },
   { id: 'yahoo', label: 'Yahoo & EFCC', icon: '💻' },
@@ -639,6 +640,31 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     where: 'Phone, then Family, then Kids.',
     keywords: 'school class grades report card waec university uniben homework fees kids child graduate degree teacher',
+  },
+
+  // ---- Daily stories ---------------------------------------------------------------------------------------------
+  {
+    id: 'daily-stories',
+    topic: 'stories',
+    title: 'Daily stories and your path',
+    summary: 'One short story a day with a twist. What you choose shapes the way life goes.',
+    steps: [
+      'Open Phone, then Stories. Every Benin day there is one new story: a few sentences, then two to four things you can do. The Stories icon and a small chip on your screen tell you when it is waiting.',
+      'Pick a choice. Some cost a little money, and you pay it up front. Then the outcome is revealed: the colour tells you how it went (green good, red bad, purple a plot twist, gold a laugh), and small chips show what changed.',
+      'The twist: the choice is not the whole story. The kind thing sometimes backfires, and the risky thing sometimes pays off. The same choice can end differently on another day.',
+      '"Something tells you this isn\'t over…" means a seed was planted. A day or a few days later it comes back as a follow-up story, or as a pop-up moment. Some stories are chapters of a bigger one, and later chapters change with what you chose before.',
+      'Read a story every day for a streak. At 3, 7 and 14 days in a row you get a small reward, once for each step. Miss a day and you start again.',
+      'Your path so far: the Stories app describes your life in words ("A kind hustler with a bit of luck"). Nobody shows you a score. Now and then you see a quiet line about how people see you.',
+    ],
+    where: 'Phone, then Stories.',
+    tips: [
+      'Every choice nudges your hidden path a little: kind or selfish, bold or careful, honest or shady, faithful, family-minded. Over time it changes which stories you get and how they end.',
+      'Kind players are sometimes blessed with a small surprise. Players with a lot of trouble sometimes get a visit from the police or EFCC. Luck leans the odds a little. None of it can be farmed for money.',
+      'A story only shows what fits your life: no partner story if you are single, no car story if you have no car.',
+      'You can get a push when your story is waiting. Turn on Game events in Settings, then Notifications. Check the app for current rewards.',
+    ],
+    tour: ['stories'],
+    keywords: 'story stories daily twist path karma luck streak chapter follow up bitlife choices reputation',
   },
 
   // ---- Notifications ---------------------------------------------------------------------------------------------

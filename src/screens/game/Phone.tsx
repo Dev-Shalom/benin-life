@@ -15,6 +15,7 @@ import { useGist } from '../../state/gist';
 import { usePolitics } from '../../state/politics';
 import { useGame } from '../../state/game';
 import { useKids } from '../../state/kids';
+import { useMoments } from '../../state/moments';
 import { startPoller } from '../../lib/realtime';
 import { useUi } from '../../state/ui';
 import { Button, Icon, toast, usePresence } from '../../ui';
@@ -73,7 +74,7 @@ const APPS: App[] = [
   { id: 'jobs', name: 'Jobs', emoji: '💼', bg: 'linear-gradient(160deg,#34c77f,#0e874e)', pitch: 'Find work across Benin City: shop hands, PoS agents, nurses, tech interns and more.' },
   { id: 'gist', name: 'Benin Gist', emoji: '🗣️', bg: 'linear-gradient(160deg,#5aa8ff,#2f6fd6)', pitch: 'Post gists, chat in groups, message friends and send money, all in one place.' },
   { id: 'family', name: 'Family', emoji: '💞', bg: 'linear-gradient(160deg,#ff8fa3,#d6336c)', pitch: 'Ask somebody out, flirt, go on dates and build a life together.' },
-  { id: 'stories', name: 'Stories', emoji: '📖', bg: 'linear-gradient(160deg,#f0a45a,#d66830)', pitch: 'Weekly stories shaped by everyday Benin City life.' },
+  { id: 'stories', name: 'Stories', emoji: '📖', bg: 'linear-gradient(160deg,#f0a45a,#d66830)', pitch: 'A new story every day, with a twist. What you choose shapes your path.' },
   { id: 'boutique', name: 'Boutique', emoji: '🛒', bg: 'linear-gradient(160deg,#3a7bd5,#1e3c72)', pitch: '' },
   { id: 'bank', name: 'Bank', emoji: '🏦', bg: 'linear-gradient(160deg,#9b8cff,#5b4fd6)', pitch: '' },
   { id: 'ranks', name: 'Ranks', emoji: '🏆', bg: 'linear-gradient(160deg,#ffd76a,#c9851a)', pitch: '' },
@@ -162,6 +163,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const gistGroupsUnread = useGist((g) => g.unreadGroups);
   // Family dot: unread love / kids alerts, plus every child that needs its parents right now (kids_status, polled only while the phone is open)
   const kidsAttention = useKids((s) => s.status?.attention ?? 0);
+  const storyWaiting = useMoments((m) => m.story.waiting);
   const familyUnread = events.filter((e) => (e.kind.startsWith('love_') || (e.kind.startsWith('kids_') && e.kind !== 'kids_needs')) && e.id > lastReadEventId).length + kidsAttention;
   const open = overlay === 'phone';
   const polBadge = usePolitics((s) => Boolean(s.status?.cycle && ((s.status.cycle.voting_open && s.status.me.voted.length < 3) || (s.status.cycle.status === 'registration' && !s.status.me.candidacy))));
@@ -288,6 +290,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                       {a.id === 'houses' && (state.rent?.owed ?? 0) > 0 && <span className="app-icon__badge">!</span>}
                       {a.id === 'family' && familyUnread > 0 && <span className="app-icon__badge">{familyUnread > 9 ? '9+' : familyUnread}</span>}
                       {a.id === 'politics' && polBadge && <span className="app-icon__badge">!</span>}
+                      {a.id === 'stories' && storyWaiting > 0 && <span className="app-icon__badge">{storyWaiting > 9 ? '9+' : storyWaiting}</span>}
                     </span>
                     <span className="app-icon__name">{a.name}</span>
                   </button>

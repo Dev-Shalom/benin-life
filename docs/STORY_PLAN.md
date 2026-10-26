@@ -2,6 +2,8 @@
 
 Status: first playable slice pushed to `main` in `247d1b4` on 2026-10-08; GitHub's Supabase migration workflow succeeded; `npm run build` passes; local Docker migrations and rollback-only RPC checks pass for story loading/choice persistence, robbery report filing, case listing and bank-first bail. Vercel deployment is not yet independently confirmed. Interactive client checks, replay/ownership rejection checks, more story content and the broader E1 economy remain unfinished.
 
+> **Update 2026-11-01:** the weekly story described below is **replaced by the daily stories** (docs/DAILY_STORIES.md): one story a day with weighted twist outcomes, follow-ups, arcs, a hidden path and a streak, all on the Life moments engine. The weekly tables and RPCs (`weekly_storyline_*`, `storyline_current`, `storyline_choose`) are kept so an old app version still works, but the Stories app no longer uses them. The design rules, the retention notes and the police / cars work below still apply.
+
 ## Design rules
 
 - Benin Life takes place in **Benin City, Edo State, Nigeria**. Do not confuse it with the Republic of Benin.
@@ -40,7 +42,7 @@ The feature remains part of **Benin Life**; do not rename the game or ship a sep
 
 ## First slice
 
-1. **Weekly story rotation:** one story is selected from an admin-editable catalogue for the WAT week. The server stores the player's choice and result and rejects a second choice that week.
+1. **Weekly story rotation (replaced by daily stories, see above):** one story is selected from an admin-editable catalogue for the WAT week. The server stores the player's choice and result and rejects a second choice that week.
 2. **Story interactions:** choices can adjust bounded needs and street cred. A fictional reckless choice may trigger a brief jail timer, demonstrating the existing status/jail UI. It is not a simulation of a particular real offence or sentence.
 3. **Police phone:** a player files a report only against a real robbery alert belonging to that account, at Police HQ or while held in the fictional cell. Case rows are private to the player. Bail draws from bank first, then cash.
 4. **Cars app:** lists the existing dealer stock and directs the player to the selected dealer; purchases still go through the existing server purchase RPC (one of each, bank first, then cash).

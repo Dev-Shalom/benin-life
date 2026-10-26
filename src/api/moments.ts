@@ -1,6 +1,7 @@
 // Life moments (docs/MOMENTS.md): the BitLife-style pop-ups. The server decides everything (when a card comes, what a choice costs, what it does);
 // this file only types the answers. The effects and chances of a choice never reach the client.
 import { rpc } from '../lib/api';
+import type { StoryBadge } from './stories';
 
 export interface MomentChoice {
   id: string;
@@ -39,6 +40,8 @@ export interface MomentsPending {
   poll_seconds: number;
   /** How long "Remind me later" hides a card. */
   snooze_hours?: number;
+  /** The Stories badge (docs/DAILY_STORIES.md): rides on this one cheap poll. */
+  story?: StoryBadge;
 }
 
 export interface MomentResult {

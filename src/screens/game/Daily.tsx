@@ -10,6 +10,8 @@ import { errorMessage } from '../../lib/api';
 import { playCue } from '../../lib/sound';
 import { useDaily, type RewardStep } from '../../state/daily';
 import { useGame } from '../../state/game';
+import { useMoments } from '../../state/moments';
+import { useUi } from '../../state/ui';
 import { Button, Sheet, toast } from '../../ui';
 import './Daily.css';
 import { canPoll } from '../../lib/activity';
@@ -35,23 +37,38 @@ function useDailyFlags() {
   const gems = useDaily((s) => s.gems);
   const rewardOn = Boolean(reward?.enabled) && cfg('daily.reward_enabled', true);
   const gemsOn = Boolean(gems?.enabled) && cfg('daily.gems_enabled', true) && (gems?.total ?? 0) > 0;
-  return { reward, gems, rewardOn, gemsOn };
+  // today's story (docs/DAILY_STORIES.md): the badge arrives with the moments poll, no extra request
+  const story = useMoments((m) => m.story);
+  const storyOn = cfg('stories.daily_enabled', true) && story.waiting > 0;
+  return { reward, gems, rewardOn, gemsOn, story, storyOn };
 }
 
 /** Icons for the folded rail summary + how many chips are showing. */
 export function useDailyChipIcons(): string[] {
-  const { reward, gems, rewardOn, gemsOn } = useDailyFlags();
-  return [...(rewardOn && reward?.ready ? ['🎁'] : []), ...(gemsOn && gems && gems.found < gems.total ? ['💎'] : [])];
+  const { reward, gems, rewardOn, gemsOn, storyOn } = useDailyFlags();
+  return [...(rewardOn && reward?.ready ? ['🎁'] : []), ...(gemsOn && gems && gems.found < gems.total ? ['💎'] : []), ...(storyOn ? ['📖'] : [])];
 }
 
 export function DailyChips({ onPick }: { onPick?: () => void }) {
-  const { reward, gems, rewardOn, gemsOn } = useDailyFlags();
+  const { reward, gems, rewardOn, gemsOn, story, storyOn } = useDailyFlags();
   const setSheet = useDaily((s) => s.setSheet);
+  const openPhone = useUi((s) => s.openPhone);
   const showReward = rewardOn && reward?.ready;
   const showGems = gemsOn && gems && gems.found < gems.total;
-  if (!showReward && !showGems) return null;
+  if (!showReward && !showGems && !storyOn) return null;
   return (
     <div className="daily-row">
+      {storyOn && (
+        <button type="button" className="wish-chip wish-chip--story" onClick={() => { onPick?.(); openPhone('stories'); }}
+          aria-label={story.chapters > 0 ? 'Your story continues. Open Stories' : "Today's story is waiting. Open Stories"} data-testid="story-chip">
+          <span className="wish-chip__icon" aria-hidden>📖</span>
+          <span className="wish-chip__text">
+            <span className="wish-chip__title"><span className="daily-long">{story.chapters > 0 ? 'Your story continues' : 'Today’s story is waiting'}</span><span className="daily-short">{story.chapters > 0 ? 'Story continues' : 'Story waiting'}</span></span>
+            <span className="wish-chip__sub">{story.chapters > 0 ? 'Remember what you did?' : 'A small moment in Benin City'}</span>
+          </span>
+          <span className="daily-dot" aria-hidden />
+        </button>
+      )}
       {showReward && reward && (
         <button type="button" className="wish-chip wish-chip--daily" onClick={() => { onPick?.(); setSheet('reward'); }}
           aria-label={`Daily reward ready, day ${reward.day}. Open the 7-day rewards`}>

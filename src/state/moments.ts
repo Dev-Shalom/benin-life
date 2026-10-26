@@ -3,6 +3,7 @@
 // (startPoller = canPoll + idleFactor, lib/activity.ts) and once when the game opens. <MomentsHost/> shows them one at a time.
 import { create } from 'zustand';
 import { momentsOpen, momentsPending, type HandledMoment, type Moment } from '../api/moments';
+import type { StoryBadge } from '../api/stories';
 import { startPoller } from '../lib/realtime';
 
 interface MomentsStore {
@@ -11,6 +12,9 @@ interface MomentsStore {
   handled: HandledMoment[];
   pollSeconds: number;
   snoozeHours: number;
+  /** Daily stories waiting (docs/DAILY_STORIES.md): the badge on the Stories icon and the HUD chip. Comes with the same poll. */
+  story: StoryBadge;
+  setStory: (b: StoryBadge) => void;
   load: () => Promise<void>;
   /** Put a card first (the "See the doctor" button) and make it the one on screen. */
   show: (m: Moment) => void;
@@ -20,24 +24,28 @@ interface MomentsStore {
   reset: () => void;
 }
 
+const NO_STORY: StoryBadge = { waiting: 0, daily: false, chapters: 0 };
+
 export const useMoments = create<MomentsStore>((set, get) => ({
   queue: [],
   handled: [],
   pollSeconds: 90,
   snoozeHours: 2,
+  story: NO_STORY,
+  setStory: (b) => set({ story: b }),
   load: async () => {
     const r = await momentsPending();
-    if (!r.enabled) { set({ queue: [], handled: [] }); return; }
+    if (!r.enabled) { set({ queue: [], handled: [], story: NO_STORY }); return; }
     // keep the order the server gave, but never move the card the player is looking at
     const cur = get().queue[0];
     let queue = r.moments;
     if (cur && queue.some((m) => m.id === cur.id)) queue = [queue.find((m) => m.id === cur.id) as Moment, ...queue.filter((m) => m.id !== cur.id)];
-    set({ queue, handled: r.handled, pollSeconds: r.poll_seconds || 90, snoozeHours: r.snooze_hours ?? 2 });
+    set({ queue, handled: r.handled, pollSeconds: r.poll_seconds || 90, snoozeHours: r.snooze_hours ?? 2, story: r.story ?? NO_STORY });
   },
   show: (m) => set((s) => ({ queue: [m, ...s.queue.filter((x) => x.id !== m.id)] })),
   drop: (id) => set((s) => ({ queue: s.queue.filter((m) => m.id !== id) })),
   dropHandled: (id) => set((s) => ({ handled: s.handled.filter((h) => h.id !== id) })),
-  reset: () => set({ queue: [], handled: [] }),
+  reset: () => set({ queue: [], handled: [], story: NO_STORY }),
 }));
 
 /** Open a doctor card (or any card) by its instance id, from a button elsewhere in the game. */

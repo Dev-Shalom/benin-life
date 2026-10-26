@@ -262,6 +262,19 @@ export const TOUR_STEPS: TourStep[] = [
     before: () => toPhone('home'),
   },
   {
+    id: 'stories',
+    target: '[data-tour="app-stories"]',
+    title: 'Stories: a new one every day',
+    body: 'Open Stories for today\'s short story. Pick what you do and see how it really turns out: the kind choice can backfire and the risky one can pay off.',
+    points: [
+      'Something tells you it is not over? A follow-up can arrive days later.',
+      'Your choices quietly shape your path. Stories describe it in words, never numbers.',
+      'Read a story every day for a streak and small rewards. A dot on the icon shows when one is waiting.',
+    ],
+    isNew: true,
+    before: () => toPhone('home'),
+  },
+  {
     id: 'cooking',
     target: '[data-tour="app-food"]',
     title: 'Chowdeck: order food, or cook your own',

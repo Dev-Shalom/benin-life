@@ -12,12 +12,16 @@ import { musicApi } from './musicApi';
 import { PlaylistSelect } from './Music';
 
 type FieldType = 'text' | 'long' | 'int' | 'money' | 'num' | 'bool' | 'json' | 'list' | 'intnull' | 'numnull' | 'textnull' | 'time';
-interface Field { key: string; label: string; type: FieldType; help?: string; /** text length limit (also enforced by a check constraint on the table) */ maxLength?: number }
+interface Field { key: string; label: string; type: FieldType; help?: string; /** text length limit (also enforced by a check constraint on the table) */ maxLength?: number; /** height of a JSON box, in lines */ rows?: number }
 interface TableDef {
   id: string; table: AdminTable; title: string; emoji: string; blurb: string; pk: string[]; insert: boolean;
   fields: Field[]; inline?: string[]; titleOf: (r: Row) => string; subOf?: (r: Row) => string; newRow?: Row;
   /** A bool column shown as an on/off switch on every row (saves at once). */
   toggle?: { key: string; label: string };
+  /** How the rows are ordered when the list opens (the server order otherwise). */
+  order?: (a: Row, b: Row) => number;
+  /** Only these rows are listed (one table, two editors: pop-up moments and daily stories share life_moments). */
+  where?: (r: Row) => boolean;
   /** Cross-field checks on the parsed values; returns { fieldKey: message }. */
   validate?: (get: (key: string) => unknown) => Record<string, string>;
 }
@@ -626,7 +630,8 @@ const DEFS: TableDef[] = [
     newRow: { id: '', name: '', emoji: '🧒', from_days: 0, rate_hunger: 2, rate_sleep: 1.5, rate_fun: 1.5, rate_health: 0.4, rate_love: 1.5, sort: 100, active: true },
   },
   {
-    id: 'life_moments', table: 'life_moments', title: 'Life moments', emoji: '🎭', blurb: 'docs/MOMENTS.md. The pop-up stories. Kind: random (rolled for players), kids_ill (the doctor card, made by the kids logic), kids_school (school requests and the WAEC fee: made by the school clock for both parents) or kids_uni (the university decision) or system (only shown as a follow-up). Body and labels may use {name}, {child}, {partner}. Conditions (JSON): min_days, max_days, has_child ["nursery"], at ["oba_market"], need_below {"fun":40}, need_above, hours [18,23], min_cash, max_cash, has_item. Choices (JSON list, 1 to 4): {id,label,cost,effects,outcome,chance?,fail_effects?,fail_outcome?,ignore?,next_moment?}. Effects are a closed list: cash {amount, up_to?}, needs {delta}, kid_need, kid_cure, kid_ignore, kid_school_pay, kid_school_ignore, kid_uni {school}, item {id,qty}, skill_xp {skill,xp}, street_cred {delta}, follow_up {moment,delay_hours,chance}. Anything else is refused when you save. Weight = how likely among the moments a player qualifies for.',
+    id: 'life_moments', table: 'life_moments', title: 'Life moments', emoji: '🎭', blurb: 'docs/MOMENTS.md. The pop-up stories (the daily stories are under Daily stories). Kind: random (rolled for players), kids_ill, kids_school, kids_uni (made by the kids logic) or system (only shown as a follow-up; path_blessing_* and path_police_* / path_efcc_* are the rare blessing and police scenes the hidden path can bring). Body and labels may use {name}, {child}, {partner}. Conditions (JSON): min_days, max_days, has_child, at, need_below, need_above, hours, min_cash, max_cash, has_item, partner, kids, car, job, gang, school, business, origin, path. Choices (JSON list, 1 to 4): {id,label,cost,effects,outcome,chance?,fail_effects?,fail_outcome?,ignore?,next_moment?}. Effects are a closed list: cash, needs, kid_need, kid_cure, kid_ignore, kid_school_pay, kid_school_ignore, kid_uni, item, skill_xp, street_cred, path {delta}, follow_up {moment,delay_hours,chance}. Anything else is refused when you save.',
+    where: (r) => r.kind !== 'daily' && r.kind !== 'chapter',
     pk: ['id'], insert: true,
     toggle: { key: 'active', label: 'On' },
     titleOf: (r) => `${r.icon ?? ''} ${r.title}`.trim(),
@@ -635,7 +640,7 @@ const DEFS: TableDef[] = [
       { key: 'id', label: 'Moment id', type: 'text', help: 'lowercase letters, digits and _ (new moments)', maxLength: 41 },
       { key: 'title', label: 'Title (2 to 60 characters)', type: 'text', maxLength: 60 }, { key: 'icon', label: 'Emoji', type: 'text', maxLength: 8 },
       { key: 'speaker', label: 'Speaker line', type: 'text', maxLength: 60, help: 'e.g. Dr. Osagie · Central Hospital' },
-      { key: 'kind', label: 'Kind', type: 'text', help: 'random, kids_ill or system', maxLength: 10 },
+      { key: 'kind', label: 'Kind', type: 'text', help: 'random, kids_ill, kids_school, kids_uni or system', maxLength: 12 },
       { key: 'body', label: 'The story (5 to 500 characters)', type: 'long', maxLength: 500 },
       { key: 'conditions', label: 'Conditions', type: 'json', help: '{"min_days": 1, "hours": [16, 24]}' },
       { key: 'choices', label: 'Choices', type: 'json', help: '[{"id":"pay","label":"Pay","cost":3000,"effects":[{"t":"needs","delta":{"stress":-5}}],"outcome":"Done."}]' },
@@ -643,6 +648,54 @@ const DEFS: TableDef[] = [
       { key: 'push', label: 'Send a push', type: 'bool' }, { key: 'sort', label: 'Sort order', type: 'int' },
     ],
     newRow: { id: '', title: '', icon: '✨', speaker: '', kind: 'random', body: '', conditions: {}, choices: [{ id: 'ok', label: 'OK', cost: 0, effects: [], outcome: 'Done.' }], cooldown_days: 7, weight: 1, push: false, sort: 300, active: true },
+  },
+  {
+    id: 'daily_stories', table: 'life_moments', title: 'Daily stories', emoji: '📖', blurb: 'docs/DAILY_STORIES.md. One story a day for every player, plus follow-up chapters that come back days later. Kind: daily (can be the day\'s story, arc openers too) or chapter (only reached through a follow_up). The choices carry weighted outcomes, so a kind choice can backfire. Unknown fields, bad effects, banned words and cash gains over the cap are refused when you save. Numbers: Settings -> Daily stories. Words for the path: Path words.',
+    pk: ['id'], insert: true,
+    toggle: { key: 'active', label: 'On' },
+    where: (r) => r.kind === 'daily' || r.kind === 'chapter',
+    order: (a, b) => (a.kind === 'daily' ? 0 : 1) - (b.kind === 'daily' ? 0 : 1) || Number(a.sort) - Number(b.sort) || String(a.id).localeCompare(String(b.id)),
+    titleOf: (r) => `${r.icon ?? ''} ${r.title}`.trim(),
+    subOf: (r) => {
+      const ch = Array.isArray(r.choices) ? (r.choices as Row[]) : [];
+      const outs = ch.reduce((n, c) => n + (Array.isArray(c.outcomes) ? (c.outcomes as unknown[]).length : 0), 0);
+      const seeds = JSON.stringify(ch).split('"follow_up"').length - 1;
+      const cond = Object.keys((r.conditions as Row) ?? {}).join(', ');
+      return `${r.kind} · weight ${r.weight} · ${ch.length} choices · ${outs} outcomes${seeds ? ` · ${seeds} ${seeds === 1 ? 'seed' : 'seeds'}` : ''}${cond ? ` · needs ${cond}` : ''}${r.active ? '' : ' · off'}`;
+    },
+    fields: [
+      { key: 'id', label: 'Story id', type: 'text', help: 'lowercase letters, digits and _ (new stories)', maxLength: 41 },
+      { key: 'title', label: 'Title (2 to 60 characters)', type: 'text', maxLength: 60 }, { key: 'icon', label: 'Emoji', type: 'text', maxLength: 8 },
+      { key: 'speaker', label: 'Speaker line', type: 'text', maxLength: 60, help: 'e.g. Keke driver, Ugbowo' },
+      { key: 'kind', label: 'Kind', type: 'text', help: 'daily or chapter', maxLength: 12 },
+      { key: 'body', label: 'The scene (2 to 5 sentences, up to 500 characters)', type: 'long', maxLength: 500 },
+      { key: 'conditions', label: 'Conditions (who sees this story)', type: 'json', rows: 4, help: 'min_days, max_days, min_cash, max_cash, has_item, has_child, partner / kids / car / job / gang / school / business (true or false), origin ("lapo" or "nepo"), path {"trouble": {"min": 15}}. No "at" or "hours" on a daily story. Example: {"partner": true}' },
+      { key: 'path_w', label: 'Path weights (who gets it more often)', type: 'json', rows: 2, help: 'Each -3 to 3, e.g. {"goodwill": 1, "trouble": -1} = likelier for kind, clean players.' },
+      { key: 'choices', label: 'Choices and weighted outcomes (2 to 4 choices)', type: 'json', rows: 18, help: 'Each choice: id, label, cost?, path? (always lands), outcomes: [{w (weight), tone good | bad | twist | funny | info, text, effects?, requires?, path_w?}]. Effects: cash, needs, item, skill_xp, street_cred, path {delta}, follow_up {moment, delay_hours 24 to 168, chance}.' },
+      { key: 'cooldown_days', label: 'Cooldown (days) before the same story again', type: 'num' }, { key: 'weight', label: 'Weight (0 for chapters)', type: 'num' },
+      { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { id: '', title: '', icon: '📖', speaker: '', kind: 'daily', body: '', conditions: {}, path_w: {}, cooldown_days: 40, weight: 1, sort: 700, active: true,
+      choices: [
+        { id: 'help', label: 'Help out', path: { goodwill: 3 }, outcomes: [{ w: 60, tone: 'good', text: 'It works out nicely.', effects: [{ t: 'needs', delta: { social: 5 } }] }, { w: 40, tone: 'twist', text: 'It did not go as planned, but somebody noticed.', effects: [{ t: 'path', delta: { luck: 1 } }] }] },
+        { id: 'pass', label: 'Walk on', outcomes: [{ w: 1, tone: 'info', text: 'You walk on. Life continues.' }] },
+      ] },
+  },
+  {
+    id: 'path_lines', table: 'path_lines', title: 'Path words', emoji: '🧭', blurb: 'docs/DAILY_STORIES.md. The words for the hidden path. Each row is one score (goodwill, hustle, luck, trouble, faith, family), one side (sign 1 or -1) and one level (band 1 = first level, 2 = strong; the points are Settings -> Daily stories). Word = what "Your path so far" says ("kind", "hustler", "with a bit of luck"; hustle gives the noun, luck the ending, the others the adjectives). Whisper = the subtle line a player sometimes sees ("People around Ugbowo are starting to trust you."). Never put a number in either. One row per score, side and level.',
+    pk: ['id'], insert: true,
+    toggle: { key: 'active', label: 'On' },
+    titleOf: (r) => `${r.score} ${Number(r.sign) > 0 ? '+' : '-'} · level ${r.band} · ${r.word}`,
+    subOf: (r) => String(r.whisper ?? ''),
+    fields: [
+      { key: 'id', label: 'Id', type: 'text', help: 'lowercase letters, digits and _', maxLength: 41 },
+      { key: 'score', label: 'Score', type: 'text', help: 'goodwill, hustle, luck, trouble, faith or family', maxLength: 10 },
+      { key: 'sign', label: 'Side (1 or -1)', type: 'int' }, { key: 'band', label: 'Level (1 or 2)', type: 'int' },
+      { key: 'word', label: 'Word in "Your path so far"', type: 'text', maxLength: 40 },
+      { key: 'whisper', label: 'Subtle line', type: 'long', maxLength: 160 },
+      { key: 'sort', label: 'Sort order', type: 'int' },
+    ],
+    newRow: { id: '', score: 'goodwill', sign: 1, band: 1, word: '', whisper: '', sort: 100, active: true },
   },
   {
     id: 'kids_schools', table: 'kids_schools', title: 'Schools', emoji: '🏫', blurb: 'Kids school (docs/KIDS_SCHOOL.md). The schools and universities parents can pick in Family -> Kids -> School. Levels: nursery, primary, secondary, university (a comma list). Fee = naira per class (per level at university). Quality = grade boost in percent (10 = every grade x 1.10, capped at 100). Tier: budget, mid, premium (schools), public, private (universities). Area is only a label (a district id). A school that is switched off cannot be picked; children already there finish the class they are in. Keep names fictional (UNIBEN is the one real name).',
@@ -1303,7 +1356,7 @@ function parseField(f: Field, raw: unknown): [unknown, string | null] {
 
 function FieldInput({ f, value, onChange }: { f: Field; value: unknown; onChange: (v: unknown) => void }) {
   if (f.type === 'bool') return <Toggle checked={value === true} onChange={onChange} label={f.label} />;
-  if (f.type === 'json') return <JsonControl rows={5} value={String(value ?? '')} onChange={(t) => onChange(t)} />;
+  if (f.type === 'json') return <JsonControl rows={f.rows ?? 5} value={String(value ?? '')} onChange={(t) => onChange(t)} />;
   if (f.type === 'time') {
     return (
       <span className="adm-timebox">
@@ -1508,7 +1561,7 @@ function GenericSection({ def }: { def: TableDef }) {
   const { data, setData, error, loading, reload } = useLoad(() => adminApi.tableRows(def.table), [def.table]);
   if (error) return <LoadError error={error} onRetry={reload} />;
   if (!data || loading && !data) return <Skeleton rows={6} />;
-  return <TableEditor def={def} rows={data} setRows={setData} />;
+  return <TableEditor def={def} rows={def.order ? [...data].sort(def.order) : data} setRows={setData} filter={def.where} />;
 }
 
 const TRACK_DEF: TableDef = {

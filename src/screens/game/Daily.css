@@ -1,7 +1,11 @@
 /* D1: daily reward + gem hunt (docs/DAILY.md) */
 .wish-chip--daily,
-.wish-chip--gem {
+.wish-chip--gem,
+.wish-chip--story {
   position: relative;
+}
+.wish-chip--story .wish-chip__icon {
+  background: #ffeede;
 }
 .wish-chip--daily .wish-chip__icon {
   background: var(--amber-50);

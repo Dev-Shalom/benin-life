@@ -13,7 +13,7 @@ const CATEGORIES: { id: PushCategory; label: string; hint: string }[] = [
   { id: 'messages', label: 'Messages', hint: 'DMs and house chat, when you are not looking at it.' },
   { id: 'money', label: 'Money received', hint: 'Transfers, gifts and tips.' },
   { id: 'friends', label: 'Friends & invites', hint: 'Friend requests, house invites and knocks at your door.' },
-  { id: 'events', label: 'Game events', hint: 'Club events starting, hype at your club, weekly top earner, referral reward.' },
+  { id: 'events', label: 'Game events', hint: 'Club events starting, hype at your club, weekly top earner, referral reward, and when your daily story is waiting.' },
   { id: 'admin', label: 'Announcements', hint: 'News from the Benin Life team.' },
 ];
 

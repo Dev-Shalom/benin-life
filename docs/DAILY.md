@@ -32,3 +32,5 @@ Everything is decided on the server and keyed to the **WAT calendar day**: `bl_w
 
 ## E3 retune (migration `20261019000100_economy_balance.sql`, docs/BALANCE.md)
 Gem hunt: `daily.gem_prize` ₦3,000 -> **₦1,000**, `daily.gem_all_bonus` ₦5,000 -> **₦2,000** (up to ₦14,000 a day for walking was more than a starter day of work; now up to ₦5,000). The 7-day reward ladder is unchanged.
+
+The **daily story** (Phone -> Stories, a story a day with a twist, a reading streak and its own HUD chip next to these two) is documented in docs/DAILY_STORIES.md.

@@ -26,3 +26,13 @@ Random cards are never rolled in clubs, lounges, or while busy; doctor cards are
 
 ## School cards (step B, docs/KIDS_SCHOOL.md)
 Kinds `kids_school` (PTA levy, excursion, sports wear, party, WAEC fee: both parents get the card, the first to Pay settles it, Ignore needs both parents) and `kids_uni` ("Send {child} to university?"). Both are shown first, like the doctor. New effects: `kid_school_pay`, `kid_school_ignore`, `kid_uni {school}` (a university id or `work`). New label placeholder `{fee:<school id>}`. School requests respect the daily cap (retried later in the class); the university card does not count towards it.
+
+## Daily stories reuse this engine (docs/DAILY_STORIES.md)
+The daily stories are rows of the same table with kinds `daily` and `chapter`, validated by the same closed lists and edited in Admin -> Content (**Daily stories** lists them, **Life moments** hides them). Added to the closed lists:
+- **Effect** `path {delta: {goodwill: 3}}`: nudges the hidden path (cut to `stories.max_nudge`). Works in any moment.
+- **Choice fields** `path` (a nudge that always lands) and `outcomes` (weighted outcomes `{id?, w, tone, text, effects?, requires?, path_w?}`; only for `daily` and `chapter`, answered by `story_answer`, not `moments_answer`).
+- **Conditions** `partner`, `kids`, `car`, `job`, `gang`, `school`, `business` (true / false), `origin` (`lapo` / `nepo`), `path {"trouble":{"min":15}}`. They work for random moments too.
+- `follow_up` reaches a `chapter` (it becomes a story card in the Stories app, in `player_stories`) as well as a moment (`player_moments`). Its chance is cut to `stories.followup_max_chance`, a player holds at most `stories.followup_max_pending` waiting seeds and a seed waits at most `stories.followup_max_days`, for chapter and system targets only (doctor and school cards are untouched).
+- **Luck** moves a choice's `chance` by at most `stories.luck_chance_cap` points (never 0 or 100; doctor, school and university cards are left fair).
+- **Blessings and police scenes**: `bl_moment_roll` may swap the rolled moment for a `path_blessing_*` (goodwill) or a `path_police_*` / `path_efcc_*` (trouble) system moment, rarely and with a cooldown. They count against `moments.daily_cap`.
+- `moments_pending()` also returns `story` (`{waiting, daily, chapters}`), the badge for the Stories icon and the HUD chip.
