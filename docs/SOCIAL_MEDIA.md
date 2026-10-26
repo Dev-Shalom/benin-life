@@ -189,3 +189,11 @@ New since the last pack: taxes and bills (transfer fees, weekly income tax, VAT,
 - **Poster 2 (ChatGPT):** "GOOD vs BAD" split poster: left gold side (skip every requirement, run today), right red side (🎟️ tag everybody sees, 1 in 10 EFCC catch, lose seat and money).
 - **Caption:** "No degree? No Charisma? No clean record? 😏 Buy Godfather ticket and run for Governor anyway… ₦50 BILLION 🎟️ But everybody go see your ticket, and EFCC fit still catch you 👀 Who get that kind money for Benin? 👇 Play free, link in bio. #BeninLife #BeninCity #Edo #NaijaGames #Election #FYP"
 - **In-game broadcast:** title "🎟️ Godfather tickets are here", body "No qualification? A Godfather ticket lets you run for office anyway: Councillor ₦5B, Chairman ₦25B, Governor ₦50B. Everybody sees 🎟️ on your card and EFCC may still catch you. Registration closes Saturday. Phone → Benin Votes."
+
+### Pack: 5 big updates slideshow (26 Oct 2026)
+Covers Benin Gist, Daily Stories, babies and family, kids school and university, cooking and markets. Full 8-slide prompts are in the chat log of 26 Oct (style line first, then slides 1-8).
+- **TikTok:** photo-mode slideshow, 8 slides, about 2.5 s each, trending Afrobeats sound. First-slide text "5 NEW updates in Benin Life 👀", last slide "Link in bio".
+- **Extra clip:** screen-record today's daily story, pick a choice and show the "Plot twist!" reveal. Hook: "The game remembered what I did 😭". End with "A, B or C? Comment yours".
+- **Cover prompt (ChatGPT):** sleek vertical 4:5 Pixar-like 3D poster, glossy phone showing a stylised Benin City at dusk surrounded by floating icons (chat bubble, cooking pot, baby bottle, graduation cap, storybook). Text exactly: "NEW IN BENIN LIFE" / "5 big updates, all free" / "playbeninlife.app". Colours bronze #C8922E, coral #C0392B, warm black #1E1410, ivory #F7EBD3. No real brands.
+- **Caption:** "🔥 BENIN LIFE just got 5 big updates 🔥 💬 Benin Gist: post gist, group chats, send money 📖 Daily Stories with a TWIST 👶 Start a family 🎓 Send your kids to school 🍲 Cook owo soup with Oba Market ingredients. Your choices shape who you become 👀 Play free, no download 👉 playbeninlife.app #BeninLife #BeninGist #BeninCity #Edo #NaijaGames"
+- **Monday:** also post last week's top earners (Hustles → Top earners) as a story.
