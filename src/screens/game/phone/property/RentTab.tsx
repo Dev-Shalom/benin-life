@@ -10,8 +10,8 @@ import { naira, nairaShort } from '../../../../lib/format';
 import { useMove } from '../../../../state/move';
 import { useProperty } from '../../../../state/property';
 import { useUi } from '../../../../state/ui';
-import { Button, EmptyState, Segmented, Sheet, toast } from '../../../../ui';
-import { KIND_LABEL, QuoteRow } from './util';
+import { Button, EmptyState, Segmented, toast } from '../../../../ui';
+import { KIND_LABEL, QuoteRow, PSheet } from './util';
 
 const PRICE_CHIPS: { id: string; label: string; max: number | null }[] = [
   { id: 'any', label: 'Any rent', max: null }, { id: '10k', label: 'to ₦10K', max: 10_000 }, { id: '50k', label: 'to ₦50K', max: 50_000 },
@@ -104,7 +104,7 @@ function PlayerListings({ data, owed, visiting, onMoved }: { data: PropOverview;
               <button key={l.id} type="button" className="pp-card" onClick={() => setPick(l)} disabled={owed > 0 || visiting}>
                 <span className="pp-card__icon" aria-hidden>{l.emoji}</span>
                 <span className="pp-card__main">
-                  <b>{l.name}</b>
+                  <b>{l.type_name}{l.unit_no ? ` (unit ${l.unit_no})` : ''}</b>
                   <small>{l.area_name} · {l.bedrooms} bedroom{l.bedrooms === 1 ? '' : 's'} · {l.m2} m² · @{l.landlord}</small>
                   <span className="pp-tags">
                     {diff >= 5 && <span className="pp-tag is-good">{diff}% under market</span>}
@@ -156,7 +156,7 @@ function RentSheet({ listing, data, onClose, onRented }: { listing: PropListing 
   };
   const l = listing;
   return (
-    <Sheet open={Boolean(l)} onClose={busy ? () => {} : onClose} title={l ? `Rent: ${l.type_name}` : 'Rent a home'} subtitle={l ? `${l.area_name} · landlord @${l.landlord}` : undefined}
+    <PSheet open={Boolean(l)} onClose={busy ? () => {} : onClose} title={l ? `Rent: ${l.type_name}` : 'Rent a home'} subtitle={l ? `${l.area_name} · landlord @${l.landlord}` : undefined}
       footer={l && (
         <div className="garage-sheet__foot">
           <Button block variant="green" loading={busy} disabled={!q?.can_rent} onClick={() => void go()}>{q ? `Pay ${naira(q.total)} and move in` : 'Getting your quote…'}</Button>
@@ -182,6 +182,6 @@ function RentSheet({ listing, data, onClose, onRented }: { listing: PropListing 
           </ul>
         </div>
       )}
-    </Sheet>
+    </PSheet>
   );
 }

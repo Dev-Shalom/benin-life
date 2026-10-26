@@ -9,8 +9,8 @@ import { useNow } from '../../../../lib/clock';
 import { naira, nairaShort } from '../../../../lib/format';
 import { useProperty } from '../../../../state/property';
 import { useUi } from '../../../../state/ui';
-import { Button, Sheet, toast } from '../../../../ui';
-import { longDuration, QuoteRow } from './util';
+import { Button, toast } from '../../../../ui';
+import { longDuration, QuoteRow, PSheet } from './util';
 
 function Builders({ b, now, data, onCancel }: { b: PropBuild; now: number; data: PropOverview; onCancel: () => void }) {
   const start = Date.parse(b.started_at);
@@ -170,7 +170,7 @@ export default function BuildTab({ data, onStarted }: { data: PropOverview; onSt
       </Button>
       <p className="pp-hint">The plots stay locked while the builders work and under the finished house. You can't sell them. When the house is done it is yours to live in, let or sell{design && design.units > 1 ? ` (${design.units} separate homes)` : ''}.</p>
 
-      <Sheet open={confirm} onClose={busy ? () => {} : () => setConfirm(false)} title={design ? `Build a ${design.name.toLowerCase()}?` : 'Build'} subtitle={a?.name}
+      <PSheet open={confirm} onClose={busy ? () => {} : () => setConfirm(false)} title={design ? `Build a ${design.name.toLowerCase()}?` : 'Build'} subtitle={a?.name}
         footer={<div className="garage-sheet__foot">
           <Button block variant="green" loading={busy} onClick={() => void start()}>{quote ? `Pay ${naira(quote.total)} and start` : 'Start'}</Button>
           <Button block variant="ghost" disabled={busy} onClick={() => setConfirm(false)}>Not now</Button>
@@ -185,14 +185,14 @@ export default function BuildTab({ data, onStarted }: { data: PropOverview; onSt
             <p className="pp-hint">About {longDuration(design.hours * 3600)} of real time, in {design.stages.length} stages. Paid from your bank first, then cash. Cancel while it builds and you get {data.settings.cancel_refund_pct}% of the works back.</p>
           </div>
         )}
-      </Sheet>
-      <Sheet open={Boolean(cancel)} onClose={busy ? () => {} : () => setCancel(null)} title="Cancel this build?" subtitle={cancel ? `${cancel.name} · ${cancel.area_name}` : ''}
+      </PSheet>
+      <PSheet open={Boolean(cancel)} onClose={busy ? () => {} : () => setCancel(null)} title="Cancel this build?" subtitle={cancel ? `${cancel.name} · ${cancel.area_name}` : ''}
         footer={<div className="garage-sheet__foot">
           <Button block variant="danger" loading={busy} onClick={() => void doCancel()}>Yes, cancel · get {cancel ? nairaShort(cancel.refund) : ''} back</Button>
           <Button block variant="ghost" disabled={busy} onClick={() => setCancel(null)}>Keep building</Button>
         </div>}>
         <p className="pp-hint">You get {data.settings.cancel_refund_pct}% of the works back. The plan approval fee is gone. Your plots are free again.</p>
-      </Sheet>
+      </PSheet>
     </div>
   );
 }

@@ -4,8 +4,8 @@ import { propertyBuy, propertyQuoteBuy, type PropBuyQuote, type PropOffer, type 
 import { errorMessage } from '../../../../lib/api';
 import { naira, nairaShort } from '../../../../lib/format';
 import { useProperty } from '../../../../state/property';
-import { Button, EmptyState, Sheet, toast } from '../../../../ui';
-import { KIND_LABEL, QuoteRow } from './util';
+import { Button, EmptyState, toast } from '../../../../ui';
+import { KIND_LABEL, QuoteRow, PSheet } from './util';
 
 export default function BuyTab({ data, onBought }: { data: PropOverview; onBought: () => void }) {
   const [area, setArea] = useState<string>('all');
@@ -110,7 +110,7 @@ function BuySheet({ offer, type, areaName, data, onClose, onBought }: {
   const resale = offer ? Math.floor(offer.price * s.resale_pct / 100) : 0;
   const resaleNet = resale - Math.round(resale * s.sell_agent_pct / 100);
   return (
-    <Sheet open={Boolean(offer)} onClose={busy ? () => {} : onClose} title={type ? `${type.emoji} ${type.name}` : 'Buy a home'} subtitle={areaName}
+    <PSheet open={Boolean(offer)} onClose={busy ? () => {} : onClose} title={type ? `${type.emoji} ${type.name}` : 'Buy a home'} subtitle={areaName}
       footer={offer && (
         <div className="garage-sheet__foot">
           <Button block variant="green" loading={busy} disabled={!quote?.can_buy} onClick={() => void buy()}>
@@ -137,6 +137,6 @@ function BuySheet({ offer, type, areaName, data, onClose, onBought }: {
           </ul>
         </div>
       )}
-    </Sheet>
+    </PSheet>
   );
 }

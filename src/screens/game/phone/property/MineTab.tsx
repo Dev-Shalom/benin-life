@@ -9,8 +9,8 @@ import { useNow } from '../../../../lib/clock';
 import { naira, nairaShort, parseNaira } from '../../../../lib/format';
 import { useProperty } from '../../../../state/property';
 import { useUi } from '../../../../state/ui';
-import { Button, EmptyState, Sheet, toast } from '../../../../ui';
-import { dateShort, daysLeft, QuoteRow } from './util';
+import { Button, EmptyState, toast } from '../../../../ui';
+import { dateShort, daysLeft, QuoteRow, PSheet } from './util';
 
 type Dlg = { kind: 'list' | 'sell' | 'notice'; p: PropCard } | null;
 
@@ -127,7 +127,7 @@ export default function MineTab({ data, onBuy }: { data: PropOverview; onBuy: ()
       </div>
       <ListSheet dlg={dlg?.kind === 'list' ? dlg.p : null} data={data} onClose={() => setDlg(null)} onDone={() => { setDlg(null); void afterAction(); }} />
       <SellSheet p={dlg?.kind === 'sell' ? dlg.p : null} data={data} onClose={() => setDlg(null)} />
-      <Sheet open={dlg?.kind === 'notice'} onClose={() => setDlg(null)} title="Give notice?" subtitle={dlg?.p.name}
+      <PSheet open={dlg?.kind === 'notice'} onClose={() => setDlg(null)} title="Give notice?" subtitle={dlg?.p.name}
         footer={<div className="garage-sheet__foot">
           <Button block variant="danger" loading={busy === 'notice'} onClick={() => dlg && void run('notice', () => propertyGiveNotice(dlg.p.id), () => setDlg(null))}>Give {data.settings.notice_days} days notice</Button>
           <Button block variant="ghost" onClick={() => setDlg(null)}>Not now</Button>
@@ -136,7 +136,7 @@ export default function MineTab({ data, onBuy }: { data: PropOverview; onBuy: ()
           @{dlg?.p.occupant?.username} will be told and must leave in {data.settings.notice_days} days. Their caution goes back to them.
           You can't throw a tenant out at once. When they are gone the home is taken off the market.
         </p>
-      </Sheet>
+      </PSheet>
     </div>
   );
 }
@@ -170,7 +170,7 @@ function ListSheet({ dlg: p, data, onClose, onDone }: { dlg: PropCard | null; da
     }
   };
   return (
-    <Sheet open={Boolean(p)} onClose={busy ? () => {} : onClose} title="List for rent" subtitle={p?.name}
+    <PSheet open={Boolean(p)} onClose={busy ? () => {} : onClose} title="List for rent" subtitle={p?.name}
       footer={<div className="garage-sheet__foot">
         <Button block variant="green" loading={busy} disabled={!inBand || cautionN > cautionMax} onClick={() => void save()}>{rentN > 0 ? `List at ${naira(rentN)} a week` : 'List'}</Button>
         <Button block variant="ghost" disabled={busy} onClick={onClose}>Not now</Button>
@@ -198,7 +198,7 @@ function ListSheet({ dlg: p, data, onClose, onDone }: { dlg: PropCard | null; da
           </ul>
         </div>
       )}
-    </Sheet>
+    </PSheet>
   );
 }
 
@@ -220,7 +220,7 @@ function SellSheet({ p, data, onClose }: { p: PropCard | null; data: PropOvervie
     }
   };
   return (
-    <Sheet open={Boolean(p)} onClose={busy ? () => {} : onClose} title="Sell this home?" subtitle={p?.name}
+    <PSheet open={Boolean(p)} onClose={busy ? () => {} : onClose} title="Sell this home?" subtitle={p?.name}
       footer={<div className="garage-sheet__foot">
         <Button block variant="danger" loading={busy} onClick={() => void sell()}>{p ? `Sell for ${naira(p.sale.net)}` : 'Sell'}</Button>
         <Button block variant="ghost" disabled={busy} onClick={onClose}>Keep it</Button>
@@ -237,6 +237,6 @@ function SellSheet({ p, data, onClose }: { p: PropCard | null; data: PropOvervie
           <p className="pp-hint">You paid about {naira(p.basis)} for it. The market never pays more than that, so selling right after buying always loses the fees.{p.source === 'built' ? ' The plots under it go with the house.' : ''}</p>
         </div>
       )}
-    </Sheet>
+    </PSheet>
   );
 }

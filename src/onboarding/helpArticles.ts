@@ -276,6 +276,29 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: 'upgrade extension extra room bedroom garage generator solar borehole fence gate paint tiles boys quarters builders renovate expand',
   },
 
+  {
+    id: 'own-home',
+    topic: 'buying',
+    title: 'Own your home: buy, build, rent out',
+    summary: 'Buy a house, build one on your land, or let it to other players. Past homes can be moved back into.',
+    steps: [
+      'Open Phone, then Houses. The tabs are Home, Rent, Buy, Build, My properties and Past homes.',
+      'Buy: pick an area and a home. You see the price, agent fee and legal fee before you pay.',
+      'Build: first buy plots in Bank, Invest, Land. Pick the area and a design, then start. The builders work in stages for real hours.',
+      'My properties: live in a home, sell it, or list it for rent and set the weekly rent. Rent lands in your bank when your tenant pays.',
+    ],
+    where: 'Phone, then Houses.',
+    tips: [
+      'An owned home pays no rent, but you still pay the weekly house bill and ground rent.',
+      'Selling pays less than you paid (resale % minus the agent), so buying and selling again always loses money.',
+      'Plots under a build or a house cannot be sold. A block of flats gives you several homes to let.',
+      'A home you leave stays in Past homes for 30 days. Move back and your upgrades and furniture spots return.',
+      'Tenants can leave any time. A landlord must give notice, but a tenant who owes weeks of rent is moved out.',
+    ],
+    tour: ['houses'],
+    keywords: 'own buy house build land plots landlord tenant rent let caution notice past homes sell property bungalow duplex flats',
+  },
+
   // ---- Buying ----------------------------------------------------------------------------------------------------
   {
     id: 'buy',

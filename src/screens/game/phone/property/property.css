@@ -1,5 +1,6 @@
 /* Own your home (docs/PROPERTY.md): the Houses app tabs. Light tokens only; every control is 44px+ on touch, 16px inputs. */
-.houses .pp-tabs { margin: 0 0 10px; position: sticky; top: 0; z-index: 2; background: var(--bg, #f6f7f9); padding-bottom: 4px; }
+.houses .pp-tabs { margin: 0 0 10px; }
+.pp-sub { margin: -4px 0 8px; font-size: 13px; color: var(--ink-3); }
 .pp-tab { display: flex; flex-direction: column; gap: 10px; }
 .pp-tab > * { flex: none; }
 .pp-lead { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
@@ -25,17 +26,17 @@
 
 /* cards */
 .pp-list { display: flex; flex-direction: column; gap: 8px; }
-.pp-card { display: grid; grid-template-columns: 46px 1fr auto; gap: 10px; align-items: center; width: 100%; min-height: 64px; padding: 10px 12px; border: 2px solid transparent; border-radius: 18px; background: var(--surface); box-shadow: var(--e1); color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.pp-card { display: grid; grid-template-columns: 42px 1fr auto; gap: 9px; align-items: center; width: 100%; min-height: 64px; padding: 10px 12px; border: 2px solid transparent; border-radius: 18px; background: var(--surface); box-shadow: var(--e1); color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
 .pp-card:disabled { opacity: .6; cursor: default; }
 .pp-card:active:not(:disabled) { transform: scale(.985); }
 .pp-card--flat { box-shadow: none; background: transparent; padding: 10px 12px; }
 .pp-card--pick.is-picked { border-color: var(--primary); background: var(--primary-soft); }
 .pp-card__icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; background: var(--surface-2); font-family: var(--font-emoji); font-size: 26px; line-height: 1; }
 .pp-card__main { display: grid; gap: 2px; min-width: 0; }
-.pp-card__main b { font: 800 15px var(--font-display); overflow-wrap: anywhere; }
+.pp-card__main b { font: 800 14px var(--font-display); overflow-wrap: anywhere; }
 .pp-card__main small { font-size: 12.5px; color: var(--ink-3); line-height: 1.3; }
 .pp-card__main .pp-card__rent { color: var(--ink-2); font-weight: 600; }
-.pp-card__price { display: grid; justify-items: end; font: 800 16px var(--font-display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pp-card__price { display: grid; justify-items: end; font: 800 15px var(--font-display); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pp-card__price small { font: 700 11px var(--font-display); color: var(--ink-3); }
 .pp-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
 .pp-tag { padding: 2px 8px; border-radius: 999px; background: var(--surface-2); font: 700 11px var(--font-display); color: var(--ink-2); white-space: nowrap; }
@@ -117,3 +118,4 @@
 .house-card--let { background: linear-gradient(140deg, #2a5db0, #5b93e6); }
 @keyframes ppSway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
 @media (prefers-reduced-motion: reduce) { .pp-build__scaffold { animation: none; } .pp-bar > span { transition: none; } }
+.pp-sheet { text-align: left; }

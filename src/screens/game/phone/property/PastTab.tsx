@@ -9,8 +9,8 @@ import { naira, nairaShort } from '../../../../lib/format';
 import { useMove } from '../../../../state/move';
 import { useProperty } from '../../../../state/property';
 import { useUi } from '../../../../state/ui';
-import { Button, EmptyState, Sheet, toast } from '../../../../ui';
-import { daysLeft } from './util';
+import { Button, EmptyState, toast } from '../../../../ui';
+import { daysLeft, PSheet } from './util';
 
 export default function PastTab({ opts, owed, visiting, onChanged }: { opts: HouseOptions | null; owed: number; visiting: boolean; onChanged: () => void }) {
   const now = useNow(60_000);
@@ -76,7 +76,7 @@ export default function PastTab({ opts, owed, visiting, onChanged }: { opts: Hou
           </div>
         ))}
       </div>
-      <Sheet open={Boolean(giveUp)} onClose={busy ? () => {} : () => setGiveUp(null)} title="Give up this past home?" subtitle={giveUp?.name}
+      <PSheet open={Boolean(giveUp)} onClose={busy ? () => {} : () => setGiveUp(null)} title="Give up this past home?" subtitle={giveUp?.name}
         footer={<div className="garage-sheet__foot">
           <Button block variant="danger" loading={busy} onClick={() => void release()}>Give it up</Button>
           <Button block variant="ghost" disabled={busy} onClick={() => setGiveUp(null)}>Keep it</Button>
@@ -84,7 +84,7 @@ export default function PastTab({ opts, owed, visiting, onChanged }: { opts: Hou
         <p className="pp-hint">
           You can't move back for free after this. {giveUp && giveUp.past_value > 0 ? `Your ${giveUp.past_upgrades} upgrade${giveUp.past_upgrades === 1 ? '' : 's'} there will be sold: ${naira(giveUp.past_value)} into your bank.` : 'There are no upgrades to sell.'}
         </p>
-      </Sheet>
+      </PSheet>
     </div>
   );
 }

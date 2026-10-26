@@ -3,11 +3,13 @@
 Fynta: "It would be good to have the option to expand or upgrade your existing house rather than having to purchase a completely new property."
 Players can now extend and improve the home they live in. Migration `20261018000500_house_upgrades.sql`, test `supabase/tests/house_upgrades_test.sql`, geometry check `scripts/home-upgrade-check.mjs`.
 
+> **Own your home (docs/PROPERTY.md) changed two rules below.** Moving out no longer sells the upgrades or loses the home: the home stays in **Past homes** for `house.return_days` (30), upgrades, garage and furniture spots stay with it, and they are paid out at the resale % only when the slot expires or the player gives it up (`house_past_release`). On an **owned** home there is no landlord fee, no in-place tier upgrade (buy or build bigger), and the upgrades stay with the house (a tenant of a player landlord cannot do works). The text below describes the city-rented home.
+
 ## How homes work (and the ownership rule)
-Every home in the game is **rented** (weekly rent). So "owner" means *your own current home*:
+Every city home is **rented** (weekly rent). So "owner" means *your own current home*:
 - Only the home you live in. Not the UNIBEN hostel (never upgradable), not a home you are visiting, not while you owe rent, not from jail.
 - The tenant pays for the works **plus a landlord consent fee** (`house.upgrade_landlord_fee_pct`, default 10% of the upgrade price, on top, not refunded).
-- There is no house-selling flow in the game. The "sale" is **moving out**: `house_move` gives back `house.upgrade_resale_pct` (default 50%) of what you paid for upgrades into the bank (a build still in progress is refunded in full). The old home is released for good, so the upgrades go with it. `house_upgrade_state().sale_value` shows the figure; `bl_house_upgrades_value(uid)` is the hook for R9 player-to-player house sales.
+- (Old rule, replaced: moving out used to give back `house.upgrade_resale_pct` (default 50%) of what you paid for upgrades into the bank (a build still in progress is refunded in full). Now the upgrades wait in the past home; `house_upgrade_state().sale_value` shows what giving it up would pay.)
 
 ## The catalogue (admin table `house_upgrades`, Admin -> Content -> House upgrades)
 Columns: `name, emoji, category, description, preview` (what you will see in 3D), `tiers` (home types: face_me, self_contain, mini_flat, duplex), `price`, `tier_prices` (per home type override), `build_minutes` (0 = instant), `requires` (an upgrade id that must be finished first), `effect` jsonb, `sort`, `active`.

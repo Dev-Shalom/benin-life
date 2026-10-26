@@ -1,6 +1,7 @@
 // Small shared bits for the property tabs (docs/PROPERTY.md).
 import type { ReactNode } from 'react';
 import { naira } from '../../../../lib/format';
+import { Modal } from '../../../../ui';
 
 /** 90 -> "1m", 5400 -> "1h 30m", 200000 -> "2d 7h". */
 export function longDuration(seconds: number): string {
@@ -45,3 +46,15 @@ export function QuoteRow({ label, value, strong, hint }: { label: ReactNode; val
 }
 
 export const money = (n: number) => naira(n);
+
+/** The phone sits above bottom sheets (z-index), so the Houses tabs use the centred Modal for quotes and confirmations. */
+export function PSheet({ open, onClose, title, subtitle, footer, children }: {
+  open: boolean; onClose: () => void; title?: ReactNode; subtitle?: ReactNode; footer?: ReactNode; children?: ReactNode;
+}) {
+  return (
+    <Modal open={open} onClose={onClose} title={title} actions={footer}>
+      {subtitle && <p className="pp-sub">{subtitle}</p>}
+      {children}
+    </Modal>
+  );
+}
