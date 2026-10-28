@@ -12,9 +12,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Benin Life" />
     <meta name="format-detection" content="telephone=no" />
-    <meta name="description" content="Benin Life is a free multiplayer life-sim set in the real Benin City. Build your Sim, find work, make friends and get around the city." />
-    <meta property="og:title" content="Benin Life" />
-    <meta property="og:description" content="Live a whole new life in Benin City. Free to play in your browser. 18+." />
+    <meta name="description" content="Benin Life is a free online life game set in Benin City, Edo State, Nigeria. Work, run a business, go to school, raise a family and join friends. Created by Shalom Uwagboe. Play in your browser, no download." />
+    <meta name="author" content="Shalom Uwagboe" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="keywords" content="Benin Life, Benin City game, Nigerian life game, life simulation, Edo State, play online free, Shalom Uwagboe" />
+    <link rel="canonical" href="https://playbeninlife.app/" />
+    <meta property="og:title" content="Benin Life: a free life game set in Benin City" />
+    <meta property="og:description" content="Live a whole new life in Benin City. Created by Shalom Uwagboe. Free to play in your browser. 18+." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://playbeninlife.app/" />
     <meta property="og:image" content="https://playbeninlife.app/og-image.png" />
@@ -23,8 +27,8 @@
     <meta property="og:image:alt" content="Benin Life logo: the Ada and Eben royal swords of Benin with a coral bead" />
     <meta property="og:site_name" content="Benin Life" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Benin Life" />
-    <meta name="twitter:description" content="Live a whole new life in Benin City. Free to play in your browser. 18+." />
+    <meta name="twitter:title" content="Benin Life: a free life game set in Benin City" />
+    <meta name="twitter:description" content="Live a whole new life in Benin City. Created by Shalom Uwagboe. Free to play in your browser. 18+." />
     <meta name="twitter:image" content="https://playbeninlife.app/og-image.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -34,7 +38,49 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@500..800&family=Figtree:wght@400..800&display=swap"
       rel="stylesheet"
     />
-    <title>Benin Life</title>
+    <title>Benin Life: Free Online Life Game Set in Benin City, Nigeria</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://playbeninlife.app/#website",
+            "url": "https://playbeninlife.app/",
+            "name": "Benin Life",
+            "alternateName": ["Play Benin Life", "Benin Life game"],
+            "inLanguage": "en-NG",
+            "publisher": { "@id": "https://playbeninlife.app/#person" }
+          },
+          {
+            "@type": "VideoGame",
+            "@id": "https://playbeninlife.app/#game",
+            "name": "Benin Life",
+            "url": "https://playbeninlife.app/",
+            "description": "A free multiplayer life game set in Benin City, Edo State, Nigeria. Work, run a business, go to school, raise a family, cook, vote and chat with other players.",
+            "genre": ["Life simulation", "Social simulation"],
+            "gamePlatform": "Web browser",
+            "applicationCategory": "Game",
+            "operatingSystem": "Any",
+            "inLanguage": "en-NG",
+            "image": "https://playbeninlife.app/og-image.png",
+            "audience": { "@type": "PeopleAudience", "suggestedMinAge": 18 },
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "NGN", "availability": "https://schema.org/InStock" },
+            "author": { "@id": "https://playbeninlife.app/#person" },
+            "creator": { "@id": "https://playbeninlife.app/#person" }
+          },
+          {
+            "@type": "Person",
+            "@id": "https://playbeninlife.app/#person",
+            "name": "Shalom Uwagboe",
+            "jobTitle": "Creator and owner of Benin Life",
+            "url": "https://playbeninlife.app/about/",
+            "sameAs": ["https://www.tiktok.com/@beninlife_official_"],
+            "owns": { "@id": "https://playbeninlife.app/#game" }
+          }
+        ]
+      }
+    </script>
     <style>
       /* Paint the sky before JS loads so slow connections never flash a blank page. */
       html, body { margin: 0; background: #eef4fa; }
