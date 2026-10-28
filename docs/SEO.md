@@ -18,3 +18,8 @@ Goal: people who search "Benin Life", "who owns Benin Life" or "Benin City game"
 6. Add the Instagram and X links to `sameAs` in `index.html` once they exist.
 
 Results take days to weeks. Ranking first for the generic words "Benin Life" depends on links and activity; the owner question is the easiest win because of the FAQ and About pages.
+
+## If another site or game uses the name "Benin Life" (28 Oct 2026)
+We cannot remove another site from Google. What we do: make ours the clearly official one (title says "Official Site", About and FAQ say it is the official game, structured data names Shalom Uwagboe as creator and owner), get it indexed (Search Console), and link to it from every profile we own.
+Evidence the game is ours: the first commit of this repository is 4 Oct 2026, the git history is a dated record of every change, and the TikTok account @beninlife_official_ has dated posts. Keep screenshots (with dates) of the other page.
+If they copied our name, text, art or design: report it to their host (for a Playdrop-hosted page, the platform's abuse or copyright contact) and, for copying of text, art or code, use Google's copyright removal form. A name alone is a trademark matter: registering "Benin Life" with the Trademarks Registry and talking to a lawyer are the real fixes.
