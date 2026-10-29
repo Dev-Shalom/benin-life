@@ -198,19 +198,19 @@ begin
     perform bl_settle_shift(p_user);                     -- an ended shift pays out the normal way
     update profiles set job_shift_ends_at = null, job_shift_pay = null, job_shift_xp = null, job_shift_perf = null
      where id = p_user and job_shift_ends_at is not null;
-    v_done := v_done || 'shift';
+    v_done := array_append(v_done, 'shift'::text);
   end if;
   if 'busy' = any (p_what) then
     update profiles set busy_until = null, busy_label = null, busy_started_at = null, busy_needs_from = null where id = p_user;
-    v_done := v_done || 'busy timer';
+    v_done := array_append(v_done, 'busy timer'::text);
   end if;
   if 'travel' = any (p_what) then
     update profiles set travel_to = null, travel_mode = null, travel_started_at = null, travel_arrives_at = null where id = p_user;
-    v_done := v_done || 'road trip';
+    v_done := array_append(v_done, 'road trip'::text);
   end if;
   if 'hospital' = any (p_what) then
     update profiles set hospitalized_until = null where id = p_user;
-    v_done := v_done || 'hospital stay';
+    v_done := array_append(v_done, 'hospital stay'::text);
   end if;
   perform bl_ag_log(v_admin, p_user, 'clear_states', jsonb_build_object('cleared', to_jsonb(p_what), 'old', v_old, 'reason', v_reason));
   perform bl_ag_alert(p_user, 'admin_grant', 'You are free to move', 'An admin cleared your ' || array_to_string(v_done, ', ') || '.', v_reason);
@@ -309,9 +309,9 @@ begin
   select * into r from player_path where user_id = p_user;
   select * into p from profiles where id = p_user;
   v_new := jsonb_build_object('street_cred', p.street_cred, 'wanted', p.wanted, 'path', to_jsonb(r) - 'user_id' - 'bands' - 'last_whisper' - 'decayed_on' - 'updated_at');
-  if p_street_cred is not null then v_msg := v_msg || ('street cred ' || p.street_cred); end if;
-  if p_wanted is not null then v_msg := v_msg || ('wanted level ' || p.wanted); end if;
-  if p_path is not null and p_path <> '{}'::jsonb then v_msg := v_msg || 'path numbers'; end if;
+  if p_street_cred is not null then v_msg := array_append(v_msg, ('street cred ' || p.street_cred)::text); end if;
+  if p_wanted is not null then v_msg := array_append(v_msg, ('wanted level ' || p.wanted)::text); end if;
+  if p_path is not null and p_path <> '{}'::jsonb then v_msg := array_append(v_msg, 'path numbers'::text); end if;
   perform bl_ag_log(v_admin, p_user, 'set_numbers', jsonb_build_object('old', v_old, 'new', v_new, 'reason', v_reason));
   perform bl_ag_alert(p_user, 'admin_grant', 'Your standing changed', 'An admin set your ' || array_to_string(v_msg, ', ') || '.', v_reason);
   return jsonb_build_object('message', 'Set ' || array_to_string(v_msg, ', ') || ' for @' || p.username || '.');
