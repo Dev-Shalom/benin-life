@@ -5,7 +5,7 @@
 // The server re-checks the seat on every RPC behind this screen, so a stale app or an old link can do nothing.
 import { useEffect } from 'react';
 import { useNow } from '../../../lib/clock';
-import { naira } from '../../../lib/format';
+import { nairaShort } from '../../../lib/format';
 import { useGame } from '../../../state/game';
 import { useOffices } from '../../../state/offices';
 import { usePolitics } from '../../../state/politics';
@@ -35,7 +35,7 @@ export default function OfficeApp({ onGo: _onGo }: { onGo: (id: string) => void 
           <b><OfficeTag title={mine.title} />{mine.office}</b>
           <div className="my-office__stats">
             <span><small>Term left</small><strong>{left >= 1 ? `${Math.floor(left)} d ${Math.floor((left % 1) * 24)} h` : `${Math.max(1, Math.round(left * 24))} h`}</strong></span>
-            <span><small>Salary a day</small><strong>{naira(mine.salary_per_day ?? 0)}</strong></span>
+            <span><small>Salary a day</small><strong>{nairaShort(mine.salary_per_day ?? 0)}</strong></span>
             <span><small>Kind</small><strong>{mine.kind === 'industry' ? 'Industry' : 'Government'}</strong></span>
           </div>
         </div>
