@@ -147,6 +147,50 @@ export interface PushStats {
   oldest_pending_s: number; players: number; devices: number; by_category: Record<string, number>; last_error: string | null; keep_days: number;
 }
 
+
+/** Grant toolbox (docs/ADMIN_GRANTS.md): the player's numbers (admin_grant_state) and what can be granted (admin_grant_catalog). */
+export interface GrantState {
+  id: string; username: string; banned: boolean; gender: string;
+  career: { track: string | null; track_name: string | null; level: number; title: string | null; xp: number; xp_to_next: number | null; top: number | null; on_shift: boolean; best: Record<string, number> | null };
+  status: { street_cred: number; wanted: number; path: Record<string, number>; yahoo_rank: string; yahoo_total: number; rent_owed: number; tax_owed: number };
+  needs: Record<string, number>;
+  states: { jail_left: number; jail_reason: string | null; hospital_left: number; busy_left: number; busy_label: string | null; travelling: boolean; travel_to: string | null; on_shift: boolean; visiting: boolean };
+  home: { start_home: string | null; name: string | null; kind: string; residence: { role: string; property: string } | null };
+  garage: { type: string; name: string } | null;
+  inventory: { item: string; name: string; category: string; qty: number }[];
+  furniture: { id: string; name: string; emoji: string; qty: number; house_qty: number; max: number }[];
+  wardrobe: { id: string; name: string; colour: string }[];
+  passes: { pass: string; until: string }[];
+  properties: { id: string; name: string; area: string; type: string; listed: boolean; lives: boolean; occupied: boolean; built: boolean }[];
+  land: { market: string; name: string; plots: number; locked: number }[];
+  businesses: { id: number; name: string; type: string; icon: string; level: number; max_level: number; staff: number; staff_slots: number; insured_until: string | null; stock_until: string | null; listed: boolean }[];
+  companies: { id: number; name: string; logo: string; industry: string; format: string | null; staff: number; slots: number; manager: boolean; generator: boolean; listed: boolean }[];
+  crew: { id: number; name: string; tag: string; rank: string } | null;
+  chief: { tier: number; name: string; ward: string; ward_name: string | null } | null;
+  courses: { id: string; name: string; icon: string; classes: number; status: string; done: number }[];
+  gist_ban: { until: string | null; reason: string | null } | null;
+}
+export interface GrantCatalog {
+  careers: { id: string; name: string; emoji: string; levels: { level: number; title: string; xp_to_next: number | null }[] }[];
+  items: { id: string; name: string; category: string; icon: string | null }[];
+  furniture: { id: string; name: string; emoji: string; category: string; max: number }[];
+  wardrobe: { id: string; name: string; gender: string | null; colours: string[] }[];
+  garages: { id: string; name: string; allowed: string[] }[];
+  homes: { id: string; name: string; district: string }[];
+  offers: { id: string; label: string }[];
+  land: { id: string; name: string }[];
+  crews: { id: number; name: string; tag: string; members: number }[];
+  chief_tiers: { tier: number; name: string }[];
+  wards: { id: string; name: string }[];
+  yahoo_ranks: { id: string; name: string }[];
+  passes: string[];
+  company_industries: { id: string; name: string; icon: string }[];
+  company_areas: { id: string; name: string }[];
+  company_formats: { id: string; name: string; staff_slots: number }[];
+  path_keys: string[];
+  needs: string[];
+}
+
 export const adminApi = {
   /** P1: player push outbox counts (docs/NOTIFICATIONS.md). */
   pushStats: () => rpc<PushStats>('admin_push_stats'),
@@ -233,5 +277,47 @@ export const adminApi = {
     options: { id: string; name: string; emoji: string }[];
   }>('admin_house_upgrade_get', { p_user: userId }),
   houseUpgradeGrant: (userId: string, upgrade: string) => rpc<Msg & { upgrade: string }>('admin_house_upgrade_grant', { p_user: userId, p_upgrade: upgrade }),
+
+  /** Grant toolbox (docs/ADMIN_GRANTS.md). Every call is admin-only, validated, audited and tells the player. */
+  grantState: (userId: string) => rpc<GrantState>('admin_grant_state', { p_user: userId }),
+  grantCatalog: () => rpc<GrantCatalog>('admin_grant_catalog'),
+  grantCareer: (u: string, track: string, level: number | null, xp: number | null, resetBest: boolean, reason: string) =>
+    rpc<Msg>('admin_grant_career', { p_user: u, p_track: track, p_level: level, p_xp: xp, p_reset_best: resetBest, p_reason: reason }),
+  careerRemove: (u: string, reason: string) => rpc<Msg>('admin_career_remove', { p_user: u, p_reason: reason }),
+  refillNeeds: (u: string, needs: string[] | null, reason = '') => rpc<Msg>('admin_refill_needs', { p_user: u, p_needs: needs, p_reason: reason }),
+  clearStates: (u: string, what: string[], reason = '') => rpc<Msg>('admin_clear_states', { p_user: u, p_what: what, p_reason: reason }),
+  jailSet: (u: string, seconds: number, reason: string) => rpc<Msg>('admin_jail_set', { p_user: u, p_seconds: seconds, p_reason: reason }),
+  setNumbers: (u: string, streetCred: number | null, wanted: number | null, path: Record<string, number> | null, reason: string) =>
+    rpc<Msg>('admin_set_numbers', { p_user: u, p_street_cred: streetCred, p_wanted: wanted, p_path: path, p_reason: reason }),
+  clearDebts: (u: string, rent: boolean, tax: boolean, reason: string) => rpc<Msg>('admin_clear_debts', { p_user: u, p_rent: rent, p_tax: tax, p_reason: reason }),
+  setYahooRank: (u: string, rank: string, reason: string) => rpc<Msg>('admin_set_yahoo_rank', { p_user: u, p_rank: rank, p_reason: reason }),
+  giveItem: (u: string, item: string, qty: number, reason = '') => rpc<Msg>('admin_give_item', { p_user: u, p_item: item, p_qty: qty, p_reason: reason }),
+  takeItem: (u: string, item: string, qty: number, reason = '') => rpc<Msg>('admin_take_item', { p_user: u, p_item: item, p_qty: qty, p_reason: reason }),
+  giveFurniture: (u: string, id: string, qty: number, reason = '') => rpc<Msg>('admin_give_furniture', { p_user: u, p_furniture: id, p_qty: qty, p_reason: reason }),
+  takeFurniture: (u: string, id: string, qty: number, reason = '') => rpc<Msg>('admin_take_furniture', { p_user: u, p_furniture: id, p_qty: qty, p_reason: reason }),
+  giveGarage: (u: string, type: string, reason = '') => rpc<Msg>('admin_give_garage', { p_user: u, p_type: type, p_reason: reason }),
+  removeGarage: (u: string, reason = '') => rpc<Msg>('admin_remove_garage', { p_user: u, p_reason: reason }),
+  giveWardrobe: (u: string, item: string, reason = '') => rpc<Msg>('admin_give_wardrobe', { p_user: u, p_item: item, p_colour: null, p_reason: reason }),
+  takeWardrobe: (u: string, item: string, reason = '') => rpc<Msg>('admin_take_wardrobe', { p_user: u, p_item: item, p_reason: reason }),
+  giveHustlePass: (u: string, pass: string, hours: number, reason = '') => rpc<Msg>('admin_give_hustle_pass', { p_user: u, p_pass: pass, p_hours: hours, p_reason: reason }),
+  takeHustlePass: (u: string, pass: string, reason = '') => rpc<Msg>('admin_take_hustle_pass', { p_user: u, p_pass: pass, p_reason: reason }),
+  businessSet: (biz: number, level: number | null, staff: number | null, insuredDays: number | null, stockHours: number | null, reason: string) =>
+    rpc<Msg>('admin_business_set', { p_business: biz, p_level: level, p_staff: staff, p_insured_days: insuredDays, p_stock_hours: stockHours, p_reason: reason }),
+  companyGrant: (u: string, industry: string, area: string, name: string | null, reason: string) =>
+    rpc<Msg>('admin_company_grant', { p_user: u, p_industry: industry, p_area: area, p_name: name, p_reason: reason }),
+  companySet: (company: number, format: string | null, staff: number | null, manager: boolean | null, generator: boolean | null, reason: string) =>
+    rpc<Msg>('admin_company_set', { p_company: company, p_format: format, p_staff: staff, p_manager: manager, p_generator: generator, p_reason: reason }),
+  setHome: (u: string, home: string | null, property: string | null, reason: string) =>
+    rpc<Msg>('admin_set_home', { p_user: u, p_home: home, p_property: property, p_reason: reason }),
+  giveProperty: (u: string, offer: string, reason: string) => rpc<Msg>('admin_give_property', { p_user: u, p_offer: offer, p_reason: reason }),
+  takeProperty: (u: string, property: string, reason: string) => rpc<Msg>('admin_take_property', { p_user: u, p_property: property, p_reason: reason }),
+  giveLand: (u: string, market: string, plots: number, reason: string) => rpc<Msg>('admin_give_land', { p_user: u, p_market: market, p_plots: plots, p_reason: reason }),
+  takeLand: (u: string, market: string, plots: number, reason: string) => rpc<Msg>('admin_take_land', { p_user: u, p_market: market, p_plots: plots, p_reason: reason }),
+  crewSet: (u: string, crew: number, rank: string, reason = '') => rpc<Msg>('admin_crew_set', { p_user: u, p_crew: crew, p_rank: rank, p_reason: reason }),
+  crewRemove: (u: string, reason = '') => rpc<Msg>('admin_crew_remove', { p_user: u, p_reason: reason }),
+  setChiefTitle: (u: string, tier: number, ward: string, reason: string) => rpc<Msg>('admin_set_chief_title', { p_user: u, p_tier: tier, p_ward: ward, p_reason: reason }),
+  removeChiefTitle: (u: string, reason = '') => rpc<Msg>('admin_remove_chief_title', { p_user: u, p_reason: reason }),
+  completeCourse: (u: string, course: string, reason = '') => rpc<Msg>('admin_complete_course', { p_user: u, p_course: course, p_reason: reason }),
+  resetCourse: (u: string, course: string, revokeCert: boolean, reason = '') => rpc<Msg>('admin_reset_course', { p_user: u, p_course: course, p_revoke_cert: revokeCert, p_reason: reason }),
   charmClear: (userId: string, charmId: number | null) => rpc<Msg & { cleared: number }>('admin_charm_clear', { p_user: userId, p_charm: charmId }),
 };
