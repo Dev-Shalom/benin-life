@@ -201,13 +201,13 @@ create policy ind_levers_read on public.ind_levers for select to authenticated u
 -- 3. Seeds: offices and levers (fictional titles only; admin edits survive a re-run)
 -- ---------------------------------------------------------------------------------------------
 insert into public.ind_offices (id, name, industry, title, icon, blurb, salary_per_day, term_days, min_account_days, min_level, max_changes_per_day, max_total_drift_pct, active, sort) values
-('bank_governor', 'Governor of the Bank', 'bank', 'Bank Gov.', '🏦', 'Runs Benin City Central Bank. Moves the transfer fee, stamp duty, PoS charge, income tax rates, the daily transfer limit and the counter hours, a little at a time. The fees are sinks: the money is destroyed, never paid to you.', 120000, 14, 7, 2, 4, 120, true, 1),
-('transport_commissioner', 'Transport Commissioner', 'transport', 'Transport Comm.', '🛺', 'Sets keke, bus and drop fares inside a band. Cheap fares are popular, dear fares are not.', 70000, 14, 5, 1, 4, 100, true, 2),
-('health_commissioner', 'Health Commissioner', 'health', 'Health Comm.', '🏥', 'Medicine prices and how long a hospital stay lasts.', 80000, 14, 5, 1, 4, 100, true, 3),
-('markets_commissioner', 'Markets and Trade Commissioner', 'markets', 'Trade Comm.', '🛍️', 'Oba Market and the shops: the council levy on businesses, the lowest haggle offer and the delivery markup.', 70000, 14, 5, 1, 4, 100, true, 4),
-('education_commissioner', 'Education Commissioner', 'education', 'Edu. Comm.', '🎓', 'School and course fees, extra lessons and university pocket money.', 60000, 14, 5, 1, 4, 100, true, 5),
-('housing_commissioner', 'Housing and Lands Commissioner', 'housing', 'Housing Comm.', '🏘️', 'Agent and legal fees on homes, ground rent and the band landlords may charge rent in.', 70000, 14, 5, 1, 4, 100, true, 6),
-('nepa_md', 'Power (NEPA) Managing Director', 'power', 'NEPA MD', '💡', 'Runs the lights: how often each area has an outage. Closed until the power levers are switched on.', 100000, 14, 7, 2, 4, 100, false, 7)
+('bank_governor', 'Governor of the Bank', 'bank', 'Bank Gov.', '🏦', 'Runs Benin City Central Bank. Moves the transfer fee, stamp duty, PoS charge, income tax rates, the daily transfer limit and the counter hours, a little at a time. The fees are sinks: the money is destroyed, never paid to you.', 5000000, 14, 7, 2, 4, 120, true, 1),
+('transport_commissioner', 'Transport Commissioner', 'transport', 'Transport Comm.', '🛺', 'Sets keke, bus and drop fares inside a band. Cheap fares are popular, dear fares are not.', 1500000, 14, 5, 1, 4, 100, true, 2),
+('health_commissioner', 'Health Commissioner', 'health', 'Health Comm.', '🏥', 'Medicine prices and how long a hospital stay lasts.', 2000000, 14, 5, 1, 4, 100, true, 3),
+('markets_commissioner', 'Markets and Trade Commissioner', 'markets', 'Trade Comm.', '🛍️', 'Oba Market and the shops: the council levy on businesses, the lowest haggle offer and the delivery markup.', 1500000, 14, 5, 1, 4, 100, true, 4),
+('education_commissioner', 'Education Commissioner', 'education', 'Edu. Comm.', '🎓', 'School and course fees, extra lessons and university pocket money.', 1000000, 14, 5, 1, 4, 100, true, 5),
+('housing_commissioner', 'Housing and Lands Commissioner', 'housing', 'Housing Comm.', '🏘️', 'Agent and legal fees on homes, ground rent and the band landlords may charge rent in.', 1500000, 14, 5, 1, 4, 100, true, 6),
+('nepa_md', 'Power (NEPA) Managing Director', 'power', 'NEPA MD', '💡', 'Runs the lights: how often each area has an outage. Closed until the power levers are switched on.', 3000000, 14, 7, 2, 4, 100, false, 7)
 on conflict (id) do nothing;
 
 insert into public.ind_levers (id, office_id, config_key, label, blurb, unit, band_min, band_max, step, cooldown_hours, direction, effect, sort)
@@ -527,6 +527,29 @@ language plpgsql security definer set search_path = public as $$
 begin
   perform bl_require_uid();
   perform bl_ind_tick();
+end $$;
+
+-- "My Office" phone app: does the caller hold a seat RIGHT NOW (an industry office or an elected / appointed political one)? The app shows only
+-- while this says so; every power behind the app checks the seat again on the server (ind_* here, pol_* in Benin Votes).
+create or replace function public.office_mine() returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := bl_require_uid(); v_now timestamptz; h ind_holders; o ind_offices; p office_holders; po offices;
+begin
+  perform bl_ind_tick();
+  v_now := bl_now();
+  select * into h from ind_holders where user_id = v_uid and status = 'active' and term_end > v_now;
+  if h.id is not null and bl_ind_on() then
+    select * into o from ind_offices where id = h.office_id;
+    return jsonb_build_object('holds', true, 'kind', 'industry', 'office_id', o.id, 'office', o.name, 'title', o.title, 'icon', o.icon, 'term_end', h.term_end,
+      'days_left', round((extract(epoch from (h.term_end - v_now)) / 86400.0)::numeric, 1), 'salary_per_day', o.salary_per_day);
+  end if;
+  select * into p from office_holders where user_id = v_uid and status = 'active' and term_end > v_now;
+  if p.id is not null and bl_pol_on() then
+    select * into po from offices where id = p.office_id;
+    return jsonb_build_object('holds', true, 'kind', 'political', 'office_id', po.id, 'office_kind', po.kind, 'office', po.name, 'title', po.title, 'icon', po.icon, 'term_end', p.term_end,
+      'days_left', round((extract(epoch from (p.term_end - v_now)) / 86400.0)::numeric, 1), 'salary_per_day', po.salary_per_day);
+  end if;
+  return jsonb_build_object('holds', false);
 end $$;
 
 create or replace function public.ind_status() returns jsonb
@@ -889,7 +912,7 @@ begin
     execute format('revoke all on function %s from public, anon, authenticated', p.sig);
   end loop;
   for p in select oid::regprocedure as sig from pg_proc where pronamespace = 'public'::regnamespace
-            and proname in ('ind_tick', 'ind_status', 'ind_apply', 'ind_withdraw', 'ind_set_lever', 'ind_vote', 'ind_statement', 'ind_resign',
+            and proname in ('office_mine', 'ind_tick', 'ind_status', 'ind_apply', 'ind_withdraw', 'ind_set_lever', 'ind_vote', 'ind_statement', 'ind_resign',
                             'admin_ind_overview', 'admin_ind_appoint', 'admin_ind_application', 'admin_ind_remove_holder', 'admin_ind_freeze') loop
     execute format('revoke all on function %s from public, anon', p.sig);
     execute format('grant execute on function %s to authenticated, service_role', p.sig);
