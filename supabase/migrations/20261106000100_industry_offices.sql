@@ -13,7 +13,7 @@
 -- Idempotent: tables `if not exists`, seeds `on conflict do nothing`, functions `create or replace`, live functions patched through a guarded
 -- replace on pg_get_functiondef (skipped when applied, a notice when the anchor is gone). No loop over players anywhere.
 
-create or replace function pg_temp.io_patch(p_sig text, p_done text, p_marker text, p_new text) returns void
+create or replace function pg_temp.ind_patch(p_sig text, p_done text, p_marker text, p_new text) returns void
 language plpgsql as $$
 declare v_def text; v_n int;
 begin
@@ -891,15 +891,15 @@ end $$;
 -- 8. Patch the live functions (guarded): the title badge, medicine prices, the Admin Content editors
 -- ---------------------------------------------------------------------------------------------
 -- the badge: an elected office wins, then an industry office, then a bought chief title
-select pg_temp.io_patch('public.bl_pol_title(uuid)', 'bl_ind_title(p_uid)', 'bl_chief_title(p_uid))', E'bl_ind_title(p_uid),\n      bl_chief_title(p_uid))');
+select pg_temp.ind_patch('public.bl_pol_title(uuid)', 'bl_ind_title(p_uid)', 'bl_chief_title(p_uid))', E'bl_ind_title(p_uid),\n      bl_chief_title(p_uid))');
 -- medicine (category health) follows health.price_pct
-select pg_temp.io_patch('public.bl_dealer_net(items, text)', 'health.price_pct',
+select pg_temp.ind_patch('public.bl_dealer_net(items, text)', 'health.price_pct',
   $m$when p_item.category <> 'vehicle' then coalesce(bl_shop_price(p_item, p_location), p_item.price)$m$,
   $m$when p_item.category = 'health' then (case when bl_pol_num('health.price_pct', 100) = 100 then coalesce(bl_shop_price(p_item, p_location), p_item.price)
          else (round(coalesce(bl_shop_price(p_item, p_location), p_item.price) * bl_pol_num('health.price_pct', 100) / 1000.0) * 10)::bigint end)
     when p_item.category <> 'vehicle' then coalesce(bl_shop_price(p_item, p_location), p_item.price)$m$);
 -- Admin -> Content editors
-select pg_temp.io_patch('public.bl_admin_table_spec(text)', $m$when 'ind_offices' then$m$, $m$when 'offices' then$m$,
+select pg_temp.ind_patch('public.bl_admin_table_spec(text)', $m$when 'ind_offices' then$m$, $m$when 'offices' then$m$,
   E'when ''ind_offices'' then ''{"pk":["id"],"insert":true,"order":"sort, id",\n      "cols":{"name":"text","industry":"text","title":"text","icon":"text","blurb":"text","salary_per_day":"money","term_days":"num","min_account_days":"num","min_level":"int","election_enabled":"bool","seats":"int","max_changes_per_day":"int","max_total_drift_pct":"num","frozen":"bool","sort":"int","active":"bool"}}\'\n    when ''ind_levers'' then ''{"pk":["id"],"insert":true,"order":"office_id, sort, id",\n      "cols":{"office_id":"text","config_key":"text","label":"text","blurb":"text","unit":"text","band_min":"num","band_max":"num","step":"num","cooldown_hours":"num","direction":"text","effect":"text","frozen":"bool","sort":"int","active":"bool"}}\'\n    when ''offices'' then');
 
 -- ---------------------------------------------------------------------------------------------
