@@ -28,6 +28,7 @@ const loadCatalog = () => (catalogPromise ??= adminApi.grantCatalog().catch((e) 
 
 const num = (v: string): number | null => (v.trim() === '' || Number.isNaN(Number(v)) ? null : Math.floor(Number(v)));
 const left = (sec: number) => (sec >= 3600 ? `${Math.floor(sec / 3600)} h ${Math.floor((sec % 3600) / 60)} min` : sec >= 60 ? `${Math.floor(sec / 60)} min ${sec % 60} s` : `${sec} s`);
+const pl = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
 function Field({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
@@ -254,7 +255,7 @@ function ItemsSection() {
   return (
     <div className="ag-body">
       <div className="ag-grid">
-        <Field label="Find an item" wide><input className="adm-input" type="search" placeholder="e.g. jollof, laptop, fuel…" value={q} onChange={(e) => setQ(e.target.value)} /></Field>
+        <Field label="Find an item" wide><input className="adm-input" type="search" placeholder="e.g. jollof, laptop, soda…" value={q} onChange={(e) => setQ(e.target.value)} /></Field>
         <Field label={`Item (${shown.length})`} wide><select className="adm-input" value={choice} onChange={(e) => setPick(e.target.value)}>
           {shown.map((i) => <option key={i.id} value={i.id}>{i.icon ?? ''} {i.name} · {i.category}</option>)}</select></Field>
         <Field label="How many (1 to 99)"><input className="adm-input" type="number" min={1} max={99} inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} /></Field>
@@ -568,11 +569,11 @@ const SECTIONS: Sec[] = [
   { id: 'skills', icon: '🌟', title: 'Skills and courses', keys: 'skill course certificate degree school learn', summary: (s) => `${s.courses.filter((c) => c.status === 'completed').length}/${s.courses.length} courses done`, body: <SkillsSection /> },
   { id: 'status', icon: '📈', title: 'Street cred, wanted, reputation', keys: 'street cred wanted reputation path goodwill luck faith yahoo rank debt rent tax', summary: (s) => `cred ${s.status.street_cred} · wanted ${s.status.wanted}`, body: <StatusSection /> },
   { id: 'needs', icon: '❤️', title: 'Needs, jail, stuck states', keys: 'needs hunger energy hygiene fun social health stress jail hospital busy travel stuck release', summary: (s) => (s.states.jail_left ? 'in jail' : s.states.hospital_left ? 'in hospital' : s.states.busy_left ? 'busy' : s.states.travelling ? 'travelling' : 'free'), body: <NeedsSection /> },
-  { id: 'items', icon: '🎒', title: 'Items and bag', keys: 'item bag food drink tool laptop phone ingredient give take inventory', summary: (s) => `${s.inventory.filter((i) => i.category !== 'vehicle').length} kinds in the bag`, body: <ItemsSection /> },
-  { id: 'cars', icon: '🚗', title: 'Cars and garage', keys: 'car vehicle garage carport park', summary: (s) => `${s.inventory.filter((i) => i.category === 'vehicle').length} cars${s.garage ? ' · ' + s.garage.name : ''}`, body: <CarsSection /> },
-  { id: 'furniture', icon: '🛋️', title: 'Furniture, clothes, stall pass', keys: 'furniture sofa bed tv wardrobe clothes outfit pass stall hustle', summary: (s) => `${s.furniture.length} pieces · ${s.wardrobe.length} clothes`, body: <FurnitureSection /> },
-  { id: 'home', icon: '🏠', title: 'Home, property, land', keys: 'home house move property land plot estate rent upgrade', summary: (s) => `${s.home.name ?? '—'} · ${s.properties.length} props · ${s.land.reduce((a, l) => a + l.plots, 0)} plots`, body: <HomeSection /> },
-  { id: 'business', icon: '🏪', title: 'Business and company', keys: 'business company level staff insurance stock manager generator shop', summary: (s) => `${s.businesses.length} businesses · ${s.companies.length} companies`, body: <BusinessSection /> },
+  { id: 'items', icon: '🎒', title: 'Items and bag', keys: 'item bag food drink tool laptop phone ingredient give take inventory', summary: (s) => `${pl(s.inventory.filter((i) => i.category !== 'vehicle').length, 'kind')} in the bag`, body: <ItemsSection /> },
+  { id: 'cars', icon: '🚗', title: 'Cars and garage', keys: 'car vehicle garage carport park', summary: (s) => `${pl(s.inventory.filter((i) => i.category === 'vehicle').length, 'car')}${s.garage ? ' · ' + s.garage.name : ''}`, body: <CarsSection /> },
+  { id: 'furniture', icon: '🛋️', title: 'Furniture, clothes, stall pass', keys: 'furniture sofa bed tv wardrobe clothes outfit pass stall hustle', summary: (s) => `${pl(s.furniture.length, 'piece')} · ${s.wardrobe.length} clothes`, body: <FurnitureSection /> },
+  { id: 'home', icon: '🏠', title: 'Home, property, land', keys: 'home house move property land plot estate rent upgrade', summary: (s) => `${s.home.name ?? '—'} · ${pl(s.properties.length, 'property').replace('propertys', 'properties')} · ${pl(s.land.reduce((a, l) => a + l.plots, 0), 'plot')}`, body: <HomeSection /> },
+  { id: 'business', icon: '🏪', title: 'Business and company', keys: 'business company level staff insurance stock manager generator shop', summary: (s) => `${pl(s.businesses.length, 'business').replace('businesss', 'businesses')} · ${pl(s.companies.length, 'company').replace('companys', 'companies')}`, body: <BusinessSection /> },
   { id: 'gang', icon: '🎖️', title: 'Gang and titles', keys: 'gang crew rank chief title office badge', summary: (s) => (s.crew ? `${s.crew.tag} ${cap(s.crew.rank)}` : 'no gang') + (s.chief ? ` · ${s.chief.name}` : ''), body: <GangSection /> },
   { id: 'perks', icon: '🛋️', title: 'Perks and bans', keys: 'lounge membership charm gist ban shrine', summary: (s) => (s.gist_ban ? 'Gist-banned' : 'lounge, charms, Gist'), body: <PerksSection /> },
 ];

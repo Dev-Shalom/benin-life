@@ -2,7 +2,7 @@
 .ag { min-width: 0; }
 .ag * { box-sizing: border-box; }
 .ag > * { min-width: 0; }
-.ag-search { margin: 2px 0 4px; }
+.ag .ag-search { margin: 2px 0 4px; flex: 0 0 46px; align-self: stretch; height: 46px; min-height: 46px; }
 .ag-list { display: flex; flex-direction: column; gap: 8px; }
 .ag-sec { border: 1px solid var(--adm-line); border-radius: 14px; background: var(--adm-card, #fff); overflow: hidden; }
 .ag-sec.is-open { border-color: var(--adm-line-2); box-shadow: 0 1px 6px rgba(17, 32, 56, 0.08); }
@@ -37,7 +37,8 @@
 .ag-card { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--adm-line); border-radius: 12px; min-width: 0; }
 .ag-card > b { overflow-wrap: anywhere; }
 .ag-card > small { color: var(--muted); font-size: 0.75rem; overflow-wrap: anywhere; }
-.ag-slot { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ag-slot { display: flex; flex-direction: column; gap: 10px; min-width: 0; font-size: 0.875rem; }
+.ag-slot .adm-h3 { font-size: 0.8125rem; }
 .ag-slot .adm-box { padding: 10px; }
 .ag-slot .adm-btnrow > *, .ag-slot .adm-ledger__row > * { min-width: 0; }
 .ag-slot .adm-input { min-width: 0; max-width: 100%; }
