@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useNow } from '../../lib/clock';
 import { startPolitics, usePolitics } from '../../state/politics';
+import { startOffices } from '../../state/offices';
 import { useUi } from '../../state/ui';
 import { Button } from '../../ui';
 
@@ -18,6 +19,7 @@ function span(sec: number): string {
 /** Follows Benin Votes for the signed-in game (status, election-day banner, alerts). */
 export function PoliticsHost() {
   useEffect(() => startPolitics(), []);
+  useEffect(() => startOffices(), []);
   return null;
 }
 
