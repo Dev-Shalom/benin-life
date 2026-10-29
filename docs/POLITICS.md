@@ -172,3 +172,7 @@ Three new city-wide elected seats, kind `chairman` (a plain seat: title, badge, 
 | Deputy Governor | Dep. Gov. | 150,000 | account 7 d, Charisma 3 | 35,000 | 35B |
 All editable in Content -> Offices. A seat added while an election is past registration has no candidates that cycle (vacant until the next one).
 `politics_test.sql` switches the three off to keep testing the original three races.
+
+## Industry offices and My Office (docs/OFFICES.md)
+Industry offices (Governor of the Bank and the Commissioners of transport, health, markets and trade, education, housing, power) live in their own tables and are filled by admin appointment; the election is untouched. The title badge slot: an **elected office title wins**, then an industry office, then a bought Chief title (`bl_pol_title`). A player who is sworn into an elected seat loses an industry office (one office at a time).
+The holder-only **My Office** phone app now holds the doing for political holders too: the Governor's Commissioner appointments, daily announcement and policy, and the Councillor's ward notice are the same component (`MyOffice`) and RPCs, shown in My Office. Benin Votes -> Government shows who holds what, the Industry offices list, and an "Open My Office" card for holders. The RPCs still check the seat on the server.

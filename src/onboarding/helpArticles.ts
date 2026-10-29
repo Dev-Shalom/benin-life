@@ -841,6 +841,26 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: 'politics election godfather ticket vote votes governor chairman councillor commissioner party campaign rally poster candidate endorse salary title hon gov policy announcement ward benin votes',
   },
   {
+    id: 'industry-offices',
+    topic: 'politics',
+    title: 'Industry offices: bank, transport, health and more',
+    summary: 'Heads of the bank, transport, health, markets, schools and housing control a few settings of their industry, inside strict limits. An admin appoints them. Everybody can apply and give a thumbs up or down.',
+    steps: [
+      'Open Phone, then Benin Votes, then Government. Scroll to Industry offices. Each office shows its holder, how long is left, an approval rating, the holder\'s latest statement and anything they changed.',
+      'To apply, tap Apply on an office, check the list of requirements, write a short clean pitch and send it. You can have one application at a time. An admin accepts or rejects it, and you get an alert either way.',
+      'If you hold an office a new app, My Office, appears on your phone. It has your settings (a slider inside the limits, a cooldown timer, and a confirm card that says in plain words what will happen), your official statement, your approval rating and your recent changes.',
+      'Every change is live at once, is written in the list for everybody to see, and goes out as a public notice (not every time, so nobody gets spammed). Fees and taxes the Governor of the Bank changes are never paid to anybody: the money is destroyed.',
+      'When your term ends, an admin removes you, or you stay away for several days, everything you changed goes back to normal and My Office disappears.',
+    ],
+    where: 'Phone, then Benin Votes, then Government (Industry offices). Holders: Phone, then My Office.',
+    tips: [
+      'You get a title badge next to your name and a salary for every day of the term. An elected office title wins if you have both. You can hold only one office at a time.',
+      'A holder can never switch fees or taxes off: every setting has a floor and a cap, a cooldown, a few changes a day and a total limit.',
+      'An office with low approval gets a warning, and the admin sees it. Nobody is removed automatically.',
+    ],
+    keywords: 'industry offices governor of the bank transport health markets trade education housing commissioner nepa power office lever fee transfer apply appointed salary approval my office statement',
+  },
+  {
     id: 'vote',
     topic: 'politics',
     title: 'How to vote',
