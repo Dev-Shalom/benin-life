@@ -9,9 +9,10 @@
 // effects", music + ambience follow "Music"; the HUD mute silences all. The context is suspended while
 // the tab is hidden. Music/ambience only play inside the game (setSoundScene from Game.tsx).
 // See docs/SOUND.md for the lifecycle rules (one context, one soundtrack, voice cap, limiter, tab ownership).
+import { create } from 'zustand';
 import { usePrefs } from './prefs';
 import { serverNow } from './clock';
-import { ClubRadio, primeRadioDecks } from './clubRadio';
+import { ClubRadio, primeRadioDecks, releaseRadioDecks } from './clubRadio';
 import { radioClockInfo, radioNow, samePlaylist, type RadioPlaylist } from './radio';
 import { CLUB_BPM, Engine, cheerOn, makeTrack, renderOffline, softCueOn, stingerOn, track, voiceStats, type Track, type TrackKind } from './music';
 
@@ -40,7 +41,37 @@ let scene = { inGame: false, night: false };
 
 const prefs = () => usePrefs.getState();
 const sfxOn = () => unlocked && !prefs().muted && prefs().sfx;
-const musicOn = () => unlocked && !prefs().muted && prefs().music && scene.inGame;
+// "Keep my own music playing" (prefs.keepOwnMusic, docs/SOUND.md): the game never starts a media element or its own
+// background music on its own. Only the club chip's Play tap (clubOptIn, per club visit) starts the club radio.
+const ownMode = () => prefs().keepOwnMusic;
+let clubOptIn = false;
+let deckPrimeTried = false;
+const musicOn = () => unlocked && !prefs().muted && prefs().music && scene.inGame && (!ownMode() || clubOptIn);
+/** The synthesized game music (home / city bed, ambience, place grooves): never while the player's own music is kept. */
+const synthMusicOn = () => musicOn() && !ownMode();
+/** SFX bus level: lighter while the player's own music plays (the OFF path keeps today's level exactly). */
+const sfxLevel = () => (prefs().sfx ? (ownMode() ? VOL.sfx * 0.55 : VOL.sfx) : 0);
+
+/** What the club chip needs to know: is there club audio to offer, and did the player start it this visit. */
+export const useClubAudio = create<{ available: boolean; optedIn: boolean }>(() => ({ available: false, optedIn: false }));
+function syncClubAudio() {
+  const available = Boolean(radioPl) || (placeSound === 'club' && Boolean(clubTrackUrl));
+  if (useClubAudio.getState().available !== available || useClubAudio.getState().optedIn !== clubOptIn) useClubAudio.setState({ available, optedIn: clubOptIn });
+}
+function setClubOptIn(v: boolean) {
+  clubOptIn = v;
+  setAudioSession();
+  syncClubAudio();
+}
+
+/** iOS (Safari 16.4+): 'ambient' mixes with the player's own music (and follows the silent switch); 'playback' is the
+ *  exclusive media app (plays with the silent switch on, pauses other apps). Playback only while the club radio runs. */
+function setAudioSession() {
+  try {
+    const as = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    if (as) as.type = ownMode() && !clubOptIn ? 'ambient' : 'playback';
+  } catch { /* unsupported */ }
+}
 
 function ensureCtx(): AudioContext | null {
   if (ctx) return ctx;
@@ -59,7 +90,7 @@ function ensureCtx(): AudioContext | null {
     limiter.attack.value = 0.003;
     limiter.release.value = 0.2;
     master.connect(limiter).connect(ctx.destination);
-    sfxBus = bus(prefs().sfx ? VOL.sfx : 0);
+    sfxBus = bus(sfxLevel());
     ctx.addEventListener('statechange', onState);
     musicBus = bus(0);
     ambBus = bus(0);
@@ -363,7 +394,7 @@ function stopPlace() {
     window.setTimeout(() => {
       try { eng?.out.disconnect(); b.disconnect(); } catch { /* gone */ }
       dbg.buses--;
-      dbg.engines--;
+      if (eng) dbg.engines--;
     }, 2500);
   }
   placeBus = null;
@@ -377,6 +408,8 @@ function stopPlace() {
   }
   radio?.dispose();
   radio = null;
+  // own-music mode: when no club visit has opted in, drop the media elements altogether (not just pause them)
+  if (ownMode() && !clubOptIn) { releaseRadioDecks(); deckPrimeTried = false; }
   if (placeDrone && ctx) {
     const d = placeDrone;
     d.g.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
@@ -391,10 +424,13 @@ function applyPlace() {
     if (ctx && musicTimer !== null) fade(musicBus, musicOn() ? VOL.music : 0);
     return;
   }
+  // own-music mode: only the opted-in club radio / club track; no synth groove, drones or murmurs
+  const own = ownMode();
+  if (own && placeSound !== 'club' && placeSound !== 'lounge') return;
   // the place's own soundtrack replaces most of the background music
   if (musicTimer !== null) fade(musicBus, placeSound in PLACE_LEVEL ? VOL.music * 0.15 : VOL.music * 0.7);
-  if (placeSound === 'bank') startDrone([100, 50.3], 'sine', 400, 0.05); // AC + fluorescent hum
-  if (placeSound === 'generator') startDrone([47, 94.5], 'sawtooth', 170, 0.06); // "I better pass my neighbour"
+  if (!own && placeSound === 'bank') startDrone([100, 50.3], 'sine', 400, 0.05); // AC + fluorescent hum
+  if (!own && placeSound === 'generator') startDrone([47, 94.5], 'sawtooth', 170, 0.06); // "I better pass my neighbour"
   const level = PLACE_LEVEL[placeSound];
   if (level) {
     placeBus = ctx.createGain();
@@ -415,7 +451,7 @@ function applyPlace() {
         if (!document.hidden && !yielded) void fileAudio.play().catch(() => {});
       } catch { fileAudio = null; }
     }
-    if (!fileAudio && !radio) {
+    if (!fileAudio && !radio && !own) {
       placeEngine = new Engine(ctx, placeBus);
       dbg.engines++;
       placeTrack = makeTrack(placeSound === 'dance' ? 'afrobeats' : placeSound as TrackKind, placeEngine, ctx.currentTime + 0.15);
@@ -431,6 +467,8 @@ export function setSoundPlace(k: PlaceSound) {
   cancelLeave();
   if (k === placeSound) return;
   placeSound = k;
+  if (clubOptIn) setClubOptIn(false); // the opt-in is for one club visit
+  syncClubAudio();
   if (unlocked && ensureCtx()) applyPlace();
 }
 
@@ -439,6 +477,7 @@ export function setPlaceTrack(url: string | null) {
   const u = (url ?? '').trim();
   if (u === clubTrackUrl) return;
   clubTrackUrl = u;
+  syncClubAudio();
   if (placeSound === 'club' && unlocked && ensureCtx()) applyPlace();
 }
 
@@ -447,6 +486,7 @@ export function setPlaceTrack(url: string | null) {
 export function setPlaceRadio(pl: RadioPlaylist | null) {
   if (samePlaylist(pl, radioPl)) return;
   radioPl = pl;
+  syncClubAudio();
   if ((placeSound === 'club' || placeSound === 'lounge') && unlocked && ensureCtx()) applyPlace();
 }
 
@@ -539,8 +579,8 @@ function apply() {
   // mute / Sound effects: ramp (a hard jump clicks) and cut stingers already in flight, not just future ones
   const now0 = ctx!.currentTime;
   master.gain.setTargetAtTime(prefs().muted ? 0 : VOL.master, now0, 0.03);
-  sfxBus.gain.setTargetAtTime(prefs().sfx ? VOL.sfx : 0, now0, 0.03);
-  if (musicOn()) {
+  sfxBus.gain.setTargetAtTime(sfxLevel(), now0, 0.03);
+  if (synthMusicOn()) {
     if (musicTimer === null) {
       step = 0;
       nextAt = ctx!.currentTime + 0.1;
@@ -575,7 +615,43 @@ function apply() {
     ambFilter = null;
     window.setTimeout(() => { try { src?.stop(); src?.disconnect(); flt?.disconnect(); } catch { /* already stopped */ } }, 900);
   }
+  // own-music mode with an opted-in club visit: only the radio (the synth bed above stays off)
+  if (ownMode() && musicOn() && placeSound && placeTimer === null) applyPlace();
   if (!musicOn()) stopPlace();
+}
+
+/** The club chip's Play tap (own-music mode): start the club radio for this visit. This is the only place the game
+ *  starts media elements in that mode; it pauses the player's own music (docs/SOUND.md). */
+export function startClubRadio() {
+  if (!ownMode() || (placeSound !== 'club' && placeSound !== 'lounge') || clubOptIn) return;
+  if (!ensureCtx()) return;
+  unlocked = true;
+  setClubOptIn(true);
+  claimTab();
+  void ctx!.resume().then(apply).catch(() => {});
+  apply();
+}
+
+/** Stop the opted-in club radio and give the audio focus back (the chip's Stop; leaving the club does it too). */
+export function stopClubRadio() {
+  if (!clubOptIn) return;
+  setClubOptIn(false);
+  apply();
+}
+
+/** Settings: "Keep my own music playing" or any other pref changed. */
+let lastOwn = true;
+function onPrefs() {
+  const own = ownMode();
+  if (own !== lastOwn) {
+    lastOwn = own;
+    clubOptIn = false;
+    setAudioSession();
+    syncClubAudio();
+    // turned OFF: today's path again (the decks are unlocked now, from this tap)
+    if (!own && ctx && unlocked) { deckPrimeTried = true; primeRadioDecks(ctx); }
+  }
+  apply();
 }
 
 /** Game.tsx: music/ambience only inside the game; day/night picks the mood. */
@@ -600,6 +676,8 @@ export function leaveGameSound() {
     leaveTimer = null;
     scene = { inGame: false, night: false };
     placeSound = null;
+    clubOptIn = false;
+    syncClubAudio();
     apply();
   }, 150);
 }
@@ -644,11 +722,11 @@ let installed = false;
 export function initSound() {
   if (installed || typeof window === 'undefined') return;
   installed = true;
-  try {
-    // iOS: play through the speaker even with the ringer switch on silent (Safari 16.4+)
-    const as = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
-    if (as) as.type = 'playback';
-  } catch { /* unsupported */ }
+  lastOwn = ownMode();
+  // iOS Safari 16.4+: 'playback' plays through the silent switch but stops the player's own music; with "Keep my own
+  // music playing" (default) the session is 'ambient' and mixes with it
+  setAudioSession();
+  if (import.meta.env.DEV) installMediaCounter();
   try {
     chan = new BroadcastChannel('bl-sound');
     chan.onmessage = (e) => {
@@ -663,7 +741,8 @@ export function initSound() {
     if (!ensureCtx()) return;
     const first = !unlocked;
     unlocked = true;
-    if (first) primeRadioDecks(ctx!); // iOS: unlock the two radio <audio> elements from a tap
+    // iOS: unlock the two radio <audio> elements from a tap (never in own-music mode: a media element takes audio focus)
+    if (!ownMode() && !deckPrimeTried) { deckPrimeTried = true; primeRadioDecks(ctx!); }
     if (first || yielded || ctx!.state !== 'running') {
       claimTab();
       void ctx!.resume().then(apply).catch(() => {});
@@ -683,7 +762,7 @@ export function initSound() {
   window.addEventListener('pagehide', () => { if (ctx && unlocked) pauseAudio(); });
   window.addEventListener('pageshow', () => { if (ctx && unlocked && !document.hidden) { claimTab(); wake(); } });
   window.addEventListener('focus', () => wake());
-  usePrefs.subscribe(apply);
+  usePrefs.subscribe(onPrefs);
   if (import.meta.env.DEV) {
     (window as unknown as { __blSound?: unknown }).__blSound = {
       render: renderOffline, playHype, readBeat, setPlaceTrack, setPlaceRadio,
@@ -702,7 +781,26 @@ export function initSound() {
         hidden: document.hidden,
         yielded,
         unlocked,
+        ownMode: ownMode(),
+        clubOptIn,
+        mediaStarts: (window as unknown as { __blMediaStarts?: number }).__blMediaStarts ?? 0,
       }),
+      startClubRadio, stopClubRadio,
     };
   }
+}
+
+/** DEV only: counts every HTMLMediaElement.play() call (window.__blMediaStarts, window.__blMediaLog) so tests can prove
+ *  the game starts no media element on its own in own-music mode. */
+function installMediaCounter() {
+  const w = window as unknown as { __blMediaStarts?: number; __blMediaLog?: string[] };
+  if (w.__blMediaStarts !== undefined) return;
+  w.__blMediaStarts = 0;
+  w.__blMediaLog = [];
+  const orig = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+    w.__blMediaStarts = (w.__blMediaStarts ?? 0) + 1;
+    w.__blMediaLog?.push((this.currentSrc || this.src || '').slice(0, 60));
+    return orig.call(this);
+  };
 }

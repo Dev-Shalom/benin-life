@@ -403,7 +403,10 @@ function SettingsTab({ state }: { state: GameState }) {
     <div className="sim-tab">
       <div className="settings-list">
         <Switch label="Sound effects" checked={prefs.sfx && !prefs.muted} onChange={(v) => prefs.set({ sfx: v, muted: v ? false : prefs.muted })} />
-        <Switch label="Music" checked={prefs.music && !prefs.muted} onChange={(v) => prefs.set({ music: v, muted: v ? false : prefs.muted })} />
+        <Switch label="Music" checked={prefs.music && !prefs.muted} onChange={(v) => prefs.set({ music: v, muted: v ? false : prefs.muted })}
+          hint={prefs.keepOwnMusic ? 'Game music stays off while your own music is kept. Club music starts only when you tap Play in a club.' : undefined} />
+        <Switch label="Keep my own music playing" hint="Your music from other apps keeps playing. The game stays quiet and does not pause it. On iPhone the silent switch also mutes the game's sounds."
+          checked={prefs.keepOwnMusic} onChange={(v) => prefs.set({ keepOwnMusic: v })} />
         <Switch label="Lite map for weak network" hint="A lighter 2D map that loads fast on slow or expensive data."
           checked={prefs.liteMap} onChange={(v) => prefs.set({ liteMap: v })} />
         <div className="settings-row">

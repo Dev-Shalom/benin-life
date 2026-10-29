@@ -44,6 +44,7 @@ import { GlobalPanelSheet } from './game/PanelHost';
 import { Phone } from './game/Phone';
 import { LookSheet, SimSheet } from './game/SimSheet';
 import { StatusBanners } from './game/StatusBanners';
+import { ClubMusicChip } from './game/ClubMusicChip';
 import { ElectionBanner, PoliticsHost } from './game/PollingStrip';
 import { deriveStatus } from './game/status';
 import { useTaskRunner } from './game/TaskRunner';
@@ -936,6 +937,7 @@ export default function Game() {
               <span className="chat-chip__dot" aria-hidden /> <Icon name="chat" size={15} /> {chatUnread > 9 ? '9+' : chatUnread} new in chat
             </button>
           )}
+          {showPlace && inClub && <ClubMusicChip key={state.location.id} />}
           {!clean && showPlace && (
             <PlaceCard state={state} data={interior.data} error={interior.error} zone={placeZone} onZone={setPlaceZone}
               peopleCount={crowdPlan.total + 1} moodSeconds={Number(cfg('places.mood_seconds', 7)) || 7}

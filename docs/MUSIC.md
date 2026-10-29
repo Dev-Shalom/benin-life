@@ -65,3 +65,5 @@ Do not upload ripped or streamed songs from Spotify, YouTube, Apple Music or the
 1. The **bucket** `club-music` limit (set to 150 MB by the migration, and the admin page checks 150 MB).
 2. Supabase's **global upload limit**: Dashboard > Storage > Settings > "Upload file size limit". The free plan allows at most 50 MB; on a paid plan set it to at least 150 MB. This one cannot be changed from code. If a big upload fails with "bigger than its upload limit", this is the setting to raise.
 Big files use the resumable (TUS) endpoint `https://<project>.storage.supabase.co/storage/v1/upload/resumable` in 6 MB pieces (`src/admin/musicApi.ts`).
+
+Note: with the player setting "Keep my own music playing" (ON by default) the club radio, the single club track and all game music do not start by themselves; the player starts the radio from a chip in the club. See docs/SOUND.md.

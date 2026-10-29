@@ -809,10 +809,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       'Tap the speaker at the top to mute or unmute everything.',
       'For finer control, open your Sim, then Settings, and use the Sound effects and Music switches.',
+      'Listening to Spotify, Audiomack or your own music? Keep "Keep my own music playing" on (it is on by default). The game stays quiet and does not pause your music. In a club, tap Play on the small chip to hear the club music instead (this pauses your own music).',
+      'Turn "Keep my own music playing" off to hear the game music and the club radio by themselves.',
       'Go to a club to hear its playlist.',
     ],
     where: 'The speaker icon in the top bar, and Sim sheet, then Settings.',
-    tips: ['On a phone, sound starts after your first tap. That is how browsers work.'],
+    tips: ['On a phone, sound starts after your first tap. That is how browsers work.', 'On iPhone, with your own music kept, the silent switch also mutes the game sounds.'],
     keywords: 'music sound mute radio dj playlist volume audio',
   },
 

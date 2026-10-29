@@ -13,7 +13,7 @@ const ok = (cond, msg) => { console.log((cond ? 'PASS ' : 'FAIL ') + msg); if (!
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-await ctx.addInitScript((g) => { try { const k = 'bl.prefs.v1'; const v = JSON.parse(localStorage.getItem(k) || '{}'); v.graphics = g; localStorage.setItem(k, JSON.stringify(v)); } catch {} }, process.env.GFX || 'low');
+await ctx.addInitScript((g) => { try { const k = 'bl.prefs.v1'; const v = JSON.parse(localStorage.getItem(k) || '{}'); v.graphics = g; v.keepOwnMusic = false; localStorage.setItem(k, JSON.stringify(v)); } catch {} }, process.env.GFX || 'low');
 const page = await ctx.newPage();
 page.on('pageerror', (e) => { console.log('pageerror', e.message); fails.push('pageerror ' + e.message); });
 await page.goto(`${BASE}/auth?mode=signin`);

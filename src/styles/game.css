@@ -6846,3 +6846,32 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
   margin: 0;
   font-size: 13px;
 }
+/* "Keep my own music playing": the non-blocking club music chip */
+.club-music-chip {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  color: var(--glass-text);
+  box-shadow: var(--e2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.club-music-chip__text { flex: 1; min-width: 0; line-height: 1.25; }
+.club-music-chip__btn, .club-music-chip__x {
+  flex: none;
+  min-height: 34px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.club-music-chip__btn { padding: 0 14px; background: var(--surface-3, rgba(0, 0, 0, 0.08)); }
+.club-music-chip__btn.is-primary { background: var(--green-600, #1f8f5a); color: #fff; }
+.club-music-chip__x { width: 34px; font-size: 20px; line-height: 1; opacity: 0.7; }
