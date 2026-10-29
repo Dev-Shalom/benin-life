@@ -43,6 +43,13 @@ const MAT_BY_COLOUR: Record<string, Mat> = {
   '#6d4aa0': 'fabric', '#e07a2e': 'fabric', '#0b625a': 'fabric', '#c74b8a': 'fabric',
 };
 
+/** L1: electric indicator LEDs (AC, fridge ...): they go out in a power cut (builder id LED_ID). */
+const LED_COLOURS = new Set(['#2ecc71', '#2c7be5', '#e74c3c']);
+export const LED_ID = '~led';
+
+/** L1: where one switchable light's parts sit in the merged 'glow' / 'light' geometries: [firstVertex, vertexCount] runs. */
+export interface LampRuns { glow: [number, number][]; light: [number, number][] }
+
 interface Occ { x0: number; z0: number; x1: number; z1: number; y0: number; y1: number; part: number }
 
 export interface BoxOpt { ry?: number; rx?: number; rz?: number; layer?: Layer; mat?: Mat; uv?: number; seg?: number; noOcc?: boolean }
@@ -57,6 +64,18 @@ export class HomeBuilder {
   mat: Mat | null = null;
   /** Bake AO in finish() (off for tiny one-off builds). */
   ao = true;
+  /** L1: parts pushed to the 'glow' / 'light' layers while this is set belong to that switchable light
+   * (a lamp shade, a floor pool); finish() reports where they ended up in `lamps`. */
+  lightId: string | null = null;
+  private lampParts = new Map<string, { glow: number[]; light: number[] }>();
+  /** Filled by finish(): the vertex runs of every switchable light (and the LED group). */
+  lamps: Record<string, LampRuns> = {};
+
+  private tag(id: string, layer: 'glow' | 'light', index: number) {
+    let e = this.lampParts.get(id);
+    if (!e) this.lampParts.set(id, (e = { glow: [], light: [] }));
+    e[layer].push(index);
+  }
 
   setFrame(x: number, y: number, z: number, yaw: number) {
     _q.setFromEuler(_e.set(0, yaw, 0));
@@ -115,6 +134,10 @@ export class HomeBuilder {
       // worth casting AO: not a floor slab, not a thin leg, not the whole world
       if (h > 0.08 && Math.max(w, d) > 0.14 && w < 25 && d < 25 && bb.max.y > 0.05)
         this.occ.push({ x0: bb.min.x, z0: bb.min.z, x1: bb.max.x, z1: bb.max.z, y0: bb.min.y, y1: bb.max.y, part: this.parts[layer].length });
+    }
+    if (layer === 'glow' || layer === 'light') {
+      const id = this.lightId ?? (layer === 'glow' && LED_COLOURS.has(color.toLowerCase()) ? LED_ID : null);
+      if (id) this.tag(id, layer, this.parts[layer].length);
     }
     this.parts[layer].push(g);
   }
@@ -199,6 +222,7 @@ export class HomeBuilder {
     g.setAttribute('feelUv', new Float32BufferAttribute(uv, 2));
     g.setAttribute('feelTile', new Float32BufferAttribute(new Float32Array(n), 1));
     // CircleGeometry / open cylinders are indexed like the boxes: fine for mergeGeometries
+    if (this.lightId) this.tag(this.lightId, 'light', this.parts.light.length);
     this.parts.light.push(g);
   }
 
@@ -261,6 +285,25 @@ export class HomeBuilder {
   finish(): Record<Layer, BufferGeometry | null> {
     if (this.ao) this.bakeAO();
     const out = {} as Record<Layer, BufferGeometry | null>;
+    // L1: vertex offset of every part before the merge (mergeGeometries keeps the order)
+    const offs: Partial<Record<Layer, number[]>> = {};
+    for (const k of ['glow', 'light'] as const) {
+      let o = 0;
+      offs[k] = this.parts[k].map((g) => { const at = o; o += g.attributes.position.count; return at; });
+    }
+    this.lamps = {};
+    for (const [id, e] of this.lampParts) {
+      const runs: LampRuns = { glow: [], light: [] };
+      for (const k of ['glow', 'light'] as const) {
+        for (const pi of e[k]) {
+          const start = offs[k]![pi];
+          const n = this.parts[k][pi].attributes.position.count;
+          const last = runs[k][runs[k].length - 1];
+          if (last && last[0] + last[1] === start) last[1] += n; else runs[k].push([start, n]);
+        }
+      }
+      this.lamps[id] = runs;
+    }
     for (const k of LAYERS) {
       const list = this.parts[k];
       if (!list.length) {

@@ -1,11 +1,12 @@
 // Shell of a home: ground disc, yard, tiled floor, cut-away walls, windows, then every piece of
 // furniture. Returns merged geometries per layer (see build.ts) in layout space; the scene centres it.
 import type { BufferGeometry } from 'three';
-import { KINDS, type HomeLayout } from '../model';
+import { KINDS, LIGHTS, lightPoint, lightTuneOf, liftLights, type HomeLayout } from '../model';
+import { kelvinHex } from './light';
 import { footprint, roomWalls, wallSegments } from '../nav';
-import { buildClutter, buildOutside, buildPools, hashStr, type Rect } from '../../feel/kit';
+import { buildClutter, buildOutside, hashStr, type Rect } from '../../feel/kit';
 import type { Mat } from '../../feel/atlas';
-import { HomeBuilder, type Layer } from './build';
+import { HomeBuilder, type LampRuns, type Layer } from './build';
 import { buildPiece, shadeHex } from './furniture';
 import { bicycle, drawCar, motorcycle, type LuxCar } from '../../place3d/engine/cars';
 
@@ -21,9 +22,60 @@ export interface BuiltRoom {
   /** F1: where the ceiling fan / bulb hang (layout space), null = none. */
   fan: [number, number, number] | null;
   bulb: [number, number, number];
+  /** L1: every light fixture in the room: where its glow sits, how bright / warm, whether it works in a power cut. */
+  fixtures: RoomLight[];
+  /** L1: where each fixture's glow and floor pool sit in the merged 'glow' / 'light' geometries (by piece id; '~led' = the
+   * electric indicator LEDs of ACs and fridges). */
+  lamps: Record<string, LampRuns>;
   /** Parked vehicles (layout space, footprint centre + size) so the scene can make them tappable. `index` is the
    * position in Parking.cars. */
   vehicles: { index: number; id: string; x: number; z: number; w: number; d: number }[];
+}
+
+/** L1: one light fixture of the room. */
+export interface RoomLight {
+  id: string;
+  kind: string;
+  /** Glow point, layout space. */
+  x: number;
+  y: number;
+  z: number;
+  /** Brightness 0..10, colour temperature (K), works in a power cut. */
+  b: number;
+  k: number;
+  np: boolean;
+  /** 0 = a bright, windowed spot (no light needed by day), 1 = a dim spot (bathroom, hall: wants light all day). */
+  dim: number;
+  /** Outdoors: only ever lit at night. */
+  yard: boolean;
+}
+
+const smooth01 = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+/** How dim a spot is by day: far from every window (n / w wall openings) = dim. Yard lights are never dim. */
+function dimAt(L: HomeLayout, x: number, z: number): number {
+  let best = Infinity;
+  for (const [side, a0, a1] of L.windows) {
+    const d = side === 'n' ? Math.hypot(x - Math.min(a1, Math.max(a0, x)), z) : Math.hypot(x, z - Math.min(a1, Math.max(a0, z)));
+    if (d < best) best = d;
+  }
+  return smooth01(3.2, 6.5, best);
+}
+
+/** The pool a light throws on the floor (additive, baked into the 'light' layer; HomeScene fades it with the light). */
+function lightPool(b: HomeBuilder, f: { x: number; z: number; y?: number; rot?: number; kind: string }, L: RoomLight) {
+  const col = kelvinHex(L.k);
+  const yaw = ((f.rot ?? 0) * Math.PI) / 2;
+  const str = Math.min(1, 0.35 + L.b / 10) * 0.7;
+  const mount = LIGHTS[f.kind as keyof typeof LIGHTS]!.mount;
+  if (mount === 'table') b.pool(L.x, L.z, 0.5 + L.b * 0.14, col, (f.y ?? 0) + 0.015, str * 0.7);
+  else if (mount === 'wall') b.pool(L.x + Math.sin(yaw) * 0.5, L.z + Math.cos(yaw) * 0.5, 0.9 + L.b * 0.2, col, 0.02, str * 0.8);
+  else if (mount === 'yard') b.pool(L.x, L.z, 1.6 + L.b * 0.25, col, 0.02, str);
+  else if (mount === 'floor') b.pool(L.x, L.z, 1.4 + L.b * 0.25, col, 0.02, str * 0.9);
+  else b.pool(L.x, L.z, 1.3 + L.b * 0.3, col, 0.02, str);
 }
 
 /** F1: LAPO-type layouts get cement + peeling plaster + louvres; flat/duplex get tiles + paint. */
@@ -345,30 +397,36 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
     buildScaffold(b, rect, sc.at === 'house' && !sc.rect);
   }
 
-  // furniture
-  for (const f of L.furniture) {
+  // furniture. L1: light fixtures are tagged (b.lightId) so the scene can switch each one's glow and floor pool
+  const fixtures: RoomLight[] = [];
+  for (const f of liftLights(L.furniture)) {
     if (doll && f.kind === 'ac') continue; // wall unit: nothing to hang it on in the low dollhouse walls
     b.setFrame(f.x, f.y ?? 0, f.z, ((f.rot ?? 0) * Math.PI) / 2);
+    const def = LIGHTS[f.kind];
+    if (def) {
+      const t = lightTuneOf(f);
+      const [lx, ly, lz] = lightPoint(f, L.wallH);
+      const yard = def.mount === 'yard' || !(lx >= 0 && lx <= L.w && lz >= 0 && lz <= L.d);
+      const light: RoomLight = { id: f.id, kind: f.kind, x: lx, y: ly, z: lz, b: t.b, k: t.k, np: t.np, dim: yard ? 0 : dimAt(L, lx, lz), yard };
+      fixtures.push(light);
+      b.lightId = f.id;
+      buildPiece(b, f, L.wallH);
+      b.resetFrame();
+      if (!doll) lightPool(b, f, light);
+      b.lightId = null;
+      continue;
+    }
     buildPiece(b, f, L.wallH);
     void KINDS;
   }
   b.resetFrame();
 
-  // F1: the bulb (LAPO: one bare bulb on a wire) / POP downlights (Nepo), lived-in clutter, light pools
+  // F1: lived-in clutter. L1: the bulbs and floor pools are the light fixtures above now (each home comes with at least
+  // one per room, home_layouts.lights), so nothing is hard-coded here any more.
   const H2 = L.wallH;
   const bulb: [number, number, number] = [L.w * 0.5, H2 - 0.35, L.d * 0.55];
   const fan: [number, number, number] | null = doll ? null : [L.w * 0.42, H2 - 0.12, L.d * 0.42];
-  const pools: [number, number][] = [];
   if (!doll) {
-    if (rich) {
-      for (const [fx, fz] of [[0.3, 0.3], [0.7, 0.3], [0.3, 0.72], [0.7, 0.72]] as const) pools.push([L.w * fx, L.d * fz]);
-    } else {
-      b.box(0.012, 0.35, 0.012, bulb[0], bulb[1] + 0.1, bulb[2], '#222');
-      // Exposed surface wiring gives the single-bulb LAPO room a specific, lived-in ceiling detail.
-      b.box(0.012, 0.012, Math.max(0.1, bulb[2] - 0.12), bulb[0], H2 - 0.025, bulb[2] / 2, '#302a24', { mat: 'metal', noOcc: true });
-      b.cyl(0.05, 0.035, 0.1, bulb[0], bulb[1], bulb[2], '#fff3c4', { layer: 'glow', seg: 8 });
-      pools.push([bulb[0], bulb[2]]);
-    }
     const avoid: Rect[] = L.furniture.map((f) => {
       const [x0, z0, x1, z1] = footprint(f);
       return [x0 - 0.1, z0 - 0.1, x1 + 0.1, z1 + 0.1] as Rect;
@@ -382,10 +440,9 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
       windowsW: L.windows.filter((w) => w[0] === 'w').map((w) => [w[1] - 0.4, w[2] + 0.4] as [number, number]),
       door: door ? (door[0] === 's' ? { x: (door[1] + door[2]) / 2, z: L.d + 0.75 } : { x: L.w + 0.75, z: (door[1] + door[2]) / 2 }) : null,
     });
-    buildPools(b, { W: L.w, D: L.d, H: L.wallH, kind: rich ? 'home_nepo' : 'home_lapo', seed, spots: pools, rich });
   }
   const layers = b.finish();
-  return { layers, tris: b.tris, radius, rich, fan, bulb, frame, vehicles };
+  return { layers, tris: b.tris, radius, rich, fan, bulb, frame, vehicles, fixtures, lamps: b.lamps };
 }
 
 function mixCol(a: string, c: string): string {

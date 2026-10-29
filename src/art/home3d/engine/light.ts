@@ -65,3 +65,48 @@ export function homeLight(hour: number): HomeLight {
   const bg = `linear-gradient(180deg, ${stop(0)} 0%, ${stop(1)} 50%, ${stop(2)} 100%)`;
   return { ...p, sunDir, bg, night: n >= 0.5, dark: n, horizon: mixHex(stop(2), stop(1), 0.35) };
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// L1 lamps (docs/HUD_HOME.md "Lighting"): pure rules, no three.js.
+
+const clamp255 = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+/** Colour of a lamp at `k` kelvin as #rrggbb (Tanner Helland's fit), lifted a little toward white so a candle is warm, not red. */
+export function kelvinHex(k: number): string {
+  const t = Math.max(10, Math.min(100, k / 100));
+  const r = t <= 66 ? 255 : clamp255(329.698727446 * Math.pow(t - 60, -0.1332047592));
+  const g = t <= 66 ? clamp255(99.4708025861 * Math.log(t) - 161.1195681661) : clamp255(288.1221695283 * Math.pow(t - 60, -0.0755148492));
+  const b = t >= 66 ? 255 : t <= 19 ? 0 : clamp255(138.5177312231 * Math.log(t - 10) - 305.0447927307);
+  const mix = (c: number) => clamp255(c + (255 - c) * 0.18);
+  return `#${((1 << 24) | (mix(r) << 16) | (mix(g) << 8) | mix(b)).toString(16).slice(1)}`;
+}
+
+const sm = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+/** A player's switch: the value they chose and the phase (0 day, 1 night) they chose it in. It lasts until the phase flips. */
+export type LampSwitch = [on: 0 | 1, phase: 0 | 1];
+
+/**
+ * How lit one light should be, 0..1.
+ * - no power and the light is mains-powered: 0, whatever the switch says;
+ * - the player's switch (this day / this night): on or off;
+ * - else automatic: on at dusk (`dark` rising through 0.12..0.5), and by day in a dim spot (far from windows).
+ */
+export function lampTarget(f: { dim: number; yard: boolean; np: boolean }, dark: number, powered: boolean, sw?: LampSwitch): number {
+  if (!powered && !f.np) return 0;
+  const phase = dark >= 0.5 ? 1 : 0;
+  if (sw && sw[1] === phase) return sw[0];
+  const night = sm(0.12, 0.5, dark);
+  const dimDay = f.yard ? 0 : sm(0.45, 0.8, f.dim) * 0.9;
+  return Math.max(night, dimDay);
+}
+
+/** Phase (0 day, 1 night) the switch is stored under. */
+export const phaseOf = (dark: number): 0 | 1 => (dark >= 0.5 ? 1 : 0);
+
+/** Real dynamic lights at once (PointLights, shared by every lit fixture): the nearest / brightest win, the rest are glow only. */
+export const MAX_REAL_LIGHTS = 4;
+/** Phones on the Low graphics tier. */
+export const MAX_REAL_LIGHTS_LOW = 2;

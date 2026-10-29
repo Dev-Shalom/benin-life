@@ -1,6 +1,7 @@
 // Home floor-plan check (docs/HUD_HOME.md "Home sizes"). Plain node script (Node 22+, type stripping):
 //   node scripts/home-space-check.mjs        # exit 1 on any failure
 //   node scripts/home-space-check.mjs --sql  # print the home_layouts rows the migration seeds
+//   node scripts/home-space-check.mjs --lights-sql  # print the L1 built-in lights per layout (home_layouts.lights)
 // For every layout, with the default furnishing and with the LAPO / NEPO starter sets, checks:
 //   - every piece stands fully inside the house (or, for yard pieces, inside the lot)
 //   - the server's placement rule (arrange.ts placementIssue = bl_furniture_check) accepts every owned piece
@@ -21,7 +22,7 @@ export async function resolve(spec, ctx, next) {
 }`),
   import.meta.url,
 );
-const { LAYOUTS, KINDS, isFixture, furnishLayout } = await import('../src/art/home3d/model.ts');
+const { LAYOUTS, KINDS, LIGHTS, LIGHT_BUILTIN_IDS, isFixture, furnishLayout } = await import('../src/art/home3d/model.ts');
 const nav = await import('../src/art/home3d/nav.ts');
 const arr = await import('../src/art/home3d/arrange.ts');
 
@@ -57,12 +58,33 @@ if (mode === '--sql') {
   for (const id of ['hostel', 'face_me', 'self_contain', 'flat', 'duplex']) {
     const L = LAYOUTS[id];
     const hb = arr.homeBlocks(id);
-    const inc = L.furniture.filter((f) => f.included).map((f) => ({ id: f.id, furniture: f.included, kind: f.kind, x: f.x, z: f.z, rot: f.rot ?? 0 }));
+    const inc = L.furniture.filter((f) => f.included && !LIGHT_BUILTIN_IDS.has(f.included)).map((f) => ({ id: f.id, furniture: f.included, kind: f.kind, x: f.x, z: f.z, rot: f.rot ?? 0 }));
     rows.push(`  ('${id}', ${q(L.w)}, ${q(L.d)}, '${JSON.stringify(L.lot.map(Number))}'::jsonb, '${JSON.stringify(hb.blocks)}'::jsonb, '${JSON.stringify(hb.doors)}'::jsonb, '${JSON.stringify(L.slots)}'::jsonb, '${JSON.stringify(inc)}'::jsonb)`);
   }
   console.log(rows.join(',\n'));
   process.exit(0);
 }
+
+if (mode === '--lights-sql') {
+  const rows = [];
+  for (const id of ['hostel', 'face_me', 'self_contain', 'flat', 'duplex']) {
+    const L = LAYOUTS[id];
+    const lights = L.furniture.filter((f) => f.included && LIGHT_BUILTIN_IDS.has(f.included)).map((f) => ({ id: f.id, furniture: f.included, kind: f.kind, x: f.x, z: f.z, rot: f.rot ?? 0 }));
+    rows.push(`  ('${id}', '${JSON.stringify(lights)}'::jsonb)`);
+  }
+  console.log(rows.join(',\n'));
+  process.exit(0);
+}
+
+// L1: the rooms of each plan (a built-in light must hang in every one)
+const ROOMS = {
+  hostel: [[0, 0, 6.2, 5.0]],
+  face_me: [[0, 0, 6.8, 5.6]],
+  self_contain: [[0, 0, 2.6, 2.6], [2.6, 0, 9.0, 2.6], [5.0, 2.6, 9.0, 6.8], [0, 2.6, 5.0, 6.8]],
+  flat: [[0, 0, 5.0, 4.2], [5.0, 0, 9.2, 3.6], [9.2, 0, 13.0, 3.2], [0, 4.2, 9.2, 9.4], [9.2, 4.2, 13.0, 9.4]],
+  duplex: [[0, 0, 6.0, 5.0], [6.0, 0, 12.2, 4.2], [12.2, 0, 15.4, 3.6], [15.4, 0, 19.0, 3.6], [15.2, 6.6, 19.0, 9.8], [13.6, 9.8, 19.0, 13.4], [0, 5.0, 9.6, 13.4], [9.6, 5.0, 15.2, 13.4]],
+};
+const inRect = (f, r) => f.x >= r[0] && f.x <= r[2] && f.z >= r[1] && f.z <= r[3];
 
 const area = (id) => LAYOUTS[id].w * LAYOUTS[id].d;
 console.log('sizes');
@@ -145,6 +167,18 @@ for (const id of Object.keys(LAYOUTS)) {
     // doorway walk width
     for (const d of L.doors) ok(d[2] - d[1] >= 0.9, `door ${d.join(' ')} is at least 0.9 m wide`);
   }
+}
+// L1 lighting: every plan comes with a working light in each room, all placeable by the server rule
+console.log('lighting');
+for (const id of Object.keys(LAYOUTS)) {
+  const L = LAYOUTS[id];
+  const lights = L.furniture.filter((f) => f.included && LIGHT_BUILTIN_IDS.has(f.included));
+  const bad = lights.filter((f) => !LIGHTS[f.kind]);
+  ok(lights.length > 0 && bad.length === 0, `${id}: ${lights.length} built-in lights, all light kinds`);
+  const dark = ROOMS[id].filter((r) => !lights.some((f) => LIGHTS[f.kind] && LIGHTS[f.kind].mount === 'ceiling' && inRect(f, r)));
+  ok(dark.length === 0, `${id}: a ceiling light in every room${dark.length ? ' (dark: ' + dark.map((r) => r.join(',')).join(' | ') + ')' : ''}`);
+  const notOk = lights.map((f) => { const why = arr.placementIssue(id, { ...f, id: 'own_' + f.id }, []); return why ? `${f.id}: ${why}` : null; }).filter(Boolean);
+  ok(notOk.length === 0, `${id}: the server placement rule accepts every built-in light${notOk.length ? ' (' + notOk.join('; ') + ')' : ''}`);
 }
 console.log(fails ? `\n${fails} FAILED` : '\nall ok');
 process.exit(fails ? 1 : 0);

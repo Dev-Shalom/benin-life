@@ -65,6 +65,9 @@ export type FurnitureKind =
   | 'bucket_bowl' | 'water_heater' | 'mirror_wall' | 'towel_rack' | 'washer'
   | 'gen_small' | 'gen_big' | 'inverter' | 'inverter_small' | 'solar' | 'water_tank' | 'gate_light' | 'car_shade'
   | 'plant_big' | 'wall_art' | 'plaque' | 'bronze_head' | 'wall_clock' | 'photo_frame' | 'aquarium' | 'vase'
+  // L1 lighting (docs/HUD_HOME.md "Lighting")
+  | 'bulb_holder' | 'bulb_energy' | 'bulb_recharge' | 'ceiling_light' | 'tube_light' | 'led_strip' | 'table_lamp'
+  | 'wall_light' | 'pendant_chandelier' | 'yard_lamp' | 'lamp_recharge' | 'lantern' | 'candle'
   // H1: built into the duplex (architecture: never player furniture)
   | 'stairs';
 
@@ -87,6 +90,8 @@ export interface KindMeta {
   label: string;
   /** Default 'in'. */
   place?: Placement;
+  /** L1: height of the surface on top (m): a table lamp, lantern or candle standing over this piece rests on it. */
+  top?: number;
 }
 
 // Local frame: +z is the "front" of a piece (where you use it from).
@@ -100,12 +105,12 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   sofa_l: { w: 2.8, d: 0.9, solid: true, group: 'seat', spot: [0, 0.8, 0], seat: [0, 0.46, 0.06, 0], label: 'Sofa' },
   armchair: { w: 0.85, d: 0.85, solid: true, group: 'seat', spot: [0, 0.75, 0], seat: [0, 0.46, 0.06, 0], label: 'Armchair' },
   plastic_chair: { w: 0.5, d: 0.5, solid: true, group: 'seat', spot: [0, 0.5, 0], seat: [0, 0.45, 0.02, 0], label: 'Plastic chair', place: 'any' },
-  stool: { w: 0.4, d: 0.4, solid: true, group: 'seat', spot: [0, 0.45, 0], seat: [0, 0.42, 0, 0], label: 'Stool', place: 'any' },
-  bench: { w: 1.4, d: 0.4, solid: true, group: 'seat', spot: [0, 0.5, 0], seat: [0, 0.45, 0, 0], label: 'Bench', place: 'any' },
-  table: { w: 0.9, d: 0.6, solid: true, label: 'Table' },
-  dining: { w: 1.4, d: 0.9, solid: true, label: 'Dining table' },
-  centre_table: { w: 1.0, d: 0.55, solid: true, label: 'Centre table' },
-  desk: { w: 1.0, d: 0.55, solid: true, label: 'Study desk' },
+  stool: { w: 0.4, d: 0.4, solid: true, group: 'seat', spot: [0, 0.45, 0], seat: [0, 0.42, 0, 0], label: 'Stool', place: 'any', top: 0.42 },
+  bench: { w: 1.4, d: 0.4, solid: true, group: 'seat', spot: [0, 0.5, 0], seat: [0, 0.45, 0, 0], label: 'Bench', place: 'any', top: 0.4 },
+  table: { w: 0.9, d: 0.6, solid: true, label: 'Table', top: 0.75 },
+  dining: { w: 1.4, d: 0.9, solid: true, label: 'Dining table', top: 0.76 },
+  centre_table: { w: 1.0, d: 0.55, solid: true, label: 'Centre table', top: 0.44 },
+  desk: { w: 1.0, d: 0.55, solid: true, label: 'Study desk', top: 0.76 },
   wardrobe: { w: 1.2, d: 0.6, solid: true, group: 'wardrobe', label: 'Wardrobe' },
   locker: { w: 0.6, d: 0.5, solid: true, group: 'wardrobe', label: 'Locker' },
   shelf: { w: 0.9, d: 0.35, solid: true, label: 'Shelf' },
@@ -113,7 +118,7 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   tv_big: { w: 1.8, d: 0.45, solid: true, group: 'media', label: 'Big TV' },
   radio: { w: 0.45, d: 0.4, solid: true, group: 'media', label: 'Radio', place: 'any' },
   fan: { w: 0.45, d: 0.45, solid: true, label: 'Standing fan' },
-  lamp: { w: 0.35, d: 0.35, solid: true, label: 'Lamp' },
+  lamp: { w: 0.35, d: 0.35, solid: true, label: 'Standing lamp' },
   plant: { w: 0.45, d: 0.45, solid: true, label: 'Plant', place: 'any' },
   rug: { w: 2.0, d: 1.4, solid: false, label: 'Rug' },
   ac: { w: 0.9, d: 0.25, solid: false, label: 'Split AC', place: 'wall' },
@@ -137,11 +142,11 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   gas_cooker: { w: 0.95, d: 0.6, solid: true, group: 'kitchen', spot: [-0.12, 0.62, Math.PI], label: 'Gas cooker' },
 
   // ---- B1 buy catalogue. Sizes here are copied into furniture.w/d by the buy_catalogue migration.
-  plastic_table: { w: 0.8, d: 0.8, solid: true, label: 'Plastic table', place: 'any' },
+  plastic_table: { w: 0.8, d: 0.8, solid: true, label: 'Plastic table', place: 'any', top: 0.72 },
   sofa_2: { w: 1.4, d: 0.85, solid: true, group: 'seat', spot: [0, 0.75, 0], seat: [0, 0.46, 0.06, 0], label: 'Loveseat' },
   sofa_lux: { w: 2.4, d: 0.95, solid: true, group: 'seat', spot: [0, 0.85, 0], seat: [0, 0.46, 0.08, 0], label: 'Luxury sofa' },
   recliner: { w: 0.95, d: 0.95, solid: true, group: 'seat', spot: [0, 0.8, 0], seat: [0, 0.46, 0.06, 0], label: 'Recliner' },
-  centre_glass: { w: 1.2, d: 0.65, solid: true, label: 'Glass centre table' },
+  centre_glass: { w: 1.2, d: 0.65, solid: true, label: 'Glass centre table', top: 0.45 },
   office_chair: { w: 0.6, d: 0.6, solid: true, group: 'seat', spot: [0, 0.55, 0], seat: [0, 0.48, 0.02, 0], label: 'Office chair' },
   garden_set: { w: 1.6, d: 1.6, solid: true, label: 'Garden chairs', place: 'out' },
   tv_small: { w: 0.8, d: 0.4, solid: true, group: 'media', label: 'Small TV' },
@@ -165,10 +170,10 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   bed_lux: { w: 2.1, d: 2.25, solid: true, group: 'bed', spot: [1.35, 0.2, -Math.PI / 2], seat: [0.45, 0.72, 1.0, 0], label: 'King bed' },
   clothes_rack: { w: 1.0, d: 0.45, solid: true, group: 'wardrobe', label: 'Hanger rack' },
   wardrobe_big: { w: 1.9, d: 0.62, solid: true, group: 'wardrobe', label: 'Wardrobe' },
-  dressing: { w: 1.0, d: 0.45, solid: true, label: 'Dressing table' },
+  dressing: { w: 1.0, d: 0.45, solid: true, label: 'Dressing table', top: 0.75 },
   mirror_stand: { w: 0.5, d: 0.35, solid: true, label: 'Standing mirror' },
-  bedside: { w: 0.45, d: 0.4, solid: true, label: 'Bedside table' },
-  lamp_small: { w: 0.3, d: 0.3, solid: true, label: 'Lamp' },
+  bedside: { w: 0.45, d: 0.4, solid: true, label: 'Bedside table', top: 0.55 },
+  lamp_small: { w: 0.3, d: 0.3, solid: false, label: 'Bedside lamp', place: 'any' },
   chandelier: { w: 0.9, d: 0.9, solid: false, label: 'Chandelier' },
   gas_table: { w: 0.7, d: 0.5, solid: true, group: 'kitchen', spot: [0, 0.6, Math.PI], label: 'Gas burner' },
   cooker_big: { w: 0.95, d: 0.62, solid: true, group: 'kitchen', spot: [0, 0.65, Math.PI], label: 'Gas cooker' },
@@ -179,9 +184,9 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   blender: { w: 0.4, d: 0.4, solid: true, group: 'kitchen', spot: [0, 0.5, Math.PI], label: 'Blender' },
   pots: { w: 0.7, d: 0.4, solid: true, group: 'kitchen', spot: [0, 0.5, Math.PI], label: 'Pots' },
   dispenser: { w: 0.38, d: 0.38, solid: true, group: 'kitchen', spot: [0, 0.45, Math.PI], label: 'Water dispenser' },
-  dining4: { w: 1.5, d: 1.6, solid: true, label: 'Dining set' },
-  dining6: { w: 2.1, d: 1.7, solid: true, label: 'Dining set' },
-  kitchen_cab: { w: 1.2, d: 0.55, solid: true, group: 'kitchen', spot: [0, 0.6, Math.PI], label: 'Kitchen cabinet' },
+  dining4: { w: 1.5, d: 1.6, solid: true, label: 'Dining set', top: 0.76 },
+  dining6: { w: 2.1, d: 1.7, solid: true, label: 'Dining set', top: 0.76 },
+  kitchen_cab: { w: 1.2, d: 0.55, solid: true, group: 'kitchen', spot: [0, 0.6, Math.PI], label: 'Kitchen cabinet', top: 0.91 },
   bucket_bowl: { w: 0.6, d: 0.45, solid: true, group: 'bath', spot: [0, 0.55, Math.PI], label: 'Bucket and bowl' },
   water_heater: { w: 0.45, d: 0.3, solid: false, label: 'Water heater', place: 'wall' },
   mirror_wall: { w: 0.6, d: 0.08, solid: false, label: 'Mirror', place: 'wall' },
@@ -203,6 +208,20 @@ export const KINDS: Record<FurnitureKind, KindMeta> = {
   photo_frame: { w: 0.5, d: 0.08, solid: false, label: 'Photo frame', place: 'wall' },
   aquarium: { w: 1.0, d: 0.42, solid: true, label: 'Aquarium' },
   vase: { w: 0.3, d: 0.3, solid: true, label: 'Flower vase' },
+  // L1 lighting. Sizes are copied into furniture.w/d by the lighting migration (20261105000100_lighting.sql).
+  bulb_holder: { w: 0.3, d: 0.3, solid: false, label: 'Bulb holder' },
+  bulb_energy: { w: 0.3, d: 0.3, solid: false, label: 'Energy-saving bulb' },
+  bulb_recharge: { w: 0.3, d: 0.3, solid: false, label: 'Rechargeable bulb' },
+  ceiling_light: { w: 0.6, d: 0.6, solid: false, label: 'Ceiling light' },
+  tube_light: { w: 1.25, d: 0.16, solid: false, label: 'Tube light' },
+  led_strip: { w: 2.0, d: 0.06, solid: false, label: 'LED strip', place: 'wall' },
+  table_lamp: { w: 0.3, d: 0.3, solid: false, label: 'Table lamp', place: 'any' },
+  wall_light: { w: 0.26, d: 0.14, solid: false, label: 'Wall light', place: 'wall' },
+  pendant_chandelier: { w: 0.8, d: 0.8, solid: false, label: 'Pendant chandelier' },
+  yard_lamp: { w: 0.3, d: 0.3, solid: true, label: 'Garden lamp', place: 'out' },
+  lamp_recharge: { w: 0.22, d: 0.22, solid: false, label: 'Rechargeable lamp', place: 'any' },
+  lantern: { w: 0.22, d: 0.22, solid: false, label: 'Lantern', place: 'any' },
+  candle: { w: 0.12, d: 0.12, solid: false, label: 'Candle', place: 'any' },
   // H1: the duplex staircase (built in; climbs along local -z to the upstairs that the cut-away hides)
   stairs: { w: 1.0, d: 2.6, solid: true, label: 'Staircase' },
 };
@@ -239,7 +258,111 @@ export interface FurnitureItem {
    * Drawn here only until the player's own furniture loads; then the owned copy stands in its place and can be
    * moved, stored and sold like bought furniture. Never a fixture, even for FIXED_KINDS kinds (ac, generator). */
   included?: string;
+  /** L1: the catalogue's brightness / warmth / works-without-power for this piece (furniture table, admin-editable);
+   * absent = the defaults in LIGHTS. */
+  light?: LightTune;
 }
+
+/** L1: what the server's furniture row says about a light (brightness 0-10, warmth in kelvin, works in a power cut). */
+export interface LightTune {
+  b?: number;
+  k?: number;
+  np?: boolean;
+}
+
+/** L1: how a light is mounted: where its glow sits and what it needs to stand on. */
+export type LightMount = 'ceiling' | 'wall' | 'table' | 'floor' | 'yard';
+
+export interface LightDef {
+  mount: LightMount;
+  /** ceiling: how far below the ceiling the glow hangs; wall: height above the floor; table/floor/yard: above the piece's base. */
+  y: number;
+  /** Local z offset of the glow (out from the wall for wall pieces). */
+  fwd?: number;
+  /** Default brightness 0..10 (the furniture row overrides it). */
+  b: number;
+  /** Default colour temperature in kelvin. */
+  k: number;
+  /** Works in a power cut (rechargeable lamp, candle, lantern). */
+  np?: boolean;
+}
+
+/** L1: every kind that is a light fixture, with its mount and defaults. See docs/HUD_HOME.md "Lighting". */
+export const LIGHTS: Partial<Record<FurnitureKind, LightDef>> = {
+  bulb_holder: { mount: 'ceiling', y: 0.42, b: 3, k: 2700 },
+  bulb_energy: { mount: 'ceiling', y: 0.48, b: 4, k: 4000 },
+  bulb_recharge: { mount: 'ceiling', y: 0.46, b: 3, k: 5000, np: true },
+  ceiling_light: { mount: 'ceiling', y: 0.16, b: 6, k: 3500 },
+  tube_light: { mount: 'ceiling', y: 0.18, b: 6, k: 6000 },
+  led_strip: { mount: 'wall', y: 2.3, fwd: 0.08, b: 3, k: 3000 },
+  table_lamp: { mount: 'table', y: 0.4, b: 3, k: 2700 },
+  lamp: { mount: 'floor', y: 1.32, b: 4, k: 2700 },
+  lamp_small: { mount: 'table', y: 0.47, b: 2, k: 2700 },
+  wall_light: { mount: 'wall', y: 1.9, fwd: 0.12, b: 3, k: 2700 },
+  chandelier: { mount: 'ceiling', y: 0.95, b: 9, k: 2700 },
+  pendant_chandelier: { mount: 'ceiling', y: 0.95, b: 7, k: 3000 },
+  gate_light: { mount: 'yard', y: 2.62, fwd: 0.2, b: 7, k: 5500 },
+  yard_lamp: { mount: 'yard', y: 1.65, b: 4, k: 3000 },
+  lamp_recharge: { mount: 'table', y: 0.17, b: 4, k: 5000, np: true },
+  lantern: { mount: 'table', y: 0.14, b: 2, k: 2200, np: true },
+  candle: { mount: 'table', y: 0.1, b: 1, k: 1900, np: true },
+};
+
+export const isLight = (kind: string): boolean => kind in LIGHTS;
+
+/** The glow point of a light fixture in layout space (x, y, z), from where it stands. */
+export function lightPoint(f: Pick<FurnitureItem, 'kind' | 'x' | 'z' | 'y' | 'rot'>, wallH: number): [number, number, number] {
+  const d = LIGHTS[f.kind]!;
+  const yaw = ((f.rot ?? 0) * Math.PI) / 2;
+  const fwd = d.fwd ?? 0;
+  const x = f.x + Math.sin(yaw) * fwd;
+  const z = f.z + Math.cos(yaw) * fwd;
+  const y = d.mount === 'ceiling' ? wallH - d.y : d.mount === 'wall' ? d.y : (f.y ?? 0) + d.y;
+  return [x, y, z];
+}
+
+/** Brightness, warmth and power rule of one light, from the piece's row over the defaults. */
+export function lightTuneOf(f: Pick<FurnitureItem, 'kind' | 'light'>): { b: number; k: number; np: boolean } {
+  const d = LIGHTS[f.kind]!;
+  return { b: f.light?.b ?? d.b, k: f.light?.k ?? d.k, np: f.light?.np ?? Boolean(d.np) };
+}
+
+/**
+ * Table lamps, lanterns and candles rest on whatever has a surface (KINDS[...].top) under them, else on the floor.
+ * Returns the same array when nothing changes.
+ */
+export function liftLights(list: FurnitureItem[]): FurnitureItem[] {
+  let out: FurnitureItem[] | null = null;
+  list.forEach((f, i) => {
+    const d = LIGHTS[f.kind];
+    if (!d || d.mount !== 'table' || f.y !== undefined) return;
+    let top = 0;
+    for (const o of list) {
+      const t = KINDS[o.kind]?.top;
+      if (!t || o === f || t <= top) continue;
+      const k = KINDS[o.kind];
+      const q = (((o.rot ?? 0) % 4) + 4) % 4;
+      const w = q % 2 ? k.d : k.w;
+      const dd = q % 2 ? k.w : k.d;
+      if (Math.abs(f.x - o.x) <= w / 2 && Math.abs(f.z - o.z) <= dd / 2) top = t;
+    }
+    if (top > 0) {
+      out ??= list.slice();
+      out[i] = { ...f, y: top };
+    }
+  });
+  return out ?? list;
+}
+
+/**
+ * Catalogue ids the lighting migration gives with a home (home_layouts.lights, `bl_house_lights_grant`), as opposed to
+ * `included` (bl_house_items_grant). Every lighting id except the crystal chandelier, which was already a duplex built-in.
+ */
+export const LIGHT_BUILTIN_IDS: ReadonlySet<string> = new Set([
+  'bulb_holder', 'bulb_energy', 'bulb_rechargeable', 'ceiling_light', 'tube_light', 'led_strip', 'table_lamp',
+  'lamp_floor', 'lamp_bedside', 'wall_light', 'chandelier_modern', 'gate_light', 'yard_lamp',
+  'lamp_rechargeable', 'lantern', 'candle',
+]);
 
 /** H1: part of the house itself (FIXED_KINDS or a built-in piece), not the player's furniture. H4: pieces that
  * came with the house (`included`) are the player's furniture, not fixtures. */
@@ -346,6 +469,8 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
       { id: 'bucket', kind: 'bucket_bath', x: 7.6, z: 1.1, rot: 3 * Q },
       { id: 'toilet', kind: 'pit_toilet', x: 7.6, z: 2.45, rot: 3 * Q },
       { id: 'drum', kind: 'drum', x: 7.6, z: 5.4 },
+      // L1 built-in light (bl_house_lights_grant): a bulb in the room
+      { id: 'lt_room', kind: 'bulb_holder', x: 3.1, z: 2.1, included: 'bulb_holder' },
     ],
   },
 
@@ -381,6 +506,8 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
       { id: 'gen', kind: 'generator', x: 8.0, z: 6.5 },
       { id: 'drum', kind: 'drum', x: 9.2, z: 6.4 },
       { id: 'line', kind: 'clothesline', x: 7.2, z: 0.9, rot: 1 * Q },
+      // L1 built-in light
+      { id: 'lt_room', kind: 'bulb_holder', x: 3.4, z: 2.6, included: 'bulb_holder' },
     ],
   },
 
@@ -417,6 +544,11 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
       { id: 'fan', kind: 'fan', x: 6.0, z: 3.4 },
       { id: 'gen', kind: 'generator', x: 10.2, z: 0.9, rot: 1 * Q },
       { id: 'plant', kind: 'plant', x: 10.6, z: 7.4 },
+      // L1 built-in lights: a bulb in each room, a brighter bulb over the sitting area
+      { id: 'lt_bath', kind: 'bulb_holder', x: 1.3, z: 1.3, included: 'bulb_holder' },
+      { id: 'lt_kitchen', kind: 'bulb_holder', x: 4.8, z: 1.4, included: 'bulb_holder' },
+      { id: 'lt_bed', kind: 'bulb_holder', x: 7.0, z: 2.6, included: 'bulb_holder' },
+      { id: 'lt_sit', kind: 'bulb_energy', x: 3.0, z: 5.0, included: 'bulb_energy' },
     ],
   },
 
@@ -457,6 +589,15 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
       { id: 'cfan', kind: 'fan_ceiling', x: 2.0, z: 6.6, included: 'fan_ceiling' },
       { id: 'dining', kind: 'dining4', x: 9.9, z: 6.4, color: '#8a5a33', included: 'dining_4' },
       { id: 'gen', kind: 'generator', x: 14.2, z: 1.4, rot: 1 * Q, included: 'gen_firman' },
+      // L1 built-in lights: ceiling lights, a tube in the kitchen, a chandelier in the parlour, wall lights, a yard floodlight
+      { id: 'lt_bed', kind: 'ceiling_light', x: 2.5, z: 2.2, included: 'ceiling_light' },
+      { id: 'lt_kitchen', kind: 'tube_light', x: 7.1, z: 1.7, included: 'tube_light' },
+      { id: 'lt_bath', kind: 'bulb_holder', x: 11.1, z: 1.6, included: 'bulb_holder' },
+      { id: 'lt_parlour', kind: 'pendant_chandelier', x: 4.9, z: 6.9, included: 'chandelier_modern' },
+      { id: 'lt_dining', kind: 'ceiling_light', x: 10.4, z: 6.8, included: 'ceiling_light' },
+      { id: 'lt_wall1', kind: 'wall_light', x: 0.1, z: 5.0, rot: 1 * Q, included: 'wall_light' },
+      { id: 'lt_wall2', kind: 'wall_light', x: 0.1, z: 8.8, rot: 1 * Q, included: 'wall_light' },
+      { id: 'lt_gate', kind: 'gate_light', x: 14.6, z: 10.3, included: 'gate_light' },
       // default set (replaced by the player's own furniture)
       { id: 'bed', kind: 'bed_double', x: 1.35, z: 1.35, color: '#5b3fa0' },
       { id: 'wardrobe', kind: 'wardrobe', x: 4.62, z: 1.8, rot: 3 * Q, color: '#8a5a33' },
@@ -535,6 +676,27 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
       { id: 'gen', kind: 'generator', x: 21.2, z: 1.2, rot: 1 * Q, included: 'gen_firman' },
       { id: 'palm1', kind: 'plant_big', x: -0.5, z: 17.2, included: 'plant_palm' },
       { id: 'palm2', kind: 'plant_big', x: 22.6, z: 5.2, included: 'plant_palm' },
+      // L1 built-in lights: a light in every room, wall lights, an LED strip, garden lamps and a gate floodlight
+      { id: 'lt_master', kind: 'ceiling_light', x: 3.0, z: 2.5, included: 'ceiling_light' },
+      { id: 'lt_mwall', kind: 'wall_light', x: 0.1, z: 3.3, rot: 1 * Q, included: 'wall_light' },
+      { id: 'lt_mstrip', kind: 'led_strip', x: 3.2, z: 0.05, included: 'led_strip' },
+      { id: 'lt_kit1', kind: 'tube_light', x: 8.0, z: 2.2, included: 'tube_light' },
+      { id: 'lt_kit2', kind: 'tube_light', x: 10.4, z: 2.2, included: 'tube_light' },
+      { id: 'lt_bath', kind: 'bulb_energy', x: 13.8, z: 1.8, included: 'bulb_energy' },
+      { id: 'lt_laundry', kind: 'bulb_holder', x: 17.2, z: 1.8, included: 'bulb_holder' },
+      { id: 'lt_study', kind: 'ceiling_light', x: 17.1, z: 8.2, included: 'ceiling_light' },
+      { id: 'lt_parlour', kind: 'ceiling_light', x: 6.6, z: 8.0, included: 'ceiling_light' },
+      { id: 'lt_pwall1', kind: 'wall_light', x: 0.1, z: 8.6, rot: 1 * Q, included: 'wall_light' },
+      { id: 'lt_pwall2', kind: 'wall_light', x: 0.1, z: 11.4, rot: 1 * Q, included: 'wall_light' },
+      { id: 'lt_standing', kind: 'lamp', x: 0.45, z: 12.9, included: 'lamp_floor' },
+      { id: 'lt_hall', kind: 'pendant_chandelier', x: 8.0, z: 6.4, included: 'chandelier_modern' },
+      { id: 'lt_lobby', kind: 'ceiling_light', x: 7.7, z: 12.0, included: 'ceiling_light' },
+      { id: 'lt_dining', kind: 'ceiling_light', x: 11.4, z: 11.4, included: 'ceiling_light' },
+      { id: 'lt_guest', kind: 'ceiling_light', x: 16.3, z: 11.6, included: 'ceiling_light' },
+      { id: 'lt_gbed', kind: 'lamp_small', x: 18.5, z: 10.4, included: 'lamp_bedside' },
+      { id: 'lt_gate', kind: 'gate_light', x: 20.8, z: 4.2, included: 'gate_light' },
+      { id: 'lt_yard1', kind: 'yard_lamp', x: -0.6, z: 14.8, included: 'yard_lamp' },
+      { id: 'lt_yard2', kind: 'yard_lamp', x: 12.0, z: 15.2, included: 'yard_lamp' },
       // default set (replaced by the player's own furniture)
       { id: 'bed', kind: 'bed_king', x: 1.6, z: 1.5, color: '#efe9df' },
       { id: 'wardrobe', kind: 'wardrobe', x: 4.0, z: 0.35, color: '#5b3a24' },
@@ -606,6 +768,8 @@ export interface OwnedPiece {
   /** H4: how many copies came with a house (starter piece, a home's built-ins). They are the highest-numbered
    * copies (qty - houseQty + 1 .. qty) and sell for furniture.included_resale_pct. */
   houseQty?: number;
+  /** L1: the catalogue row's light values (brightness / warmth / works without power); lights only. */
+  light?: LightTune;
 }
 
 /** H4: copy n of a piece came with the house (the highest houseQty copies; see OwnedPiece.houseQty). */
@@ -677,6 +841,7 @@ export function furnishHome(base: HomeLayout, pieces: OwnedPiece[] | null, rows:
         color: p.color ?? undefined,
         activities: p.activities,
         actorFor: SEATS.has(p.kind) ? ['media', 'seat'] : undefined,
+        light: p.light,
       });
     }
   }

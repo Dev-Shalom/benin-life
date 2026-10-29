@@ -677,6 +677,112 @@ export function buildPiece(b: B, f: FurnitureItem, wallH: number) {
       b.cyl(0.05, 0.02, 0.35, 0, top - 0.95, 0, '#fff7d6', { seg: 6, layer: 'glow' });
       return;
     }
+    // ---- L1 lighting. The glowing parts go to the 'glow' layer: HomeScene dims them when the light is off
+    // (the room tags them with the piece id, build.ts `lightId`).
+    case 'bulb_holder': {
+      const top = wallH - 0.02;
+      b.cyl(0.055, 0.055, 0.03, 0, top - 0.03, 0, WHITE, { seg: 10 }); // ceiling rose
+      b.cyl(0.006, 0.006, 0.22, 0, top - 0.25, 0, BLACK, { seg: 5 }); // flex
+      b.cyl(0.03, 0.03, 0.07, 0, top - 0.32, 0, BLACK, { seg: 8 }); // holder
+      b.cyl(0.03, 0.06, 0.07, 0, top - 0.39, 0, '#fff3c4', { seg: 10, layer: 'glow' }); // the bulb
+      b.cyl(0.06, 0.025, 0.05, 0, top - 0.44, 0, '#fff3c4', { seg: 10, layer: 'glow' });
+      return;
+    }
+    case 'bulb_energy': {
+      const top = wallH - 0.02;
+      b.cyl(0.055, 0.055, 0.03, 0, top - 0.03, 0, WHITE, { seg: 10 });
+      b.cyl(0.006, 0.006, 0.2, 0, top - 0.23, 0, BLACK, { seg: 5 });
+      b.cyl(0.03, 0.03, 0.06, 0, top - 0.29, 0, BLACK, { seg: 8 });
+      b.cyl(0.04, 0.045, 0.05, 0, top - 0.34, 0, WHITE, { seg: 10 }); // base
+      b.cyl(0.035, 0.05, 0.14, 0, top - 0.48, 0, '#f4f8ff', { seg: 10, layer: 'glow' }); // the spiral tube
+      for (const y of [0.1, 0.16, 0.22]) b.cyl(0.052, 0.052, 0.012, 0, top - 0.64 + y, 0, '#dfe8f2', { seg: 10 }); // the coils
+      return;
+    }
+    case 'bulb_recharge': {
+      const top = wallH - 0.02;
+      b.cyl(0.055, 0.055, 0.03, 0, top - 0.03, 0, WHITE, { seg: 10 });
+      b.cyl(0.006, 0.006, 0.22, 0, top - 0.25, 0, BLACK, { seg: 5 });
+      b.cyl(0.03, 0.03, 0.07, 0, top - 0.32, 0, BLACK, { seg: 8 });
+      b.cyl(0.05, 0.06, 0.08, 0, top - 0.4, 0, WHITE, { seg: 10 }); // the battery body
+      b.cyl(0.06, 0.03, 0.07, 0, top - 0.47, 0, '#eaf6ff', { seg: 10, layer: 'glow' });
+      return;
+    }
+    case 'ceiling_light': {
+      const top = wallH - 0.01;
+      b.cyl(0.31, 0.31, 0.035, 0, top - 0.035, 0, WHITE, { seg: 16 });
+      b.cyl(0.26, 0.26, 0.015, 0, top - 0.05, 0, '#fffaf0', { seg: 16, layer: 'glow' });
+      return;
+    }
+    case 'tube_light': {
+      const top = wallH - 0.01;
+      b.box(1.22, 0.035, 0.12, 0, top - 0.04, 0, WHITE);
+      b.box(1.14, 0.025, 0.07, 0, top - 0.07, 0, '#f6fbff', { layer: 'glow' });
+      for (const sx of [-1, 1]) b.box(0.05, 0.04, 0.09, sx * 0.58, top - 0.075, 0, '#cfd6dc');
+      return;
+    }
+    case 'led_strip': {
+      const y = Math.min(2.3, wallH - 0.2);
+      b.box(2.0, 0.025, 0.03, 0, y, -0.015, '#e9e5dc', { noOcc: true }); // the channel on the wall
+      b.box(1.96, 0.012, 0.012, 0, y + 0.006, 0.0, '#ffd9a0', { layer: 'glow' }); // the diodes
+      return;
+    }
+    case 'table_lamp': {
+      b.cyl(0.08, 0.1, 0.035, 0, 0, 0, '#c9a227', { seg: 10 });
+      b.cyl(0.013, 0.02, 0.25, 0, 0.035, 0, '#c9a227', { seg: 6 });
+      b.cyl(0.1, 0.15, 0.22, 0, 0.27, 0, c ?? '#f6e7c4', { seg: 12, layer: 'glow' }); // the shade
+      return;
+    }
+    case 'wall_light': {
+      b.box(0.1, 0.2, 0.025, 0, 1.75, -0.055, '#c9a227', { noOcc: true }); // back plate
+      b.box(0.03, 0.03, 0.09, 0, 1.82, -0.015, '#c9a227', { noOcc: true }); // arm
+      b.cyl(0.05, 0.085, 0.15, 0, 1.84, 0.03, '#f6e7c4', { seg: 10, layer: 'glow' }); // the shade
+      return;
+    }
+    case 'pendant_chandelier': {
+      const top = wallH - 0.02;
+      b.cyl(0.07, 0.07, 0.03, 0, top - 0.03, 0, '#c9a227', { seg: 10 });
+      b.cyl(0.008, 0.008, 0.4, 0, top - 0.43, 0, '#c9a227', { seg: 5 });
+      b.cyl(0.3, 0.3, 0.02, 0, top - 0.46, 0, '#c9a227', { seg: 14 });
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const len = 0.18 + (i % 3) * 0.1;
+        b.cyl(0.004, 0.004, len, Math.cos(a) * 0.27, top - 0.46 - len, Math.sin(a) * 0.27, '#c9a227', { seg: 4 });
+        b.cyl(0.06, 0.05, 0.12, Math.cos(a) * 0.27, top - 0.46 - len - 0.12, Math.sin(a) * 0.27, '#fff0c8', { seg: 8, layer: 'glow' }); // the glass globes
+      }
+      b.cyl(0.07, 0.06, 0.14, 0, top - 0.62, 0, '#fff0c8', { seg: 8, layer: 'glow' });
+      return;
+    }
+    case 'yard_lamp': {
+      b.cyl(0.13, 0.15, 0.08, 0, 0, 0, '#3b4148', { seg: 8 });
+      b.cyl(0.035, 0.045, 1.5, 0, 0.08, 0, '#2b2f36', { seg: 8 });
+      b.cyl(0.14, 0.12, 0.05, 0, 1.55, 0, '#2b2f36', { seg: 8 });
+      b.cyl(0.11, 0.11, 0.2, 0, 1.6, 0, '#fff0c8', { seg: 8, layer: 'glow' }); // the lamp glass
+      b.cyl(0.02, 0.17, 0.08, 0, 1.8, 0, '#2b2f36', { seg: 8 }); // the cap
+      return;
+    }
+    case 'lamp_recharge': {
+      b.cyl(0.09, 0.1, 0.05, 0, 0, 0, '#f4f2ee', { seg: 10 });
+      b.cyl(0.06, 0.06, 0.2, 0, 0.05, 0, '#f7fbff', { seg: 10, layer: 'glow' }); // the LED tube
+      b.cyl(0.075, 0.075, 0.03, 0, 0.25, 0, '#f4f2ee', { seg: 10 });
+      b.box(0.14, 0.012, 0.012, 0, 0.29, 0, '#3d8fd1'); // carry handle
+      b.box(0.012, 0.04, 0.012, -0.065, 0.255, 0, '#3d8fd1');
+      b.box(0.012, 0.04, 0.012, 0.065, 0.255, 0, '#3d8fd1');
+      return;
+    }
+    case 'lantern': {
+      b.cyl(0.09, 0.1, 0.04, 0, 0, 0, '#3b4148', { seg: 10 });
+      b.cyl(0.065, 0.075, 0.16, 0, 0.04, 0, '#ffd9a0', { seg: 10, layer: 'glow' }); // the lit glass
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) b.box(0.012, 0.18, 0.012, sx * 0.07, 0.03, sz * 0.07, '#3b4148', { noOcc: true });
+      b.cyl(0.03, 0.09, 0.05, 0, 0.2, 0, '#3b4148', { seg: 10 });
+      b.box(0.1, 0.012, 0.012, 0, 0.27, 0, '#3b4148', { noOcc: true });
+      return;
+    }
+    case 'candle': {
+      b.cyl(0.055, 0.06, 0.012, 0, 0, 0, '#c9a227', { seg: 10 }); // the saucer
+      b.cyl(0.02, 0.022, 0.09, 0, 0.012, 0, '#f3ead2', { seg: 8 }); // the wax
+      b.cyl(0.004, 0.013, 0.035, 0, 0.1, 0, '#ffb454', { seg: 6, layer: 'glow' }); // the flame
+      return;
+    }
     case 'gas_table': {
       smallStand(b, 0.7, 0.5, 0.75, WOOD_LIGHT);
       b.box(0.55, 0.08, 0.32, 0, 0.75, 0, '#2b2f36');
