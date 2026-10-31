@@ -1,0 +1,31 @@
+/* "This week in Benin" sheet (docs/DAILY_RETURN.md part 3): roomy rows, today stands out. */
+.wk-list { list-style: none; margin: 0; padding: 4px 0 24px; display: grid; gap: 12px; }
+.wk-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--surface-2, #f5f7fa);
+  border: 1.5px solid transparent;
+}
+.wk-row.is-today { background: #fff6d9; border-color: rgba(238, 164, 26, 0.55); }
+.wk-row.is-past { opacity: 0.6; }
+.wk-row.is-empty { background: transparent; border: 1px dashed rgba(0, 0, 0, 0.12); }
+.wk-row__day { display: grid; gap: 6px; justify-items: start; font-family: var(--font-display); }
+.wk-row__day b { font-size: 1.0625rem; }
+.wk-today { padding: 2px 8px; border-radius: 999px; background: #e0a012; color: #fff; font: 700 0.6875rem var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; }
+.wk-row__main { display: grid; gap: 8px; min-width: 0; }
+.wk-row__title { margin: 0; font: 700 1.0625rem/1.25 var(--font-display); }
+.wk-row__blurb { margin: 0; font-size: 0.875rem; line-height: 1.4; color: var(--muted, #5b6472); }
+.wk-row__meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.wk-chip { padding: 5px 11px; border-radius: 999px; background: #fff; font-weight: 700; font-size: 0.8125rem; border: 1px solid rgba(0, 0, 0, 0.08); }
+.wk-chip--soft { font-weight: 600; opacity: 0.8; }
+.wk-row__quiet { margin: 0; align-self: center; font-size: 0.875rem; color: var(--muted, #5b6472); }
+.wk-done { margin: 0; font-weight: 700; color: var(--green-700, #0a6f40); }
+.wk-winners { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.9375rem; }
+.wk-quiet { padding: 24px 4px; text-align: center; color: var(--muted, #5b6472); }
+
+/* the stories app hero gets a small "This week" pill */
+.st-week { margin-left: auto; margin-right: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(0, 0, 0, 0.12); background: #fff; font: 700 12.5px var(--font-display); color: inherit; cursor: pointer; white-space: nowrap; }

@@ -2,6 +2,7 @@
 // effects, plants follow-ups and moves the hidden path. This screen only shows the scene, sends the choice, and plays the reveal.
 //   Today's story card -> pick a choice -> the card turns into the reveal (tone colour, effects as chips, a seed line, a subtle path line).
 //   Follow-up chapters ("Your story continues") sit above it. Below: the reading streak and "Your path so far" (words, never numbers).
+import { useWeekly } from '../../../state/weekly';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { storyAnswer, storyToday, type PathCard, type Story, type StoryChoice, type StoryResult, type StoryStreak, type StoryTone, type StoryToday } from '../../../api/stories';
 import { errorMessage } from '../../../lib/api';
@@ -206,6 +207,7 @@ export default function StoriesApp() {
               <p className="st-hero__date">{dayLabel(data.day)}</p>
               <h2>Today in Benin City</h2>
             </div>
+            <button type="button" className="st-week" onClick={() => useWeekly.getState().setOpen(true)}><span aria-hidden>📅</span> This week</button>
             {data.streak && data.streak.streak > 0 && <span className="st-flame" aria-label={`${data.streak.streak} day streak`}><span aria-hidden>🔥</span> {data.streak.streak}</span>}
           </header>
           {chapters.map((s) => (reveal?.story.id === s.id

@@ -426,3 +426,204 @@ begin
   perform pg_temp.assert(r ? 'return_pushed', 'bl_push_tick calls the return job');
   raise notice 'DAILY RETURN part 2c (gap pushes) OK';
 end $$;
+
+-- =========================================================================================
+-- PART 3: WEEKLY EVENTS ("This week in Benin")
+-- =========================================================================================
+-- move the clock to the next given Benin weekday (0 = Monday) at the given hour
+create or replace function pg_temp.dr_at(p_dow int, p_hour int default 10) returns void
+language plpgsql as $$
+declare v_tz text := bl_clock_tz(); v_local timestamp := (now() at time zone bl_clock_tz()); v_cur int; v_ahead int; v_t timestamptz;
+begin
+  perform set_config('bl.test_offset_seconds', '', true);
+  v_local := now() at time zone v_tz;
+  v_cur := extract(isodow from v_local)::int - 1;
+  v_ahead := (p_dow - v_cur + 7) % 7;
+  v_t := (date_trunc('day', v_local) + make_interval(days => v_ahead, hours => p_hour)) at time zone v_tz;
+  if v_t < now() then v_t := v_t + interval '7 days'; end if;
+  perform set_config('bl.test_offset_seconds', floor(extract(epoch from v_t - now()))::text, true);
+end $$;
+
+create or replace function pg_temp.dr_goto(p_uid uuid, p_loc text) returns void
+language sql as $$
+  update profiles set location_id = p_loc, travel_to = null, travel_mode = null, travel_started_at = null, travel_arrives_at = null,
+                      busy_until = null, busy_label = null, busy_started_at = null, busy_needs_from = null, needs_updated_at = bl_now(), last_seen = bl_now()
+   where id = p_uid;
+$$;
+
+do $$
+declare u uuid; adm uuid; r jsonb; fun0 numeric; c0 bigint; c1 bigint; w jsonb; n0 int; p0 bigint; p1 bigint; i int; wk date; home text;
+begin
+  update game_config set value = 'false' where key in ('economy.transfer_fees_enabled', 'economy.tax_enabled', 'economy.bills_enabled', 'economy.vat_enabled', 'economy.luxury_enabled');
+  update game_config set value = 'true' where key like 'weekly.%\_enabled' or key = 'weekly.enabled';
+  perform pg_temp.dr_at(4, 10);                      -- a Friday, 10:00
+  u := pg_temp.dr_user('DR_W1');
+  select home_location_id into home from profiles where id = u;
+
+  -- 1. the right event on the right day
+  r := weekly_calendar();
+  perform pg_temp.assert(jsonb_array_length(r->'days') = 7 and (r->>'weekday')::int = 4 and r->'today_event'->>'key' = 'fri_club', 'Friday: Club Night: ' || r::text);
+  perform pg_temp.assert((r->'days'->4->>'today')::boolean and (r->'days'->0->>'past')::boolean and r->'days'->0->'event'->>'key' = 'mon_winners'
+     and r->'days'->1->'event' = 'null'::jsonb and r->'days'->2->'event'->>'key' = 'wed_market' and r->'days'->5->'event'->>'key' = 'sat_owambe'
+     and r->'days'->6->'event'->>'key' = 'sun_rest' and r->'days'->3->'event' = 'null'::jsonb, 'the whole week: ' || (r->'days')::text);
+  perform pg_temp.assert(r->'today_event'->>'reward' like '%1,000%' and (r->'today_event'->>'checked_in')::boolean is false, 'reward text');
+  for i in 0..6 loop
+    perform pg_temp.dr_at(i, 10);
+    r := weekly_calendar();
+    perform pg_temp.assert((r->>'weekday')::int = i and coalesce(r->'today_event'->>'key', 'none') = (array['mon_winners', 'none', 'wed_market', 'none', 'fri_club', 'sat_owambe', 'sun_rest'])[i + 1],
+      'weekday ' || i || ' today_event = ' || coalesce(r->'today_event'->>'key', 'none'));
+  end loop;
+
+  -- 2. Friday Club Night check-in
+  perform pg_temp.dr_at(4, 22);
+  perform pg_temp.login(u);
+  perform pg_temp.dr_goto(u, 'ekenwan_room');
+  perform pg_temp.assert(pg_temp.dr_hint('select weekly_event_checkin()') = 'not_here', 'not at a club: refused');
+  perform pg_temp.dr_goto(u, 'club_360');
+  update profiles set fun = 40 where id = u;
+  select cash into c0 from profiles where id = u;
+  r := weekly_event_checkin();
+  select cash, fun into c1, fun0 from profiles where id = u;
+  perform pg_temp.assert(c1 - c0 = 1000 and (r->>'cash')::int = 1000 and fun0 between 50 and 56, 'Friday reward: 1000 and fun about +15: ' || c1 || '/' || fun0);
+  perform pg_temp.assert(exists (select 1 from ledger where user_id = u and reason = 'Weekly event: Friday Club Night' and delta = 1000), 'ledger label');
+  perform pg_temp.assert(not ('Weekly event: Friday Club Night' = any (bl_earn_reasons())), 'not earnings');
+  perform pg_temp.assert(pg_temp.dr_hint('select weekly_event_checkin()') = 'already', 'once a day');
+  perform pg_temp.assert((weekly_calendar()->'today_event'->>'checked_in')::boolean, 'calendar shows it done');
+  perform pg_temp.dr_jump(7); perform pg_temp.dr_goto(u, 'club_360');
+  perform weekly_event_checkin();
+  perform pg_temp.assert((select count(*) from weekly_event_checkins where user_id = u and event_key = 'fri_club') = 2, 'next Friday works again');
+  perform pg_temp.dr_jump(-1); perform pg_temp.dr_goto(u, 'club_360');       -- Thursday
+  perform pg_temp.assert(pg_temp.dr_hint('select weekly_event_checkin()') = 'no_event', 'Thursday: nothing to check in to');
+
+  -- 3. Saturday Owambe, Sunday Rest Day
+  perform pg_temp.dr_at(5, 15); perform pg_temp.dr_goto(u, 'club_360');
+  perform pg_temp.assert(pg_temp.dr_hint('select weekly_event_checkin()') = 'not_here', 'owambe: not at the party place');
+  perform pg_temp.dr_goto(u, 'golden_tulip');
+  select cash into c0 from profiles where id = u;
+  r := weekly_event_checkin();
+  select cash into c1 from profiles where id = u;
+  perform pg_temp.assert(c1 - c0 = 1500, 'Saturday reward 1500');
+  perform pg_temp.dr_at(6, 15); perform pg_temp.dr_goto(u, 'golden_tulip');
+  perform pg_temp.assert(pg_temp.dr_hint('select weekly_event_checkin()') = 'not_here', 'rest: not at home');
+  perform pg_temp.dr_goto(u, home);
+  update profiles set stress = 50, energy = 40 where id = u;
+  perform weekly_event_checkin();
+  perform pg_temp.assert((select stress from profiles where id = u) <= 31 and (select energy from profiles where id = u) >= 49, 'Sunday: less stress, more energy');
+  perform pg_temp.assert((select cash from profiles where id = u) = c1, 'Sunday gives no cash');
+
+  -- 4. Monday Winners: announced once, as a broadcast
+  perform pg_temp.dr_at(0, 10);
+  wk := bl_week_start() - 7;
+  insert into weekly_earn_weeks (week_start, settled_at) values (wk, bl_now()) on conflict (week_start) do nothing;
+  delete from weekly_earn_winners where week_start = wk;
+  insert into weekly_earn_winners (week_start, rank, user_id, username, total, prize) values (wk, 1, u, 'DR_W1', 150000, 0);
+  delete from weekly_event_runs where event_key = 'mon_winners';      -- the weekday loop above already visited a Monday
+  select count(*) into n0 from broadcasts where title = '🏆 Monday Winners';
+  r := weekly_calendar();
+  perform pg_temp.assert((select count(*) from broadcasts where title = '🏆 Monday Winners') = n0 + 1, 'the announcement was made');
+  perform pg_temp.assert((select body from broadcasts where title = '🏆 Monday Winners' order by id desc limit 1) like '%@DR_W1%150,000%', 'it names the winner');
+  perform pg_temp.assert(r->'today_event'->'winners'->0->>'username' = 'DR_W1', 'the calendar lists the winners');
+  perform weekly_calendar(); perform bl_weekly_tick();
+  perform pg_temp.assert((select count(*) from broadcasts where title = '🏆 Monday Winners') = n0 + 1, 'only once a Monday');
+  update game_config set value = 'false' where key = 'weekly.mon_winners_enabled';
+  perform pg_temp.dr_jump(7); delete from weekly_event_runs where event_key = 'mon_winners';
+  perform weekly_calendar();
+  perform pg_temp.assert((select count(*) from broadcasts where title = '🏆 Monday Winners') = n0 + 1, 'switched off: no announcement');
+  update game_config set value = 'true' where key = 'weekly.mon_winners_enabled';
+
+  -- 5. Wednesday Market Day: Oba Market is cheaper (list, price function), other markets are not
+  perform pg_temp.dr_at(2, 11);
+  declare it items; v_wed bigint; v_wed_other bigint; v_list bigint; v_thu bigint; v_thu_other bigint; v_list_thu bigint;
+  begin
+    select * into it from items where id = 'boli_groundnut';
+    v_wed := bl_dealer_net(it, 'oba_market'); v_wed_other := bl_dealer_net(it, 'new_benin_market');
+    v_list := (select (x->>'price')::bigint from jsonb_array_elements(shop_list('oba_market')->'items') x where x->>'id' = 'boli_groundnut');
+    perform pg_temp.dr_jump(1);
+    v_thu := bl_dealer_net(it, 'oba_market'); v_thu_other := bl_dealer_net(it, 'new_benin_market');
+    v_list_thu := (select (x->>'price')::bigint from jsonb_array_elements(shop_list('oba_market')->'items') x where x->>'id' = 'boli_groundnut');
+    perform pg_temp.assert(v_wed < v_thu and v_wed >= floor(v_thu * 0.80), 'Wednesday Oba Market is cheaper: ' || v_wed || ' vs ' || v_thu);
+    perform pg_temp.assert(v_wed_other = v_thu_other, 'other markets unchanged');
+    perform pg_temp.assert(v_list < v_list_thu, 'the shop list shows the lower price: ' || v_list || ' vs ' || v_list_thu);
+    perform pg_temp.dr_jump(-1);
+    update game_config set value = 'false' where key = 'weekly.wed_market_enabled';
+    perform pg_temp.assert(bl_dealer_net(it, 'oba_market') = v_thu, 'switched off: normal price');
+    update game_config set value = 'true' where key = 'weekly.wed_market_enabled';
+    update game_config set value = '30' where key = 'weekly.wed_market_discount_pct';
+    perform pg_temp.assert(bl_dealer_net(it, 'oba_market') < v_wed, 'the discount is a setting');
+    update game_config set value = '15' where key = 'weekly.wed_market_discount_pct';
+    perform pg_temp.assert(weekly_calendar()->'today_event'->>'reward' like '15% off at Oba Market', 'calendar says so');
+  end;
+
+  -- 6. each event can be switched off; master off
+  perform pg_temp.dr_at(4, 22); perform pg_temp.dr_goto(u, 'club_360');
+  update game_config set value = 'false' where key = 'weekly.fri_club_enabled';
+  perform pg_temp.assert(weekly_calendar()->'today_event' = 'null'::jsonb and pg_temp.dr_hint('select weekly_event_checkin()') = 'no_event', 'Friday switched off');
+  update game_config set value = 'true' where key = 'weekly.fri_club_enabled';
+  update game_config set value = 'false' where key = 'weekly.enabled';
+  perform pg_temp.assert((weekly_calendar()->>'enabled')::boolean is false and pg_temp.dr_hint('select weekly_event_checkin()') = 'no_event', 'master off');
+  update game_config set value = 'true' where key = 'weekly.enabled';
+  raise notice 'DAILY RETURN part 3a (weekly events) OK';
+end $$;
+
+do $$
+declare a uuid; b uuid; c uuid; r jsonb; n int;
+begin
+  update game_config set value = 'true' where key in ('push.enabled', 'push.cat_events', 'weekly.enabled', 'weekly.fri_club_enabled', 'weekly.push_enabled', 'weekly.mon_winners_enabled');
+  update game_config set value = '9' where key = 'weekly.push_hour';
+  update game_config set value = '20' where key = 'return.push_to_hour';
+  perform pg_temp.dr_at(4, 10);                      -- Friday 10:00
+  a := pg_temp.dr_user('DR_P1'); b := pg_temp.dr_user('DR_P2'); c := pg_temp.dr_user('DR_P3');
+  perform pg_temp.dr_push(a); perform pg_temp.dr_push(b); perform pg_temp.dr_push(c, false);
+  update profiles set last_seen = bl_now() where id in (a, b, c);
+
+  -- morning push: before the hour nothing, then one each for opted-in players, never twice
+  perform pg_temp.dr_at(4, 7);
+  r := bl_weekly_tick();
+  perform pg_temp.assert(not exists (select 1 from push_outbox where user_id = a and kind = 'weekly_event'), '7 AM: too early');
+  perform pg_temp.dr_at(4, 10);
+  update profiles set last_seen = bl_now() where id in (a, b, c);
+  r := bl_weekly_tick();
+  perform pg_temp.assert((select count(*) from push_outbox where user_id = a and kind = 'weekly_event') = 1 and (select count(*) from push_outbox where user_id = b and kind = 'weekly_event') = 1, 'one morning push each: ' || r::text);
+  perform pg_temp.assert((select title from push_outbox where user_id = a and kind = 'weekly_event') like '%Friday Club Night%', 'the title names the event');
+  perform pg_temp.assert(not exists (select 1 from push_outbox where user_id = c and kind = 'weekly_event'), 'opted out: nothing');
+  r := bl_weekly_tick();
+  perform pg_temp.assert((select count(*) from push_outbox where user_id = a and kind = 'weekly_event') = 1, 'not twice the same day');
+  perform pg_temp.assert(exists (select 1 from weekly_event_runs where event_key = 'push:fri_club' and day = bl_wat_date()), 'finished marker (no more scanning today)');
+  -- the next Friday sends again; Monday has no morning push (the announcement is the broadcast)
+  perform pg_temp.dr_jump(7); update profiles set last_seen = bl_now() where id in (a, b);
+  r := bl_weekly_tick();
+  perform pg_temp.assert((select count(*) from push_outbox where user_id = a and kind = 'weekly_event') = 2, 'next Friday: a new push');
+  perform pg_temp.dr_at(0, 10); update profiles set last_seen = bl_now() where id in (a, b);
+  r := bl_weekly_tick();
+  perform pg_temp.assert((select count(*) from push_outbox where user_id = a and kind = 'weekly_event') = 2, 'Monday: no morning push');
+  -- switches
+  perform pg_temp.dr_at(4, 10); perform pg_temp.dr_jump(14);
+  delete from weekly_push_log; update profiles set last_seen = bl_now() where id in (a, b);
+  update game_config set value = 'false' where key = 'weekly.push_enabled';
+  r := bl_weekly_tick();
+  perform pg_temp.assert((select count(*) from push_outbox where user_id = a and kind = 'weekly_event') = 2, 'push switch off');
+  update game_config set value = 'true' where key = 'weekly.push_enabled';
+
+  -- batch size
+  update game_config set value = '10' where key = 'weekly.push_batch';
+  delete from weekly_event_runs where event_key like 'push:%'; delete from weekly_push_log;
+  update push_outbox set status = 'sent' where kind = 'weekly_event';
+  declare i int; u uuid; us uuid[] := '{}'; begin
+    for i in 1..12 loop u := pg_temp.dr_user('DR_PB' || i); perform pg_temp.dr_push(u); us := us || u; update profiles set last_seen = bl_now() where id = u; end loop;
+    update profiles set last_seen = bl_now() - interval '30 days' where id in (a, b, c);
+    r := bl_weekly_tick();
+    perform pg_temp.assert((r->>'looked_at')::int = 10, 'a batch of 10: ' || r::text);
+    perform pg_temp.assert(not exists (select 1 from weekly_event_runs where event_key like 'push:%'), 'not finished yet');
+    r := bl_weekly_tick();
+    perform pg_temp.assert((r->>'looked_at')::int = 2 and (select count(*) from push_outbox where kind = 'weekly_event' and user_id = any (us)) = 12, 'the rest next tick, 12 pushes in all: ' || r::text);
+  end;
+
+  -- grants / RLS / cron hook
+  perform pg_temp.assert(not has_function_privilege('anon', 'public.weekly_calendar()', 'execute') and has_function_privilege('authenticated', 'public.weekly_event_checkin()', 'execute')
+    and not has_function_privilege('authenticated', 'public.bl_weekly_tick()', 'execute') and not has_function_privilege('authenticated', 'public.bl_weekly_discount(bigint,text)', 'execute')
+    and not has_function_privilege('authenticated', 'public.bl_weekly_monday_run()', 'execute')
+    and not has_table_privilege('authenticated', 'public.weekly_event_checkins', 'select') and not has_table_privilege('anon', 'public.weekly_event_runs', 'select')
+    and (select bool_and(relrowsecurity) from pg_class where oid in ('public.weekly_event_checkins'::regclass, 'public.weekly_event_runs'::regclass, 'public.weekly_push_log'::regclass)), 'part 3 grants and RLS');
+  perform pg_temp.assert(bl_push_tick() ? 'weekly', 'bl_push_tick calls the weekly job');
+  raise notice 'DAILY RETURN part 3b (weekly push) OK';
+end $$;

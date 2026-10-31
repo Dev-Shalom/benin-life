@@ -7,6 +7,7 @@ import { CrimeHost, PlacePlayerSheet } from './game/Crime';
 import { ShrineHost } from './game/Shrine';
 import { MomentsHost } from './game/MomentsHost';
 import { ReturnGiftHost } from './game/ReturnGift';
+import { WeeklyHost } from './game/Weekly';
 import { CrewHost, YahooHost } from './game/Yahoo';
 import { HustleHost } from './game/Hustles';
 import { SkillHost } from './game/Skills';
@@ -999,6 +1000,7 @@ export default function Game() {
       <ShrineHost />
       <MomentsHost />
       <ReturnGiftHost />
+      <WeeklyHost />
       <YahooHost />
       <CrewHost />
       <PoliticsHost />

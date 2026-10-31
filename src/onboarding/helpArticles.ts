@@ -711,6 +711,27 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     keywords: 'welcome back gift away return missed days reminder notification rent takings baby come back',
   },
+  {
+    id: 'weekly-events',
+    topic: 'daily',
+    title: 'This week in Benin',
+    summary: 'Something is on most days of the week. Come back on the day for a small reward.',
+    steps: [
+      'Open the calendar from the banner on the day, from the Stories app (This week), or from the Today card.',
+      'Friday Club Night: go to any club and tap Check in for a little cash and a fun boost.',
+      'Saturday Owambe: go to the party at Golden Tulip Essential and check in for a small reward.',
+      'Sunday Rest Day: go home and check in to lose stress and get some energy back.',
+      'Monday Winners: last week\'s top earners are announced to everybody.',
+      'Wednesday Market Day: everything at Oba Market is cheaper all day.',
+    ],
+    where: 'The banner at the top on the day, Phone then Stories then This week, or the Today card.',
+    tips: [
+      'You can check in once for each event each day. The rewards are small on purpose.',
+      'Want a reminder? Turn on Game events in Settings, then Notifications. You get one push on the morning of an event.',
+      'The days and rewards can change. The calendar always shows what is on now.',
+    ],
+    keywords: 'week calendar events friday club night saturday owambe sunday rest monday winners wednesday market day check in discount',
+  },
 
   // ---- Notifications ---------------------------------------------------------------------------------------------
   {

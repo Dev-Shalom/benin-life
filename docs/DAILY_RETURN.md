@@ -42,3 +42,26 @@ All the numbers above are settings. The Growth page shows whether the day-1 and 
 
 ### Tests
 `daily_return_test.sql` part 2: nothing at 2 days, base at 3, scaling at 8, cap at 40, an old player's first heartbeat, once per absence, status/claim/ledger/bag, new absence = new gift, not earnings (tax is not taken), switch off, expiry, admin cap, grants/RLS; pushes at 2/5/10 days, max three, opted-out and device-less get nothing, the baby and shop lines, quiet hours, throttle, batch of 10 then the rest, switches; rent due tomorrow, takings ready, not twice, active players skipped, category and hourly cap hold.
+
+---
+
+## Part 3: "This week in Benin" (weekly events)
+Migration `20261108000300_weekly_events.sql`. Client: `src/state/weekly.ts`, `src/screens/game/Weekly.tsx` (+ `.css`), the banner inside `EventBanner` (`src/screens/game/Events.tsx`), a "This week" pill in the Stories app, deep link `go=week`.
+
+The existing events system (docs/EVENTS.md) is tied to a place and a ticket, and it cannot say "the whole city rests on Sunday", announce winners or lower a market's prices. So the weekly programme is a small layer on the same idea: **nothing is created and nothing is scheduled**. `bl_weekly_catalog()` lists five events by Benin weekday; `weekly_calendar()` works out the current Monday-to-Sunday week the moment somebody asks. Switch an event off and it simply is not in the answer.
+
+| Day | Event | What it does | Default reward (all settings) |
+|---|---|---|---|
+| Friday | 🪩 Friday Club Night | Check in at **any club** (`locations.scene = 'club'`) | ₦1,000 + fun +15 |
+| Saturday | 🎉 Saturday Owambe | Check in at the party place (`weekly.sat_owambe_place`, default Golden Tulip Essential) | ₦1,500 + fun +20 |
+| Sunday | 🛋️ Sunday Rest Day | Check in **at home** (Church can replace this later) | stress -20, energy +10, no cash |
+| Monday | 🏆 Monday Winners | Last week's top 3 earners (the weekly prize winners that already exist) are announced as a **broadcast** to everyone, once | none |
+| Wednesday | 🛒 Wednesday Market Day | Everything at Oba Market (`weekly.wed_market_place`) is **15% cheaper** all day | 15% off |
+
+- **Check in** (`weekly_event_checkin()`): the right place, not travelling, not in jail, once per event per day (table `weekly_event_checkins`). Hints: `no_event`, `not_here` (the message says where to go), `already`. Cash goes through `bl_add_money` with the reason `Weekly event: Friday Club Night`; it is not an earn reason (no tax, no leaderboard). Needs go through `bl_adjust_needs`.
+- **Market discount**: patched into `bl_dealer_net` (one guarded replace) through `bl_weekly_discount`, so the shop list, the buy button and the tax all agree. On any other day it exits on the first line without a query.
+- **Monday announcement**: made by the first `weekly_calendar()` call on Monday or by the cron tick, whichever comes first; `weekly_event_runs` makes it once. It settles last week first (`bl_weekly_settle`), and does nothing if nobody earned enough to win.
+- **Morning push** (`bl_weekly_tick`, called from `bl_push_tick`): one per player at or after `weekly.push_hour` (9), before the quiet-hours end (`return.push_to_hour`, 20), Game events category (opt-in), only players seen in the last 14 days, `weekly.push_batch` (200) per tick, logged in `weekly_push_log` so nobody gets two; when a tick sees fewer than a batch it writes a "done" marker so the rest of the day costs nothing. Monday has no push (the broadcast is the announcement). Opens `go=week`.
+- **Admin**: Settings -> Weekly events: `weekly.enabled`, one `weekly.<key>_enabled` per event, the rewards, the discount, the place ids, the push. Nothing else to schedule.
+- **Client**: the day's event shows in the same top banner slot as place events (only when no place event is showing; phones hide it after 8 s; the x hides it for the day on this device). Tapping it, the Stories "This week" pill, the Today card or the push opens the calendar sheet: Monday to Sunday, today in gold with a **Check in** button (or **Go to Oba Market**), the Monday winners listed.
+- **Tests**: part 3 of `daily_return_test.sql`: the right event on each weekday and the whole week, check-in at the wrong and right place, once a day and again next week, Thursday has none, the Saturday and Sunday rewards, the Monday broadcast once and with the winner named and off when switched off, Oba cheaper on Wednesday (list and price, other markets unchanged, switch and discount are settings), each event and the master switch off, the morning push (too early, one each, opted-out gets none, once a day, next week again, Monday none, switch, batch of 10), grants and RLS. `supabase/tests/_helpers.sql` now switches the Wednesday discount and the new pushes off for every suite, so no older test depends on the weekday.
