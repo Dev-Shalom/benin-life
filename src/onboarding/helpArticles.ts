@@ -732,6 +732,20 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     keywords: 'week calendar events friday club night saturday owambe sunday rest monday winners wednesday market day check in discount',
   },
+  {
+    id: 'today-card',
+    topic: 'daily',
+    title: 'The Today card',
+    summary: 'Everything worth doing today, in one list, one tap each.',
+    steps: [
+      'When you open the game, the Today list opens by itself once a day on the left. It lists your daily reward, today\'s story, the gem hunt, the event of the day and anything that needs you.',
+      'Tap a line to go straight there: collect a gift, open the calendar, see your baby, pay rent, collect your takings.',
+      'Close it with the x. It stays as the small Today pill, and opens again the next day.',
+    ],
+    where: 'The Today pill on the left of the game screen.',
+    tips: ['Lines disappear when you are done with them. Nothing to do means no list.'],
+    keywords: 'today card list daily reward gems story baby rent takings event',
+  },
 
   // ---- Notifications ---------------------------------------------------------------------------------------------
   {

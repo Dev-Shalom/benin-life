@@ -26,10 +26,10 @@
 .gr-row span:not(:first-child) { text-align: right; }
 .gr-row small { color: var(--muted); font-size: 0.6875rem; }
 .gr-row--head { font-size: 0.75rem; font-weight: 700; color: var(--muted); border-bottom-width: 2px; }
-.gr-row--src { grid-template-columns: 1.3fr 0.7fr 1fr 1fr; }
+.gr-row--src { grid-template-columns: 1.2fr 0.95fr 1fr 1fr; }
 .gr-src { font-weight: 700; }
 .gr-today { color: var(--muted); font-weight: 500; }
 @media (max-width: 400px) {
-  .gr-row--src { grid-template-columns: 1.1fr 0.6fr 1fr 1fr; font-size: 0.8125rem; }
+  .gr-row--src { grid-template-columns: 1fr 0.95fr 1fr 1fr; font-size: 0.8125rem; }
   .gr-card { padding: 16px; }
 }

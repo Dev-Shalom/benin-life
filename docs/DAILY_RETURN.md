@@ -65,3 +65,18 @@ The existing events system (docs/EVENTS.md) is tied to a place and a ticket, and
 - **Admin**: Settings -> Weekly events: `weekly.enabled`, one `weekly.<key>_enabled` per event, the rewards, the discount, the place ids, the push. Nothing else to schedule.
 - **Client**: the day's event shows in the same top banner slot as place events (only when no place event is showing; phones hide it after 8 s; the x hides it for the day on this device). Tapping it, the Stories "This week" pill, the Today card or the push opens the calendar sheet: Monday to Sunday, today in gold with a **Check in** button (or **Go to Oba Market**), the Monday winners listed.
 - **Tests**: part 3 of `daily_return_test.sql`: the right event on each weekday and the whole week, check-in at the wrong and right place, once a day and again next week, Thursday has none, the Saturday and Sunday rewards, the Monday broadcast once and with the winner named and off when switched off, Oba cheaper on Wednesday (list and price, other markets unchanged, switch and discount are settings), each event and the master switch off, the morning push (too early, one each, opted-out gets none, once a day, next week again, Monday none, switch, batch of 10), grants and RLS. `supabase/tests/_helpers.sql` now switches the Wednesday discount and the new pushes off for every suite, so no older test depends on the weekday.
+
+---
+
+## Part 4: the HUD Today card
+Migration `20261108000400_today_card.sql`. Client: `src/state/today.ts`, `src/screens/game/Today.tsx` (+ `.css`), wired into `LeftRail` in `src/screens/game/Hud.tsx`.
+
+The game already had a **Today** pill and folded list in the left rail (need tips, work, bank, Dad's allowance, the reward / gem / story chips, challenges). The card extends it instead of adding a second one:
+- `today_card()` (signed-in players only) gathers, in one call: the daily reward (`daily_reward_status`), today's story (`bl_story_badge`), the gem hunt (`gem_hunt_status`), today's weekly event (`weekly_calendar`), a waiting welcome-back gift, and what needs the player: a child with unanswered alerts, rent owed or due today / tomorrow, business takings ready. It returns each part, the list `needs`, and a `count` of things still to do. A part that fails comes back null instead of breaking the call. Switch `return.today_enabled` (Settings -> Welcome back).
+- The list keeps the existing reward / gem / story chips and adds rows for **the event of the day** (tap opens the calendar), **the welcome-back gift** (tap collects it), and **child / rent / takings** (tap opens Family / Bank / Business), then a quiet "This week in Benin" link. The pill icons and the number include them.
+- **Opens by itself once per Benin day per device** when the game opens (not on the map or inside a place on a phone), has a small header with an x (dismiss); tap-outside and Escape still fold it. Long lines wrap instead of cutting off.
+- Polled with the other daily statuses: on mount, every 5 minutes while visible, on tab focus.
+- Tests: part 4 of `daily_return_test.sql`.
+
+## Screenshots
+`/tmp/claude-0/-home-user-benin-life/759dfef3-feae-5202-90ac-ce1932c3b0f5/scratchpad/daily-return/` (390x844 and 360x780): growth, signup-source, welcome-gift (and claimed), weekly-calendar, event-banner, today-card.

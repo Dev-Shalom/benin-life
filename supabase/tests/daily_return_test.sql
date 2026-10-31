@@ -627,3 +627,90 @@ begin
   perform pg_temp.assert(bl_push_tick() ? 'weekly', 'bl_push_tick calls the weekly job');
   raise notice 'DAILY RETURN part 3b (weekly push) OK';
 end $$;
+
+-- =========================================================================================
+-- PART 4: THE TODAY CARD
+-- =========================================================================================
+create or replace function pg_temp.dr_count(r jsonb) returns int
+language sql as $$
+  select (case when coalesce((r->'reward'->>'ready')::boolean, false) then 1 else 0 end)
+       + (case when coalesce((r->'story'->>'waiting')::int, 0) > 0 then 1 else 0 end)
+       + (case when r->'gems' is not null and r->'gems' <> 'null'::jsonb and (r->'gems'->>'found')::int < (r->'gems'->>'total')::int then 1 else 0 end)
+       + (case when coalesce((r->'event'->>'checkin')::boolean, false) and not coalesce((r->'event'->>'checked_in')::boolean, false) then 1 else 0 end)
+       + (case when r->'gift' is not null and r->'gift' <> 'null'::jsonb then 1 else 0 end)
+       + jsonb_array_length(r->'needs')
+$$;
+
+do $$
+declare u uuid; adm uuid; r jsonb; r2 jsonb; today date; home text;
+begin
+  update game_config set value = 'false' where key in ('economy.transfer_fees_enabled', 'economy.tax_enabled', 'economy.bills_enabled', 'economy.vat_enabled', 'economy.luxury_enabled');
+  update game_config set value = 'true' where key in ('daily.reward_enabled', 'daily.gems_enabled', 'stories.daily_enabled', 'weekly.enabled', 'weekly.fri_club_enabled', 'return.today_enabled',
+                                                      'return.gift_enabled', 'rent.enabled');
+  perform pg_temp.dr_at(4, 10);                       -- Friday 10:00
+  today := bl_wat_date();
+  u := pg_temp.dr_user('DR_TC1');
+  select home_location_id into home from profiles where id = u;
+  perform pg_temp.login(u);
+
+  -- 1. one call, every daily reason
+  r := today_card();
+  perform pg_temp.assert((r->>'enabled')::boolean and (r->>'date')::date = today, 'enabled: ' || r::text);
+  perform pg_temp.assert((r->'reward'->>'ready')::boolean and (r->'reward'->>'day')::int = 1 and (r->'reward'->>'cash')::int > 0, 'daily reward ready: ' || coalesce((r->'reward')::text, 'null'));
+  perform pg_temp.assert(r->'gems'->>'total' = '3' and (r->'gems'->>'found')::int = 0, 'gem hunt 0 of 3: ' || coalesce((r->'gems')::text, 'null'));
+  perform pg_temp.assert(r->'story' <> 'null'::jsonb and (r->'story'->>'waiting')::int >= 1, 'story waiting: ' || coalesce((r->'story')::text, 'null'));
+  perform pg_temp.assert(r->'event'->>'key' = 'fri_club' and (r->'event'->>'checkin')::boolean, 'today''s event: ' || coalesce((r->'event')::text, 'null'));
+  perform pg_temp.assert(jsonb_array_length(r->'needs') = 0 and r->'gift' = 'null'::jsonb, 'nothing else needs a new player');
+  perform pg_temp.assert((r->>'count')::int = pg_temp.dr_count(r) and (r->>'count')::int = 4, 'count adds up: ' || (r->>'count'));
+  -- doing one thing lowers the count
+  perform daily_reward_claim();
+  r2 := today_card();
+  perform pg_temp.assert(not (r2->'reward'->>'ready')::boolean and (r2->>'count')::int = (r->>'count')::int - 1, 'claimed reward: count down by one');
+  perform pg_temp.dr_goto(u, 'club_360');
+  perform weekly_event_checkin();
+  r2 := today_card();
+  perform pg_temp.assert((r2->'event'->>'checked_in')::boolean and (r2->>'count')::int = pg_temp.dr_count(r2) and (r2->>'count')::int = 2, 'checked in: count down again: ' || (r2->>'count'));
+
+  -- 2. something needs you: baby, rent, takings, the welcome-back gift
+  insert into kids_children (parent_a, status, name, due_at, born_at, alerts_unanswered, next_alert_at)
+  values (u, 'home', 'Osas', bl_now() - interval '30 days', bl_now() - interval '10 days', 2, bl_now() + interval '1 hour');
+  update profiles set weekly_rent = 12000, rent_owed = 0, rent_due_at = ((today + 1)::timestamp + interval '12 hours') at time zone bl_clock_tz() where id = u;
+  insert into businesses (owner_id, plot_id, type_id, name, base_income, ready_at, last_collect_at, settled_at)
+  values (u, 'biz_ring_road_3', 'salon', 'Mama Joy Salon', 5000, bl_now() - interval '10 days', bl_now() - interval '1 day', bl_now() - interval '1 day');
+  r := today_card();
+  perform pg_temp.assert(jsonb_array_length(r->'needs') = 3, 'three things need me: ' || (r->'needs')::text);
+  perform pg_temp.assert(r->'needs'->0->>'text' = 'Osas needs you' and r->'needs'->0->>'go' = 'family:family', 'the baby');
+  perform pg_temp.assert(r->'needs'->1->>'text' like 'Rent is due tomorrow: %12,000%' and r->'needs'->1->>'go' = 'bank', 'rent due tomorrow');
+  perform pg_temp.assert(r->'needs'->2->>'text' = 'Mama Joy Salon: takings are ready' and r->'needs'->2->>'go' = 'business', 'takings');
+  update profiles set rent_owed = 5000 where id = u;
+  perform pg_temp.assert(today_card()->'needs'->1->>'text' like 'Rent owed: %5,000%', 'rent owed');
+  update profiles set rent_owed = 0, weekly_rent = 0 where id = u;
+  perform pg_temp.assert(jsonb_array_length(today_card()->'needs') = 2, 'no rent, no rent line');
+  -- a welcome-back gift
+  insert into player_return_state (user_id, last_day) values (u, today - 5) on conflict (user_id) do update set last_day = today - 5;
+  perform pg_temp.dr_beat(u);
+  perform pg_temp.login(u);
+  r := today_card();
+  perform pg_temp.assert(r->'gift'->>'cash' = '6000' and (r->'gift'->>'away_days')::int = 5 and r->'gift'->>'item_name' is not null, 'gift on the card: ' || coalesce((r->'gift')::text, 'null'));
+  perform pg_temp.assert((r->>'count')::int = pg_temp.dr_count(r), 'count adds up with needs and gift: ' || (r->>'count'));
+  perform return_gift_claim();
+  perform pg_temp.assert(today_card()->'gift' = 'null'::jsonb, 'claimed gift leaves the card');
+
+  -- 3. switches
+  update game_config set value = 'false' where key = 'weekly.fri_club_enabled';
+  perform pg_temp.assert(today_card()->'event' = 'null'::jsonb, 'event switched off: not on the card');
+  update game_config set value = 'true' where key = 'weekly.fri_club_enabled';
+  update game_config set value = 'false' where key = 'daily.gems_enabled';
+  perform pg_temp.assert(today_card()->'gems' = 'null'::jsonb, 'gem hunt off: not on the card');
+  update game_config set value = 'true' where key = 'daily.gems_enabled';
+  update game_config set value = 'false' where key = 'return.today_enabled';
+  perform pg_temp.assert(not (today_card()->>'enabled')::boolean and (today_card()->>'count')::int = 0, 'card switched off');
+  update game_config set value = 'true' where key = 'return.today_enabled';
+
+  -- 4. grants
+  perform pg_temp.assert(not has_function_privilege('anon', 'public.today_card()', 'execute') and has_function_privilege('authenticated', 'public.today_card()', 'execute'), 'authenticated only');
+  perform pg_temp.assert(pg_temp.dr_hint('select today_card()') = 'ok', 'callable');
+  perform pg_temp.login(null);
+  perform pg_temp.assert(pg_temp.dr_hint('select today_card()') <> 'ok', 'needs a signed-in player');
+  raise notice 'DAILY RETURN part 4 (today card) OK';
+end $$;
