@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { AvatarStage, defaultAvatar, randomAvatar } from '../art/avatar3d';
 import { claimStoredReferral } from '../lib/referral';
+import { saveSource } from '../lib/growth';
 import { chooseStartHome, createProfileV2, getCreatorCatalog, needsHome } from '../api/creator';
 import { errorMessage, GameError } from '../lib/api';
 import { CREATOR, P, WEEKDAYS, originCopy } from '../lib/pidgin';
@@ -51,6 +52,7 @@ export default function CreateSim() {
   const [swapNote, setSwapNote] = useState<string | null>(null);
   const [dream, setDream] = useState<string | null>(null);
   const [home, setHome] = useState<string | null>(null);
+  const [heard, setHeard] = useState<string | null>(null); // growth: optional "how did you hear" answer
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // The coin toss plays once, right after the roll. Coming back to the step shows the result.
@@ -111,6 +113,7 @@ export default function CreateSim() {
     try {
       const st = await createProfileV2({ username, gender: avatar.gender, avatar, traits, dream });
       void claimStoredReferral(); // E2: the ?ref= code from the invite link (silent; the server decides)
+      void saveSource(heard); // growth: the ?src= channel link and the optional answer (silent)
       setFreshRoll(true);
       setStep(LOTTERY);
       applyState(st);
@@ -244,7 +247,7 @@ export default function CreateSim() {
                   onToggle={toggleTrait} />
               )}
               {cur === DREAM && (
-                <DreamPanel name={shownName} dreams={catalog?.dreams ?? null} picked={dream} onPick={setDream} />
+                <DreamPanel name={shownName} dreams={catalog?.dreams ?? null} picked={dream} onPick={setDream} heard={heard} onHeard={setHeard} />
               )}
               {cur === LOTTERY && state && <OriginReveal state={state} replay={freshRoll} />}
               {cur === HOME && state && (

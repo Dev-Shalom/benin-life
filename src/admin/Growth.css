@@ -1,0 +1,35 @@
+/* Admin -> Growth: cards, charts and tables for phones first. */
+.gr-stats { margin-bottom: 16px; }
+.gr-card { margin: 16px 0; padding: 18px; }
+.gr-card .adm-h2 { margin: 0 0 6px; }
+.gr-card .adm-sub { margin: 0 0 14px; line-height: 1.45; }
+
+.gr-chart { display: flex; flex-direction: column; gap: 8px; }
+.gr-chart__top { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); }
+.gr-chart__top span:first-child { font-weight: 800; color: inherit; }
+.gr-chart__bars { display: flex; align-items: flex-end; gap: 3px; height: 130px; padding-bottom: 2px; border-bottom: 1px solid var(--adm-line); }
+.gr-bar { flex: 1 1 0; min-width: 0; border-radius: 3px 3px 0 0; opacity: 0.8; }
+.gr-bar--blue { background: var(--blue-500); }
+.gr-bar--green { background: var(--green-600); }
+.gr-bar.is-today { opacity: 1; outline: 2px solid rgba(0, 0, 0, 0.12); }
+.gr-chart__axis { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); }
+
+.gr-rates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.gr-rate { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 14px; background: #f5f7fa; }
+.gr-rate small { color: var(--muted); font-weight: 700; }
+.gr-rate b { font-family: var(--font-display); font-size: 1.75rem; line-height: 1.1; }
+.gr-rate span { font-size: 0.75rem; color: var(--muted); }
+
+.gr-table { display: flex; flex-direction: column; }
+.gr-row { display: grid; grid-template-columns: 1.2fr 0.8fr 0.9fr 0.9fr; gap: 8px; align-items: baseline; padding: 11px 2px; border-bottom: 1px solid var(--adm-line); font-size: 0.875rem; }
+.gr-row span { min-width: 0; overflow-wrap: anywhere; }
+.gr-row span:not(:first-child) { text-align: right; }
+.gr-row small { color: var(--muted); font-size: 0.6875rem; }
+.gr-row--head { font-size: 0.75rem; font-weight: 700; color: var(--muted); border-bottom-width: 2px; }
+.gr-row--src { grid-template-columns: 1.3fr 0.7fr 1fr 1fr; }
+.gr-src { font-weight: 700; }
+.gr-today { color: var(--muted); font-weight: 500; }
+@media (max-width: 400px) {
+  .gr-row--src { grid-template-columns: 1.1fr 0.6fr 1fr 1fr; font-size: 0.8125rem; }
+  .gr-card { padding: 16px; }
+}

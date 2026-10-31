@@ -1,4 +1,5 @@
 // Creator steps 2, 3 and 5: Personality (pick 2 traits), Dream (pick 1), Choose where to live.
+import { HEARD_OPTIONS } from '../../lib/growth';
 import { naira } from '../../lib/format';
 import { CREATOR } from '../../lib/pidgin';
 import type { Dream, StartHomeOption, Trait } from '../../lib/types';
@@ -48,11 +49,14 @@ export function TraitPanel({ name, traits, picked, need, onToggle }: {
   );
 }
 
-export function DreamPanel({ name, dreams, picked, onPick }: {
+export function DreamPanel({ name, dreams, picked, onPick, heard, onHeard }: {
   name: string;
   dreams: Dream[] | null;
   picked: string | null;
   onPick: (id: string) => void;
+  /** Optional one-tap "How did you hear about Benin Life?" (docs/GROWTH.md). Tap again to clear. */
+  heard?: string | null;
+  onHeard?: (id: string | null) => void;
 }) {
   return (
     <div className="pick">
@@ -73,6 +77,19 @@ export function DreamPanel({ name, dreams, picked, onPick }: {
               </button>
             );
           })}
+        </div>
+      )}
+      {onHeard && (
+        <div className="heard" role="group" aria-label="How did you hear about Benin Life?">
+          <p className="heard__ask">How did you hear about Benin Life? <span>Optional</span></p>
+          <div className="heard__chips">
+            {HEARD_OPTIONS.map((o) => (
+              <button key={o.id} type="button" className={`heard__chip${heard === o.id ? ' is-on' : ''}`} aria-pressed={heard === o.id}
+                onClick={() => onHeard(heard === o.id ? null : o.id)}>
+                {o.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

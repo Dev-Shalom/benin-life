@@ -4,6 +4,7 @@
 // Bank (V1-5), Ranks (PAY), Yahoo (Y1: gear, dirty balance, jobs, cash out, rank), Feedback (S1-D suggestion box), Messages (friend requests, private text/voice chat and house visits), Wallet, Alerts and Settings.
 // Apps without working features stay hidden.
 // Esc closes the phone.
+import { trackAppOpen } from '../../lib/growth';
 import { useBroadcasts } from '../../state/broadcasts';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -181,6 +182,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const kidsOn = useConfig().cfg<boolean>('kids.enabled', true);
   const { mounted, closing } = usePresence(open, 200);
   const [screen, setScreen] = useState<'lock' | 'home' | string>('lock');
+  useEffect(() => { if (screen !== 'lock' && screen !== 'home') trackAppOpen(screen); }, [screen]); // growth: apps opened per day (docs/GROWTH.md)
   const [wasOpen, setWasOpen] = useState(open);
   const [seenNonce, setSeenNonce] = useState(phoneNonce);
   const [bbTab, setBbTab] = useState<'boards' | 'mine'>('boards');

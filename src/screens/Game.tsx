@@ -83,6 +83,7 @@ import { houseUpgradeHome, type UpgradeHome } from '../api/upgrades';
 import { useUpgradeWatcher, useUpgrades } from '../state/upgrades';
 import { BuildersPill } from './game/BuildersPill';
 import { canPoll } from '../lib/activity';
+import { flushChannel } from '../lib/growth';
 
 const Boutique = lazy(() => import('./game/Boutique'));
 const BillboardSheet = lazy(() => import('./game/BillboardSheet'));
@@ -119,6 +120,7 @@ function rowPosition(row: HouseFurniturePlacement): SavedHomePosition {
 }
 
 export default function Game() {
+  useEffect(() => { flushChannel(); }, []); // growth: a ?src= channel the creator could not save yet (docs/GROWTH.md)
   const state = useGame((s) => s.state);
   const locations = useGame((s) => s.locations);
   const byId = useGame((s) => s.locationsById);

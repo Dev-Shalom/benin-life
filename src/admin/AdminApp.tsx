@@ -29,6 +29,7 @@ import Offices from './Offices';
 import Economy from './Economy';
 import Love from './Love';
 import Gist from './Gist';
+import Growth from './Growth';
 import Property from './Property';
 import './admin.css';
 
@@ -37,6 +38,7 @@ const NAV = [
   { to: '/admin/settings', label: 'Settings', icon: 'gear' },
   { to: '/admin/content', label: 'Content', icon: 'file' },
   { to: '/admin/players', label: 'Players', icon: 'people' },
+  { to: '/admin/growth', label: 'Growth', icon: 'star' },
   { to: '/admin/broadcast', label: 'Broadcast', icon: 'send' },
   { to: '/admin/earn', label: 'Earn', icon: 'cash' },
   { to: '/admin/music', label: 'Music', icon: 'music' },
@@ -138,6 +140,7 @@ export default function AdminApp() {
           <Route path="settings" element={<Settings />} />
           <Route path="content" element={<Content />} />
           <Route path="players" element={<Players />} />
+          <Route path="growth" element={<Growth />} />
           <Route path="chat" element={<Chat />} />
           <Route path="gist" element={<Gist />} />
           <Route path="property" element={<Property />} />

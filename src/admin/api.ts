@@ -191,7 +191,24 @@ export interface GrantCatalog {
   needs: string[];
 }
 
+/** Admin -> Growth (docs/GROWTH.md): one cached document from admin_growth_overview(). */
+export interface GrowthDay { day: string; n: number }
+export interface GrowthOverview {
+  day: string;
+  online: number;
+  computed_at: string;
+  cache_seconds: number;
+  sources_days: number;
+  totals: { players: number; today: number; yesterday: number; wau: number; wau_prev: number; mau: number };
+  dau: GrowthDay[];
+  signups: GrowthDay[];
+  cohorts: { day: string; size: number; d1: number | null; d7: number | null }[];
+  sources: { source: string; n: number; e1: number; r1: number; e7: number; r7: number }[];
+  apps: { app: string; today: number; week: number }[];
+}
+
 export const adminApi = {
+  growthOverview: (refresh = false) => rpc<GrowthOverview>('admin_growth_overview', { p_refresh: refresh }),
   /** P1: player push outbox counts (docs/NOTIFICATIONS.md). */
   pushStats: () => rpc<PushStats>('admin_push_stats'),
   configList: () => rpc<ConfigRow[]>('admin_config_list'),
