@@ -29,6 +29,7 @@ export const HELP_TOPICS = [
   { id: 'friends', label: 'Messages, friends & Benin Gist', icon: '🗣️' },
   { id: 'family', label: 'Family & love', icon: '💞' },
   { id: 'stories', label: 'Daily stories', icon: '📖' },
+  { id: 'daily', label: 'Daily rewards & events', icon: '🎁' },
   { id: 'notifications', label: 'Notifications', icon: '🔔' },
   { id: 'invest', label: 'Invest & save', icon: '📈' },
   { id: 'yahoo', label: 'Yahoo & EFCC', icon: '💻' },
@@ -688,6 +689,27 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tour: ['stories'],
     keywords: 'story stories daily twist path karma luck streak chapter follow up bitlife choices reputation',
+  },
+
+  // ---- Daily return pack -----------------------------------------------------------------------------------------
+  {
+    id: 'welcome-back',
+    topic: 'daily',
+    title: 'Welcome-back gift and reminders',
+    summary: 'Been away for a few days? Benin has a gift waiting, and a few friendly pings if you want them.',
+    steps: [
+      'Stay away 3 days or more, then open the game. You see a gift card: some cash and a plate of food. Tap Collect gift and it goes into your cash and your bag.',
+      'The longer you were away, the more cash, up to a limit. You get one gift for each time you come back, not one for every day.',
+      'Nobody takes tax from it, and it does not count as money you earned, so it never changes the weekly top earners.',
+      'If you forget to collect, the card shows again in the game for a few days.',
+    ],
+    where: 'It appears on the welcome-back screen when you open the game, or as a pop-up in the game.',
+    tips: [
+      'Reminders are optional. Turn on Game events in Settings, then Notifications. You get at most three "we miss you" pings per time you are away (about 2, 5 and 10 days), never at night, and they mention real things like your baby or your shop.',
+      'Money notifications can also tell you your rent is due tomorrow and that your business takings are ready.',
+      'Turn notifications off any time in Settings. Nothing is sent until you allow it.',
+    ],
+    keywords: 'welcome back gift away return missed days reminder notification rent takings baby come back',
   },
 
   // ---- Notifications ---------------------------------------------------------------------------------------------

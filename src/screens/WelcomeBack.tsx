@@ -19,6 +19,8 @@ import { originCopy } from '../lib/pidgin';
 import { homeLight } from '../art/home3d/engine/light';
 import { useCatalog } from '../state/catalog';
 import { useGame } from '../state/game';
+import { useReturnGift } from '../state/returnGift';
+import { ReturnGiftCard } from './game/ReturnGift';
 import { Button, Icon, Logo, Modal, toast } from '../ui';
 
 const ORBIT_SECONDS = 52;
@@ -91,6 +93,11 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState<'restart' | 'logout' | null>(null);
   const [gone, setGone] = useState(false);
+  // welcome-back gift (docs/DAILY_RETURN.md): shown inside the card; the pop-up in the game stays quiet once this showed it
+  const giftPending = useReturnGift((s) => Boolean(s.gift?.pending) || Boolean(s.claimed));
+  useEffect(() => {
+    void useReturnGift.getState().load().then(() => { if (useReturnGift.getState().gift?.pending) useReturnGift.getState().markOffered(); });
+  }, []);
 
   const p = state?.profile;
   const hour = devHourOverride() ?? clock.hour + clock.minute / 60;
@@ -252,6 +259,8 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
               <span className="welcome__where">{away ? `Last played ${away}` : where}</span>
             </span>
           </div>
+
+          {giftPending && <ReturnGiftCard compact />}
 
           <button type="button" className="welcome__go" onClick={onContinue}>Continue</button>
 
