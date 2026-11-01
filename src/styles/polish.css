@@ -492,3 +492,11 @@
     flex-basis: 100%;
   }
 }
+
+/* ---------- Last tap-target and wrap fixes ---------- */
+:root .ev-banner__main { min-height: var(--tap); }
+:root .phone-app--messages :is(button:not([class]), button.is-on) { min-height: var(--tap); }
+:root .lottery-chip { min-height: var(--tap); }
+:root .qty__btn { min-width: 32px; min-height: 32px; }
+:root .rk-row__you { flex: none; }
+:root .place-card__name, :root .pc-event__text { overflow-wrap: anywhere; }
