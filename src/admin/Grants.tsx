@@ -525,9 +525,10 @@ function GangSection() {
       </div>
       <div className="adm-btnrow">
         <Go disabled={!crewChoice || (!!s.crew && String(s.crew.id) !== crewChoice)} onConfirm={() => adminApi.crewSet(id, Number(crewChoice), rank, reason)}>{s.crew ? 'Set rank' : 'Put in the gang'}</Go>
+        <Go tone="danger" disabled={!crewChoice || (!!s.crew && String(s.crew.id) !== crewChoice)} onConfirm={() => adminApi.crewSetBoss(id, Number(crewChoice), reason)}>Make Boss</Go>
         {s.crew && <Go tone="danger" onConfirm={() => adminApi.crewRemove(id, reason)}>Remove from gang</Go>}
       </div>
-      <p className="adm-sub">The Boss rank changes inside the gang itself. A player already in another gang must be removed first.</p>
+      <p className="adm-sub">Make Boss moves the Boss rank to this player (the old Boss becomes a Lieutenant) and is written to the audit log. A player already in another gang must be removed first.</p>
       <h4 className="ag-h">Chief title</h4>
       <p className="ag-now">{s.chief ? <><b>{s.chief.name}</b> of {s.chief.ward_name ?? s.chief.ward}</> : 'No chief title.'}</p>
       <div className="ag-grid">

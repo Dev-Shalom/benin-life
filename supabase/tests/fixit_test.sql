@@ -81,3 +81,67 @@ begin
   perform pg_temp.assert((res->'effects'->>'energy')::numeric = 85 and (res->'effects'->>'stress')::numeric < -20, 'sleep works, extension room bonus on');
   raise notice 'ok 4: beds';
 end $$;
+
+-- ---------- 5. Gang Boss hand-back ----------
+do $$
+declare a uuid := pg_temp.fx_make('FxBossA'); b uuid := pg_temp.fx_make('FxBossB'); c uuid := pg_temp.fx_make('FxBossC');
+        v_crew bigint; r jsonb; v_admin uuid := pg_temp.fx_make('FxBossAdm');
+begin
+  update profiles set created_at = now() - interval '30 days' where id in (a, b, c, v_admin);
+  perform pg_temp.login(a);
+  r := crew_create('Fixit Boys', 'FXB', '#aa3322', '🌙');
+  select crew_id into v_crew from crew_members where user_id = a;
+  perform bl_crew_add_member(v_crew, b, 'member');
+  perform bl_crew_add_member(v_crew, c, 'member');
+  -- nothing handed over yet
+  perform pg_temp.assert(pg_temp.fx_hint('select crew_boss_handback()') <> 'ok', 'a founder has nothing to hand back');
+  perform pg_temp.assert(not (crew_boss_state()->>'can_handback')::boolean, 'state: no handback for the founder');
+  -- A hands the gang to B by mistake
+  perform crew_transfer(b);
+  perform pg_temp.assert((select rank from crew_members where user_id = b) = 'boss' and (select rank from crew_members where user_id = a) = 'lieutenant', 'B is Boss');
+  perform pg_temp.assert((crew_boss_state()->>'can_request')::boolean, 'state: A may ask');
+  -- C (random member) can do nothing
+  perform pg_temp.login(c);
+  perform pg_temp.assert(pg_temp.fx_hint('select crew_boss_request()') = 'not_previous_boss', 'C cannot ask');
+  perform pg_temp.assert(pg_temp.fx_hint('select crew_boss_handback()') <> 'ok', 'C cannot hand back');
+  -- A asks, B declines
+  perform pg_temp.login(a);
+  perform crew_boss_request();
+  perform pg_temp.assert(pg_temp.fx_hint('select crew_boss_request()') = 'pending', 'one request at a time');
+  perform pg_temp.login(b);
+  perform pg_temp.assert((crew_boss_state()->'request'->>'to_me')::boolean, 'B sees the request');
+  perform pg_temp.login(a);
+  perform pg_temp.assert(pg_temp.fx_hint('select crew_boss_respond(true)') <> 'ok', 'A cannot answer their own request');
+  perform pg_temp.login(b);
+  perform crew_boss_respond(false);
+  perform pg_temp.assert((select rank from crew_members where user_id = b) = 'boss', 'declined: B stays Boss');
+  -- A asks again, B accepts
+  perform pg_temp.login(a);
+  perform crew_boss_request();
+  perform pg_temp.login(b);
+  perform crew_boss_respond(true);
+  perform pg_temp.assert((select rank from crew_members where user_id = a) = 'boss' and (select rank from crew_members where user_id = b) = 'lieutenant', 'accepted: A is Boss again');
+  -- late request is refused: hand over again, age the handover past 24 h
+  perform pg_temp.login(a);
+  perform crew_transfer(b);
+  update crew_boss_log set created_at = now() - interval '25 hours' where crew_id = v_crew and kind = 'transfer';
+  perform pg_temp.assert(pg_temp.fx_hint('select crew_boss_request()') = 'too_late', 'after 24 h the request is refused');
+  -- but B can hand it back any time
+  perform pg_temp.login(b);
+  perform pg_temp.assert((crew_boss_state()->>'can_handback')::boolean, 'state: B may hand back');
+  perform crew_boss_handback();
+  perform pg_temp.assert((select rank from crew_members where user_id = a) = 'boss' and (select rank from crew_members where user_id = b) = 'lieutenant', 'handed back');
+  perform pg_temp.assert(pg_temp.fx_hint('select crew_boss_handback()') <> 'ok', 'hand back once');
+  perform pg_temp.assert((select count(*) from crew_boss_log where crew_id = v_crew) >= 7, 'every step is in the log');
+  -- admin sets the Boss
+  update profiles set is_admin = false where is_admin;
+  update profiles set is_admin = true where id = v_admin;
+  perform pg_temp.login(b);
+  perform pg_temp.assert(pg_temp.fx_hint(format('select admin_crew_set_boss(%L, %s, ''x'')', c, v_crew)) <> 'ok', 'a player cannot use the admin RPC');
+  perform pg_temp.login(v_admin);
+  perform admin_crew_set_boss(c, v_crew, 'Owner request');
+  perform pg_temp.assert((select rank from crew_members where user_id = c) = 'boss' and (select count(*) from crew_members where crew_id = v_crew and rank = 'boss') = 1, 'admin made C Boss');
+  perform pg_temp.assert((select rank from crew_members where user_id = a) = 'lieutenant', 'old Boss is Lieutenant');
+  perform pg_temp.assert(exists (select 1 from admin_audit where action = 'grant_crew_boss' and target_user = c), 'admin audit row');
+  raise notice 'ok 5: gang boss hand-back';
+end $$;
