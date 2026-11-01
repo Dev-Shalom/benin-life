@@ -1,0 +1,20 @@
+# "Fix it" update
+
+Twelve fixes from real player feedback, done easiest first, one commit each. Migrations are `20261110000100` and up, tests are in
+`supabase/tests/fixit_test.sql` (one group per item with server logic). Player-facing words are in quotes.
+
+## 1. Candidate registration pop-up repeated
+- **Cause:** the "Candidate registration is open" banner (`ElectionBanner` in `src/screens/game/PollingStrip.tsx`) showed on every load for the whole 48 h registration window, even to people who had already declared.
+- **Now:** it shows at most once per election cycle per player per browser (`src/lib/seenPrompts.ts`, key `bl.seen.<user>.reg.<cycle>`), never to someone who already declared, and has **"Don't show again this election"**. The Benin Votes badge and the Elections tab still show registration. Voting-day banner is unchanged (it always shows).
+
+## 2. Club money shout-out covered the screen
+- **Cause:** the spray / bottles takeover (`.hx`) was a fixed full-screen layer (z 80) with a blurred backdrop and one giant button, so it swallowed every tap for 3.5 to 9 s.
+- **Now:** a compact card under the HUD (max 40% of the height). Everything in it has `pointer-events: none` except a 40 px **close (X)** button, so the game stays playable. Holds are shorter: spray tiers 2.2 / 2.5 / 2.8 / 3.2 / 3.6 / 4.2 / 5.0 s (was 3.5 to 9 s), shutdown 4 s (was 6), VIP arrival 2.4 s (was 3). The money-pick notes layer already ignored taps.
+- Files: `src/styles/hype.css` (Fix it 2 block), `src/screens/game/Hype.tsx`, `src/state/hype.ts`.
+
+## 3. Spray / bottle notifications were annoying
+- New per-player setting **Settings -> Club spray alerts** (table `club_alert_prefs`, RPCs `club_alert_prefs_get` / `club_alert_prefs_set`, migration `20261110000100_club_alert_prefs.sql`):
+  - "Shout-outs in my club": the card in the club you stand in. **On** by default. Your own spray always shows.
+  - "Big sprays in other clubs": the app-wide strip. **Off** by default.
+  - "Phone pings for club hype": a push. **Off** by default. `bl_push_on_hype` is patched (guarded replace) to need this switch **and** the existing `push.enabled`, `push.cat_events`, the player's Game events category, a saved device and the usual rate limits.
+- Client: `src/state/clubAlerts.ts`, `src/state/hype.ts` (filters), `ClubAlertsSettings` in `src/screens/game/NotificationsSettings.tsx`.

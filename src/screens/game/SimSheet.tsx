@@ -30,7 +30,7 @@ import { SkillsTab } from './Skills';
 import { CertificatesCard } from './School';
 import LookPanel from '../creator/LookPanel';
 import { startTour } from '../../onboarding/tourStore';
-import { NotificationsSettings } from './NotificationsSettings';
+import { ClubAlertsSettings, NotificationsSettings } from './NotificationsSettings';
 import { JobCard, PerfBar, Promotion, ShiftStats } from '../../panels/careers/CareerUI';
 
 const TABS: { id: SimTab; label: string }[] = [
@@ -427,6 +427,7 @@ function SettingsTab({ state }: { state: GameState }) {
         </div>
       </div>
       <NotificationsSettings />
+      <ClubAlertsSettings />
       <h4 className="settings-head">Account</h4>
       <div className="settings-row">
         <div>

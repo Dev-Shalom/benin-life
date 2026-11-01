@@ -13,6 +13,7 @@ import { startPoller, trackSubscribe, usePollMode } from '../lib/realtime';
 import { playHype } from '../lib/sound';
 import { moneyDropsLive, type MoneyDrop } from '../api/moneyPick';
 import { addDrop, clearDrops, pushPickNotice } from './moneyPick';
+import { useClubAlerts, loadClubAlerts } from './clubAlerts';
 
 export interface Announcement {
   id: number;
@@ -71,9 +72,11 @@ interface HypeStore {
   queue: Announcement[];
   /** The app-wide ticker on screen now. */
   ticker: Announcement | null;
+  /** The signed-in player's id (their own spray always shows). */
+  me: string | null;
 }
 
-export const useHype = create<HypeStore>(() => ({ locationId: null, inClub: false, recent: [], banner: null, queue: [], ticker: null }));
+export const useHype = create<HypeStore>(() => ({ locationId: null, inClub: false, recent: [], banner: null, queue: [], ticker: null, me: null }));
 
 let bannerTimer = 0;
 let tickerTimer = 0;
@@ -101,6 +104,8 @@ function onClubRow(a: Announcement) {
     window.dispatchEvent(new CustomEvent('bl:hype', { detail: { text: a.text, kind: a.kind } }));
     return;
   }
+  // Fix it 3: "Club spray alerts: shout-outs in my club" off = no card for other people's sprays (your own still shows).
+  if (!useClubAlerts.getState().toasts && a.kind !== 'vip_arrival' && a.user_id !== useHype.getState().me) return;
   if (s.banner) useHype.setState({ queue: [...s.queue, a].slice(-3) });
   else {
     useHype.setState({ queue: [a] });
@@ -111,6 +116,8 @@ function onClubRow(a: Announcement) {
 function onGlobalRow(a: Announcement) {
   // in that club already: the banner says it louder
   if (a.location_id === useHype.getState().locationId || !a.ticker) return;
+  // Fix it 3: the app-wide strip for a different club is off unless the player asked for it
+  if (!useClubAlerts.getState().strip) return;
   window.clearTimeout(tickerTimer);
   useHype.setState({ ticker: a });
   playHype('global');
@@ -140,6 +147,10 @@ let globalCh: RealtimeChannel | null = null;
  *  `inClub` = that place is a club (all hype kinds); elsewhere only VIP arrivals (PAY) are shown. */
 export function useHypeLive(clubId: string | null, uid: string | null, inClub = true) {
   const poll = usePollMode();
+  useEffect(() => {
+    useHype.setState({ me: uid });
+    if (uid) void loadClubAlerts();
+  }, [uid]);
   useEffect(() => {
     if (!uid) return;
     if (poll) {
