@@ -298,3 +298,45 @@ begin
   perform pg_temp.assert(not has_function_privilege('anon', 'public.phone_bank_deposit(bigint)', 'execute') and not has_function_privilege('authenticated', 'public.bl_phone_fee(bigint)', 'execute'), 'grants');
   raise notice 'ok 9: phone banking';
 end $$;
+
+-- ---------- 10. Primary car ----------
+do $$
+declare a uuid := pg_temp.fx_make('FxDrive', 900000000, 0); b uuid := pg_temp.fx_make('FxNoCar'); q jsonb; r jsonb; v_mode jsonb;
+begin
+  perform pg_temp.login(a);
+  update profiles set location_id = 'oba_market', travel_to = null where id = a;
+  -- two vehicles in different Bolt classes: the old rule drives the expensive one
+  perform bl_give_item(a, 'kia_rio_used', 1);
+  perform bl_give_item(a, 'gwagon_g63', 1);
+  perform pg_temp.assert(bl_driving_item(a) = 'gwagon_g63' and bl_primary_item(a) is null, 'default = most expensive');
+  perform pg_temp.assert((bl_hustle_car(a)->>'item_id') = 'gwagon_g63' and (bl_hustle_car(a)->>'class_id') = 'luxury', 'Bolt uses the G-Wagon by default');
+  perform pg_temp.assert(car_primary_get()->>'driving' = 'gwagon_g63' and car_primary_get()->>'chosen' is null, 'car_primary_get default');
+  -- pick the small car
+  r := car_set_primary('kia_rio_used');
+  perform pg_temp.assert(r->>'driving' = 'kia_rio_used', 'set primary');
+  perform pg_temp.assert((bl_hustle_car(a)->>'item_id') = 'kia_rio_used' and (bl_hustle_car(a)->>'class_id') = 'economy', 'Bolt now uses the picked car (economy class)');
+  perform pg_temp.assert((select label from jsonb_to_recordset(travel_quote('uselu_market')->'options') as m(mode text, label text) where mode = 'car') = 'Your own car', 'travel quote has a car mode');
+  -- pick a bicycle: the travel quote becomes the bicycle ride
+  perform bl_give_item(a, 'bicycle', 1);
+  perform car_set_primary('bicycle');
+  v_mode := (select to_jsonb(m) from jsonb_to_recordset(travel_quote('uselu_market')->'options') as m(mode text, label text, vehicle text) where mode = 'car');
+  perform pg_temp.assert(v_mode->>'label' = 'Your bicycle', 'travel quote follows the picked vehicle: ' || v_mode::text);
+  perform car_set_primary('gwagon_g63');
+  perform pg_temp.assert((select label from jsonb_to_recordset(travel_quote('uselu_market')->'options') as m(mode text, label text) where mode = 'car') = 'Your own car', 'back to the car');
+  -- garage list: picked first and marked
+  perform car_set_primary('kia_rio_used');
+  r := garage_home();
+  perform pg_temp.assert(r->'cars'->0->>'id' = 'kia_rio_used' and (r->'cars'->0->>'primary')::boolean and not (r->'cars'->1->>'primary')::boolean, 'garage lists the picked car first');
+  -- refusals
+  perform pg_temp.assert(pg_temp.fx_hint($q$select car_set_primary('lambo_urus')$q$) = 'not_owned', 'not owned');
+  perform pg_temp.assert(pg_temp.fx_hint($q$select car_set_primary('soap')$q$) = 'not_owned', 'not a vehicle');
+  -- selling the picked car falls back to the old rule
+  delete from inventory where user_id = a and item_id = 'kia_rio_used';
+  perform pg_temp.assert(bl_primary_item(a) is null and bl_driving_item(a) = 'gwagon_g63', 'sold: falls back to the best car');
+  -- another player cannot see or use it, and a player with no car has none
+  perform pg_temp.login(b);
+  perform pg_temp.assert(bl_driving_item(b) is null and (bl_hustle_car(b)) is null, 'no car, no driving');
+  perform pg_temp.assert(pg_temp.fx_hint($q$select car_set_primary('gwagon_g63')$q$) = 'not_owned', 'cannot pick another player''s car');
+  perform pg_temp.assert(not has_function_privilege('anon', 'public.car_set_primary(text)', 'execute') and not has_function_privilege('authenticated', 'public.bl_driving_item(uuid)', 'execute'), 'grants');
+  raise notice 'ok 10: primary car';
+end $$;

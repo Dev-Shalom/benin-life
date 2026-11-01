@@ -21,7 +21,7 @@ export interface GarageHome {
   kind: string;
   garage: { type: string; name: string; capacity: number; style: GarageStyle; built_at: string } | null;
   /** Owned vehicles, most expensive first. */
-  cars: { id: string; name: string; price: number }[];
+  cars: { id: string; name: string; price: number; primary?: boolean }[];
   /** Build menu (owner only; empty for guests). */
   types: GarageType[];
 }
@@ -32,3 +32,7 @@ export const garageBuild = (type: string) =>
 
 /** Two-wheelers never trigger the "build a garage?" offer. */
 export const isCarItem = (id: string) => id !== 'bicycle' && id !== 'bajaj_boxer';
+
+/** Fix it 10: which vehicle the player drives (travel, Bolt hustle, robbery risk). `chosen` null = the most expensive one. */
+export const carPrimaryGet = () => rpc<{ chosen: string | null; driving: string | null }>('car_primary_get');
+export const carSetPrimary = (item: string) => rpc<{ message: string; driving: string }>('car_set_primary', { p_item: item });

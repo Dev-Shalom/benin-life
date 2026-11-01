@@ -6879,3 +6879,7 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .club-music-chip__btn { padding: 0 14px; background: var(--surface-3, rgba(0, 0, 0, 0.08)); }
 .club-music-chip__btn.is-primary { background: var(--green-600, #1f8f5a); color: #fff; }
 .club-music-chip__x { width: 34px; font-size: 20px; line-height: 1; opacity: 0.7; }
+
+/* Fix it 10: Drive + Sell buttons wrap under the car name on a narrow phone */
+.cars-mine__row { flex-wrap: wrap; row-gap: 8px; }
+.cars-mine__row > .grow { flex: 1 1 140px; min-width: 0; }

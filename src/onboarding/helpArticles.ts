@@ -324,6 +324,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: 'Cars, the Boutique and Houses each have their own app on your phone.',
     steps: [
       'Cars: open Phone, then Cars. Buy a tokunbo or a brand-new ride. A car also unlocks Bolt driving.',
+      'More than one car? In Phone, Cars, My cars (or the garage sheet at home) tap Drive this car. The one marked Driving is the car you travel in, drive for Bolt and ride when you count your risk on the road. Your cars are all parked at home, the one you drive first.',
       'Clothes: open Phone, then Boutique, to buy outfits and change your look.',
       'Houses: open Phone, then Houses, to rent a bigger place. Pay your rent on time.',
     ],

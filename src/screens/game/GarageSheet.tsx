@@ -10,6 +10,7 @@ import { useGarage } from '../../state/garage';
 import { Button, Sheet, toast } from '../../ui';
 import { Thumb } from '../../art/thumbs/Thumb';
 import { SellCarButton } from './SellCar';
+import { DriveButton } from './DriveButton';
 
 const KIND_LABEL: Record<string, string> = {
   hostel: 'hostel room', face_me: 'face-me-I-face-you room', self_contain: 'self-contain', mini_flat: 'mini flat', duplex: 'GRA duplex',
@@ -115,6 +116,7 @@ export function GarageSheet() {
                     <span className="cars-mine__name">{c.name}</span>
                     <span className="cars-mine__sub">List price {nairaShort(c.price)}</span>
                   </span>
+                  <DriveButton itemId={c.id} only={data.cars.length === 1} />
                   <SellCarButton car={c} />
                 </div>
               ))}
