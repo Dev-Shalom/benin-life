@@ -176,7 +176,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'today',
     target: '[data-tour="today"]',
     title: 'Today and Challenges',
-    body: 'The Today pill gathers your tips and daily rewards. Open it to see your Challenges.',
+    body: 'The Today pill gathers your tips and daily rewards. New players also find "Your first days" here: a short quest line with a small reward on each step.',
     points: [
       'Three daily and three weekly goals pay cash and prizes.',
       'A red dot means something is ready to collect.',
