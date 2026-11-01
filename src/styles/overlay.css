@@ -342,3 +342,11 @@
   color: var(--muted);
   font-size: 14px;
 }
+:root .bl-sheet .age-badge {
+  color: #131a24;
+}
+:root .rk-row__name {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
