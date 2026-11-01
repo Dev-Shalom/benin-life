@@ -1,7 +1,7 @@
 // Admin -> Growth (docs/GROWTH.md): are players coming back, and which door did they come through?
 // One cached document from admin_growth_overview(); simple bar charts drawn with plain divs (no chart library).
 import { useState } from 'react';
-import { adminApi, type GrowthDay, type GrowthOverview } from './api';
+import { adminApi, type GrowthDay, type GrowthOverview, type JourneyFunnel } from './api';
 import { Btn, LoadError, PageHead, Skeleton } from './parts';
 import { useLoad } from './util';
 import './Growth.css';
@@ -147,6 +147,42 @@ function View({ d }: { d: GrowthOverview }) {
   );
 }
 
+/** "Your first days" funnel (docs/JOURNEY.md): players who reached each step, as a share of those who started. Cached counters, one cheap read. */
+function JourneyFunnelCard() {
+  const { data, error, loading } = useLoad<JourneyFunnel>(() => adminApi.journeyFunnel());
+  if (error || (!data && !loading)) return null;
+  const started = data?.started ?? 0;
+  const p = (n: number) => (started > 0 ? Math.round((n / started) * 100) : 0);
+  return (
+    <section className="adm-card gr-card" data-testid="journey-funnel">
+      <h2 className="adm-h2">New-player journey</h2>
+      <p className="adm-sub">
+        Players who started "Your first days" and how many reached each step (a step counts a player once). Share is of those who started.
+        A step few reach is too hard or too hidden: change its words or reward in Content, Journey steps.
+        {data && !data.enabled ? ' The journey is switched off in Settings.' : ''}
+      </p>
+      {!data && <Skeleton rows={3} />}
+      {data && (
+        <>
+          <div className="gr-rates">
+            <Rate label="Started" value={null} sub={`${started} players`} />
+            <Rate label="Finished all" value={started > 0 ? p(data.finished) : null} sub={`${data.finished} players`} />
+          </div>
+          <div className="gr-fn">
+            {data.steps.map((s) => (
+              <div className={`gr-fn__row${s.active ? '' : ' is-off'}`} key={s.id}>
+                <span className="gr-fn__label"><b>Day {s.day}</b> {s.icon} {s.title}{s.active ? '' : ' (off)'}</span>
+                <span className="gr-fn__track"><span className="gr-fn__fill" style={{ width: `${p(s.reached)}%` }} /></span>
+                <span className="gr-fn__val">{p(s.reached)}%<small> {s.reached} · {s.claimed} claimed</small></span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function Growth() {
   const [busy, setBusy] = useState(false);
   const { data, setData, error, loading, reload } = useLoad(() => adminApi.growthOverview(false));
@@ -161,6 +197,7 @@ export default function Growth() {
       {error && <LoadError error={error} onRetry={() => void reload()} />}
       {!data && loading && <Skeleton rows={6} />}
       {data && <View d={data} />}
+      <JourneyFunnelCard />
     </>
   );
 }

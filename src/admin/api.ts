@@ -27,7 +27,7 @@ export type AdminTable =
   | 'origin_tiers' | 'traits' | 'dreams' | 'start_homes' | 'career_tracks' | 'career_levels'
   | 'items' | 'activities' | 'locations' | 'chat_banned_words' | 'furniture' | 'starter_furniture'
   | 'place_zones' | 'zone_actions' | 'place_moods' | 'npc_roster' | 'crowd_profiles' | 'hype_templates' | 'place_events' | 'topup_packs'
-  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'group_missions' | 'yahoo_ranks' | 'invest_products' | 'invest_markets' | 'hustles' | 'hustle_car_classes' | 'hustle_fish' | 'skills' | 'skill_curve' | 'skill_sources' | 'courses' | 'certificates' | 'challenge_templates' | 'challenge_template_stats' | 'lounge_tiers' | 'love_flirts' | 'love_dates' | 'kids_stages' | 'kids_auto_names' | 'life_moments' | 'path_lines' | 'kids_illnesses' | 'kids_schools' | 'kids_subjects' | 'kids_items' | 'shop_price_rules' | 'cook_recipes' | 'cook_ingredients' | 'house_upgrades' | 'property_areas' | 'property_types' | 'property_offers' | 'property_designs' | 'market_settings' | 'business_types' | 'business_plots' | 'company_industries' | 'company_areas' | 'company_formats' | 'company_marketing' | 'real_biz_slots' | 'crew_jobs' | 'crew_levels' | 'offices' | 'gov_policies' | 'parties' | 'wards' | 'ind_offices' | 'ind_levers';
+  | 'daily_reward_steps' | 'gem_finds' | 'wardrobe_brands' | 'wardrobe_items' | 'garage_types' | 'car_dealers' | 'interaction_types' | 'billboards' | 'shrine_services' | 'laptop_specs' | 'yahoo_jobs' | 'group_missions' | 'yahoo_ranks' | 'invest_products' | 'invest_markets' | 'hustles' | 'hustle_car_classes' | 'hustle_fish' | 'skills' | 'skill_curve' | 'skill_sources' | 'courses' | 'certificates' | 'challenge_templates' | 'challenge_template_stats' | 'lounge_tiers' | 'love_flirts' | 'love_dates' | 'kids_stages' | 'kids_auto_names' | 'life_moments' | 'path_lines' | 'kids_illnesses' | 'kids_schools' | 'kids_subjects' | 'kids_items' | 'shop_price_rules' | 'cook_recipes' | 'cook_ingredients' | 'house_upgrades' | 'property_areas' | 'property_types' | 'property_offers' | 'property_designs' | 'market_settings' | 'business_types' | 'business_plots' | 'company_industries' | 'company_areas' | 'company_formats' | 'company_marketing' | 'real_biz_slots' | 'crew_jobs' | 'crew_levels' | 'offices' | 'gov_policies' | 'parties' | 'wards' | 'ind_offices' | 'ind_levers' | 'journey_steps';
 
 export interface PlayerRow {
   id: string;
@@ -207,7 +207,11 @@ export interface GrowthOverview {
   apps: { app: string; today: number; week: number }[];
 }
 
+export interface JourneyFunnelStep { id: string; day: number; title: string; icon: string; active: boolean; reached: number; claimed: number }
+export interface JourneyFunnel { enabled: boolean; started: number; finished: number; steps: JourneyFunnelStep[] }
+
 export const adminApi = {
+  journeyFunnel: () => rpc<JourneyFunnel>('admin_journey_funnel'),
   growthOverview: (refresh = false) => rpc<GrowthOverview>('admin_growth_overview', { p_refresh: refresh }),
   /** P1: player push outbox counts (docs/NOTIFICATIONS.md). */
   pushStats: () => rpc<PushStats>('admin_push_stats'),
