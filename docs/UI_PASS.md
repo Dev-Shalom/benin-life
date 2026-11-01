@@ -38,7 +38,19 @@ Spacing scale (existing `--s1..--s8` stay): `--tap` 40px, `--gutter` 16px, `--ca
 ## Check numbers
 The in-page audit (`overflow`, `clipped text`, `tap targets under 40x40`, `text under 12px`, `wrapped button labels`, `page-level horizontal scroll`) ran on every snapshot of every screen (including scrolled positions inside sheets and phone apps). Counts are per screen and element ("distinct" = different selectors). The 3D map labels (`c3-*`), map attribution and the phone home-bar strip are excluded: they belong to the map scene.
 
-@@NUMBERS@@
+| Check (instances per screen, distinct selectors in brackets) | 360x780 before | 360x780 after | 390x844 before | 390x844 after |
+|---|---|---|---|---|
+| Snapshots audited | 351 | 347 | 312 | 315 |
+| Screens with page-level horizontal scroll | 0 | 0 | 0 | 0 |
+| Elements pushed past the screen edge | 114 (3) | 0 | 2 (2) | 0 |
+| Clipped text without an ellipsis | 28 (10) | 41 (2)* | 3 (1) | 1 (1)* |
+| Tap targets under 40x40 | 1655 (92) | 318 (11)** | 1437 (92) | 376 (11)** |
+| Text under 12px | 1537 (108) | 343 (10) | 1383 (110) | 352 (11) |
+| Button labels wrapping badly (taller than 64px) | 6 (4) | 13 (6) | 9 (5) | 3 (3) |
+
+\* The two remaining selectors are the event banner title (a bold word inside a line that ends with an ellipsis on purpose) and the "You" tag in the Ranks list, fixed in the last commit after that screen's final audit run (the "rich" player screen was not re-shot).
+\** Round buttons with an invisible 6px hit area, the map credit link and the 3D map's tiny pins. The remaining "under 12px" selectors are emoji-only badges and the map credit.
+The "wrapping" counts rise at 360 because the three-line descriptions and wrapping pills are now allowed to take their natural height; they are cards with long labels (company pricing, dealers, kitchen pots, Yahoo laptop), not broken buttons.
 
 Tap targets that still show under 40px in the audit are the round buttons that have a 6px invisible hit area around them (measured by their drawn size, so the check cannot see the area), and the OpenStreetMap credit link.
 
