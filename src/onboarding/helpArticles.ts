@@ -808,7 +808,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: 'Yahoo and EFCC',
     summary: 'Yahoo is a risky in-game hustle. It can pay big, but EFCC can catch you and take everything. It is satire, nothing more.',
     steps: [
-      'You need a laptop. Better laptops pay more and lower your risk.',
+      'You need a laptop. Better laptops pay more and lower your risk. Buy one at Benin City Mall (ShopRite aisles) or the Bronze Tech Hub (Hot desks). The Wi-Fi joint and HK Quarters sell the cheaper fairly-used ones. MacBooks and the Dell XPS are at the Mall and the Tech Hub only. Check the app for current prices.',
       'Open Phone, then Yahoo, and pick a job.',
       'Yahoo money goes into a separate balance. You cannot spend it until you cash out.',
       'Cash out to move it to your cash. Every job and cash out has a caught chance.',

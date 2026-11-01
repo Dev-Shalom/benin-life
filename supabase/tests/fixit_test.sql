@@ -179,3 +179,24 @@ begin
   perform set_config('bl.test_rand', '', true);
   raise notice 'ok 6: land levy';
 end $$;
+
+-- ---------- 7. Laptops: every laptop has a buy card where it is sold, and the buy works ----------
+do $$
+declare a uuid := pg_temp.fx_make('FxLaptop', 900000000, 0); r record; n int; v_cards jsonb;
+begin
+  perform pg_temp.login(a);
+  for r in select l.id as loc, i.id as item from locations l join items i on l.id = any (i.sold_at)
+            where i.category = 'laptop' and l.scene in ('mall', 'office', 'cyber') loop
+    update profiles set location_id = r.loc, travel_to = null, busy_until = null where id = a;
+    v_cards := place_interior(r.loc)::jsonb;
+    select count(*) into n from jsonb_array_elements(v_cards->'zones') z, jsonb_array_elements(z->'actions') c
+     where c->>'kind' = 'shop' and c->>'ref' = r.item;
+    perform pg_temp.assert(n >= 1 or exists (select 1 from jsonb_array_elements(v_cards->'zones') z, jsonb_array_elements(z->'actions') c where c->>'ref' = 'shop' and c->>'kind' = 'panel'),
+      r.item || ' has a buy card at ' || r.loc);
+    perform shop_buy(r.item, 1);
+    perform pg_temp.assert(exists (select 1 from inventory where user_id = a and item_id = r.item and qty >= 1), r.item || ' bought at ' || r.loc);
+  end loop;
+  perform pg_temp.assert(exists (select 1 from zone_actions where zone_id = 'mall.shoprite' and ref = 'macbook_pro_m4')
+                     and exists (select 1 from zone_actions where zone_id = 'office.desks' and ref = 'dell_xps_13'), 'premium laptops have cards at the mall and the Tech Hub');
+  raise notice 'ok 7: laptops';
+end $$;
