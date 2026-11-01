@@ -132,3 +132,6 @@ behind. Yes calls `house_move(home)` (migration `20261012000300_move_house.sql`,
 - The home scene's neighbourhood follows the house tier (`neighbourhoodOf` in `room.ts`): local compounds with
   zinc-roof face-me rows (hostel, face-me, self-contain), a mid estate of bungalows and two-storey flats (mini-flat),
   and the GRA (duplex): modern duplexes behind gated walls, palms, a paved road with street lights.
+
+## Laptops (Fix it 7)
+All laptops are sold at Benin City Mall (ShopRite aisles) and the Bronze Tech Hub (Hot desks); the cheaper fairly-used ones also at the Wi-Fi joint and HK Quarters. Cards live in `zone_actions` (migration `20261110000300_laptop_cards.sql`).

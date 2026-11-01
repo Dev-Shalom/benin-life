@@ -176,3 +176,6 @@ All editable in Content -> Offices. A seat added while an election is past regis
 ## Industry offices and My Office (docs/OFFICES.md)
 Industry offices (Governor of the Bank and the Commissioners of transport, health, markets and trade, education, housing, power) live in their own tables and are filled by admin appointment; the election is untouched. The title badge slot: an **elected office title wins**, then an industry office, then a bought Chief title (`bl_pol_title`). A player who is sworn into an elected seat loses an industry office (one office at a time).
 The holder-only **My Office** phone app now holds the doing for political holders too: the Governor's Commissioner appointments, daily announcement and policy, and the Councillor's ward notice are the same component (`MyOffice`) and RPCs, shown in My Office. Benin Votes -> Government shows who holds what, the Industry offices list, and an "Open My Office" card for holders. The RPCs still check the seat on the server.
+
+## Registration prompt (Fix it 1)
+The "Candidate registration is open" banner shows once per election cycle per player (never to a candidate) and has "Don't show again this election" (`src/lib/seenPrompts.ts`).

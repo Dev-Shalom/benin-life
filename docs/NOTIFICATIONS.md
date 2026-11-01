@@ -106,3 +106,6 @@ Sent from `bl_return_push_tick()` (called by `bl_push_tick`, throttled to every 
 - **"We miss you"** (Game events category, so opt-in): about 2, 5 and 10 days after the player was last seen, one personal message each ("👶 Osas misses you", "💰 Your shop takings are waiting", "📖 Today's story has a twist for you", "🇧🇯 Benin don miss you"). At most three per absence (`return_nudges`), never two within 20 hours. Opens the right app (`go=family:family`, `go=business`, `go=stories`).
 - **Rent is due tomorrow** and **Your takings are ready** (Money category): once a day per player at most, never to a player who is in the game right now. Opens the Bank / Business app.
 - **Weekly event morning push** (Game events, opt-in): "🪩 Friday Club Night is on today", one per player on the morning of an event (not Monday, whose announcement is the broadcast), from `weekly.push_hour` (9) to the quiet-hours end, 200 players per tick, at most one a day. Opens `go=week` (the calendar). Admin: Settings -> Weekly events -> `weekly.push_enabled`.
+
+## Club hype pushes are opt-in (Fix it 3)
+`bl_push_on_hype` only pushes a player who switched on **Club spray alerts -> Phone pings for club hype** (table `club_alert_prefs`, default off), on top of `push.cat_events`, a saved device and the usual limits.

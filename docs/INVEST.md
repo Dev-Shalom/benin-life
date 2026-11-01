@@ -62,3 +62,6 @@ Risk and reward were out of order (a risk-free any-time MMF at 18 % beat Dangote
 | Poultry / fish gain range | 25-35 / 28-38 | **20-30 / 22-32** |
 
 Keke, Okada, Sienna and POS units were checked WITH their own event losses (breakdown, accident, fraud, network) and pay 0.8 to 1.3 % a real day (payback 78 to 123 days): unchanged. `invest_save_test` pins the old rates, drifts and gains.
+
+## Open land deal (Fix it 6)
+A land deal waiting on its development levy now shows at the top of Invest -> Land with Pay levy / Walk away (`invest_overview().pending_deal`), so it can no longer silently block new purchases. See docs/FIXIT.md item 6.
