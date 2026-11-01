@@ -27,8 +27,8 @@ revoke all on public.crew_boss_log from anon, authenticated;
 
 create table if not exists public.crew_boss_requests (
   crew_id    bigint primary key references public.crews(id) on delete cascade,
-  requester  uuid not null,
-  holder     uuid not null,
+  requester  uuid not null references auth.users(id) on delete cascade,
+  holder     uuid not null references auth.users(id) on delete cascade,
   expires_at timestamptz not null,
   created_at timestamptz not null default now()
 );

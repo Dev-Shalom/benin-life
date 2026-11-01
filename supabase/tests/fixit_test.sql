@@ -200,3 +200,49 @@ begin
                      and exists (select 1 from zone_actions where zone_id = 'office.desks' and ref = 'dell_xps_13'), 'premium laptops have cards at the mall and the Tech Hub');
   raise notice 'ok 7: laptops';
 end $$;
+
+-- ---------- 8. Delete my account ----------
+create or replace function pg_temp.fx_leftovers(p_uid uuid) returns text
+language plpgsql as $$
+declare r record; n bigint; out text := '';
+begin
+  for r in select c.conrelid::regclass::text as tbl, a.attname as col
+             from pg_constraint c join pg_attribute a on a.attrelid = c.conrelid and a.attnum = c.conkey[1]
+            where c.contype = 'f' and c.confrelid in ('auth.users'::regclass, 'public.profiles'::regclass) and array_length(c.conkey, 1) = 1 loop
+    execute format('select count(*) from %s where %I = $1', r.tbl, r.col) into n using p_uid;
+    if n > 0 then out := out || r.tbl || '.' || r.col || '=' || n || ' '; end if;
+  end loop;
+  return nullif(out, '');
+end $$;
+
+do $$
+declare a uuid := pg_temp.fx_make('FxDelMe'); b uuid := pg_temp.fx_make('FxStays'); adm uuid := pg_temp.fx_make('FxDelAdm'); r jsonb;
+begin
+  -- give A rows in many places
+  perform pg_temp.login(a);
+  perform club_alert_prefs_set('{"push": true}');
+  perform push_prefs_set('{"messages": false}');
+  insert into push_subscriptions (user_id, endpoint, p256dh, auth) values (a, 'https://push.example/fx-del', 'k', 'x');
+  perform furniture_buy('stool');
+  perform pg_temp.assert(pg_temp.fx_leftovers(a) is not null, 'A has rows before');
+  -- refusals
+  perform pg_temp.assert(pg_temp.fx_hint($q$select self_delete_start('delete')$q$) = 'confirm', 'must type DELETE in capitals');
+  perform pg_temp.assert(pg_temp.fx_hint($q$select self_delete_start('')$q$) = 'confirm', 'empty refused');
+  update profiles set is_admin = true where id = adm;
+  perform pg_temp.login(adm);
+  perform pg_temp.assert(pg_temp.fx_hint($q$select self_delete_start('DELETE')$q$) = 'is_admin', 'admins cannot delete themselves here');
+  perform pg_temp.assert(not has_function_privilege('anon', 'public.self_delete_start(text)', 'execute'), 'not for anon');
+  perform pg_temp.assert(not has_function_privilege('authenticated', 'public.bl_self_delete_failed(uuid,text)', 'execute'), 'failed-log is private');
+  -- the real start: audit row first
+  perform pg_temp.login(a);
+  r := self_delete_start(' DELETE ');
+  perform pg_temp.assert((r->>'ok')::boolean and r->>'username' = 'FxDelMe', 'start ok');
+  perform pg_temp.assert(exists (select 1 from admin_audit where action = 'self_delete_account' and target_user = a and data->>'email' = 'fxdelme@fx.bl'), 'audit snapshot written first');
+  -- what auth.admin.deleteUser does: every row goes, nothing is orphaned
+  delete from auth.users where id = a;
+  perform pg_temp.assert(pg_temp.fx_leftovers(a) is null, 'rows left: ' || coalesce(pg_temp.fx_leftovers(a), ''));
+  perform pg_temp.assert(not exists (select 1 from club_alert_prefs where user_id = a) and not exists (select 1 from profiles where id = a), 'profile and prefs gone');
+  perform pg_temp.assert(exists (select 1 from admin_audit where action = 'self_delete_account' and data->>'user_id' = a::text), 'audit row kept');
+  perform pg_temp.assert(exists (select 1 from profiles where id = b), 'other players untouched');
+  raise notice 'ok 8: delete my account';
+end $$;

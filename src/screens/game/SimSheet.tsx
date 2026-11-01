@@ -30,6 +30,7 @@ import { SkillsTab } from './Skills';
 import { CertificatesCard } from './School';
 import LookPanel from '../creator/LookPanel';
 import { startTour } from '../../onboarding/tourStore';
+import { DeleteAccount } from './DeleteAccount';
 import { ClubAlertsSettings, NotificationsSettings } from './NotificationsSettings';
 import { JobCard, PerfBar, Promotion, ShiftStats } from '../../panels/careers/CareerUI';
 
@@ -443,6 +444,7 @@ function SettingsTab({ state }: { state: GameState }) {
           <Button variant="gold" icon="crown" block onClick={() => nav('/admin')}>Open admin panel</Button>
         )}
         <Button variant="ghost" icon="logout" block onClick={() => { setOverlay(null); void signOut(); }}>{P.logout}</Button>
+        {!state.profile.is_admin && <DeleteAccount />}
       </div>
       <div className="settings-brand"><Logo variant="full" size={44} /></div>
       <p className="hint settings-foot"><span className="age-badge">18+</span> {P.ageNote}</p>
