@@ -118,6 +118,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       'Check both at the top right (cash) and in the Bank app (bank balance).',
       'Put cash in the bank at Bronze Bank (banking hours) or at any PoS stand (a small charge applies).',
       'Take money out the same way when you need cash.',
+      'Money disappeared? Open Phone, Bank, History. Every move is listed with what it was and why (bills, taxes, a robbery, a fee, a gift or a take by an admin), the balance after it, and a summary of where your money went this week. Money you are sent lands in your bank, not your pocket. Yahoo money has its own balance and shows there too.',
       'No time to travel? Open Phone, then Bank, then Move: deposit or withdraw from anywhere, any time, for a small phone banking fee (check the app for it). Going to Bronze Bank in banking hours stays free.',
     ],
     where: 'Phone, then Bank. Bronze Bank and the PoS stands are on the Map.',

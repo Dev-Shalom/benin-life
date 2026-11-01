@@ -380,3 +380,74 @@ begin
   perform pg_temp.assert((select xp from player_skills where user_id = g and skill_id = 'driving') = 300 + v_base, 'level 4: no boost');
   raise notice 'ok 11: balance';
 end $$;
+
+-- ---------- 12. Money history: every debit shows its reason; transfers arrive in full ----------
+do $$
+declare a uuid := pg_temp.fx_make('FxSender', 5000000, 90000000000); b uuid := pg_temp.fx_make('FxReceiver', 0, 0); adm uuid := pg_temp.fx_make('FxHistAdm');
+        r jsonb; v_supply0 numeric; v_supply1 numeric; v_fee bigint; n int; v_first timestamptz; v_key text;
+begin
+  update profiles set created_at = now() - interval '3 days' where id in (a, b);
+  -- a transfer arrives in full, in the receiver's BANK; the sender pays the fee on top; the fee is the only money destroyed
+  perform pg_temp.login(a);
+  v_supply0 := (select sum(cash + bank) from profiles where id in (a, b));
+  r := bank_transfer('FxReceiver', 100000, 'rent');
+  v_fee := (r->>'fee')::bigint;
+  perform pg_temp.assert((select bank from profiles where id = b) = 100000, 'receiver gets the full amount in the bank');
+  perform pg_temp.assert((select bank from profiles where id = a) = 90000000000 - 100000 - v_fee, 'sender pays amount + fee');
+  v_supply1 := (select sum(cash + bank) from profiles where id in (a, b));
+  perform pg_temp.assert(v_supply0 - v_supply1 = v_fee, 'only the fee leaves the economy');
+  perform pg_temp.assert(exists (select 1 from ledger where user_id = b and reason = 'transfer_in' and delta = 100000), 'receiver ledger row');
+  perform pg_temp.assert(exists (select 1 from events where user_id = b and kind = 'transfer_in'), 'receiver gets an alert');
+  -- a huge transfer is refused LOUDLY (the sender sees why; nothing moves): the daily limit, not a vanishing
+  perform pg_temp.assert(pg_temp.fx_hint($q$select bank_transfer('FxReceiver', 2000000000000, 'big')$q$) = 'limit', '2T refused with the limit message');
+  perform pg_temp.assert((select bank from profiles where id = b) = 100000, 'refused transfer moved nothing');
+  -- the receiver's history says where it came from
+  perform pg_temp.login(b);
+  r := money_history(10);
+  perform pg_temp.assert(r->'rows'->0->>'label' = 'From @FxSender' and (r->'rows'->0->>'delta')::bigint = 100000 and r->'rows'->0->>'account' = 'bank' and r->'rows'->0->>'detail' = 'rent', 'received row: ' || (r->'rows'->0)::text);
+  -- admin take, robbery, a phone fee, a bill and Yahoo money seized all read in words
+  update profiles set bank = 1000000, cash = 500000 where id = b;
+  update profiles set is_admin = false where is_admin;
+  update profiles set is_admin = true where id = adm;
+  perform pg_temp.login(adm);
+  perform admin_grant_money(b, 'bank', -250000, 'Chargeback for the scam');
+  perform pg_temp.login(b);
+  perform bl_add_money(b, 'cash', -1000, 'street_robbery', '{"location":"oba_market"}');
+  perform phone_bank_deposit(10000);
+  insert into yahoo_ledger (user_id, delta, balance_after, reason, meta) values (b, -400000, 100000, 'seized', '{}');
+  r := money_history(50, null, 'out');
+  perform pg_temp.assert(exists (select 1 from jsonb_array_elements(r->'rows') x where x->>'label' = 'Taken by a Benin Life admin' and x->>'detail' = 'Chargeback for the scam' and x->>'category' = 'Admin'), 'admin take: label, reason, category');
+  perform pg_temp.assert(exists (select 1 from jsonb_array_elements(r->'rows') x where x->>'label' = 'Robbed on the street'), 'robbery row');
+  perform pg_temp.assert(exists (select 1 from jsonb_array_elements(r->'rows') x where x->>'label' = 'Phone banking fee'), 'phone fee row');
+  perform pg_temp.assert(exists (select 1 from jsonb_array_elements(r->'rows') x where x->>'label' = 'EFCC seized Yahoo money' and x->>'account' = 'yahoo'), 'Yahoo seizure is in the history');
+  perform pg_temp.assert(not exists (select 1 from jsonb_array_elements(r->'rows') x where (x->>'delta')::bigint > 0), 'filter out = only debits');
+  perform pg_temp.assert(not exists (select 1 from jsonb_array_elements(r->'rows') x where coalesce(x->>'label', '') = ''), 'every debit has a label');
+  r := money_history(50, null, 'in');
+  perform pg_temp.assert(not exists (select 1 from jsonb_array_elements(r->'rows') x where (x->>'delta')::bigint < 0), 'filter in = only credits');
+  -- paging
+  r := money_history(2);
+  perform pg_temp.assert(jsonb_array_length(r->'rows') = 2 and (r->>'more')::boolean, 'page of 2 says more');
+  v_first := (r->'rows'->1->>'created_at')::timestamptz;
+  v_key := r->'rows'->1->>'key';
+  r := money_history(2, v_first, 'all', v_key);
+  perform pg_temp.assert(jsonb_array_length(r->'rows') = 2 and r->'rows'->0->>'key' <> v_key and not exists (select 1 from jsonb_array_elements(money_history(2)->'rows') p where p->>'key' = r->'rows'->0->>'key'), 'next page: different rows, none repeated');
+  -- walking every page in pages of 3 gives each row exactly once, even when rows share a timestamp (one action writes two rows)
+  n := 0; v_first := null; v_key := null;
+  loop
+    r := money_history(3, v_first, 'all', v_key);
+    n := n + jsonb_array_length(r->'rows');
+    exit when not (r->>'more')::boolean;
+    v_first := (r->'rows'->2->>'created_at')::timestamptz; v_key := r->'rows'->2->>'key';
+  end loop;
+  perform pg_temp.assert(n = (select count(*) from ledger where user_id = b) + (select count(*) from yahoo_ledger where user_id = b), 'paging visits every row once: ' || n);
+  -- summary: own moves between cash and bank are not "money out"
+  r := money_history_summary(7);
+  perform pg_temp.assert((r->>'money_out')::numeric >= 250000 + 1000 + 50 and (r->>'yahoo_seized')::numeric = 400000, 'summary out and Yahoo seized: ' || r::text);
+  perform pg_temp.assert((r->'top_out'->0->>'category') = 'Admin', 'biggest drain first');
+  perform pg_temp.assert((r->>'moved_between_accounts')::numeric > 0 and not exists (select 1 from jsonb_array_elements(r->'top_out') x where x->>'category' = 'Other' and (x->>'amount')::numeric = 10000), 'phone deposit is a move, not a spend');
+  -- privacy: you only ever see your own rows
+  perform pg_temp.login(a);
+  perform pg_temp.assert(not exists (select 1 from jsonb_array_elements(money_history(100)->'rows') x where x->>'label' = 'Taken by a Benin Life admin'), 'no one else''s rows');
+  perform pg_temp.assert(not has_function_privilege('anon', 'public.money_history(integer,timestamptz,text,text)', 'execute'), 'not for anon');
+  raise notice 'ok 12: money history';
+end $$;

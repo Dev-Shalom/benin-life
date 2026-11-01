@@ -56,3 +56,24 @@ Bank app -> **Move** tab. Deposit and withdraw anywhere, any time, fee **1 %, at
 
 ## 11. Balance: less robbery and EFCC, faster early skills
 Numbers old -> new and the guard rule are in docs/BALANCE.md "Fix it 11". In short: trip robbery base 6 -> 4.5 % (ceiling 35 -> 25 %), one robbery takes 10 to 35 % of the cash on you (was 20 to 60 %, hard cap 35 %, the bank is never touched), pickpocket success 38 -> 30 % and a steal takes at most 10 % (was 15), Yahoo catch chances 12/16/20/24/14 -> 10/14/17/20/12 %, and skill XP x1.5 while a skill is level 1 to 3. Settings only move while they still equal their old default.
+
+## 12. "Money disappeared", "my transfer didn't arrive", "someone sent me 2T and it vanished"
+### What the code and the ledger design say (investigated, not guessed)
+- **Nothing moves without a trace.** Every cash / bank change goes through `bl_add_money`, which updates the balance and writes a `ledger` row (reason, meta, balance after) in the same statement. A scan of every function that updates `profiles` money found no write that skips it (the mass gift writes its own ledger rows). Yahoo money is a separate balance with its own `yahoo_ledger`. Gang, company and business pots have their own logs.
+- **Transfers are atomic and arrive in full.** `bank_transfer` takes amount from the sender's bank, the fee (and the stamp duty over N10,000) from the sender on top, and credits the **whole amount to the receiver's BANK** with a `transfer_in` row and an alert. Test group 12 proves: receiver +100,000, sender -(100,000 + fee), and the only money destroyed is the fee.
+- **Plausible causes, most likely first:**
+  1. **It landed in the bank, not the pocket.** Transfers, gifts and Paystack top-ups credit the bank; the pocket (cash) is what a player watches. The old History tab hid it after 40 rows.
+  2. **Bills and taxes take it quietly.** Weekly bills (house, car insurance, business council tax, ground rent) and weekly income tax are collected on the due date from the bank first, then cash (`bl_sinks_settle`): a rich player with a car sees a big drop on Monday. They were in the ledger but read as "Bill: car".
+  3. **A big transfer was refused, not lost.** The daily limit is N200,000 (`bank.transfer_daily_limit`), 10 transfers a day, 15 s apart, and new accounts (24 h, unless trusted) cannot send. A "2T" transfer cannot go through; the sender sees the error but may think it was sent (test: refused with the limit message, nothing moves). 2T can only come from an **admin grant or a mass gift** (cap `admin.grant_max`).
+  4. **Admin take.** `admin_grant_money` uses one ledger reason for gifts and takes; the old label said "Admin Grant" for a debit, with no note. Now "Taken by a Benin Life admin" with the admin's note.
+  5. **Street robbery and pickpockets** take cash only (labelled "Robbed on the street" / "Stolen from you"); the bank is never touched.
+  6. **EFCC seizure.** Yahoo money in flight is seized when caught; it is in `yahoo_ledger`, which the old History did not show at all.
+  7. **Starting a new life** (`life_restart`) archives the Sim and deletes the profile with its ledger (`profile_archive` keeps the last 100 rows for support); **deleting an account** removes everything. A player who restarted after receiving money has no history.
+  8. **Other sinks:** spray (cash), club tips, fees (PoS, market, phone banking, transfer, stamp duty), VAT and luxury levy inside shop prices, travel fares, rent auto-charge, activity costs.
+  9. **Mass gifts only reach the people targeted when sent** (everyone / LAPO / Nepo / joined after / online now); a player outside that audience, or one a gift would push past N9Q, is skipped.
+- **Real bug found and fixed while testing:** none in the money paths. The history reading had gaps (above), and a paging trap: rows written by one action share one timestamp, so paging by time alone would skip or repeat rows. The new cursor is (time, key) and test group 12 walks every page and sees each row exactly once.
+
+### What changed (migration `20261110000800_money_history.sql`, UI `src/screens/game/phone/MoneyHistory.tsx`)
+- **Bank -> History** is now a real money history: every row says what it was in words, the note / reason, the account (Bank, Cash, Yahoo balance), the category (Admin, Bills and upkeep, Fees, Crime ...), the balance after, grouped by day, filter **All / Money in / Money out**, "Show older" paging, and a **summary** for the last 7 days (money in, money out, the biggest drains by category, Yahoo seized). Moving money between your own cash and bank (deposits, withdrawals, PoS, phone banking) is shown but never counted as spending.
+- RPCs `money_history(limit, before, filter, before_key)` and `money_history_summary(days)`: read-only, own rows only, not granted to anon. Admin gifts and takes are labelled apart; Yahoo seizures are included.
+- Help article "Cash and bank" says where to look.

@@ -30,3 +30,16 @@ export function hourText(h: number): string {
   if (x === 12) return '12:00 noon';
   return x < 12 ? `${x}:00 AM` : `${x - 12}:00 PM`;
 }
+
+/** Fix it 12: the money history (docs/FIXIT.md). */
+export interface MoneyHistoryRow {
+  key: string; account: 'cash' | 'bank' | 'yahoo' | string; delta: number; balance_after: number; reason: string; label: string;
+  detail: string | null; category: string; own_move: boolean; created_at: string;
+}
+export interface MoneyHistorySummary {
+  days: number; money_in: number; money_out: number; moved_between_accounts: number; yahoo_seized: number;
+  top_out: { category: string; amount: number }[];
+}
+export const moneyHistory = (limit = 30, filter: 'all' | 'in' | 'out' = 'all', before?: string, beforeKey?: string) =>
+  rpc<{ rows: MoneyHistoryRow[]; more: boolean }>('money_history', { p_limit: limit, p_filter: filter, p_before: before ?? null, p_before_key: beforeKey ?? null });
+export const moneyHistorySummary = (days = 7) => rpc<MoneyHistorySummary>('money_history_summary', { p_days: days });

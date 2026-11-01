@@ -1,10 +1,10 @@
 // Phone "Bank" app (V1-5 — docs/BANK.md): balances, send money to another player by username
 // (bank to bank, with a confirm step), money history, and where to deposit / withdraw in town.
 import { useEffect, useState } from 'react';
-import { bankHistory, bankRecipient, bankTransfer, hourText, phoneBankDeposit, phoneBankInfo, phoneBankWithdraw, posFee, type PhoneBankInfo } from '../../../api/bank';
+import { bankRecipient, bankTransfer, hourText, phoneBankDeposit, phoneBankInfo, phoneBankWithdraw, posFee, type PhoneBankInfo } from '../../../api/bank';
 import { errorMessage } from '../../../lib/api';
-import { naira, timeAgo } from '../../../lib/format';
-import type { BankRecipient, GameState, LedgerRow } from '../../../lib/types';
+import { naira } from '../../../lib/format';
+import type { BankRecipient, GameState } from '../../../lib/types';
 import { useGame } from '../../../state/game';
 import { myReceipts } from '../../../api/receipts';
 import { getCfg } from '../../../lib/config';
@@ -17,43 +17,10 @@ import { InvestTab, SaveTab } from './invest/InvestApp';
 import { BillsTab } from './BankBills';
 import { StatusTab } from './BankStatus';
 import { FeeLine, useFeeQuote } from './FeeLine';
+import { MoneyHistory } from './MoneyHistory';
 import '../../../styles/invest.css';
 
 type Tab = 'send' | 'move' | 'bills' | 'status' | 'save' | 'invest' | 'history' | 'receipts' | 'where';
-
-function History({ active }: { active: boolean }) {
-  const [rows, setRows] = useState<LedgerRow[] | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  useEffect(() => {
-    if (!active) return;
-    let alive = true;
-    bankHistory(40)
-      .then((r) => alive && (setRows(r), setErr(null)))
-      .catch((e) => alive && setErr(errorMessage(e)));
-    return () => {
-      alive = false;
-    };
-  }, [active]);
-  if (err) return <p className="phone-app__lead">{err}</p>;
-  if (!rows) return <div className="panel-skel"><span /><span /></div>;
-  if (rows.length === 0) return <p className="phone-app__lead">No money moves yet.</p>;
-  return (
-    <ul className="bank-hist">
-      {rows.map((r) => (
-        <li key={r.id} className="bank-hist__row">
-          <span className="bank-hist__icon" aria-hidden>{r.account === 'bank' ? '🏦' : '💵'}</span>
-          <span className="grow">
-            <span className="bank-hist__label">{r.label}</span>
-            <span className="bank-hist__sub">
-              {r.account === 'bank' ? 'Bank' : 'Cash'} · {timeAgo(r.created_at)}{r.note ? ` · "${r.note}"` : ''}
-            </span>
-          </span>
-          <b className={`bank-hist__amt${r.delta > 0 ? ' is-in' : ''}`}>{r.delta > 0 ? '+' : '−'}{naira(Math.abs(r.delta))}</b>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 /** Fix it 9: phone banking. Deposit or withdraw from anywhere, any time, for a small fee. In person at Bronze Bank in opening hours is free. */
 function PhoneMove({ active, state, onDone }: { active: boolean; state: GameState; onDone: () => void }) {
@@ -272,7 +239,7 @@ export default function BankApp({ state }: { state: GameState }) {
       {tab === 'save' && <SaveTab active={tab === 'save'} goWhere={() => setTab('where')} />}
       {tab === 'invest' && <InvestTab active={tab === 'invest'} goWhere={() => setTab('where')} />}
 
-      {tab === 'history' && <History active={tab === 'history'} />}
+      {tab === 'history' && <MoneyHistory active={tab === 'history'} />}
       {tab === 'receipts' && <Receipts active={tab === 'receipts'} />}
 
       {tab === 'where' && info && (
