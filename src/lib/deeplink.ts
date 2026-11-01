@@ -15,6 +15,7 @@
 //   go=week                  "This week in Benin" (the weekly events calendar sheet; the morning event push)
 //   go=journey               the "Your first days" quest sheet (new players; the Day 2 / Day 3 push)
 //   go=map / home / tour / daily / dream   quest-step links: open the map, go home, replay the tour, the daily reward sheet, the Sim's Goals tab
+//   go=court                 the Court app; go=court:<case id> opens that hearing
 //   go=help                  the Help app          go=help:<article id>  that article (src/onboarding/helpArticles.ts)
 // Cold start: main.tsx captures ?go= (it survives the login redirect in sessionStorage) and the game runs it once the
 // Sim is ready. Game already open: the service worker posts { type: 'bl-go', go } and the same code runs.
@@ -25,7 +26,7 @@ import { useUi } from '../state/ui';
 import { useWeekly } from '../state/weekly';
 
 const KEY = 'bl.go';
-const SAFE = /^(dm:\d{1,12}|house|friends|gist(?::(?:feed|groups|chats|friends|post:\d{1,12}|group:\d{1,12}))?|bank|alerts|ranks|hustles|school|yahoo|market|business(?::(?:mine|plots|discover|real))?|company(?::(?:plots|discover|real))?|crew|gang|office|politics(?::(?:gov|elect|vote|results))?|family(?::(?:linkups|us|family))?|food(?::(?:kitchen|prices))?|stories|week|journey|map|home|tour|daily|dream|help(?::[a-z0-9-]{1,40})?|place:[a-z0-9_]{1,40})$/;
+const SAFE = /^(dm:\d{1,12}|house|friends|gist(?::(?:feed|groups|chats|friends|post:\d{1,12}|group:\d{1,12}))?|bank|alerts|ranks|hustles|school|yahoo|market|business(?::(?:mine|plots|discover|real))?|company(?::(?:plots|discover|real))?|crew|gang|office|court(?::\d{1,12})?|politics(?::(?:gov|elect|vote|results))?|family(?::(?:linkups|us|family))?|food(?::(?:kitchen|prices))?|stories|week|journey|map|home|tour|daily|dream|help(?::[a-z0-9-]{1,40})?|place:[a-z0-9_]{1,40})$/;
 
 /** Remember ?go= from the address bar and clean the URL. Call once at startup. */
 export function captureDeepLink(): void {
@@ -66,7 +67,7 @@ export function runDeepLink(go: string): void {
   else if (kind === 'place') {
     ui.setMapOpen(true);
     ui.select(arg);
-  } else if (kind === 'help' || kind === 'stories' || kind === 'food' || kind === 'politics' || kind === 'family' || kind === 'business' || kind === 'company') ui.openPhone(go); // 'help:<article id>', 'politics:vote', 'business:discover', 'family:us'
+  } else if (kind === 'help' || kind === 'court' || kind === 'stories' || kind === 'food' || kind === 'politics' || kind === 'family' || kind === 'business' || kind === 'company') ui.openPhone(go); // 'help:<article id>', 'politics:vote', 'business:discover', 'family:us'
   else if (kind === 'week') useWeekly.getState().setOpen(true);
   else if (kind === 'journey') useJourney.getState().setSheet(true);
   else if (kind === 'map') ui.setMapOpen(true);

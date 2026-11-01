@@ -39,6 +39,7 @@ const RanksApp = lazy(() => import('./phone/RanksApp'));
 const CarsApp = lazy(() => import('./phone/CarsApp'));
 const StoriesApp = lazy(() => import('./phone/StoriesApp'));
 const PoliceApp = lazy(() => import('./phone/PoliceApp'));
+const CourtApp = lazy(() => import('./phone/CourtApp'));
 const BillboardsApp = lazy(() => import('./phone/BillboardsApp'));
 const FeedbackApp = lazy(() => import('./phone/FeedbackApp'));
 const YahooApp = lazy(() => import('./phone/YahooApp'));
@@ -95,6 +96,7 @@ const APPS: App[] = [
   { id: 'hustles', name: 'Hustles', emoji: '💪', bg: 'linear-gradient(160deg,#ffb347,#e2552c)', pitch: '' },
   { id: 'school', name: 'School', emoji: '🎓', bg: 'linear-gradient(160deg,#9b72f0,#4a2aa0)', pitch: '' },
   { id: 'yahoo', name: 'Yahoo', emoji: '💻', bg: 'linear-gradient(160deg,#1f2a36,#0b0f14)', pitch: '' },
+  { id: 'court', name: 'Court', emoji: '⚖️', bg: 'linear-gradient(160deg,#3b3f8f,#171a3d)', pitch: 'Sue over what the game recorded, hire a player as your lawyer and watch live hearings.' },
   { id: 'police', name: 'Police', emoji: '🚓', bg: 'linear-gradient(160deg,#4f6bd8,#26388f)', pitch: 'Report a robbery, check your case file and pay bail.' },
   { id: 'wallet', name: 'Wallet', emoji: '👛', bg: 'linear-gradient(160deg,#34c77f,#0a6f40)', pitch: '' },
   { id: 'help', name: 'Help', emoji: '🛟', bg: 'linear-gradient(160deg,#ff8a6b,#c0392b)', pitch: 'Short guides for everything in Benin Life, with a Show me button.' },
@@ -179,6 +181,8 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const billboardsOn = useConfig().cfg<boolean>('billboards.enabled', true);
   const yahooOn = useConfig().cfg<boolean>('yahoo.enabled', true);
   const loveOn = useConfig().cfg<boolean>('love.enabled', true);
+  const courtOn = useConfig().cfg<boolean>('court.enabled', true);
+  const courtUnread = events.filter((e) => e.kind.startsWith('court_') && e.id > lastReadEventId).length;
   const kidsOn = useConfig().cfg<boolean>('kids.enabled', true);
   const { mounted, closing } = usePresence(open, 200);
   const [screen, setScreen] = useState<'lock' | 'home' | string>('lock');
@@ -298,7 +302,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
           {screen === 'home' && (
             <div className="phone-home">
               <div className="phone-home__grid">
-                {APPS.filter((a) => (a.id !== 'boutique' || wardrobeOn) && (a.id !== 'billboards' || billboardsOn) && (a.id !== 'yahoo' || yahooOn) && (a.id !== 'family' || loveOn) && (a.id !== 'office' || holdsOffice)).map((a) => (
+                {APPS.filter((a) => (a.id !== 'boutique' || wardrobeOn) && (a.id !== 'billboards' || billboardsOn) && (a.id !== 'yahoo' || yahooOn) && (a.id !== 'family' || loveOn) && (a.id !== 'office' || holdsOffice) && (a.id !== 'court' || courtOn)).map((a) => (
                   <button key={a.id} type="button" className="app-icon" data-tour={`app-${a.id}`} onClick={() => launch(a.id)}>
                     <span className="app-icon__tile" style={{ background: a.bg }} aria-hidden>
                       {a.emoji}
@@ -307,6 +311,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                       {a.id === 'gist' && gistUnread > 0 && <span className="app-icon__badge">{gistUnread > 9 ? '9+' : gistUnread}</span>}
                       {a.id === 'houses' && (state.rent?.owed ?? 0) > 0 && <span className="app-icon__badge">!</span>}
                       {a.id === 'family' && familyUnread > 0 && <span className="app-icon__badge">{familyUnread > 9 ? '9+' : familyUnread}</span>}
+                      {a.id === 'court' && courtUnread > 0 && <span className="app-icon__badge">{courtUnread > 9 ? '9+' : courtUnread}</span>}
                       {a.id === 'politics' && polBadge && <span className="app-icon__badge">!</span>}
                       {a.id === 'stories' && storyWaiting > 0 && <span className="app-icon__badge">{storyWaiting > 9 ? '9+' : storyWaiting}</span>}
                     </span>
@@ -317,7 +322,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
             </div>
           )}
           {app && (
-            <div className={`phone-app${app.id === 'gist' || app.id === 'messages' ? ' phone-app--messages' : ''}${app.id === 'ride' ? ' phone-app--bolt' : ''}${app.id === 'yahoo' ? ' phone-app--yahoo' : ''}`}>
+            <div className={`phone-app${app.id === 'gist' || app.id === 'messages' ? ' phone-app--messages' : ''}${app.id === 'ride' ? ' phone-app--bolt' : ''}${app.id === 'yahoo' ? ' phone-app--yahoo' : ''}${app.id === 'court' ? ' phone-app--court' : ''}`}>
               {app.id !== 'gist' && app.id !== 'messages' && <div className="phone-app__bar">
                 <button type="button" className="phone-app__back" onClick={() => setScreen('home')} aria-label="Back to apps">
                   <Icon name="back" size={20} stroke={2.6} />
@@ -327,11 +332,12 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'gist' || app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp key={app.id} mode={app.id} state={state} onGoHome={goHome} onBack={() => setScreen('home')} onOpenAlerts={() => setScreen('alerts')} alertsUnread={unread} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' || app.id === 'market' || app.id === 'business' || app.id === 'crew' || app.id === 'politics' || app.id === 'family' || app.id === 'office' ? (
+                  : app.id === 'cars' || app.id === 'police' || app.id === 'court' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' || app.id === 'market' || app.id === 'business' || app.id === 'crew' || app.id === 'politics' || app.id === 'family' || app.id === 'office' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
                         {app.id === 'help' ? <HelpApp /> : app.id === 'family' ? <FamilyApp key={famTab} initialTab={famTab} /> : app.id === 'politics' ? <PoliticsApp onGo={goToPlace} /> : app.id === 'office' ? <OfficeApp onGo={goToPlace} /> : app.id === 'crew' ? <CrewApp onGo={goToPlace} /> : app.id === 'market' ? <MarketApp /> : app.id === 'business' ? <CompanyApp key={coTab} initialTab={coTab} state={state} onGo={goToPlace} /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
                           : app.id === 'billboards' ? <BillboardsApp key={bbTab} initialTab={bbTab} onOpenBoard={openBoard} />
                           : app.id === 'cars' ? <CarsApp state={state} onGo={goToPlace} />
+                            : app.id === 'court' ? <CourtApp state={state} initial={phoneApp ?? undefined} />
                             : app.id === 'police' ? <PoliceApp state={state} onGo={goToPlace} />
                               : app.id === 'stories' ? <StoriesApp />
                                 : app.id === 'food' ? <FoodApp state={state} /> : app.id === 'bank' ? <BankApp state={state} /> : <HousesApp state={state} />}

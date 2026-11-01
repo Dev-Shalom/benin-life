@@ -5,6 +5,7 @@ import { naira } from '../../../lib/format';
 import type { GameState } from '../../../lib/types';
 import { useGame } from '../../../state/game';
 import { Button, EmptyState, toast } from '../../../ui';
+import { useUi } from '../../../state/ui';
 
 export default function PoliceApp({ state, onGo }: { state: GameState; onGo: (id: string) => void }) {
   const events = useGame((s) => s.events);
@@ -36,6 +37,7 @@ export default function PoliceApp({ state, onGo }: { state: GameState; onGo: (id
   return <div className="phone-app__body police-app">
     <p className="phone-app__lead">File a report for a robbery alert, review your case numbers, or pay bail while in a short in-game sentence.</p>
     {error && <p className="error-text">{error}</p>}
+    <Button variant="ghost" block onClick={() => useUi.getState().openPhone('court')}>⚖️ Robbed by a player? Take them to court</Button>
     {jailed && <section className="police-app__bail"><b>You are in a police cell</b><p>{state.profile.jail_reason || 'Wait for the timer or pay bail.'}</p>
       <Button variant="gold" block loading={loading} onClick={() => void bail()}>Pay bail · bank first · cash second</Button></section>}
     {!atPolice && !jailed && police && <Button variant="green" block onClick={() => onGo(police.id)}>Go to Police HQ</Button>}

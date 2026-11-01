@@ -9,7 +9,8 @@ import { nairaShort } from '../../../lib/format';
 import { useGame } from '../../../state/game';
 import { useOffices } from '../../../state/offices';
 import { usePolitics } from '../../../state/politics';
-import { OfficeTag } from '../../../ui';
+import { Button, OfficeTag } from '../../../ui';
+import { useUi } from '../../../state/ui';
 import { IndustryHolder } from './IndustryOffices';
 import { MyOffice } from './PoliticsApp';
 import './PoliticsApp.css';
@@ -39,6 +40,7 @@ export default function OfficeApp({ onGo: _onGo }: { onGo: (id: string) => void 
             <span><small>Kind</small><strong>{mine.kind === 'industry' ? 'Industry' : 'Government'}</strong></span>
           </div>
         </div>
+        {mine.office_id?.startsWith('court_judge') && <Button variant="green" block onClick={() => useUi.getState().openPhone('court')}>⚖️ Open the Court: cases waiting for a judge</Button>}
         {mine.kind === 'industry' ? <IndustryHolder /> : pol?.me.office ? <MyOffice s={pol} h={pol.me.office} /> : <div className="panel-skel"><span /><span /></div>}
         <section className="po-card" data-testid="office-alerts">
           <h4>Office alerts</h4>

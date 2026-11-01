@@ -71,7 +71,6 @@ export function Hearing({ id, myName, isJudge, onBack, onChanged }: { id: number
   }, [load, onChanged]);
 
   const watching = Boolean(c && c.status === 'scheduled' && (c.me.participant || c.me.in_gallery));
-  const hearingLive = Boolean(c?.live);
   // live: one channel for this case, plus a slow check-in; fallback: a faster poll
   useEffect(() => {
     if (!watching) return;
