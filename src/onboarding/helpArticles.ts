@@ -733,6 +733,26 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: 'week calendar events friday club night saturday owambe sunday rest monday winners wednesday market day check in discount',
   },
   {
+    id: 'first-days',
+    topic: 'daily',
+    title: 'Your first days (quest line)',
+    summary: 'A short list of small steps for your first 3 days in Benin. Each step pays a little. Finish them all for a bonus and a badge.',
+    steps: [
+      'Open the Today list on the left. The "Your first days" card is at the top, with a bar and your next steps.',
+      'Tap Go on a step to be taken to the right place. Do the thing for real: work a shift, buy food, read the story, make a friend.',
+      'When a step is done the line turns green and an alert says "Step done". Tap Claim to collect the money.',
+      'Day 2 opens when you come back on a new day, and Day 3 the day after. Tap See all steps to read every step and what is still locked.',
+      'Claim every step to get a finish bonus and the Benin Newcomer badge.',
+    ],
+    where: 'The Today pill, then "Your first days". Or go to /play?go=journey.',
+    tips: [
+      'The rewards are small on purpose. A day of work pays far more, so the steps are for guidance.',
+      'Only new accounts get this. It goes away when you finish it.',
+      'Want a nudge tomorrow? Turn on Game events in Settings, then Notifications, and you get one push when Day 2 and Day 3 are ready.',
+    ],
+    keywords: 'first days quest line new player journey steps day 1 day 2 day 3 reward badge newcomer tutorial start guide',
+  },
+  {
     id: 'today-card',
     topic: 'daily',
     title: 'The Today card',

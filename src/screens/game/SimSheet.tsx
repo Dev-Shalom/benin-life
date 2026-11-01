@@ -22,6 +22,7 @@ import { useCatalog } from '../../state/catalog';
 import { useDaily } from '../../state/daily';
 import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
+import { markDreamSeen } from '../../state/journey';
 import { useUi, type SimTab } from '../../state/ui';
 import { Button, CrewTag, EmptyState, Logo, OfficeTag, Sheet, Switch, Tabs, toast } from '../../ui';
 import { usePolitics } from '../../state/politics';
@@ -219,6 +220,7 @@ function NeedsTab({ state }: { state: GameState }) {
 
 function GoalsTab({ state }: { state: GameState }) {
   const p = state.profile;
+  useEffect(() => { markDreamSeen(); }, []); // the first-days quest: "check your dream"
   const catalog = useCatalog((s) => s.catalog);
   const dream = catalog?.dreams.find((d) => d.id === p.dream);
   const tier = state.origin?.id ?? p.origin;

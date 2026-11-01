@@ -5,6 +5,7 @@
 //   b-left  round cached portrait + 6 tiny need bars -> Sim sheet
 //   bottom  dock: Home · Buy · Map · Phone (badge = unread alerts)
 import { TodayRows, TodaySync, TodayWeekLink, useTodayRows } from './Today';
+import { JourneyCard, useJourneyChip } from './Journey';
 import './Today.css';
 import { markTodayOpened, todayAlreadyOpened } from '../../state/today';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -198,8 +199,9 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   const dailyIcons = useDailyChipIcons();
   const chal = useChallengeChip();
   const tr = useTodayRows();
-  const count = tr.count + tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0) + (bankAt ? 1 : 0) + dailyIcons.length + (chal.show ? 1 : 0);
-  const ready = dadReady || tr.ready || dailyIcons.includes('🎁') || chal.ready;
+  const jc = useJourneyChip();
+  const count = (jc.show ? 1 : 0) + tr.count + tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0) + (bankAt ? 1 : 0) + dailyIcons.length + (chal.show ? 1 : 0);
+  const ready = dadReady || tr.ready || dailyIcons.includes('🎁') || chal.ready || jc.ready;
   const open = !clean && count > 0 && (mode === 'open' || (mode === 'auto' && roomy && !compact));
 
   useEffect(() => {
@@ -257,7 +259,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
     else select(p.location_id);
   };
 
-  const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...tr.icons, ...dailyIcons, ...(chal.show ? ['🏆'] : []), ...(protectedNow ? ['🛡️'] : [])];
+  const icons = [...(jc.show ? ['🌱'] : []), ...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...tr.icons, ...dailyIcons, ...(chal.show ? ['🏆'] : []), ...(protectedNow ? ['🛡️'] : [])];
   const shown = icons.slice(0, 4);
 
   return (
@@ -282,6 +284,7 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
                 <b>Today in Benin</b>
                 <button type="button" className="today-head__x" onClick={() => setMode('shut')} aria-label="Close the Today card"><Icon name="close" size={14} /></button>
               </div>
+              <JourneyCard onPick={fold} />
               {tips.map((t) => (
                 <button key={t.key} type="button" className="wish-chip" onClick={() => onTip(t.key)}>
                   <span className="wish-chip__icon" style={{ background: `${NEED_META[t.key].color}22` }} aria-hidden>{t.emoji}</span>

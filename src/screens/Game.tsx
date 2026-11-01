@@ -8,6 +8,7 @@ import { ShrineHost } from './game/Shrine';
 import { MomentsHost } from './game/MomentsHost';
 import { ReturnGiftHost } from './game/ReturnGift';
 import { WeeklyHost } from './game/Weekly';
+import { JourneyHost } from './game/Journey';
 import { CrewHost, YahooHost } from './game/Yahoo';
 import { HustleHost } from './game/Hustles';
 import { SkillHost } from './game/Skills';
@@ -1001,6 +1002,7 @@ export default function Game() {
       <MomentsHost />
       <ReturnGiftHost />
       <WeeklyHost />
+      <JourneyHost />
       <YahooHost />
       <CrewHost />
       <PoliticsHost />
