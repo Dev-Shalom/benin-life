@@ -26,6 +26,8 @@ export interface TaskItem {
   icon: string;
   /** Home furniture group to walk to first, or null (no walk: starts at once). */
   group: HomeGroup | null;
+  /** Fix it 4: the furniture piece the player tapped (the second bed, not just the first bed). The Sim walks to this one. */
+  piece?: string | null;
   /** Where it was queued (cleared when the player leaves). */
   locationId: string;
 }

@@ -76,7 +76,7 @@ export interface HomeSceneProps {
   busy: { group: HomeGroup; key: string; activity?: string; seconds?: number; slot?: number | null; pose?: HomePose | null } | null;
   /** M2: a queued task the Sim should walk to now (before its action starts), or null. The scene calls
    * `onTaskArrive(key)` on arrival (at once when the task has no piece of furniture). */
-  task?: { key: string; activity: string; group: HomeGroup } | null;
+  task?: { key: string; activity: string; group: HomeGroup; piece?: string | null } | null;
   onTaskArrive?: (key: string) => void;
   /** M2: a floor tap stopped the walk to `task` (the player took over). */
   onTaskCancel?: (key: string) => void;
@@ -933,6 +933,7 @@ function House(props: HomeSceneProps & {
   // the piece before the action started, so it normally just sits / lies down where it stands)
   const busyKey = busy ? `${busy.group}:${busy.key}` : null;
   const firstBusy = useRef(true);
+  const taskItem = useRef<{ activity: string; id: string } | null>(null);
   useEffect(() => {
     const a = actorRef.current;
     const first = firstBusy.current;
@@ -940,7 +941,10 @@ function House(props: HomeSceneProps & {
     if (busy) {
       // V2 interactions: a slot (0 asked, 1 accepted) picks the side of a shared sofa; a pose (dance, greet)
       // is done where the Sim stands
-      const item = busy.pose ? null : ixPiece(L, busy.activity, busy.group, busy.slot);
+      // Fix it 4: keep the piece the Sim just walked to (the second bed), not the first piece that hosts the activity
+      const keep = taskItem.current && taskItem.current.activity === busy.activity && busy.slot == null
+        ? L.furniture.find((f) => f.id === taskItem.current?.id) ?? null : null;
+      const item = busy.pose ? null : keep ?? ixPiece(L, busy.activity, busy.group, busy.slot);
       a.pose = busy.pose ?? GROUP_META[busy.group].pose;
       a.shift = seatShift(item, busy.slot);
       a.taskKey = null;
@@ -969,6 +973,7 @@ function House(props: HomeSceneProps & {
         }
       }
     } else {
+      taskItem.current = null;
       // no wandering off right after a task
       a.nextWander = Math.max(a.nextWander, performance.now() + 12000);
       if (a.mode === 'pose' || (a.mode === 'walk' && a.then === 'pose')) {
@@ -1002,7 +1007,17 @@ function House(props: HomeSceneProps & {
       return;
     }
     if (a.taskKey === task.key) return;
-    const item = pieceFor(L, task.activity, task.group);
+    // Fix it 4: the piece the player tapped (a second bed in an extension room); with no tap (Things to do) the hosting piece
+    // nearest to the Sim; else the first that fits. The busy pose below stays on the same piece.
+    const hosts = L.furniture.filter((f) => f.activities?.includes(task.activity));
+    const nearest = hosts.length > 1
+      ? hosts.reduce((best, f) => {
+        const d = (it: FurnitureItem) => { const sp = spotOf(it).p; return Math.hypot(a.w.pos[0] - sp[0], a.w.pos[1] - sp[1]); };
+        return d(f) < d(best) ? f : best;
+      })
+      : null;
+    const item = (task.piece ? L.furniture.find((f) => f.id === task.piece) : null) ?? nearest ?? pieceFor(L, task.activity, task.group);
+    taskItem.current = item ? { activity: task.activity, id: item.id } : null;
     if (a.mode === 'pose') {
       // still holding the last task's pose (its end not seen yet): stand up beside that piece first
       if (a.item) place(a.w, spotOf(a.item, a.shift).p, a.w.yaw);
