@@ -927,6 +927,26 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: 'politics election godfather ticket vote votes governor chairman councillor commissioner party campaign rally poster candidate endorse salary title hon gov policy announcement ward benin votes',
   },
   {
+    id: 'court',
+    topic: 'crime',
+    title: 'The Court: sue, lawyers and judges',
+    summary: 'Robbed, left owing rent or overcharged? Take them to the High Court, Benin. You can only sue over things the game recorded. Hire a real player as your lawyer, and watch hearings live.',
+    steps: [
+      'Open Phone, then Court, then Sue someone. Step 1: pick what happened (the court only lists events the game recorded recently). Step 2: pick a lawyer, or speak for yourself. Step 3: confirm and pay the filing fee.',
+      'The hearing starts a little while later. Both sides (or their lawyers) post short statements. A judge, who is a real player, rules. If no judge rules in time, the automatic ruling follows the recorded evidence, so you always get an outcome.',
+      'Guilty: the defendant pays back what the record shows was taken, plus a fine. You get your filing fee back. If they cannot pay it all, the rest is court debt taken from their future income. Not guilty: you lose the filing fee.',
+      'Lawyers: take the Law and Advocacy course at UNIBEN, then register in the Lawyers tab and set your fee. The fee is held until the verdict. Win cases to climb from Junior Lawyer to Senior Advocate.',
+      'Live now: anyone can take a seat in the gallery and watch a hearing. The gallery has a limited number of seats.',
+    ],
+    where: 'Phone, then Court. The Police app also has a link.',
+    tips: [
+      'You cannot sue yourself. Each recorded event can have only one case. Check the app for the current fees and times.',
+      'A repeat offender can be sent to jail through the Police case system.',
+    ],
+    tour: ['court'],
+    keywords: 'court sue lawyer judge hearing gallery verdict fine restitution robbery pickpocket rent eviction high court justice advocate',
+  },
+  {
     id: 'industry-offices',
     topic: 'politics',
     title: 'Industry offices: bank, transport, health and more',

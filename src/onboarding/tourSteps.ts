@@ -248,6 +248,18 @@ export const TOUR_STEPS: TourStep[] = [
     before: () => toPhone('home'),
   },
   {
+    id: 'court',
+    target: '[data-tour="app-court"]',
+    title: 'The Court: sue, or be a lawyer',
+    body: 'Robbed or cheated? Take them to court over things the game recorded. Hire a real player as your lawyer, or become one. Judges are players too, and hearings are live.',
+    points: [
+      'Only recorded events can be sued over, so nobody can make up a story.',
+      'If no judge rules in time, the record decides. Check the app for fees and times.',
+    ],
+    isNew: true,
+    before: () => toPhone('home'),
+  },
+  {
     id: 'family',
     target: '[data-tour="app-family"]',
     title: 'Family: ask somebody out',
