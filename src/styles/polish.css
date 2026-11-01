@@ -336,3 +336,85 @@
   align-items: center;
   min-height: var(--tap);
 }
+
+/* ---------- Fixes found in the screen pass ---------- */
+/* Group and list names may use two lines before they are cut (they were one line, so "Ugbowo Hust...") */
+:root .gist-gcard__main b {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+:root .gist-gcard__main b > svg,
+:root .gist-gcard__main b > span {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-left: 4px;
+}
+/* Item descriptions: three lines instead of two */
+:root .item__desc {
+  -webkit-line-clamp: 3;
+}
+:root .item__name {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+/* Buttons that carry a long label must stay pills, not turn into blobs */
+:root .yh-job .bl-btn {
+  max-width: 46%;
+  min-width: 84px;
+  border-radius: 18px;
+  padding: 8px 12px;
+}
+:root .bz-take {
+  flex-wrap: wrap;
+}
+:root .bz-take .bl-btn {
+  flex: 1 1 140px;
+  white-space: nowrap;
+}
+/* Ranks: the money band can use two lines */
+:root .rk-row__val.is-band {
+  white-space: normal;
+  overflow: visible;
+  max-width: 44%;
+  line-height: 1.2;
+}
+/* House upgrade cards: the price goes on its own line on narrow phones */
+@media (max-width: 420px) {
+  :root .upg-card__head {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  :root .upg-card__head > .grow {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  :root .upg-card__head > .garage-opt__price {
+    flex: 1 0 100%;
+    text-align: right;
+  }
+}
+/* Chip rows scroll inside their own row */
+:root .pc-chips,
+:root .loc-todo,
+:root .hs-chips,
+:root .sc-chips {
+  max-width: 100%;
+}
+:root .chop__tab {
+  padding-inline: 10px;
+}
+/* Message list bits that were cut mid-word */
+:root .msgs-requests__text span {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+:root .phone input::placeholder {
+  text-overflow: ellipsis;
+}

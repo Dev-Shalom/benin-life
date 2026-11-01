@@ -97,8 +97,31 @@ function useAdminUnread(): number {
   return unread;
 }
 
+/** Copies each table column title onto its cells so the phone layout (admin.css) can show it as a label. */
+function useTableLabels() {
+  useEffect(() => {
+    let raf = 0;
+    const label = () => {
+      raf = 0;
+      document.querySelectorAll<HTMLTableElement>('.adm-main table.adm-table').forEach((t) => {
+        const heads = Array.from(t.querySelectorAll('thead th')).map((h) => (h.textContent ?? '').trim());
+        t.querySelectorAll('tbody tr').forEach((tr) => {
+          Array.from(tr.children).forEach((td, i) => {
+            if (td instanceof HTMLElement && td.getAttribute('data-label') !== (heads[i] ?? '')) td.setAttribute('data-label', heads[i] ?? '');
+          });
+        });
+      });
+    };
+    const mo = new MutationObserver(() => { if (!raf) raf = requestAnimationFrame(label); });
+    mo.observe(document.body, { childList: true, subtree: true });
+    label();
+    return () => { mo.disconnect(); if (raf) cancelAnimationFrame(raf); };
+  }, []);
+}
+
 export default function AdminApp() {
   ensureConfig();
+  useTableLabels();
   const name = useGame((s) => s.state?.profile.username);
   const unread = useAdminUnread();
   return (

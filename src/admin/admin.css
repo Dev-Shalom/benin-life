@@ -567,3 +567,31 @@
 .adm-stats--compact .adm-stat { padding: 10px; }
 .adm-stats--compact .adm-stat__value { font-size: 1.25rem; }
 @media (min-width: 1240px) { .adm-stats--compact { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+/* ---------- UI pass: comfortable admin on phones ---------- */
+/* Tables never had styles: give them a calm look, scroll inside the card on wide screens,
+   and turn each row into a wrapping card on phones (AdminApp copies each column title into data-label). */
+.adm-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.adm-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.adm-table th { padding: 8px 10px; text-align: left; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.adm-table td { padding: 10px; vertical-align: top; border-top: 1px solid var(--adm-line); overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .adm-scroll { overflow: visible; }
+  .adm-table, .adm-table tbody, .adm-table tr, .adm-table td { display: block; width: 100%; }
+  .adm-table thead { display: none; }
+  .adm-table tr { margin: 0 0 10px; padding: 6px 12px; border: 1px solid var(--adm-line-2); border-radius: 14px; background: #fff; }
+  .adm-table td { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; padding: 7px 0; border-top: 1px solid var(--adm-line); text-align: right; max-width: none !important; }
+  .adm-table td:first-child { border-top: 0; }
+  .adm-table td::before { content: attr(data-label); flex: none; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); text-align: left; }
+  .adm-table td:not([data-label])::before, .adm-table td[data-label='']::before { display: none; }
+  .adm-table td > * { max-width: 100%; }
+  .adm-main { padding-inline: 16px; }
+}
+/* inputs that carry a fixed max-width stay readable and share the row */
+.adm-row > .adm-input { flex: 1 1 140px; min-width: 120px; max-width: none !important; }
+.adm-card { overflow-wrap: anywhere; }
+/* 12px floor for small labels, 40px floor for buttons */
+.adm-kicker, .adm-badge, .adm-chip__n, .adm-inline__cap, .adm-rowtoggle__cap, .adm-row__money small, .adm-cfg__key, .adm-field__help, .adm-field__err { font-size: 0.75rem; }
+.adm-btn, .adm-btn--sm { min-height: 40px; }
+.adm-chip, .adm-toggle { min-height: 40px; }
+.adm-iconbtn { width: 40px; height: 40px; }
