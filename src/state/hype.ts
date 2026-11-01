@@ -39,7 +39,8 @@ const SPRAY_TIERS = ['small', 'nice', 'big', 'huge', 'oga', 'billionaire', 'tril
 export function sprayLevel(a: Pick<Announcement, 'kind' | 'tier'>): number {
   return a.kind === 'spray' && a.tier ? SPRAY_TIERS.indexOf(a.tier) : -1;
 }
-const SPRAY_HOLD = [3500, 4000, 4600, 5400, 6400, 7600, 9000];
+// Fix it 2: shorter holds (the card no longer takes over the screen). Was [3500, 4000, 4600, 5400, 6400, 7600, 9000].
+const SPRAY_HOLD = [2200, 2500, 2800, 3200, 3600, 4200, 5000];
 
 const TICKER_MS = 6000;
 
@@ -52,11 +53,11 @@ function devK(): number {
 export function hypeHoldMs(a: Pick<Announcement, 'kind' | 'amount' | 'tier' | 'vip'>): number {
   const k = devK();
   const lv = sprayLevel(a);
-  if (lv >= 0) return Math.round((SPRAY_HOLD[lv] + (a.vip ? 900 : 0)) * k);
-  if (a.kind === 'shutdown') return 6000 * k;
-  if (a.kind === 'vip_arrival') return 3000 * k;
+  if (lv >= 0) return Math.round((SPRAY_HOLD[lv] + (a.vip ? 600 : 0)) * k);
+  if (a.kind === 'shutdown') return 4000 * k;
+  if (a.kind === 'vip_arrival') return 2400 * k;
   const amt = Math.max(10_000, Number(a.amount) || 0);
-  return Math.round((3500 + Math.min(1500, Math.max(0, Math.log10(amt) - 4) * 600)) * k);
+  return Math.round((2400 + Math.min(1000, Math.max(0, Math.log10(amt) - 4) * 400)) * k);
 }
 
 interface HypeStore {
