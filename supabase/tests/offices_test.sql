@@ -114,8 +114,8 @@ end $$;
 do $$
 declare r record; n int;
 begin
-  perform pg_temp.assert((select count(*) from ind_offices) = 7, 'seven offices');
-  perform pg_temp.assert((select count(*) from ind_offices where active) = 6 and not (select active from ind_offices where id = 'nepa_md'), 'NEPA MD is inactive');
+  perform pg_temp.assert((select count(*) from ind_offices) = 11, 'seven industry offices plus the four High Court judge seats');
+  perform pg_temp.assert((select count(*) from ind_offices where active) = 10 and not (select active from ind_offices where id = 'nepa_md'), 'NEPA MD is inactive');
   perform pg_temp.assert(not exists (select 1 from ind_offices where election_enabled) and not exists (select 1 from ind_offices where seats <> 1), 'election_enabled off, one seat');
   perform pg_temp.assert(not exists (select 1 from ind_offices where name = '' or title = '' or blurb = '' or industry = ''), 'offices are labelled');
   perform pg_temp.assert((select salary_per_day from ind_offices where id = 'bank_governor') = 5000000 and (select salary_per_day from ind_offices where id = 'nepa_md') = 3000000
@@ -533,7 +533,7 @@ declare r jsonb;
 begin
   perform pg_temp.login(pg_temp.u('adm'));
   r := admin_ind_overview();
-  perform pg_temp.assert(jsonb_array_length(r->'offices') = 7 and jsonb_array_length(r->'applicants') >= 0 and jsonb_array_length(r->'audit') > 3, 'overview: offices, applicants, audit');
+  perform pg_temp.assert(jsonb_array_length(r->'offices') = 11 and jsonb_array_length(r->'applicants') >= 0 and jsonb_array_length(r->'audit') > 3, 'overview: offices, applicants, audit');
   perform pg_temp.assert((select count(*) from jsonb_array_elements(r->'offices') o where o->'holder' is not null and o->>'holder' <> 'null') >= 1, 'overview shows holders');
   r := admin_row_upsert('ind_levers', jsonb_build_object('id', 'bank.stamp', 'band_min', 30, 'band_max', 70, 'cooldown_hours', 12));
   perform pg_temp.assert((select band_min from ind_levers where id = 'bank.stamp') = 30 and (select cooldown_hours from ind_levers where id = 'bank.stamp') = 12, 'admin edits a band and a cooldown');

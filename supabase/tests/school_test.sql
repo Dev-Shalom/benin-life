@@ -236,9 +236,9 @@ end $$;
 -- ---------- 2. seeds and defaults ----------
 do $$
 begin
-  perform pg_temp.assert((select count(*) from courses) = 10 and (select count(*) from certificates) = 10, 'ten courses, ten certificates');
+  perform pg_temp.assert((select count(*) from courses) = 11 and (select count(*) from certificates) = 11, 'eleven courses, eleven certificates (the Court adds Law and Advocacy)');
   perform pg_temp.assert((select count(*) from courses where cert_id is null) = 0, 'every course awards a certificate');
-  perform pg_temp.assert((select count(*) from courses where classes >= 4 and fee > 0 and class_seconds >= 1) = 10, 'fees and classes set');
+  perform pg_temp.assert((select count(*) from courses where classes >= 4 and fee > 0 and class_seconds >= 1) = 11, 'fees and classes set');
   perform pg_temp.assert((select cardinality(modules) from courses where id = 'uniben_bsc') = 4 and (select classes from courses where id = 'uniben_bsc') = 12, 'BSc: 12 classes in 4 modules');
   perform pg_temp.assert((select count(*) from courses where exam) >= 5, 'several courses have an exam');
   perform pg_temp.assert((select prereq_cert from courses where id = 'digital_marketing') = 'ict'
@@ -707,7 +707,7 @@ begin
   perform pg_temp.assert(pg_temp.hint_of(format('select admin_grant_cert(%L, ''nope'', null)', d)) = 'bad_cert', 'unknown certificate');
   perform pg_temp.assert(pg_temp.hint_of(format('select admin_grant_cert(%L, ''ict'', null)', gen_random_uuid())) = 'no_player', 'unknown player');
   v := admin_player_certs(d);
-  perform pg_temp.assert(jsonb_array_length(v->'catalog') = 10 and exists (select 1 from jsonb_array_elements(v->'rows') r where r->>'id' = 'catering' and r->>'source' = 'admin'), 'admin list: owned rows + the catalogue');
+  perform pg_temp.assert(jsonb_array_length(v->'catalog') = 11 and exists (select 1 from jsonb_array_elements(v->'rows') r where r->>'id' = 'catering' and r->>'source' = 'admin'), 'admin list: owned rows + the catalogue');
   perform pg_temp.assert(exists (select 1 from jsonb_array_elements(v->'catalog') r where r->>'id' = 'catering' and (r->>'has')::boolean), 'catalogue marks owned');
   -- revoke
   v := admin_revoke_cert(d, 'catering', 'granted by mistake');
