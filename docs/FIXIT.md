@@ -18,3 +18,8 @@ Twelve fixes from real player feedback, done easiest first, one commit each. Mig
   - "Big sprays in other clubs": the app-wide strip. **Off** by default.
   - "Phone pings for club hype": a push. **Off** by default. `bl_push_on_hype` is patched (guarded replace) to need this switch **and** the existing `push.enabled`, `push.cat_events`, the player's Game events category, a saved device and the usual rate limits.
 - Client: `src/state/clubAlerts.ts`, `src/state/hype.ts` (filters), `ClubAlertsSettings` in `src/screens/game/NotificationsSettings.tsx`.
+
+## 4. Can't sleep on the bed in the second room
+- **Cause (found by driving the real app):** the server never cared where a bed stands (every bed kind, also one in an extension room, passes `bl_furniture_for` and `do_activity('sleep')`, now covered by test group 4). The client was the problem: a queued home task only remembered the furniture *group*, so the Sim always walked to the **first** piece that hosts the activity (the main-room bed), and when the sleep started the pose code picked that first piece again and walked there. Tapping the bed in the extension / second bedroom looked like nothing worked.
+- **Now:** the task keeps the tapped piece (`piece` in `src/state/tasks.ts`, `HomeSheet`), the Sim walks to that exact bed and stays on it for the pose. From "Things to do" (no tap) the nearest piece that hosts the activity is used. Files: `HomeScene.tsx`, `TaskRunner.ts`, `tasks.ts`, `HomeSheet.tsx`.
+- Note: the three biggest beds (6 ft, king, luxury king) are refused in some spots of a small extension room because they would block its doorway; that is the existing placement rule (the message says "You are blocking the door"), move the bed along the wall.

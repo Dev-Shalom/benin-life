@@ -51,3 +51,33 @@ begin
   perform pg_temp.assert(n = 0, 'RLS: B reads no other row');
   raise notice 'ok 3: club spray alert prefs';
 end $$;
+
+-- ---------- 4. Beds: every sleeping piece works, also a second bed in an extension room ----------
+-- (the bug was in the client: the Sim always walked to the FIRST bed, not the one tapped; the server never cared where a bed stood)
+do $$
+declare v uuid := pg_temp.fx_make('FxBedder', 50000000, 0); r record; res jsonb; n int := 0;
+begin
+  perform pg_temp.login(v);
+  insert into player_house_upgrades(user_id, upgrade_id, start_home, done_at, source)
+    values (v, 'ext_bedroom', (select start_home from profiles where id = v), now(), 'admin');
+  perform bl_furniture_materialize(v);
+  for r in select id from furniture where 'sleep' = any(activities) and active order by price loop
+    delete from player_furniture where user_id = v and furniture_id = r.id;
+    insert into player_furniture(user_id, furniture_id, slot, source, qty) values (v, r.id, null, 'buy', 1);
+    perform bl_furniture_materialize(v);
+    perform pg_temp.assert((bl_furniture_for(v, 'sleep')->>'owned')::boolean, 'bed ' || r.id || ' hosts sleep');
+    perform pg_temp.assert((bl_furniture_for(v, 'nap')->>'owned')::boolean, 'bed ' || r.id || ' hosts nap');
+    n := n + 1;
+    delete from player_furniture where user_id = v and furniture_id = r.id;
+    delete from player_house_furniture where owner_id = v and furniture_key like 'own\_' || r.id || '%';
+  end loop;
+  perform pg_temp.assert(n >= 8, 'all bed kinds checked');
+  -- a second bed standing in the extension room: sleep works and the room's bonus applies
+  insert into player_furniture(user_id, furniture_id, slot, source, qty) values (v, 'bed_single', null, 'buy', 1);
+  perform bl_furniture_materialize(v);
+  res := furniture_place('own_bed_single', 3.2, 7.4, 0);
+  perform pg_temp.assert(res->>'stored' = 'false', 'bed placed in the extension room');
+  res := do_activity('sleep');
+  perform pg_temp.assert((res->'effects'->>'energy')::numeric = 85 and (res->'effects'->>'stress')::numeric < -20, 'sleep works, extension room bonus on');
+  raise notice 'ok 4: beds';
+end $$;
