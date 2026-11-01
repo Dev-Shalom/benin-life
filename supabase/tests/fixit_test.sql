@@ -145,3 +145,37 @@ begin
   perform pg_temp.assert(exists (select 1 from admin_audit where action = 'grant_crew_boss' and target_user = c), 'admin audit row');
   raise notice 'ok 5: gang boss hand-back';
 end $$;
+
+-- ---------- 6. Land levy: the open deal is visible, can be paid / walked away from, and an expired one is released ----------
+do $$
+declare a uuid := pg_temp.fx_make('FxLand', 0, 500000000); r jsonb; v_deal bigint; v_before bigint;
+begin
+  perform pg_temp.login(a);
+  update game_config set value = '0' where key = 'invest.land_walk_cooldown_seconds';
+  perform set_config('bl.test_rand', '0.0', true);
+  r := invest_land_buy('land_gra', 1);
+  perform pg_temp.assert(r->>'status' = 'levy', 'the buy stops at a levy: ' || r::text);
+  v_deal := (r->>'deal_id')::bigint;
+  perform pg_temp.assert((invest_overview()->'pending_deal'->>'id')::bigint = v_deal and (invest_overview()->'pending_deal'->>'levy')::bigint > 0, 'overview lists the open deal with its levy');
+  perform pg_temp.assert(pg_temp.fx_hint($q$select invest_land_buy('land_gra', 1)$q$) = 'pending', 'an open deal blocks another buy');
+  -- walk away: nothing charged, can buy again
+  v_before := (select bank from profiles where id = a);
+  r := invest_land_levy(v_deal, false);
+  perform pg_temp.assert(r->>'status' = 'walked' and (select bank from profiles where id = a) = v_before, 'walking away costs nothing');
+  perform pg_temp.assert((invest_overview()->'pending_deal') is null or invest_overview()->>'pending_deal' is null, 'no open deal after walking away');
+  -- pay
+  r := invest_land_buy('land_gra', 1);
+  v_deal := (r->>'deal_id')::bigint;
+  r := invest_land_levy(v_deal, true);
+  perform pg_temp.assert(r->>'status' = 'done' and (select bank from profiles where id = a) < v_before, 'paying the levy closes the deal and charges');
+  -- an expired deal does not block: it is released by the next buy
+  r := invest_land_buy('land_gra', 1);
+  perform pg_temp.assert(r->>'status' = 'levy', 'new levy deal');
+  update invest_land_deals set expires_at = now() - interval '1 minute' where user_id = a and status = 'pending';
+  perform pg_temp.assert(invest_overview()->>'pending_deal' is null, 'an expired deal is not shown');
+  r := invest_land_buy('land_gra', 1);
+  perform pg_temp.assert(r->>'status' in ('levy', 'done'), 'expired deal released: the player can buy again');
+  perform pg_temp.assert((select count(*) from invest_land_deals where user_id = a and status = 'expired') = 1, 'the old deal is marked expired');
+  perform set_config('bl.test_rand', '', true);
+  raise notice 'ok 6: land levy';
+end $$;

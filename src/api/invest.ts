@@ -33,7 +33,7 @@ export interface InvestLogRow { id: number; at: string; kind: string; label: str
 export interface InvestOverview {
   cash: number; bank: number; year_days: number; day_seconds: number; now: string; enabled: boolean;
   summary: InvestSummary; products: InvestProduct[]; markets: InvestMarket[]; positions: InvestPosition[]; log: InvestLogRow[];
-  pending_deal: { id: number; area: string; plots: number; levy: number; expires_at: string } | null;
+  pending_deal: { id: number; area: string; plots: number; levy: number; subtotal: number; agent_fee: number; community: number; expires_at: string } | null;
 }
 
 export interface LandQuote {
