@@ -334,6 +334,7 @@ export const adminApi = {
   takeProperty: (u: string, property: string, reason: string) => rpc<Msg>('admin_take_property', { p_user: u, p_property: property, p_reason: reason }),
   giveLand: (u: string, market: string, plots: number, reason: string) => rpc<Msg>('admin_give_land', { p_user: u, p_market: market, p_plots: plots, p_reason: reason }),
   takeLand: (u: string, market: string, plots: number, reason: string) => rpc<Msg>('admin_take_land', { p_user: u, p_market: market, p_plots: plots, p_reason: reason }),
+  crewSetBoss: (u: string, crew: number, reason = '') => rpc<Msg>('admin_crew_set_boss', { p_user: u, p_crew: crew, p_reason: reason }),
   crewSet: (u: string, crew: number, rank: string, reason = '') => rpc<Msg>('admin_crew_set', { p_user: u, p_crew: crew, p_rank: rank, p_reason: reason }),
   crewRemove: (u: string, reason = '') => rpc<Msg>('admin_crew_remove', { p_user: u, p_reason: reason }),
   setChiefTitle: (u: string, tier: number, ward: string, reason: string) => rpc<Msg>('admin_set_chief_title', { p_user: u, p_tier: tier, p_ward: ward, p_reason: reason }),

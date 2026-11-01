@@ -435,3 +435,7 @@ verify_jwt = true
 
 [functions.admin-delete-user]
 verify_jwt = true
+
+# Fix it 8: a player deletes their own account (checks the caller itself with their JWT)
+[functions.delete-my-account]
+verify_jwt = true

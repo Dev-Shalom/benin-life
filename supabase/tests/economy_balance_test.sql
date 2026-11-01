@@ -76,8 +76,8 @@ begin
   perform pg_temp.assert((select value::text from game_config where key = 'origin.lapo.start_cash') = '85000', 'LAPO start cash is still 85,000');
   perform pg_temp.assert((select value::text from game_config where key = 'club.pick_note') = '10000' and (select value::text from game_config where key = 'club.pick_pct') = '20', 'money pick N10k / 20% untouched');
   perform pg_temp.assert((select value::text from game_config where key = 'club.weekend_price_mult') = '1.5', 'club weekend x1.5 untouched');
-  perform pg_temp.assert((select caught_pct from yahoo_jobs where id = 'chat_client') = 12 and (select caught_pct from yahoo_jobs where id = 'romance_job') = 16
-                         and (select caught_pct from yahoo_jobs where id = 'big_job') = 24 and (select caught_pct from yahoo_jobs where id = 'cash_out') = 14, 'yahoo fairer catch chances untouched');
+  perform pg_temp.assert((select caught_pct from yahoo_jobs where id = 'chat_client') = 10 and (select caught_pct from yahoo_jobs where id = 'romance_job') = 14
+                         and (select caught_pct from yahoo_jobs where id = 'big_job') = 20 and (select caught_pct from yahoo_jobs where id = 'cash_out') = 12, 'yahoo catch chances (Fix it 11: 12/16/24/14 became 10/14/20/12)');
   perform pg_temp.assert((select value::text from game_config where key = 'yahoo.seize_laptop_pct') = '35' and (select value::text from game_config where key = 'yahoo.confiscate_pct') = '50', 'seize / confiscate untouched');
   perform pg_temp.assert((select price from shrine_services where id = 'money_charm') = 3000000 and (select price from shrine_services where id = 'efcc_blindfold') = 1200000, 'Babalawo prices untouched');
   perform pg_temp.assert((select price from items where id = 'cow') = 1440000 and (select price from items where id = 'goat') = 102000, 'Babalawo offerings (x1.2) untouched');

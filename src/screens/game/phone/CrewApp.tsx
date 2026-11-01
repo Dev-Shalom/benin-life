@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   crewBankLog, crewBrowse, crewCandidates, crewChatRecent, crewChatSend, crewCreate, crewDeposit, crewDisband, crewInvite, crewInviteCancel, crewInviteRespond,
   crewJobCancel, crewJobJoin, crewJobLeave, crewJobOpen, crewJobStart, crewJoinOpen, crewKick, crewLeave, crewOptions, crewRename, crewReport, crewSetRank,
-  crewTransfer, crewUpgrade, RANK_LABEL, type BankRow, type Candidate, type ChatRow, type Crew, type CrewJob, type CrewListed, type CrewMember, type CrewRun,
+  crewBossHandback, crewBossRequest, crewBossRespond, crewBossState, crewTransfer, crewUpgrade, RANK_LABEL, type BankRow, type BossState, type Candidate, type ChatRow, type Crew, type CrewJob, type CrewListed, type CrewMember, type CrewRun,
 } from '../../../api/crews';
 import { canPoll } from '../../../lib/activity';
 import { errorMessage } from '../../../lib/api';
@@ -99,6 +99,38 @@ function NoCrew({ s }: { s: NonNullable<ReturnType<typeof useCrew.getState>['sta
   );
 }
 
+// ------------------------------------------------------------------------------------------------ Fix it 5: Boss hand-back
+/** The new Boss can hand the gang back any time; the previous Boss can ask for it back for 24 hours and the Boss answers. */
+function BossHandover() {
+  const { busy, act } = useAct();
+  const [st, setSt] = useState<BossState | null>(null);
+  const load = useCallback(() => { crewBossState().then(setSt).catch(() => setSt(null)); }, []);
+  useEffect(load, [load]);
+  if (!st || !st.in_crew || (!st.can_handback && !st.can_request && !st.request)) return null;
+  const run = (k: string, fn: () => Promise<{ message?: string }>) => void act(k, fn, load);
+  return (
+    <section className="cr-card" data-testid="crew-boss-handover">
+      <h4>Boss rank</h4>
+      {st.can_handback && (
+        <div className="cr-row2"><span>Handed to you by @{st.handback_to}. You can give it back any time.</span>
+          <Button size="sm" variant="ghost" loading={busy === 'hb'} onClick={() => { if (window.confirm(`Give the Boss rank back to @${st.handback_to}?`)) run('hb', crewBossHandback); }}>Hand it back</Button></div>
+      )}
+      {st.can_request && !st.request && (
+        <div className="cr-row2"><span>You handed the gang over. You can ask for it back until {new Date(st.request_open_until ?? '').toLocaleString()}. The new Boss decides.</span>
+          <Button size="sm" loading={busy === 'rq'} onClick={() => run('rq', crewBossRequest)}>Ask for it back</Button></div>
+      )}
+      {st.request?.mine && <p className="cr-fine">You asked for the Boss rank back. Waiting for the Boss.</p>}
+      {st.request?.to_me && (
+        <div className="cr-row2"><span>@{st.request.username} wants the Boss rank back.</span>
+          <span className="cr-manage">
+            <Button size="sm" loading={busy === 'ra'} onClick={() => run('ra', () => crewBossRespond(true))}>Give it back</Button>
+            <Button size="sm" variant="ghost" loading={busy === 'rd'} onClick={() => run('rd', () => crewBossRespond(false))}>No</Button>
+          </span></div>
+      )}
+    </section>
+  );
+}
+
 // ------------------------------------------------------------------------------------------------ in a crew
 function MemberRow({ m, crew, act, busy }: { m: CrewMember; crew: Crew; act: ReturnType<typeof useAct>['act']; busy: string | null }) {
   const [open, setOpen] = useState(false);
@@ -171,6 +203,7 @@ function Overview({ crew }: { crew: Crew }) {
           </div>
         )}
       </section>
+      <BossHandover />
       <section className="cr-card">
         <h4>Members {crew.members_count}/{crew.max_members}</h4>
         <ul className="cr-members" data-testid="crew-members">{crew.members.map((m) => <MemberRow key={m.id} m={m} crew={crew} act={act} busy={busy} />)}</ul>

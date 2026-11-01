@@ -134,3 +134,6 @@ refunds, admin (audited view, rename, disband, reports, content tables), earned 
 - `crew.max_jobs_per_day` 8 -> 3. `crew.weekly_min_jobs` 2 -> 8 (two jobs a week was enough for an alt gang to win the ₦500k Top gang prize).
 - Disband: `crew.disband_fee_pct` (new, 10 %) is kept from the bank when the Boss disbands; the rest is shared equally. An admin disband charges nothing. Before, disbanding was a free way to move money between accounts.
 - The caught chances, buy-ins, cooldowns, gang levels and upgrade costs are unchanged. `crews_test` pins the old pots, the daily cap, the fee and the weekly minimum.
+
+## Boss hand-back (Fix it 5)
+The new Boss can hand the gang back any time; the previous Boss can ask for it back within `crew.boss_request_hours` (24) and the Boss accepts or declines. Every Boss move is in `crew_boss_log`; an admin can make anybody Boss (Admin -> Players -> Grant toolbox -> Gang, `admin_crew_set_boss`, audited). Details: docs/FIXIT.md item 5.

@@ -257,7 +257,8 @@ export function HypeTakeover({ mcName }: { mcName: string }) {
       {(tier === 'shutdown' || lv >= 5 || tier === 'vip') && <><div className="hx-edge" aria-hidden /><div className="hx-sweep" aria-hidden /></>}
       <div className="hx-aura" ref={auraRef} aria-hidden />
       {!reduced && <canvas className="hx-canvas" ref={canvasRef} aria-hidden />}
-      <button type="button" className="hx-hit" onClick={dismissHypeBanner} aria-label={`${who}: ${shown.text}. Tap to skip`}>
+      <button type="button" className="hx-close" onClick={dismissHypeBanner} aria-label="Close shout-out">✕</button>
+      <div className="hx-hit">
         <span className="hx-stack">
           <span className="hx-mc"><span className="hx-mc__dot" aria-hidden />{who}{!calm && <span className="hx-mc__live">LIVE</span>}</span>
           {shown.vip && <span className="hx-vipband" aria-hidden><i>👑</i>VIP<i>👑</i></span>}
@@ -271,10 +272,10 @@ export function HypeTakeover({ mcName }: { mcName: string }) {
           <Caption text={shown.text} name={shown.username} stepMs={stepMs} still={reduced} />
         </span>
         <span className="hx-foot" aria-hidden>
-          {queued > 0 ? `+${queued} more · ` : ''}Tap to skip
+          {queued > 0 ? `+${queued} more` : ''}
           <span className="hx-progress"><i /></span>
         </span>
-      </button>
+      </div>
       <div className="sr-only" role="status" aria-live="polite">{out ? '' : `${who}: ${shown.text}`}</div>
     </div>
   );

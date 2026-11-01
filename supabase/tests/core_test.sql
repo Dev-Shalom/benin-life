@@ -563,7 +563,7 @@ begin
   perform set_config('bl.test_rand', '0.99', true);
   perform pg_temp.assert(r ? 'robbed', 'robbed! ' || r::text);
   v_amt := (r->'robbed'->>'amount')::bigint;
-  perform pg_temp.assert(v_amt between 10000 and 30000, 'loss 20–60% of 50000, got ' || v_amt);
+  perform pg_temp.assert(v_amt between 5000 and 17500, 'loss 10–35% of 50000 (Fix it 11: was 20–60%), got ' || v_amt);
   perform pg_temp.assert((select cash from profiles where id = v_d) = 50000 - v_amt, 'cash dropped');
   perform pg_temp.assert(exists (select 1 from events where user_id = v_d and kind = 'robbed'
                                  and (data->>'amount')::bigint = v_amt and data->>'location' = 'upper_sakponba'), 'robbed event');
@@ -651,7 +651,7 @@ declare
   v_d uuid := pg_temp.uid('d');
   t_night timestamptz; t_noon timestamptz; t_rush timestamptz;
   v_exp numeric; v_got numeric; q jsonb; o jsonb; v_km numeric; v_tr numeric;
-  base numeric := 0.06;
+  base numeric := 0.045;
   g timestamptz := bl_cfg_text('clock.epoch')::timestamptz;  -- clock epoch from config
 begin
   -- fixed instants (real -> game): +0 = 06:00, +80 min = 22:00 (night), +30 min = 12:00, +10 min = 08:00 (rush)
@@ -689,12 +689,12 @@ begin
   perform pg_temp.assert(abs(bl_street_robbery_chance(v_d, 'third_east', 'bus', 1, t_noon) - v_exp) < 1e-9, 'expired charm ignored');
   -- cap at crime.npc_max_pct (35%)
   update profiles set cash = 10000000, charm_strength = 0 where id = v_d;
-  perform pg_temp.assert(bl_street_robbery_chance(v_d, 'upper_sakponba', 'walk', 3, t_night) = 0.35, 'capped at 35%');
+  perform pg_temp.assert(bl_street_robbery_chance(v_d, 'upper_sakponba', 'walk', 3, t_night) = 0.25, 'capped at 25% (Fix it 11: was 35%)');
   -- admin tunes base -> instant effect
-  update game_config set value = '12' where key = 'crime.npc_base_pct';
+  update game_config set value = '9' where key = 'crime.npc_base_pct';
   update profiles set cash = 2000 where id = v_d;
   perform pg_temp.assert(abs(bl_street_robbery_chance(v_d, 'third_east', 'bus', 1, t_noon) - v_exp * 2) < 1e-9, 'config change applies');
-  update game_config set value = '6' where key = 'crime.npc_base_pct';
+  update game_config set value = '4.5' where key = 'crime.npc_base_pct';
 
   -- traffic: avg(congestion) x rush 1.8 (07-10,16-20) x ramat 1.6 (ikpoba_hill/aduwawa while flyover closed)
   perform pg_temp.assert(bl_traffic('ekenwan_room', 'uniben', t_noon) = 1.1, 'traffic avg');

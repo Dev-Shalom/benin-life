@@ -96,3 +96,6 @@ https://nigerianqueries.com/prices-of-toyota-camry-cars-in-nigeria/ · https://a
 (low-authority listing sites; treat as a guide). The multipliers and base prices are admin-editable.
 
 Receipts: every car, garage and house move from ₦500,000 gives a receipt (docs/RECEIPTS.md).
+
+## Primary car (Fix it 10)
+`player_primary_car` + `car_set_primary(item)`: the car the player drives is used by the travel quote, the Bolt hustle (`bl_hustle_car`) and listed first in `garage_home`. Falls back to the most expensive vehicle. The 3D home now parks every owned car (the driven one first), up to 6 (3 on Low graphics). See docs/FIXIT.md item 10.

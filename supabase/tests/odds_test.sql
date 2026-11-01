@@ -287,6 +287,7 @@ begin
 end $$;
 
 -- ---------- 5. Pickpocket: 62 % caught (the thief's protection charm lowers it, the victim's home guard raises it) ----------
+update game_config set value = '62' where key = 'crime.steal_caught_pct'; -- Fix it 11 raised the default to 70; this section checks the mechanics against the old base
 create or replace function pg_temp.steal_odds(p_label text, p_exp numeric, p_n int) returns void
 language plpgsql as $$
 declare t uuid := current_setting('odds.t')::uuid; v uuid := current_setting('odds.v')::uuid; i int; v_id bigint; v_hits int := 0; v_seen int := 0; st text;

@@ -83,7 +83,7 @@ export function HomeSheet({ state, status }: { state: GameState; status: PlayerS
   const idle = status.free && queued === 0;
   const blocked = status.traveling || status.jailLeft > 0 || status.hospLeft > 0;
   const doIt = (a: ActivityRow) => {
-    const r = queueTask(a, state.location.id);
+    const r = queueTask(a, state.location.id, { piece: shown?.id ?? null });
     if (r === 'now') close();
   };
 

@@ -13,6 +13,7 @@ import { startPoller, trackSubscribe, usePollMode } from '../lib/realtime';
 import { playHype } from '../lib/sound';
 import { moneyDropsLive, type MoneyDrop } from '../api/moneyPick';
 import { addDrop, clearDrops, pushPickNotice } from './moneyPick';
+import { useClubAlerts, loadClubAlerts } from './clubAlerts';
 
 export interface Announcement {
   id: number;
@@ -39,7 +40,8 @@ const SPRAY_TIERS = ['small', 'nice', 'big', 'huge', 'oga', 'billionaire', 'tril
 export function sprayLevel(a: Pick<Announcement, 'kind' | 'tier'>): number {
   return a.kind === 'spray' && a.tier ? SPRAY_TIERS.indexOf(a.tier) : -1;
 }
-const SPRAY_HOLD = [3500, 4000, 4600, 5400, 6400, 7600, 9000];
+// Fix it 2: shorter holds (the card no longer takes over the screen). Was [3500, 4000, 4600, 5400, 6400, 7600, 9000].
+const SPRAY_HOLD = [2200, 2500, 2800, 3200, 3600, 4200, 5000];
 
 const TICKER_MS = 6000;
 
@@ -52,11 +54,11 @@ function devK(): number {
 export function hypeHoldMs(a: Pick<Announcement, 'kind' | 'amount' | 'tier' | 'vip'>): number {
   const k = devK();
   const lv = sprayLevel(a);
-  if (lv >= 0) return Math.round((SPRAY_HOLD[lv] + (a.vip ? 900 : 0)) * k);
-  if (a.kind === 'shutdown') return 6000 * k;
-  if (a.kind === 'vip_arrival') return 3000 * k;
+  if (lv >= 0) return Math.round((SPRAY_HOLD[lv] + (a.vip ? 600 : 0)) * k);
+  if (a.kind === 'shutdown') return 4000 * k;
+  if (a.kind === 'vip_arrival') return 2400 * k;
   const amt = Math.max(10_000, Number(a.amount) || 0);
-  return Math.round((3500 + Math.min(1500, Math.max(0, Math.log10(amt) - 4) * 600)) * k);
+  return Math.round((2400 + Math.min(1000, Math.max(0, Math.log10(amt) - 4) * 400)) * k);
 }
 
 interface HypeStore {
@@ -70,9 +72,11 @@ interface HypeStore {
   queue: Announcement[];
   /** The app-wide ticker on screen now. */
   ticker: Announcement | null;
+  /** The signed-in player's id (their own spray always shows). */
+  me: string | null;
 }
 
-export const useHype = create<HypeStore>(() => ({ locationId: null, inClub: false, recent: [], banner: null, queue: [], ticker: null }));
+export const useHype = create<HypeStore>(() => ({ locationId: null, inClub: false, recent: [], banner: null, queue: [], ticker: null, me: null }));
 
 let bannerTimer = 0;
 let tickerTimer = 0;
@@ -100,6 +104,8 @@ function onClubRow(a: Announcement) {
     window.dispatchEvent(new CustomEvent('bl:hype', { detail: { text: a.text, kind: a.kind } }));
     return;
   }
+  // Fix it 3: "Club spray alerts: shout-outs in my club" off = no card for other people's sprays (your own still shows).
+  if (!useClubAlerts.getState().toasts && a.kind !== 'vip_arrival' && a.user_id !== useHype.getState().me) return;
   if (s.banner) useHype.setState({ queue: [...s.queue, a].slice(-3) });
   else {
     useHype.setState({ queue: [a] });
@@ -110,6 +116,8 @@ function onClubRow(a: Announcement) {
 function onGlobalRow(a: Announcement) {
   // in that club already: the banner says it louder
   if (a.location_id === useHype.getState().locationId || !a.ticker) return;
+  // Fix it 3: the app-wide strip for a different club is off unless the player asked for it
+  if (!useClubAlerts.getState().strip) return;
   window.clearTimeout(tickerTimer);
   useHype.setState({ ticker: a });
   playHype('global');
@@ -139,6 +147,10 @@ let globalCh: RealtimeChannel | null = null;
  *  `inClub` = that place is a club (all hype kinds); elsewhere only VIP arrivals (PAY) are shown. */
 export function useHypeLive(clubId: string | null, uid: string | null, inClub = true) {
   const poll = usePollMode();
+  useEffect(() => {
+    useHype.setState({ me: uid });
+    if (uid) void loadClubAlerts();
+  }, [uid]);
   useEffect(() => {
     if (!uid) return;
     if (poll) {
