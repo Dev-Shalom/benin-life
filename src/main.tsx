@@ -6,6 +6,7 @@ import './styles/screens.css';
 import './styles/game.css';
 import './styles/keyboard.css';
 import './styles/polish.css';
+import './styles/overlay.css';
 import App from './App.tsx';
 import { initAuth } from './state/game';
 import { initSound } from './lib/sound';
