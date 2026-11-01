@@ -251,7 +251,7 @@ end $$;
 create or replace function public.court_lawyers_list(p_q text default '', p_filter text default 'all', p_limit int default 30) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
-  v_uid uuid := bl_require_uid(); v_q text := replace(replace(replace(btrim(coalesce(p_q, '')), '\', ''), '%', ''), '_', '');
+  v_uid uuid := bl_require_uid(); v_q text := btrim(coalesce(p_q, ''));
   v_n int := greatest(1, least(coalesce(p_limit, 30), 50)); v_f text := case when p_filter in ('available', 'top') then p_filter else 'all' end;
   v_online interval := make_interval(secs => bl_court_num('court.lawyer_online_minutes', 10) * 60);
 begin
@@ -263,7 +263,7 @@ begin
            (l.wins::numeric / greatest(l.wins + l.losses, 1)) as o3
       from court_lawyers l join profiles p on p.id = l.user_id
      where not l.banned and not l.retired and not p.banned
-       and (v_q = '' or p.username ilike '%' || v_q || '%')
+       and (v_q = '' or strpos(lower(p.username), lower(v_q)) > 0)
        and (v_f <> 'available' or (l.available and p.last_seen > bl_now() - v_online))
      order by o1 desc, o2 desc, o3 desc, p.username limit v_n) x), '[]'::jsonb);
 end $$;

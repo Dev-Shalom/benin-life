@@ -415,7 +415,7 @@ begin
     ) x order by at desc limit 40
   loop
     ev := bl_court_evidence(p_me, r.k, r.ref);
-    if coalesce((ev ->> 'ok')::boolean, false) then
+    if coalesce((ev ->> 'ok')::boolean, false) and (ev ->> 'defendant')::uuid <> p_me then
       v_tier := bl_court_tier((ev ->> 'claim')::bigint);
       v_out := v_out || jsonb_build_array(ev || jsonb_build_object('kind', r.k, 'ref', r.ref, 'tier', v_tier, 'fee', bl_court_fee(v_tier),
         'defendant_name', bl_username((ev ->> 'defendant')::uuid),
@@ -699,9 +699,9 @@ begin
             order by (c.ruling_deadline <= v_now) desc, c.id limit 1 loop
     perform bl_court_settle_case(r.id);
   end loop;
-  with x as (update court_debts set held = 0 where creditor_id = p_uid and held > 0 returning held)
-  select coalesce(sum(held), 0) into v_held from x;
+  select coalesce(sum(q.held), 0) into v_held from (select held from court_debts where creditor_id = p_uid and held > 0 for update) q;
   if v_held > 0 then
+    update court_debts set held = 0 where creditor_id = p_uid and held > 0;
     perform bl_add_money(p_uid, 'bank', v_held, 'court_restitution_in', jsonb_build_object('label', 'Court order: payment received from your debtor'));
     perform bl_event(p_uid, 'court_debt_paid', 'Court payment received', bl_naira(v_held) || ' of what the court ordered is now in your bank.', jsonb_build_object('amount', v_held));
   end if;
