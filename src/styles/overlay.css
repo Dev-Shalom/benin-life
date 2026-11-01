@@ -230,7 +230,25 @@
 }
 
 /* ---------- Light chips and selected states inside the dark overlays keep dark text ---------- */
-:root :is(.seg__btn.is-on, .opt.is-active, .buy-tier--all.is-on, .buy-tier.is-on, .loc-share, .age-badge, .origin-pill, .beta-badge, .notif-note--warn, .tcard__risk.is-good, .btq__cat.is-on) {
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) :is(.seg__btn.is-on, .opt.is-active, .buy-tier--all, .buy-tier.is-on, .loc-share, .origin-pill, .notif-note--warn, .tcard__risk.is-good, .btq__cat.is-on) {
+  color: #131a24;
+}
+:root .left-rail .beta-badge {
+  color: #7a4d1f;
+}
+:root .bl-sheet .beta-badge {
+  color: #ffcf6b;
+}
+:root .bl-sheet .tcard__risk.is-warn {
+  color: #7a4f00;
+}
+:root .shrine-svc__price {
+  color: #ffcf6b;
+}
+:root .shrine-svc__note {
+  color: #e8c28a;
+}
+:root [class*='btq'] .bl-sheet__title {
   color: #131a24;
 }
 :root .buy-card__tier--mid {
@@ -245,18 +263,18 @@
 }
 
 /* ---------- White fills that were hard-coded: dark glass inside the overlays ---------- */
-:root :is(.wish-chip__icon, .garage-opt__emoji, .wk-chip, .loc-district, .chip, .bankx__chip, .wallet__bank-link, .item__icon, .item__qty, .need-row__track, .career-card__emoji, .home-sheet__emoji, .risk-chip--info) {
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) :is(.wish-chip__icon, .garage-opt__emoji, .wk-chip, .loc-district, .chip, .bankx__chip, .wallet__bank-link, .item__icon, .item__qty, .need-row__track, .career-card__emoji, .home-sheet__emoji, .risk-chip--info) {
   background: var(--ov-card-2);
   color: var(--ov-text);
 }
-:root .need-row__track {
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .need-row__track {
   background: rgba(255, 255, 255, 0.18);
 }
-:root .risk-chip--bad {
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .risk-chip--bad {
   background: rgba(224, 71, 58, 0.24);
   color: #ffa095;
 }
-:root .chip--yahoo {
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .chip--yahoo {
   background: rgba(47, 191, 119, 0.2);
   color: #6fe6ab;
 }
@@ -267,12 +285,12 @@
 :root .wk-today {
   color: #2a1a00;
 }
-:root .bankx__chip {
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .bankx__chip {
   box-shadow: none;
 }
 
-:root .item .chip:not(.good):not(.bad):not(.warn),
-:root .act .chip:not(.good):not(.bad):not(.warn) {
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .item .chip:not(.good):not(.bad):not(.warn),
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .act .chip:not(.good):not(.bad):not(.warn) {
   background: var(--ov-card-2);
   color: var(--ov-text);
 }
