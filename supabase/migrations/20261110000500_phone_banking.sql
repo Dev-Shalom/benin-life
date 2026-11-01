@@ -34,7 +34,7 @@ begin
 end $$;
 
 create or replace function public.phone_bank_info() returns jsonb
-language plpgsql stable security definer set search_path = public as $$
+language plpgsql security definer set search_path = public as $$
 declare v_me profiles := bl_me();
 begin
   return jsonb_build_object(

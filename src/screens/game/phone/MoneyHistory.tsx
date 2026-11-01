@@ -87,7 +87,7 @@ export function MoneyHistory({ active }: { active: boolean }) {
                   <span className="grow">
                     <span className="bank-hist__label">{r.label}</span>
                     <span className="bank-hist__sub">
-                      {ACCOUNT_LABEL[r.account] ?? r.account} · {timeAgo(r.created_at)}{r.category && !r.own_move ? ` · ${r.category}` : ''}
+                      {ACCOUNT_LABEL[r.account] ?? r.account} · {timeAgo(r.created_at)}{r.category && r.category !== 'Other' && !r.own_move ? ` · ${r.category}` : ''}
                     </span>
                     {r.detail && <span className="bank-hist__sub mh__detail">"{r.detail}"</span>}
                     <span className="bank-hist__sub">Balance after {naira(r.balance_after)}</span>

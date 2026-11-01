@@ -255,6 +255,7 @@ begin
   -- far from any bank, and busy: still works (like transfers)
   update profiles set location_id = 'oba_market', busy_until = now() + interval '5 minutes', busy_label = 'x' where id = a;
   select cash, bank into c0, b0 from profiles where id = a;
+  perform pg_temp.assert((phone_bank_info()->>'fee_min')::numeric = 50 and (phone_bank_info()->>'enabled')::boolean, 'phone_bank_info works (the Bank app reads it)');
   v_supply0 := (select sum(cash + bank) from profiles where id = a);
   r := phone_bank_deposit(10000);
   perform pg_temp.assert((r->>'fee')::bigint = 100 and (r->>'bank')::bigint = b0 + 10000 and (r->>'cash')::bigint = c0 - 10100, '1% of 10,000 = 100 fee, from cash: ' || r::text);
