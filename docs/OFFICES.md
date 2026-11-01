@@ -102,3 +102,6 @@ More levers once they can be balanced and tested: Security Commissioner (bail am
 
 ## Tests
 `bash scripts/sql-test.sh -- supabase/tests/offices_test.sql` (13 groups): grants / RLS / private helpers, seeds and keys read by live code, apply / withdraw / moderation, admin appoint by username, one office per player, applicants accept / reject / remove, remove a holder, alerts and notices, badge (elected wins), levers (band, step, cooldown, daily cap, drift cap, freeze, live change, the transfer quote changes, audit, notice rate limit), restore on removal / term end / inactivity / admin edit wins, salary, bank balance rails, approval rating and low warning, statement, admin RPCs and Content editors, the medicine price, My Office visibility and server refusals, switch off.
+
+## Court judges (later change)
+Four more offices in `ind_offices`: `court_judge_1..4` ("High Court Judge I..IV", badge **Hon. Justice**, salary, 14-day term, no levers). Admin -> Court appoints (first free seat) and removes judges with the same code as the other offices; they also show in Admin -> Offices. A sitting judge is assigned to hearings and rules on them. See docs/COURT.md.
