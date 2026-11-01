@@ -1,6 +1,7 @@
 // Game store — P1-SHELL. Session, GameState (via get_my_state), locations, events + realtime.
 import { showLevelUp } from './skills';
 import { useChallenges } from './challenges';
+import { useJourney } from './journey';
 import { showGraduation } from './school';
 import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
@@ -234,6 +235,12 @@ function onEventRow(ev: GameEvent) {
     toast(ev.title, 'good');
     void useChallenges.getState().load();
     scheduleRefresh(600);
+    return;
+  }
+  if (ev.kind === 'journey_step' || ev.kind === 'journey_day') {
+    // New-player journey: a step completed (claim it in Your first days) or the next day opened
+    toast(ev.body ? `${ev.title}. ${ev.body}` : ev.title, 'good');
+    void useJourney.getState().load();
     return;
   }
   if (ev.kind === 'graduated') {
