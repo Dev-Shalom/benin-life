@@ -235,9 +235,9 @@ begin
   -- Quick fix = 6 XP; the Hustler trait (skill_xp.hustle 1.25) makes it 7.5 -> 8
   v := pg_temp.hrun(a, 'mech_quick', '0.9999999');
   perform pg_temp.assert(v->>'status' = 'done', 'quick fix done');
-  perform pg_temp.assert(pg_temp.xp(a, 'mechanic') = 8, 'hustler: quick fix gives 8 XP (got ' || pg_temp.xp(a, 'mechanic') || ')');
+  perform pg_temp.assert(pg_temp.xp(a, 'mechanic') = 12, 'hustler: quick fix gives 12 XP (8 x 1.5 early boost, Fix it 11) (got ' || pg_temp.xp(a, 'mechanic') || ')');
   v := pg_temp.hrun(b, 'mech_quick', '0.9999999');
-  perform pg_temp.assert(pg_temp.xp(b, 'mechanic') = 6, 'no traits: 6 XP (got ' || pg_temp.xp(b, 'mechanic') || ')');
+  perform pg_temp.assert(pg_temp.xp(b, 'mechanic') = 9, 'no traits: 6 XP x 1.5 early boost = 9 (got ' || pg_temp.xp(b, 'mechanic') || ')');
   raise notice 'ok 3: hustle XP';
 end $$;
 
@@ -261,8 +261,8 @@ begin
   perform pg_temp.assert(v_ev = 0, 'no skill_up yet');
   perform pg_temp.to_hour(10.5);
   perform pg_temp.at(a, 'mechanic_village');
-  v := pg_temp.hrun(a, 'mech_quick', '0.9999999');   -- +8 -> 44 XP = level 2
-  perform pg_temp.assert(pg_temp.xp(a, 'mechanic') = 44, 'xp 44');
+  v := pg_temp.hrun(a, 'mech_quick', '0.9999999');   -- +12 (8 x 1.5 early boost, Fix it 11) -> 48 XP = level 2
+  perform pg_temp.assert(pg_temp.xp(a, 'mechanic') = 48, 'xp 48 (36 + 12)');
   perform pg_temp.assert((select count(*) from events where user_id = a and kind = 'skill_up') = 1, 'one skill_up event');
   perform pg_temp.assert((select (data->>'level')::int from events where user_id = a and kind = 'skill_up') = 2
                          and (select data->>'skill' from events where user_id = a and kind = 'skill_up') = 'mechanic', 'event says Mechanic level 2');
@@ -279,30 +279,30 @@ begin
   perform pg_temp.ysetup(c, 'laptop');
   r := pg_temp.yrun(c, 'chat_client', '0.9999999');
   perform pg_temp.assert(r->>'status' = 'paid', 'chat client paid');
-  perform pg_temp.assert(pg_temp.xp(c, 'yahoo') = 10, 'yahoo job: 10 XP (got ' || pg_temp.xp(c, 'yahoo') || ')');
+  perform pg_temp.assert(pg_temp.xp(c, 'yahoo') = 15, 'yahoo job: 10 x 1.5 = 15 XP (Fix it 11) (got ' || pg_temp.xp(c, 'yahoo') || ')');
   perform pg_temp.ysetup(c, 'laptop');
   r := pg_temp.yrun(c, 'chat_client', '0.0000001');
   perform pg_temp.assert(r->>'status' = 'caught', 'caught');
-  perform pg_temp.assert(pg_temp.xp(c, 'yahoo') = 10, 'a caught run gives no XP');
+  perform pg_temp.assert(pg_temp.xp(c, 'yahoo') = 15, 'a caught run gives no XP');
   -- activity: a jog round the stadium = fitness 4
   perform pg_temp.login(g);
   perform pg_temp.at(g, 'ogbemudia_stadium');
   perform do_activity('stadium_jog');
-  perform pg_temp.assert(pg_temp.xp(g, 'fitness') = 4, 'jog gives 4 fitness XP (got ' || pg_temp.xp(g, 'fitness') || ')');
+  perform pg_temp.assert(pg_temp.xp(g, 'fitness') = 6, 'jog gives 4 x 1.5 = 6 fitness XP (got ' || pg_temp.xp(g, 'fitness') || ')');
   -- career shift: the shift settle path awards by track
   update profiles set traits = '{}' where id = g;
   perform bl_skill_award(g, 'career', 'transport');
-  perform pg_temp.assert(pg_temp.xp(g, 'driving') = 6, 'transport shift = 6 driving XP');
+  perform pg_temp.assert(pg_temp.xp(g, 'driving') = 9, 'transport shift = 6 x 1.5 = 9 driving XP');
   perform bl_skill_award(g, 'career', 'tech');
-  perform pg_temp.assert(pg_temp.xp(g, 'yahoo') = 6, 'tech shift = 6 yahoo XP (IT)');
+  perform pg_temp.assert(pg_temp.xp(g, 'yahoo') = 9, 'tech shift = 6 x 1.5 = 9 yahoo XP (IT)');
   -- one action can feed two skills (jollof: cooking + business)
   perform bl_skill_award(g, 'hustle', 'vend_jollof');
-  perform pg_temp.assert(pg_temp.xp(g, 'cooking') = 7 and pg_temp.xp(g, 'business') = 3, 'jollof feeds cooking 7 and business 3');
+  perform pg_temp.assert(pg_temp.xp(g, 'cooking') = 11 and pg_temp.xp(g, 'business') = 5, 'jollof feeds cooking 7 -> 11 and business 3 -> 5 (x1.5 early boost)');
   -- the global multiplier
   perform pg_temp.cfg('skills.xp_mult', '2');
   x0 := pg_temp.xp(g, 'driving');
   perform bl_skill_award(g, 'career', 'transport');
-  perform pg_temp.assert(pg_temp.xp(g, 'driving') = x0 + 12, 'xp_mult 2 doubles');
+  perform pg_temp.assert(pg_temp.xp(g, 'driving') = x0 + 18, 'xp_mult 2 doubles (x1.5 early boost: 6 x 2 x 1.5)');
   perform pg_temp.cfg('skills.xp_mult', '1');
   -- an inactive source gives nothing; a missing source gives nothing
   update skill_sources set active = false where id = 'career:transport:driving';

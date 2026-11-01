@@ -340,3 +340,43 @@ begin
   perform pg_temp.assert(not has_function_privilege('anon', 'public.car_set_primary(text)', 'execute') and not has_function_privilege('authenticated', 'public.bl_driving_item(uuid)', 'execute'), 'grants');
   raise notice 'ok 10: primary car';
 end $$;
+
+-- ---------- 11. Balance ----------
+do $$
+declare a uuid := pg_temp.fx_make('FxBal', 1000000, 500000); r jsonb; v_before bigint; g uuid := pg_temp.fx_make('FxSkill'); v_base int;
+begin
+  -- the new defaults
+  perform pg_temp.assert((select (value #>> '{}')::numeric from game_config where key = 'crime.npc_base_pct') = 4.5
+    and (select (value #>> '{}')::numeric from game_config where key = 'crime.npc_max_pct') = 25
+    and (select (value #>> '{}')::numeric from game_config where key = 'crime.loss_max_pct') = 35
+    and (select (value #>> '{}')::numeric from game_config where key = 'crime.steal_caught_pct') = 70, 'new robbery defaults');
+  perform pg_temp.assert((select array_agg(caught_pct order by sort) from yahoo_jobs) = array[10, 14, 17, 20, 12]::numeric[], 'new EFCC defaults');
+  -- one robbery never takes more than the cap, even when an admin sets the loss to 100%; the bank is untouched
+  perform pg_temp.login(a);
+  update game_config set value = '100' where key in ('crime.loss_min_pct', 'crime.loss_max_pct');
+  update profiles set protected_until = null, charm_strength = 0, charm_until = null where id = a;
+  v_before := (select bank from profiles where id = a);
+  perform set_config('bl.test_rand', '0.0001', true);
+  r := bl_roll_street_robbery(a, 'upper_sakponba', 'walk', 1.0);
+  perform set_config('bl.test_rand', '', true);
+  perform pg_temp.assert(r is not null and (r->>'amount')::bigint = 350000, 'capped at 35% of 1,000,000: ' || coalesce(r::text, 'no robbery'));
+  perform pg_temp.assert((select bank from profiles where id = a) = v_before, 'bank is safe');
+  update game_config set value = '60' where key = 'crime.robbery_cap_pct';
+  update game_config set value = '35' where key = 'crime.robbery_cap_pct';
+  update game_config set value = '10' where key = 'crime.loss_min_pct';
+  update game_config set value = '35' where key = 'crime.loss_max_pct';
+  -- early skill XP: x1.5 at level 1 to 3, none from level 4 (the base gain also depends on the player's traits, so compare with the boost off)
+  perform pg_temp.login(g);
+  update game_config set value = '1' where key = 'skills.early_xp_mult';
+  perform bl_skill_award(g, 'career', 'transport');
+  v_base := (select xp from player_skills where user_id = g and skill_id = 'driving');
+  perform pg_temp.assert(v_base >= 6, 'base gain ' || v_base);
+  update game_config set value = '1.5' where key = 'skills.early_xp_mult';
+  update player_skills set xp = 0 where user_id = g and skill_id = 'driving';
+  perform bl_skill_award(g, 'career', 'transport');
+  perform pg_temp.assert((select xp from player_skills where user_id = g and skill_id = 'driving') = round(v_base * 1.5), 'level 1: x1.5 (' || v_base || ' -> ' || round(v_base * 1.5) || ')');
+  update player_skills set xp = 300 where user_id = g and skill_id = 'driving';
+  perform bl_skill_award(g, 'career', 'transport');
+  perform pg_temp.assert((select xp from player_skills where user_id = g and skill_id = 'driving') = 300 + v_base, 'level 4: no boost');
+  raise notice 'ok 11: balance';
+end $$;

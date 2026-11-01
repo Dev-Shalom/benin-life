@@ -181,7 +181,7 @@ begin
   perform pg_temp.assert(exists (select 1 from items where id = 'laptop' and 'hk_quarters' = any (sold_at)) and exists (select 1 from items where id = 'data_bundle' and 'hk_quarters' = any (sold_at)), 'laptops sold at HK');
   -- the Elon format
   select * into r from yahoo_jobs where id = 'elon_format';
-  perform pg_temp.assert((r.seconds, r.pay_min, r.pay_max, r.caught_pct, r.min_skill_level, r.min_tier, r.kind) = (50, 200000, 1200000, 20::numeric, 4, 1, 'job')
+  perform pg_temp.assert((r.seconds, r.pay_min, r.pay_max, r.caught_pct, r.min_skill_level, r.min_tier, r.kind) = (50, 200000, 1200000, 17::numeric, 4, 1, 'job')
                          and r.active and r.blurb like '%billionaire%crypto%', 'Elon format row');
   perform pg_temp.assert(r.pay_min > (select pay_max from yahoo_jobs where id = 'chat_client') and r.pay_max < (select pay_max from yahoo_jobs where id = 'big_job')
                          and r.caught_pct > (select caught_pct from yahoo_jobs where id = 'romance_job') and r.caught_pct < (select caught_pct from yahoo_jobs where id = 'big_job'),
@@ -784,7 +784,7 @@ begin
   perform pg_temp.assert(pg_temp.hint_of('select yahoo_job_start(''elon_format'')') = 'skill_level', 'admin raised the gate to level 5');
   update yahoo_jobs set min_skill_level = 4 where id = 'elon_format';
   select j into v_job from jsonb_array_elements(yahoo_status()->'jobs') j where j->>'id' = 'elon_format';
-  perform pg_temp.assert(v_job->>'locked' is null and (v_job->>'caught_pct')::numeric = 19 and (v_job->>'skill_caught_pct')::numeric = 16.72, 'level 4: open, 20 - 1 ThinkPad pt = 19 %, level cut 12 % = 16.72 %');
+  perform pg_temp.assert(v_job->>'locked' is null and (v_job->>'caught_pct')::numeric = 16 and (v_job->>'skill_caught_pct')::numeric = 14.08, 'level 4: open, 17 - 1 ThinkPad pt = 16 %, level cut 12 % = 14.08 %');
   select xp into v_xp from player_skills where user_id = d and skill_id = 'yahoo';
   v := yahoo_job_start('elon_format');
   perform pg_temp.advance((v->>'seconds')::numeric + 1);
