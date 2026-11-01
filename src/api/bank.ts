@@ -12,6 +12,11 @@ export const posDeposit = (amount: number) => rpc<MoneyMoveResult>('pos_deposit'
 export const bankTransfer = (username: string, amount: number, note: string) =>
   rpc<TransferResult>('bank_transfer', { p_username: username, p_amount: amount, p_note: note || null });
 
+export interface PhoneBankInfo { enabled: boolean; fee_pct: number; fee_min: number; max_amount: number; min_amount: number; cash: number; bank: number }
+export const phoneBankInfo = () => rpc<PhoneBankInfo>('phone_bank_info');
+export const phoneBankDeposit = (amount: number) => rpc<MoneyMoveResult & { fee: number }>('phone_bank_deposit', { p_amount: amount });
+export const phoneBankWithdraw = (amount: number) => rpc<MoneyMoveResult & { fee: number }>('phone_bank_withdraw', { p_amount: amount });
+
 /** PoS charge, same as the server's bl_pos_fee: max(min, pct %) rounded up to ₦10. */
 export function posFee(amount: number, pct: number, min: number): number {
   const raw = Math.max(min, (amount * pct) / 100);

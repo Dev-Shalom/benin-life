@@ -1,7 +1,7 @@
 // Phone "Bank" app (V1-5 — docs/BANK.md): balances, send money to another player by username
 // (bank to bank, with a confirm step), money history, and where to deposit / withdraw in town.
 import { useEffect, useState } from 'react';
-import { bankHistory, bankRecipient, bankTransfer, hourText } from '../../../api/bank';
+import { bankHistory, bankRecipient, bankTransfer, hourText, phoneBankDeposit, phoneBankInfo, phoneBankWithdraw, posFee, type PhoneBankInfo } from '../../../api/bank';
 import { errorMessage } from '../../../lib/api';
 import { naira, timeAgo } from '../../../lib/format';
 import type { BankRecipient, GameState, LedgerRow } from '../../../lib/types';
@@ -19,7 +19,7 @@ import { StatusTab } from './BankStatus';
 import { FeeLine, useFeeQuote } from './FeeLine';
 import '../../../styles/invest.css';
 
-type Tab = 'send' | 'bills' | 'status' | 'save' | 'invest' | 'history' | 'receipts' | 'where';
+type Tab = 'send' | 'move' | 'bills' | 'status' | 'save' | 'invest' | 'history' | 'receipts' | 'where';
 
 function History({ active }: { active: boolean }) {
   const [rows, setRows] = useState<LedgerRow[] | null>(null);
@@ -52,6 +52,64 @@ function History({ active }: { active: boolean }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Fix it 9: phone banking. Deposit or withdraw from anywhere, any time, for a small fee. In person at Bronze Bank in opening hours is free. */
+function PhoneMove({ active, state, onDone }: { active: boolean; state: GameState; onDone: () => void }) {
+  const refresh = useGame((s) => s.refresh);
+  const [info, setInfo] = useState<PhoneBankInfo | null>(null);
+  const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit');
+  const [amount, setAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = () => { phoneBankInfo().then(setInfo).catch(() => setInfo(null)); };
+  useEffect(() => { if (active) load(); }, [active]);
+  const p = state.profile;
+  if (!info) return <div className="panel-skel"><span /><span /></div>;
+  if (!info.enabled) return <p className="phone-app__lead">Phone banking is off for now. Use Bronze Bank or a PoS stand (see Where).</p>;
+  const n = Number(amount) || 0;
+  const fee = n > 0 ? posFee(n, info.fee_pct, info.fee_min) : 0;
+  const from = mode === 'deposit' ? p.cash : p.bank;
+  // the largest amount whose amount + fee still fits the balance
+  let max = Math.max(0, from - info.fee_min);
+  while (max > 0 && max + posFee(max, info.fee_pct, info.fee_min) > from) max -= 10;
+  if (info.max_amount > 0) max = Math.min(max, info.max_amount);
+  const blocked = n < info.min_amount ? `At least ${naira(info.min_amount)}` : info.max_amount > 0 && n > info.max_amount ? `At most ${naira(info.max_amount)} per go`
+    : n + fee > from ? (mode === 'deposit' ? 'Not enough cash (fee included)' : 'Not enough in the bank (fee included)') : null;
+  const go = async () => {
+    setBusy(true);
+    try {
+      const r = await (mode === 'deposit' ? phoneBankDeposit(n) : phoneBankWithdraw(n));
+      toast(`📱 ${r.message}`, 'good');
+      setAmount('');
+      await refresh();
+      load();
+      onDone();
+    } catch (e) {
+      toast(errorMessage(e), 'bad');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="bank-send stack" data-testid="phone-move">
+      <div className="inv-seg" role="tablist">
+        <button type="button" role="tab" aria-selected={mode === 'deposit'} className={mode === 'deposit' ? 'is-on' : ''} onClick={() => { setMode('deposit'); setAmount(''); }}>Deposit</button>
+        <button type="button" role="tab" aria-selected={mode === 'withdraw'} className={mode === 'withdraw' ? 'is-on' : ''} onClick={() => { setMode('withdraw'); setAmount(''); }}>Withdraw</button>
+      </div>
+      <p className="phone-app__lead">{mode === 'deposit' ? 'Move cash from your pocket into the bank, from wherever you are.' : 'Move money from the bank into your pocket, from wherever you are.'}</p>
+      <AmountBox value={amount} onChange={setAmount} max={max} min={info.min_amount} />
+      <div className="bankx__fee">
+        <div><span>Phone banking fee</span><b>{naira(fee)}</b></div>
+        <div><span>{mode === 'deposit' ? 'Total from your cash' : 'Total from your bank'}</span><b>{naira(n + fee)}</b></div>
+      </div>
+      <Button variant="green" block loading={busy} disabled={Boolean(blocked)} onClick={() => void go()}>
+        {blocked ?? (mode === 'deposit' ? `Deposit ${naira(n)}` : `Withdraw ${naira(n)}`)}
+      </Button>
+      <p className="bankx__fine">
+        Fee: {info.fee_pct}% of the amount, at least {naira(info.fee_min)}. Going to Bronze Bank in opening hours is free; PoS stands have their own charge. Check Where for hours and places.
+      </p>
+    </div>
   );
 }
 
@@ -160,7 +218,7 @@ export default function BankApp({ state }: { state: GameState }) {
       </div>
       <div className="bank-row"><span>Cash in pocket</span><b>{naira(p.cash)}</b></div>
       <div className="chop__tabs" role="tablist">
-        {([['send', '💸 Send'], ['bills', '🧾 Bills'], ['status', '🏛️ Status'], ['save', '🐷 Save'], ['invest', '📈 Invest'], ['history', '📜 History'], ['receipts', '🧾 Receipts'], ['where', '📍 Where']] as const).map(([id, label]) => (
+        {([['send', '💸 Send'], ['move', '📱 Move'], ['bills', '🧾 Bills'], ['status', '🏛️ Status'], ['save', '🐷 Save'], ['invest', '📈 Invest'], ['history', '📜 History'], ['receipts', '🧾 Receipts'], ['where', '📍 Where']] as const).map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} className={`chop__tab${tab === id ? ' is-on' : ''}`}
             onClick={() => setTab(id)}>{label}</button>
         ))}
@@ -208,6 +266,7 @@ export default function BankApp({ state }: { state: GameState }) {
         </div>
       ))}
 
+      {tab === 'move' && <PhoneMove active={tab === 'move'} state={state} onDone={reload} />}
       {tab === 'bills' && <BillsTab active={tab === 'bills'} />}
       {tab === 'status' && <StatusTab active={tab === 'status'} />}
       {tab === 'save' && <SaveTab active={tab === 'save'} goWhere={() => setTab('where')} />}

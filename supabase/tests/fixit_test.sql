@@ -246,3 +246,55 @@ begin
   perform pg_temp.assert(exists (select 1 from profiles where id = b), 'other players untouched');
   raise notice 'ok 8: delete my account';
 end $$;
+
+-- ---------- 9. Phone banking ----------
+do $$
+declare a uuid := pg_temp.fx_make('FxPhone', 1000000, 1000000); r jsonb; v_supply0 bigint; v_supply1 bigint; c0 bigint; b0 bigint;
+begin
+  perform pg_temp.login(a);
+  -- far from any bank, and busy: still works (like transfers)
+  update profiles set location_id = 'oba_market', busy_until = now() + interval '5 minutes', busy_label = 'x' where id = a;
+  select cash, bank into c0, b0 from profiles where id = a;
+  v_supply0 := (select sum(cash + bank) from profiles where id = a);
+  r := phone_bank_deposit(10000);
+  perform pg_temp.assert((r->>'fee')::bigint = 100 and (r->>'bank')::bigint = b0 + 10000 and (r->>'cash')::bigint = c0 - 10100, '1% of 10,000 = 100 fee, from cash: ' || r::text);
+  r := phone_bank_withdraw(2000);
+  perform pg_temp.assert((r->>'fee')::bigint = 50, 'minimum fee 50 on a small amount');
+  perform pg_temp.assert((select bank from profiles where id = a) = b0 + 10000 - 2050 and (select cash from profiles where id = a) = c0 - 10100 + 2000, 'withdraw: fee from the bank');
+  -- the fee is destroyed (a sink), the moves are not
+  v_supply1 := (select sum(cash + bank) from profiles where id = a);
+  perform pg_temp.assert(v_supply0 - v_supply1 = 150, 'money gone = the two fees only');
+  perform pg_temp.assert((select sum(delta) from ledger where user_id = a and reason = 'phone_bank_fee') = -150, 'fee rows in the ledger');
+  perform pg_temp.assert(bl_ledger_label('phone_bank_fee', '{}') = 'Phone banking fee' and bl_econ_category('phone_bank_fee') = 'Market and PoS fees', 'label and category');
+  -- limits kept
+  perform pg_temp.assert(pg_temp.fx_hint('select phone_bank_deposit(50)') = 'bad_amount', 'min amount kept');
+  perform pg_temp.assert(pg_temp.fx_hint('select phone_bank_deposit(100001)') = 'bad_amount', 'max per go kept (same as PoS)');
+  update profiles set cash = 10050 where id = a;
+  perform pg_temp.assert(pg_temp.fx_hint('select phone_bank_deposit(10000)') = 'not_enough_cash', 'fee must fit too: 10,000 + 100 > 10,050');
+  update profiles set bank = 10050 where id = a;
+  perform pg_temp.assert(pg_temp.fx_hint('select phone_bank_withdraw(10000)') = 'not_enough_bank', 'withdraw fee must fit too');
+  -- no exploit: round trips only lose money, never gain
+  update profiles set cash = 50000, bank = 50000 where id = a;
+  for i in 1..5 loop perform phone_bank_deposit(10000); perform phone_bank_withdraw(10000); end loop;
+  perform pg_temp.assert((select cash + bank from profiles where id = a) = 100000 - 5 * 200, 'ten moves cost exactly ten fees');
+  -- never earned income
+  perform pg_temp.assert(not ('phone_bank_fee' = any (bl_earn_reasons())) and not ('phone_bank_deposit' = any (bl_earn_reasons())), 'not an earn reason');
+  -- admin setting: switch off, change fee
+  update game_config set value = 'false' where key = 'bank.phone_enabled';
+  perform pg_temp.assert(pg_temp.fx_hint('select phone_bank_deposit(1000)') = 'phone_off', 'switch off refuses');
+  update game_config set value = 'true' where key = 'bank.phone_enabled';
+  update game_config set value = '2' where key = 'bank.phone_fee_pct';
+  perform pg_temp.assert((phone_bank_deposit(10000)->>'fee')::bigint = 200, 'admin fee % applies');
+  update game_config set value = '1' where key = 'bank.phone_fee_pct';
+  -- jailed: refused
+  update profiles set jailed_until = now() + interval '1 hour' where id = a;
+  perform pg_temp.assert(pg_temp.fx_hint('select phone_bank_deposit(1000)') = 'jailed', 'no banking from a cell');
+  update profiles set jailed_until = null where id = a;
+  -- in person at the bank stays free
+  update profiles set location_id = 'bronze_bank', busy_until = null, busy_label = null, cash = 5000, bank = 5000 where id = a;
+  update game_config set value = '0' where key in ('bank.open_hour', 'bank.close_hour');
+  r := bank_deposit(1000);
+  perform pg_temp.assert((select cash from profiles where id = a) = 4000 and not exists (select 1 from ledger where user_id = a and reason = 'phone_bank_fee' and created_at > now() - interval '1 second' and meta->>'amount' = '1000'), 'bank counter is free');
+  perform pg_temp.assert(not has_function_privilege('anon', 'public.phone_bank_deposit(bigint)', 'execute') and not has_function_privilege('authenticated', 'public.bl_phone_fee(bigint)', 'execute'), 'grants');
+  raise notice 'ok 9: phone banking';
+end $$;
