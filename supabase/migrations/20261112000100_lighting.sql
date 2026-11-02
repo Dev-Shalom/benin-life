@@ -154,7 +154,7 @@ begin
     continue when not found;
     r := u.room -> 'rect';
     v_w := (r->>2)::numeric - (r->>0)::numeric;
-    v_cnt := case when v_w > 6 then 2 else 1 end;
+    v_cnt := case when v_w > 7.5 then 2 else 1 end;
     v_items := '[]'::jsonb;
     for i in 1 .. v_cnt loop
       v_key := bl_house_light_give(p_uid, p_layout, v_fid,
