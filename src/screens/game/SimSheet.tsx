@@ -412,6 +412,8 @@ function SettingsTab({ state }: { state: GameState }) {
           checked={prefs.keepOwnMusic} onChange={(v) => prefs.set({ keepOwnMusic: v })} />
         <Switch label="Lite map for weak network" hint="A lighter 2D map that loads fast on slow or expensive data."
           checked={prefs.liteMap} onChange={(v) => prefs.set({ liteMap: v })} />
+        <Switch label="3D drive when I travel" hint="Watch your trip as a short drive along the road, with road events. Off = travel is quick and plain, like before."
+          checked={prefs.driveScene} onChange={(v) => prefs.set({ driveScene: v })} />
         <div className="settings-row settings-row--stack" data-tour="appearance">
           <div>
             <div>Appearance</div>

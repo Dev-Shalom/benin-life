@@ -50,6 +50,7 @@ const PATHS: Record<string, string> = {
   home: 'M3 11 12 4l9 7 M5 10v10h14V10 M10 20v-6h4v6',
   sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7L19 16Z',
   camera: 'M4 8h3l2-3h6l2 3h3v11H4V8Z M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+  horn: 'M4 10v4h3l5 4V6L7 10H4Z M16 9a4 4 0 0 1 0 6 M19 6.5a8 8 0 0 1 0 11',
   road: 'M8 3 4 21 M16 3l4 18 M12 4v3 M12 10v3 M12 16v3',
   mail: 'M3 6h18v12H3V6Z M3 7l9 6 9-6',
   laptop: 'M5 5h14v10H5V5Z M2 19h20l-2-4H4l-2 4Z',

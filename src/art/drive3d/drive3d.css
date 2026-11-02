@@ -1,0 +1,391 @@
+/* Drive scene overlay (docs/DRIVE.md). Tokens only (src/styles/tokens.css), so Light and Dark both work.
+   Nothing here covers the middle of the screen: the road stays visible. */
+.drive {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.drive-canvas {
+  position: absolute;
+  inset: 0;
+}
+.drive-canvas canvas {
+  display: block;
+}
+.drive__loading,
+.drive__fail {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  z-index: 1;
+}
+
+/* ---- name tags of other players ---- */
+.drive-tags {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.drive-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  color: var(--glass-text);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  box-shadow: var(--e1);
+  will-change: transform, opacity;
+}
+
+/* ---- top row ---- */
+.drive__top {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--sat) + 10px);
+  left: calc(var(--sal) + 12px);
+  right: calc(var(--sar) + 12px);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s3);
+  pointer-events: none;
+}
+.drive-chip {
+  pointer-events: auto;
+  min-width: 0;
+  max-width: calc(100% - 96px);
+  padding: 8px 12px 9px;
+  border-radius: var(--r-md);
+  background: var(--glass);
+  color: var(--glass-text);
+  box-shadow: var(--e2);
+}
+.drive-chip__route {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 18px;
+  min-width: 0;
+}
+.drive-chip__route span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drive-chip__route svg {
+  flex: none;
+  color: var(--glass-muted);
+}
+.drive-chip__sub {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-top: 1px;
+  font-size: var(--fs-xs);
+  line-height: 16px;
+  color: var(--glass-muted);
+}
+.drive-chip__road {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drive-chip__time {
+  flex: none;
+  font-weight: 700;
+  color: var(--glass-text);
+  font-variant-numeric: tabular-nums;
+}
+.drive-chip__bar {
+  margin-top: 6px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--line-strong);
+  overflow: hidden;
+}
+.drive-chip__bar i {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  border-radius: inherit;
+  transition: width 260ms linear;
+}
+.drive__ctrls {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s2);
+}
+.drive-btn {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  background: var(--glass);
+  color: var(--glass-text);
+  box-shadow: var(--e2);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--t-press) var(--ease-out), background var(--t-fast);
+}
+.drive-btn:active {
+  transform: scale(0.94);
+}
+.drive-btn:focus-visible,
+.drive-link:focus-visible,
+.drive-choice:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring), var(--e2);
+}
+.drive-btn--round {
+  width: 44px;
+  border-radius: 50%;
+}
+.drive-btn--cam {
+  padding: 0 14px 0 12px;
+  border-radius: var(--r-pill);
+  min-width: 44px;
+}
+
+/* ---- bottom ---- */
+.drive__links {
+  position: absolute;
+  z-index: 2;
+  left: calc(var(--sal) + 12px);
+  right: calc(var(--sar) + 12px);
+  bottom: calc(var(--sab) + 12px);
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.drive-link {
+  pointer-events: auto;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  color: var(--glass-muted);
+  box-shadow: var(--e1);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--t-press) var(--ease-out), color var(--t-fast);
+}
+.drive-link:active {
+  transform: scale(0.95);
+}
+.drive-link.is-warn {
+  color: var(--c-red);
+}
+
+.drive-card {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--sal) + 12px);
+  right: calc(var(--sar) + 12px);
+  bottom: calc(var(--sab) + 12px);
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 14px 14px 12px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--e3);
+  border: 1px solid var(--line);
+  animation: drive-rise var(--t-med) var(--ease-out);
+}
+@keyframes drive-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+.drive-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+.drive-card__icon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--tint-amber);
+  color: var(--c-amber);
+}
+.drive-card--ambush .drive-card__icon {
+  background: var(--tint-red);
+  color: var(--c-red);
+}
+.drive-card--police .drive-card__icon {
+  background: var(--tint-blue);
+  color: var(--c-blue);
+}
+.drive-card--beggar .drive-card__icon {
+  background: var(--tint-green);
+  color: var(--c-green);
+}
+.drive-card__tag {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.drive-card__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.drive-card__body {
+  margin: 8px 0 10px;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--text-2);
+}
+.drive-card__choices {
+  display: grid;
+  gap: var(--s2);
+}
+.drive-choice {
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-height: 48px;
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--t-press) var(--ease-out), background var(--t-fast);
+}
+.drive-choice:active {
+  transform: scale(0.98);
+}
+.drive-choice:disabled {
+  opacity: 0.6;
+}
+.drive-choice.is-first {
+  background: var(--primary);
+  border-color: transparent;
+  color: var(--on-primary);
+}
+.drive-choice__label {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: 20px;
+}
+.drive-choice__hint {
+  font-size: var(--fs-xs);
+  line-height: 14px;
+  opacity: 0.78;
+}
+.drive-card--arrive {
+  display: grid;
+  gap: 2px;
+}
+.drive-card--arrive .bl-btn {
+  margin-top: 10px;
+}
+.drive-card--arrive .drive-card__title {
+  font-size: var(--fs-xl);
+}
+
+.drive-outcome {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--sal) + 12px);
+  right: calc(var(--sar) + 12px);
+  bottom: calc(var(--sab) + 12px);
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--e3);
+  border: 1px solid var(--line);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  animation: drive-rise var(--t-med) var(--ease-out);
+}
+.drive-outcome b {
+  font-variant-numeric: tabular-nums;
+}
+.drive-outcome--good {
+  background: var(--tint-green);
+  color: var(--c-green);
+}
+.drive-outcome--warn {
+  background: var(--tint-amber);
+  color: var(--c-amber);
+}
+.drive-outcome--bad {
+  background: var(--tint-red);
+  color: var(--c-red);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drive-card,
+  .drive-outcome {
+    animation: none;
+  }
+  .drive-chip__bar i {
+    transition: none;
+  }
+}
+@media (min-width: 700px) {
+  .drive__links {
+    max-width: 460px;
+    margin: 0 auto;
+  }
+}

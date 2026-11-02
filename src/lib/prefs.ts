@@ -20,10 +20,12 @@ export interface Prefs {
   graphics: 'auto' | 'low' | 'high';
   /** Keep the player's own music (Spotify etc.) playing: the game starts no media element and no game music on its own. */
   keepOwnMusic: boolean;
+  /** Show the 3D drive scene while travelling (off = the old instant travel). docs/DRIVE.md */
+  driveScene: boolean;
 }
 
 const KEY = 'bl.prefs.v1';
-const DEFAULTS: Prefs = { theme: 'light', muted: false, sfx: true, music: true, liteMap: false, clean: false, graphics: 'auto', keepOwnMusic: true };
+const DEFAULTS: Prefs = { theme: 'light', muted: false, sfx: true, music: true, liteMap: false, clean: false, graphics: 'auto', keepOwnMusic: true, driveScene: true };
 
 function load(): Prefs {
   try {
@@ -40,6 +42,7 @@ function load(): Prefs {
       graphics: v.graphics === 'low' || v.graphics === 'high' ? v.graphics : 'auto',
       // older saved prefs have no key: default ON, their Music / SFX choices stay as they were
       keepOwnMusic: typeof v.keepOwnMusic === 'boolean' ? v.keepOwnMusic : DEFAULTS.keepOwnMusic,
+      driveScene: typeof v.driveScene === 'boolean' ? v.driveScene : DEFAULTS.driveScene,
     };
   } catch {
     return { ...DEFAULTS };
@@ -63,8 +66,8 @@ export const usePrefs = create<PrefsStore>((set, get) => ({
   ...load(),
   set: (patch) => {
     set(patch);
-    const { theme, muted, sfx, music, liteMap, clean, graphics, keepOwnMusic } = get();
-    save({ theme, muted, sfx, music, liteMap, clean, graphics, keepOwnMusic });
+    const { theme, muted, sfx, music, liteMap, clean, graphics, keepOwnMusic, driveScene } = get();
+    save({ theme, muted, sfx, music, liteMap, clean, graphics, keepOwnMusic, driveScene });
   },
   toggle: (k) => get().set({ [k]: !get()[k] } as Partial<Prefs>),
 }));

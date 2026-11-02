@@ -4,6 +4,7 @@ import { countdown, naira } from '../../lib/format';
 import { MODE_META } from '../../lib/pidgin';
 import type { GameState } from '../../lib/types';
 import { useGame } from '../../state/game';
+import { useDrive } from '../../state/drive';
 import { useUi } from '../../state/ui';
 import { Button, Icon, Modal, toast } from '../../ui';
 import type { PlayerStatus } from './status';
@@ -34,7 +35,8 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
   // Auto-arrive when the timer runs out.
   const travel = state.travel;
   const travelKey = travel ? `${travel.to}@${travel.arrives_at}` : null;
-  const due = Boolean(travel) && status.travelLeft <= 0;
+  const driveHold = useDrive((s) => s.hold); // a road-event card is waiting for an answer
+  const due = Boolean(travel) && status.travelLeft <= 0 && !driveHold;
   useEffect(() => {
     if (!due || !travelKey || arriving.current === travelKey) return;
     arriving.current = travelKey;
@@ -63,7 +65,7 @@ export function StatusBanners({ state, status }: { state: GameState; status: Pla
         await refresh();
       }
     })();
-  }, [due, travelKey, travel, byId, refresh, retryTick]);
+  }, [due, travelKey, travel, byId, refresh, retryTick, driveHold]);
 
   // Collect a finished shift (pay, XP, promotion) when its timer runs out, also after a reload.
   const shiftEnds = p.job_shift_ends_at ?? null;

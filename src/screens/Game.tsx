@@ -47,6 +47,7 @@ import { GlobalPanelSheet } from './game/PanelHost';
 import { Phone } from './game/Phone';
 import { LookSheet, SimSheet } from './game/SimSheet';
 import { StatusBanners } from './game/StatusBanners';
+import { DriveHost } from './game/DriveHost';
 import { ClubMusicChip } from './game/ClubMusicChip';
 import { ElectionBanner, PoliticsHost } from './game/PollingStrip';
 import { deriveStatus } from './game/status';
@@ -933,6 +934,7 @@ export default function Game() {
           onOpen={(id) => { if (id !== state.location.id || state.travel) setMapOpen(true); select(id); }} />
       )}
       <DailySync here={dailyHere} />
+      <DriveHost state={state} hour={hourF} />
       <ChallengeSync />
       <LeftRail state={state} status={status} atHome={atHome} compact={!showHome && (!showPlace || insets.narrow)} />
 
