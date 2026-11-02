@@ -597,7 +597,7 @@ export const LAYOUTS: Record<HomeLayoutId, HomeLayout> = {
       { id: 'lt_dining', kind: 'ceiling_light', x: 10.4, z: 6.8, included: 'ceiling_light' },
       { id: 'lt_wall1', kind: 'wall_light', x: 0.1, z: 5.0, rot: 1 * Q, included: 'wall_light' },
       { id: 'lt_wall2', kind: 'wall_light', x: 0.1, z: 8.8, rot: 1 * Q, included: 'wall_light' },
-      { id: 'lt_gate', kind: 'gate_light', x: 14.6, z: 10.3, included: 'gate_light' },
+      { id: 'lt_gate', kind: 'gate_light', x: 14.5, z: 7.6, included: 'gate_light' },
       // default set (replaced by the player's own furniture)
       { id: 'bed', kind: 'bed_double', x: 1.35, z: 1.35, color: '#5b3fa0' },
       { id: 'wardrobe', kind: 'wardrobe', x: 4.62, z: 1.8, rot: 3 * Q, color: '#8a5a33' },

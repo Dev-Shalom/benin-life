@@ -713,13 +713,15 @@ function House(props: HomeSceneProps & {
   useEffect(() => {
     if (!ghostObj || !props.ghost) return;
     const { item, invalid } = props.ghost;
-    ghostObj.position.set(item.x, item.y ?? 0, item.z);
+    // L1: a table lamp being placed rests on the table under it
+    const lifted = isLight(item.kind) ? liftLights([...L.furniture, item]) : null;
+    ghostObj.position.set(item.x, lifted ? (lifted[lifted.length - 1].y ?? 0) : (item.y ?? 0), item.z);
     ghostObj.rotation.y = ((item.rot ?? 0) * Math.PI) / 2;
     ghostMats.solid.color.set(invalid ? '#ff6b6b' : '#ffffff');
     ghostMats.solid.emissive.set(invalid ? '#6e0b0b' : '#0b3d1f');
     ghostMats.ring.color.set(invalid ? '#e0322b' : '#17a05c');
     invalidate();
-  }, [ghostObj, props.ghost, ghostMats, invalidate]);
+  }, [ghostObj, props.ghost, ghostMats, invalidate, L.furniture]);
 
   // ---- selection ring
   const ringGeo = useMemo(() => new PlaneGeometry(1, 1), []);
