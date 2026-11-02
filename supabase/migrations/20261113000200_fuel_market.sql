@@ -149,7 +149,7 @@ begin
   select biz_owner into v_owner from public.locations where id = l.id;
   return jsonb_build_object('station', true, 'id', l.id, 'name', l.name, 'dry', v_dry, 'scarce', v_scarce, 'state', v_state, 'petrol', v_today,
     'diesel', bl_fuel_price((select i from public.items i where i.id = 'diesel'), l.id), 'yesterday', v_yest,
-    'queue_seconds', case when v_scarce then bl_power_num('power.queue_seconds_scarce', 25) else bl_power_num('power.queue_seconds', 0) end,
+    'queue_seconds', case when v_scarce then bl_power_num('fuel.queue_seconds_scarce', 25) else bl_power_num('fuel.queue_seconds', 0) end,
     'owner', v_owner, 'line', bl_fuel_line(l.id, v_state));
 end $$;
 

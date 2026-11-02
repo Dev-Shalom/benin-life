@@ -70,17 +70,17 @@ insert into public.game_config (key, value, category, label, description, kind, 
 ('power.needs_light_activities', '"watch_tv"', 'power', 'Activities that need light', 'Comma-separated home activities refused while the home has no light ("No light").', 'text', null, null),
 ('power.dark_rest_pct', '85', 'power', 'Dark and hot: rest recovers (%)', 'Sleep and nap energy while the home has no light. 100 = no penalty.', 'percent', 0, 100),
 ('power.dark_bonus_pct', '25', 'power', 'No light: furniture bonus kept (%)', 'Fans, ACs, fridges and other piece bonuses shrink to this share while the home has no light. 0 = none.', 'percent', 0, 100),
-('power.petrol_price', '1050', 'power', 'Petrol price a litre', 'Base price in naira before the daily move and scarcity. Real 2026 Benin is about 900 to 1,200.', 'naira', 100, 20000),
-('power.diesel_price', '1250', 'power', 'Diesel price a litre', 'Base price in naira before the daily move and scarcity.', 'naira', 100, 20000),
-('power.fuel_daily_pct', '6', 'power', 'Fuel price: daily move (%)', 'The price moves by up to this much each Benin day (the same for everybody, fixed by the date).', 'percent', 0, 50),
-('power.can_discount_pct', '2', 'power', 'Jerrycan discount (%)', 'Buying a full can is this much cheaper than the same litres.', 'percent', 0, 30),
-('power.scarcity_price_mult', '1.6', 'power', 'Fuel scarcity: price multiplier', 'During a scarcity event every station price is multiplied by this.', 'number', 1, 10),
-('power.scarcity_dry_pct', '35', 'power', 'Fuel scarcity: stations dry (%)', 'During a scarcity event this share of stations has no fuel at all that day (fixed by date and station).', 'percent', 0, 100),
-('power.queue_seconds', '0', 'power', 'Queue at the pump (real seconds), normal days', 'How long the player is busy queueing when buying fuel on a normal day.', 'number', 0, 300),
-('power.queue_seconds_scarce', '25', 'power', 'Queue at the pump (real seconds), scarcity', 'The same during a fuel scarcity event.', 'number', 0, 600),
-('power.scarcity_default_hours', '8', 'power', 'Admin scarcity length (real hours)', 'The default for the Start scarcity button in Admin -> Power.', 'number', 0.1, 72),
-('power.random_scarcity_chance_pct', '2', 'power', 'Random fuel scarcity: chance per day (%)', 'Each real day (UTC) has this chance of a fuel scarcity at a random time. 0 = never.', 'percent', 0, 100),
-('power.random_scarcity_hours', '10', 'power', 'Random scarcity length (real hours)', 'How long a random fuel scarcity lasts.', 'number', 0.1, 72)
+('fuel.petrol_price', '1050', 'fuel', 'Petrol price a litre', 'Base price in naira before the daily move and scarcity. Real 2026 Benin is about 900 to 1,200.', 'naira', 100, 20000),
+('fuel.diesel_price', '1250', 'fuel', 'Diesel price a litre', 'Base price in naira before the daily move and scarcity.', 'naira', 100, 20000),
+('fuel.daily_pct', '6', 'fuel', 'Fuel price: daily move (%)', 'The price moves by up to this much each Benin day (the same for everybody, fixed by the date).', 'percent', 0, 50),
+('fuel.can_discount_pct', '2', 'fuel', 'Jerrycan discount (%)', 'Buying a full can is this much cheaper than the same litres.', 'percent', 0, 30),
+('fuel.scarcity_price_mult', '1.6', 'fuel', 'Fuel scarcity: price multiplier', 'During a scarcity event every station price is multiplied by this.', 'number', 1, 10),
+('fuel.scarcity_dry_pct', '35', 'fuel', 'Fuel scarcity: stations dry (%)', 'During a scarcity event this share of stations has no fuel at all that day (fixed by date and station).', 'percent', 0, 100),
+('fuel.queue_seconds', '0', 'fuel', 'Queue at the pump (real seconds), normal days', 'How long the player is busy queueing when buying fuel on a normal day.', 'number', 0, 300),
+('fuel.queue_seconds_scarce', '25', 'fuel', 'Queue at the pump (real seconds), scarcity', 'The same during a fuel scarcity event.', 'number', 0, 600),
+('fuel.scarcity_default_hours', '8', 'fuel', 'Admin scarcity length (real hours)', 'The default for the Start scarcity button in Admin -> Power.', 'number', 0.1, 72),
+('fuel.random_scarcity_chance_pct', '2', 'fuel', 'Random fuel scarcity: chance per day (%)', 'Each real day (UTC) has this chance of a fuel scarcity at a random time. 0 = never.', 'percent', 0, 100),
+('fuel.random_scarcity_hours', '10', 'fuel', 'Random scarcity length (real hours)', 'How long a random fuel scarcity lasts.', 'number', 0.1, 72)
 on conflict (key) do nothing;
 
 -- ---------------------------------------------------------------------------------------------
@@ -311,8 +311,8 @@ begin
     v_chance := bl_power_num('power.random_blackout_chance_pct', 0);
     v_dur := bl_power_num('power.random_blackout_minutes', 90) * 60;
   else
-    v_chance := bl_power_num('power.random_scarcity_chance_pct', 0);
-    v_dur := bl_power_num('power.random_scarcity_hours', 10) * 3600;
+    v_chance := bl_power_num('fuel.random_scarcity_chance_pct', 0);
+    v_dur := bl_power_num('fuel.random_scarcity_hours', 10) * 3600;
   end if;
   v_dur := least(86000, greatest(60, v_dur));
   if v_chance > 0 then
@@ -936,24 +936,24 @@ declare g public.power_gear; v_base numeric; v_day text; v_h double precision; v
 begin
   select * into g from public.power_gear where id = p_item.id and kind = 'fuel';
   if not found then return null; end if;
-  v_base := case g.fuel when 'diesel' then bl_power_num('power.diesel_price', 1250) else bl_power_num('power.petrol_price', 1050) end;
+  v_base := case g.fuel when 'diesel' then bl_power_num('fuel.diesel_price', 1250) else bl_power_num('fuel.petrol_price', 1050) end;
   if g.grey then
     -- black-market fuel: cheaper on a normal day, dearer in a scarcity (the multipliers live in Admin -> Black market)
     v_base := v_base * case when bl_fuel_scarce() then bl_power_num('blackmarket.fuel_scarcity_mult', 1.9) else bl_power_num('blackmarket.fuel_mult', 0.8) end;
   end if;
   v_day := to_char(bl_now() at time zone bl_clock_tz(), 'YYYY-MM-DD');
   v_h := bl_power_h(v_day || ':fuel:' || g.fuel) * 2 - 1;                      -- -1 .. 1, same for everybody all day
-  v_p := v_base * (1 + bl_power_num('power.fuel_daily_pct', 6) / 100.0 * v_h);
-  if not g.grey and bl_fuel_scarce() then v_p := v_p * bl_power_num('power.scarcity_price_mult', 1.6); end if;
+  v_p := v_base * (1 + bl_power_num('fuel.daily_pct', 6) / 100.0 * v_h);
+  if not g.grey and bl_fuel_scarce() then v_p := v_p * bl_power_num('fuel.scarcity_price_mult', 1.6); end if;
   if not g.grey and p_loc is not null then v_p := v_p * (1 + (bl_power_h(v_day || ':station:' || p_loc) - 0.5) * 0.04); end if;   -- +-2 % between stations
-  v_p := v_p * g.litres * case when g.litres >= 5 and not g.grey then 1 - bl_power_num('power.can_discount_pct', 2) / 100.0 else 1 end;
+  v_p := v_p * g.litres * case when g.litres >= 5 and not g.grey then 1 - bl_power_num('fuel.can_discount_pct', 2) / 100.0 else 1 end;
   return greatest(10, (round(v_p / 10.0) * 10)::bigint);
 end $$;
 
 -- is this station out of fuel today? (scarcity only, fixed by date and station)
 create or replace function public.bl_fuel_dry(p_loc text) returns boolean
 language sql stable set search_path = public as $$
-  select bl_fuel_scarce() and bl_power_h(to_char(bl_now() at time zone bl_clock_tz(), 'YYYY-MM-DD') || ':dry:' || p_loc) * 100 < bl_power_num('power.scarcity_dry_pct', 35)
+  select bl_fuel_scarce() and bl_power_h(to_char(bl_now() at time zone bl_clock_tz(), 'YYYY-MM-DD') || ':dry:' || p_loc) * 100 < bl_power_num('fuel.scarcity_dry_pct', 35)
 $$;
 
 -- shop_buy guard: a dry station sells no fuel; a queue keeps the player busy a few seconds
@@ -965,7 +965,7 @@ begin
   if bl_fuel_dry(p_loc.id) then
     raise exception '% no get fuel today. Try another station, or the yard after dark.', p_loc.name using errcode = 'P0001', hint = 'station_dry';
   end if;
-  v_q := case when bl_fuel_scarce() then bl_power_num('power.queue_seconds_scarce', 25) else bl_power_num('power.queue_seconds', 0) end;
+  v_q := case when bl_fuel_scarce() then bl_power_num('fuel.queue_seconds_scarce', 25) else bl_power_num('fuel.queue_seconds', 0) end;
   if v_q > 0 then perform bl_set_busy_seconds(p_uid, v_q, 'Queueing for fuel'); end if;
 end $$;
 
