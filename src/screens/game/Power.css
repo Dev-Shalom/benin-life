@@ -86,3 +86,5 @@
 .yd-qty button { width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .12); color: inherit; font: 800 20px var(--font-display, inherit); cursor: pointer; }
 .yd-qty b { min-width: 56px; text-align: center; font: 800 16px var(--font-display, inherit); }
 .yd-foot { margin: 0; font-size: 12.5px; line-height: 1.45; opacity: .65; }
+
+.fs-strip__hint { margin: 0; font-size: 12.5px; line-height: 1.4; opacity: .7; }

@@ -223,8 +223,9 @@ export function PowerHost() {
   useEffect(() => startPower(), []);
   const d = usePower((s) => s.data);
   const handled = useRef<Set<string>>(new Set());
-  const [, bump] = useState(0);
-  const next = useMemo(() => (d?.notices ?? []).find((n) => !handled.current.has(n.kind + ':' + n.key)) ?? null, [d]);
+  const [tick, bump] = useState(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const next = useMemo(() => (d?.notices ?? []).find((n) => !handled.current.has(n.kind + ':' + n.key)) ?? null, [d, tick]);
   const card = next && !TOASTS[next.kind] ? next : null;
   const held = useHeld(!!card, '[data-power-card]');
   const scene = useGame((s) => s.state?.location?.scene);

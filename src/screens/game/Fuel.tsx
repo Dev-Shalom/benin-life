@@ -37,6 +37,7 @@ export function FuelStrip({ locId, compact = false }: { locId: string; compact?:
           <span><small>Diesel a litre</small><b>{naira(info.diesel ?? 0)}</b></span>
         </div>
       )}
+      {!info.dry && !compact && <p className="fs-strip__hint">Fuel is on the Kiosk tab above. Pour it into your generator from the Power sheet.</p>}
       {info.scarce && <p className="fs-strip__warn">Fuel scarcity: prices are up and the queue is long{info.queue_seconds ? ` (about ${info.queue_seconds} s)` : ''}.</p>}
     </section>
   );
