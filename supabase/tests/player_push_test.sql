@@ -377,6 +377,11 @@ begin
   update profiles set location_id = v_club where id in (b);
   update profiles set last_seen = now() - interval '1 hour' where id = b;
   delete from push_outbox;
+  -- Fix it 3: club hype pushes are opt-in ("Club spray alerts: phone pushes"), off by default
+  insert into place_announcements (location_id, user_id, username, kind, amount, qty, text, place)
+  values (v_club, a, 'PpAda', 'spray', 50000, 1, 'default off: no push', 'Kingdom');
+  perform pg_temp.assert(pg_temp.cnt(b) = 0, 'club hype push is off by default');
+  insert into club_alert_prefs (user_id, push) values (b, true);
   insert into place_announcements (location_id, user_id, username, kind, amount, qty, text, place)
   values (v_club, a, 'PpAda', 'spray', 50000, 1, '@PpAda just sprayed ₦50,000 at Kingdom. The whole club is shaking.', 'Kingdom');
   select * into row from push_outbox where user_id = b;

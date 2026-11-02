@@ -1,7 +1,10 @@
 // R12: the polling-unit line on the place card ("Election day" while voting is on) and the election-day banner on the game screen.
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useGame } from '../../state/game';
+import { markSeen, wasSeen } from '../../lib/seenPrompts';
 import { useNow } from '../../lib/clock';
 import { startPolitics, usePolitics } from '../../state/politics';
+import { startOffices } from '../../state/offices';
 import { useUi } from '../../state/ui';
 import { Button } from '../../ui';
 
@@ -18,6 +21,7 @@ function span(sec: number): string {
 /** Follows Benin Votes for the signed-in game (status, election-day banner, alerts). */
 export function PoliticsHost() {
   useEffect(() => startPolitics(), []);
+  useEffect(() => startOffices(), []);
   return null;
 }
 
@@ -47,26 +51,46 @@ export function PollingStrip({ locId }: { locId: string }) {
   );
 }
 
-/** A banner above the place card while a phase needs the player: registration open, voting day. Taps open Benin Votes. */
+/** A banner above the place card while a phase needs the player: registration open, voting day. Taps open Benin Votes.
+ *  The registration prompt shows at most once per election cycle per player (then the phone badge and the Elections tab are enough),
+ *  and never to someone who already declared. Voting day always shows. */
 export function ElectionBanner() {
   const s = usePolitics((x) => x.status);
+  const uid = useGame((g) => g.state?.profile.id) ?? '';
   const now = useNow(30_000);
   const c = s?.cycle;
+  const regKey = c ? `reg.${c.id}` : '';
+  // Decided once per cycle when the banner first has something to say: a reload or a new session will not bring it back.
+  const [shownFor, setShownFor] = useState<string | null>(null);
+  const [hidden, setHidden] = useState(false);
+  const wantsReg = Boolean(s?.enabled && c && c.status === 'registration' && !s.me.candidacy);
+  useEffect(() => {
+    if (!wantsReg || !uid || !regKey || shownFor === regKey) return;
+    if (!wasSeen(uid, regKey)) { setShownFor(regKey); setHidden(false); markSeen(uid, regKey); }
+  }, [wantsReg, uid, regKey, shownFor]);
   if (!s || !s.enabled || !c) return null;
   if (c.status === 'campaign') return null;
   const left = (Date.parse(c.next_at) - now) / 1000;
   const voted = s.me.voted.length;
   const voting = c.voting_open;
+  if (!voting && (!wantsReg || shownFor !== regKey || hidden)) return null;
   return (
     <div className="banners">
-      <button type="button" className="banner banner--vote" data-testid="election-banner"
-        onClick={() => useUi.getState().openPhone(voting ? 'politics:vote' : 'politics:elect')}>
-        <span className="banner__icon" aria-hidden>{voting ? '🗳️' : '📣'}</span>
-        <div className="grow">
-          <div className="banner__title">{voting ? 'Election day' : 'Candidate registration is open'}</div>
-          <div className="banner__sub">{voting ? (voted >= 3 ? 'You voted in every race. Thank you.' : `Go to ${s.me.ward.poll_unit_name ?? 'your polling unit'} and vote. Closes in ${span(left)}.`) : `Declare for office. Closes in ${span(left)}.`}</div>
-        </div>
-      </button>
+      <div className="banner banner--vote banner--dismiss" data-testid="election-banner">
+        <button type="button" className="banner__main"
+          onClick={() => useUi.getState().openPhone(voting ? 'politics:vote' : 'politics:elect')}>
+          <span className="banner__icon" aria-hidden>{voting ? '🗳️' : '📣'}</span>
+          <div className="grow">
+            <div className="banner__title">{voting ? 'Election day' : 'Candidate registration is open'}</div>
+            <div className="banner__sub">{voting ? (voted >= 3 ? 'You voted in every race. Thank you.' : `Go to ${s.me.ward.poll_unit_name ?? 'your polling unit'} and vote. Closes in ${span(left)}.`) : `Declare for office. Closes in ${span(left)}.`}</div>
+          </div>
+        </button>
+        {!voting && (
+          <div className="banner__acts">
+            <button type="button" className="banner__x" data-testid="election-banner-dismiss" onClick={() => setHidden(true)}>Don't show again this election</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

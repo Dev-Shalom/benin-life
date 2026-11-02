@@ -1,0 +1,502 @@
+/* UI pass: shared comfort rules loaded after every other stylesheet in main.tsx.
+ *
+ * What this file does (see docs/UI_PASS.md for the screen-by-screen list):
+ *  - spacing and sizing tokens used below (--tap, --gutter, --fs-label, --fs-body)
+ *  - tap targets at least 40x40 (small round buttons get an invisible bigger hit area)
+ *  - small labels at least 12px, body text at least 13px
+ *  - phone frame and HUD fit 360px wide phones; chip and tab rows scroll inside themselves
+ *  - long names and words wrap instead of pushing the layout
+ *
+ * Selectors start with :root so they win over component stylesheets that load later (lazy chunks).
+ * Do not change colours, fonts or layouts here: only space, size and wrapping.
+ */
+:root {
+  --tap: 40px;
+  --gutter: 16px;
+  --card-pad: 14px;
+  --stack: 12px;
+  --fs-label: 12px;
+  --fs-body: 13.5px;
+}
+
+/* ---------- Text safety ---------- */
+:root :is(h1, h2, h3, h4, h5, p, li, .alert__meta, .gist-post__name, .item__name, .item__desc) {
+  overflow-wrap: anywhere;
+}
+:root :is(button, .bl-btn) {
+  overflow-wrap: break-word;
+}
+
+/* ---------- Phone frame: use the width the screen has ---------- */
+:root .phone {
+  width: min(380px, calc(100vw - 16px));
+  padding: 7px;
+  margin-top: 44px;
+  height: min(780px, calc(var(--vvh, 100dvh) - var(--sat) - var(--sab) - 92px));
+}
+:root .phone__screen {
+  border-radius: 42px;
+}
+/* the home bar sits on its own strip so it never covers the last row of an app */
+:root .phone__screen--app .phone-app {
+  padding-bottom: 30px;
+}
+:root .phone-app__body {
+  padding: 6px var(--gutter) 20px;
+}
+:root .phone-app__bar {
+  padding: 8px var(--gutter);
+}
+:root .phone-app__back {
+  width: var(--tap);
+  height: var(--tap);
+}
+:root .phone__home-bar {
+  height: 30px;
+  bottom: 2px;
+}
+@media (max-width: 400px) {
+  :root .phone-app__title {
+    font-size: 17px;
+  }
+}
+
+/* ---------- Top pill: the clock, mood, money and "+" must all fit at 360 ---------- */
+@media (max-width: 399px) {
+  :root .pill-bar {
+    gap: 4px;
+    padding-left: 12px;
+    font-size: 13px;
+  }
+  :root .pill-bar__online,
+  :root .pill-bar__sep--online {
+    display: none;
+  }
+  :root .pill-bar__mood {
+    padding-inline: 4px;
+  }
+  :root .pill-bar__cash {
+    padding-left: 10px;
+  }
+}
+/* bigger invisible tap areas for the small round buttons */
+:root :is(.pill-bar__plus, .ev-banner__x, .today-head__x, .pc-iconbtn, .pc-fold, .c3-dot, .qty__btn) {
+  position: relative;
+}
+:root :is(.pill-bar__plus, .ev-banner__x, .today-head__x, .pc-iconbtn, .pc-fold, .c3-dot, .qty__btn)::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+:root .pill-bar__amount {
+  position: relative;
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+}
+:root .pill-bar__mood {
+  min-height: var(--tap);
+}
+
+/* ---------- Sheets and modals ---------- */
+:root .bl-sheet__close {
+  width: 42px !important;
+  height: 42px !important;
+  top: 10px;
+  right: 10px;
+}
+:root .bl-sheet__head {
+  padding: 28px 64px 12px 20px;
+}
+:root .bl-sheet__body {
+  padding: 10px var(--gutter) calc(24px + var(--sab));
+}
+:root .bl-sheet__foot {
+  padding: 12px var(--gutter) calc(14px + var(--sab));
+}
+:root .bl-iconbtn--plain {
+  min-width: var(--tap);
+  min-height: var(--tap);
+}
+
+/* ---------- Tabs, chips and segmented rows: scroll inside themselves ---------- */
+:root :is(.bl-tabs, .chop__tabs, .gist-chips, .buy-cats, .btq__cats, .pp-chips) {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+:root :is(.bl-tabs, .chop__tabs, .gist-chips, .buy-cats, .btq__cats, .pp-chips)::-webkit-scrollbar {
+  display: none;
+}
+:root :is(.bl-tab, .chop__tab, .gist-chip, .buy-cat, .btq__cat, .pp-chip, .ck-fchip, .msgs-pill, .seg__btn, .opt, .dm-chip, .adm-chip) {
+  flex: 1 0 auto;
+  min-height: var(--tap);
+  white-space: nowrap;
+}
+
+/* ---------- Buttons ---------- */
+:root .bl-btn {
+  min-height: var(--tap);
+}
+:root .bl-btn--sm {
+  min-height: var(--tap);
+  padding-inline: 14px;
+}
+:root :is(.adm-btn, .adm-iconbtn, .adm-toggle) {
+  min-height: 40px;
+}
+:root .adm-iconbtn {
+  min-width: 40px;
+}
+:root :is(.msgs-iconbtn, .gist-iconbtn, .pc-iconbtn, .pc-fold) {
+  min-width: var(--tap);
+  min-height: var(--tap);
+}
+:root .buy-tier {
+  min-height: 36px;
+}
+
+/* ---------- Small labels: 12px minimum (generated from the screen audit) ---------- */
+:root span.adm-kicker,
+:root span.adm-badge.adm-badge--violet,
+:root span.adm-badge.adm-badge--blue,
+:root span.adm-badge.adm-badge--grey,
+:root span.adm-inline__cap,
+:root span.adm-chip__n,
+:root code.adm-cfg__key,
+:root span.cr-tag,
+:root span.adm-badge.adm-badge--green,
+:root span.tag-pill.tag-pill--blue,
+:root span.tag-pill.tag-pill--amber,
+:root span.tag-pill.tag-pill--green,
+:root span.tag-pill.tag-pill--violet,
+:root span.ev-live,
+:root span.ev-banner__count,
+:root span.wish-chip__sub,
+:root span.beta-badge.beta-badge--hud,
+:root span.origin-chip.origin-chip--nepo,
+:root span.dock__badge,
+:root span.loc-district,
+:root span.risk-chip.risk-chip--bad,
+:root span.risk-chip.risk-chip--warn,
+:root span.risk-chip.risk-chip--info,
+:root span.tcard__time,
+:root span.tcard__risk.is-good,
+:root span.topup__tag.topup__tag--none,
+:root span.topup__tag,
+:root span.topup__ribbon,
+:root span.receipt__city,
+:root p.receipt__thanks,
+:root span.msgs-badge,
+:root p.st-hero__date,
+:root p.st-eyebrow,
+:root span.wk-today,
+:root span.place3d__pill.is-npc,
+:root span.place3d__more,
+:root span.pc-act__time,
+:root span.pc-act__weekend,
+:root span.pc-fx,
+:root span.pc-fx.is-bad,
+:root span.origin-chip.origin-chip--lapo,
+:root span.yahoo-badge,
+:root span.c3-pill__tag,
+:root span.where-chip__label,
+:root span.buy-card__tier.buy-card__tier--lapo,
+:root span.buy-card__perk,
+:root span.buy-card__tax,
+:root span.buy-card__owned,
+:root span.buy-card__tier.buy-card__tier--mid,
+:root span.buy-card__tier.buy-card__tier--nepo,
+:root span.dream-hero__eyebrow,
+:root span.sk-chip.is-ok,
+:root span.sk-chip,
+:root span.age-badge,
+:root span.beta-badge,
+:root span.btq-card__brand,
+:root span.btq-badge.btq-badge--own,
+:root span.btq-card__tax,
+:root div.alert__meta,
+:root span.daily-step__day,
+:root span.daily-step__item,
+:root span.c3-pill__ev.is-live,
+:root span.app-icon__name,
+:root span.app-icon__badge,
+:root span.hs-chip,
+:root span.hs-chip.is-ok,
+:root span.hs-chip.is-risk,
+:root span.hs-chip.is-need,
+:root span.sc-chip,
+:root span.sc-chip.is-ok,
+:root span.sc-chip.is-risk,
+:root span.sc-chip.is-need,
+:root span.bills__sub,
+:root p.inv-port__note,
+:root span.inv-badge.inv-badge--safe,
+:root span.inv-badge.inv-badge--medium,
+:root span.bl-tab__badge,
+:root button.bz-chip.is-ok,
+:root button.bz-chip,
+:root span.pp-tag,
+:root span.pp-tag.is-warn,
+:root span.cars-mine__sub,
+:root span.dealer-tier.dealer-tier--budget,
+:root span.dealer-tier.dealer-tier--mid,
+:root span.dealer-tier.dealer-tier--premium,
+:root small.item__tax,
+:root span.cars-app__compare,
+:root span.cars-app__hint,
+:root span.item__owned,
+:root span.msgs-badge.fr-unread,
+:root span.office-tag,
+:root span.yh-rank,
+:root span.yh-screen__where,
+:root span.yh-odds.is-cool,
+:root span.yh-odds.is-warm,
+:root p.yh-fine,
+:root p.yh-fine.yh-fine--top,
+:root span.yh-odds.is-hot,
+:root h5.yh-gm__sub,
+:root span.rk-tier.rk-tier--0,
+:root span.rk-pod__val.is-band,
+:root span.rk-row__val.is-band,
+:root span.rk-row__you,
+:root span.rk-tier.rk-tier--3,
+:root p.rk-foot,
+:root span.fb-count,
+:root i.inv-card__held,
+:root span.inv-badge.inv-badge--high,
+:root span.rk-tier.rk-tier--4 {
+  font-size: var(--fs-label);
+}
+:root a.map-attribution {
+  font-size: 11px;
+}
+
+/* ---------- Tap targets: 40px minimum (generated from the screen audit) ---------- */
+:root button.lottery-chip.lottery-chip--gold,
+:root button.today-pill.is-ready,
+:root button.wish-chip.wish-chip--story,
+:root button.wish-chip.wish-chip--daily,
+:root button.wish-chip.wish-chip--gem,
+:root button.clean-toggle,
+:root button.loc-share,
+:root button.bankx__place,
+:root button.bankx__chip,
+:root button.is-on,
+:root button.gist-chip.is-on,
+:root button.gist-chip,
+:root button.st-week,
+:root button.pc-event.is-live,
+:root button.pc-chip.is-on,
+:root button.pc-chip,
+:root button.wish-chip.wish-chip--need,
+:root button.c3-pill,
+:root button.c3-pill.c3-pill--soon,
+:root button.c3-chip,
+:root button.buy-cat.is-active,
+:root button.buy-cat,
+:root button.buy-tier.buy-tier--all,
+:root button.buy-tier.buy-tier--lapo,
+:root button.buy-tier.buy-tier--mid,
+:root button.buy-tier.buy-tier--nepo,
+:root button.buy-card__btn,
+:root button.opt.is-active,
+:root button.opt,
+:root button.btq__cat.is-on,
+:root button.btq__cat,
+:root button.alert__go,
+:root button.pp-chip.is-on,
+:root button.pp-chip,
+:root button.ck-fchip.is-on,
+:root button.ck-fchip,
+:root button.msgs-pill.is-on,
+:root button.msgs-pill,
+:root button.dm-chip.dm-chip--blue,
+:root button.dm-chip.dm-chip--gold,
+:root button.yh-gm__friend,
+:root button.rk-tab.is-on,
+:root button.rk-tab,
+:root a.lp-nav__login,
+:root button.wish-chip {
+  min-height: var(--tap);
+}
+:root button.loc-todo__chip.loc-todo__more,
+:root button.welcome__link.welcome__link--quiet,
+:root button.track__more,
+:root button.bz-more,
+:root button.gist-post__name,
+:root button.po-link,
+:root button.yh-link,
+:root button.pp-link,
+:root a.auth__back,
+:root button.auth-link,
+:root a.auth-check__link,
+:root button.sc-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+}
+
+/* ---------- Fixes found in the screen pass ---------- */
+/* Group and list names may use two lines before they are cut (they were one line, so "Ugbowo Hust...") */
+:root .gist-gcard__main b {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+:root .gist-gcard__main b > svg,
+:root .gist-gcard__main b > span {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-left: 4px;
+}
+/* Item descriptions: three lines instead of two */
+:root .item__desc {
+  -webkit-line-clamp: 3;
+}
+:root .item__name {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+/* Buttons that carry a long label must stay pills, not turn into blobs */
+:root .yh-job .bl-btn {
+  max-width: 46%;
+  min-width: 84px;
+  border-radius: 18px;
+  padding: 8px 12px;
+}
+:root .bz-take {
+  flex-wrap: wrap;
+}
+:root .bz-take .bl-btn {
+  flex: 1 1 140px;
+  white-space: nowrap;
+}
+/* Ranks: the money band can use two lines */
+:root .rk-row__val.is-band {
+  white-space: normal;
+  overflow: visible;
+  max-width: 44%;
+  line-height: 1.2;
+}
+/* House upgrade cards: the price goes on its own line on narrow phones */
+@media (max-width: 420px) {
+  :root .upg-card__head {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  :root .upg-card__head > .grow {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  :root .upg-card__head > .garage-opt__price {
+    flex: 1 0 100%;
+    text-align: right;
+  }
+}
+/* Chip rows scroll inside their own row */
+:root .pc-chips,
+:root .loc-todo,
+:root .hs-chips,
+:root .sc-chips {
+  max-width: 100%;
+}
+:root .chop__tab {
+  padding-inline: 10px;
+}
+/* Message list bits that were cut mid-word */
+:root .msgs-requests__text span {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+:root .phone input::placeholder {
+  text-overflow: ellipsis;
+}
+
+/* ---------- Safe areas: modals and the phone frame keep clear of notches and home bars ---------- */
+:root .bl-modal-root {
+  padding: calc(var(--sat) + 16px) calc(var(--sar) + 16px) calc(var(--sab) + 16px) calc(var(--sal) + 16px);
+}
+:root .bl-modal {
+  max-height: calc(100dvh - var(--sat) - var(--sab) - 32px);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 400px) {
+  :root .bl-modal__title {
+    font-size: var(--fs-xl);
+  }
+}
+:root .phone-root {
+  padding-top: var(--sat);
+  padding-bottom: calc(var(--kb, 0px) + var(--sab));
+}
+
+/* ---------- Big numbers and long names ---------- */
+/* a full figure (₦1,500,000,000,000) shows alone with the clock, so nothing is pushed off the pill */
+@media (max-width: 479px) {
+  :root .pill-bar:has(.pill-bar__cash.is-full) :is(.pill-bar__day, .pill-bar__sun, .pill-bar__dot, .pill-bar__sep, .pill-bar__mood) {
+    display: none;
+  }
+  :root .pill-bar:has(.pill-bar__cash.is-full) .pill-bar__time {
+    flex: 0 1 auto;
+  }
+  :root .pill-bar:has(.pill-bar__cash.is-full) .pill-bar__cash {
+    flex: 1 1 auto;
+    justify-content: space-between;
+    min-width: 0;
+  }
+  :root .pill-bar__cash.is-full .pill-bar__amount {
+    font-size: 0.78em;
+  }
+}
+:root .bank-card__amt {
+  font-size: clamp(22px, 6.6vw, 30px);
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+:root .sim-head__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+:root .rk-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+:root .btq-card,
+:root .btq-card__body {
+  min-width: 0;
+}
+:root .btq-card__body {
+  grid-template-columns: minmax(0, 1fr);
+}
+:root .btq-card__meta {
+  flex-wrap: wrap;
+}
+:root .btq-card__name,
+:root .btq-card__brand {
+  overflow-wrap: anywhere;
+}
+:root .pc-event__text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* admin: inputs that were squeezed two to a row take the whole row on phones */
+@media (max-width: 480px) {
+  :root .adm-row > .adm-input {
+    flex-basis: 100%;
+  }
+}
+
+/* ---------- Last tap-target and wrap fixes ---------- */
+:root .ev-banner__main { min-height: var(--tap); }
+:root .phone-app--messages :is(button:not([class]), button.is-on) { min-height: var(--tap); }
+:root .lottery-chip { min-height: var(--tap); }
+:root .qty__btn { min-width: 32px; min-height: 32px; }
+:root .rk-row__you { flex: none; }
+:root .place-card__name, :root .pc-event__text { overflow-wrap: anywhere; }

@@ -70,6 +70,14 @@ export const crewJoinOpen = (id: number) => rpc<WithCrew>('crew_join_open', { p_
 export const crewLeave = () => rpc<Msg>('crew_leave');
 export const crewKick = (id: string) => rpc<Msg>('crew_kick', { p_user: id });
 export const crewSetRank = (id: string, rank: string) => rpc<Msg>('crew_set_rank', { p_user: id, p_rank: rank });
+export interface BossState {
+  in_crew: boolean; can_handback?: boolean; handback_to?: string | null; can_request?: boolean; request_open_until?: string | null;
+  request?: { requester: string; username: string; mine: boolean; to_me: boolean; expires_at: string } | null;
+}
+export const crewBossState = () => rpc<BossState>('crew_boss_state');
+export const crewBossHandback = () => rpc<Msg>('crew_boss_handback');
+export const crewBossRequest = () => rpc<Msg>('crew_boss_request');
+export const crewBossRespond = (accept: boolean) => rpc<Msg>('crew_boss_respond', { p_accept: accept });
 export const crewTransfer = (id: string) => rpc<Msg>('crew_transfer', { p_user: id });
 export const crewDisband = () => rpc<Msg>('crew_disband');
 export const crewOptions = (split: number | null, recruiting: boolean | null) => rpc<WithCrew>('crew_options', { p_split: split, p_recruiting: recruiting });

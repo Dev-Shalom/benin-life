@@ -68,3 +68,10 @@
 .inv-rows .is-total b { font-size: 15px; }
 /* the phone sits at --z-modal: the buy / sell sheets open above it */
 .bl-sheet-root:has(.inv-sheet-host) { z-index: calc(var(--z-modal) + 5); }
+
+/* Fix it 6: the open land deal card keeps big naira figures on one line and the two buttons readable at 360px */
+.inv-levy .inv-rows > div { flex-wrap: wrap; row-gap: 0; }
+.inv-levy .inv-rows b { white-space: nowrap; margin-left: auto; font-size: 14px; }
+.inv-levy .inv-rows .is-total b { font-size: 14.5px; }
+.inv-levy .bank-confirm__btns { flex-wrap: wrap; gap: 8px; }
+.inv-levy .bank-confirm__btns > * { flex: 1 1 100%; max-width: none; white-space: nowrap; }

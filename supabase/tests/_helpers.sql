@@ -27,3 +27,8 @@ begin
     raise exception 'TEST FAILED: %', p_msg;
   end if;
 end $$;
+
+-- Daily return pack: its weekday- and clock-dependent behaviour is switched off for every suite so no test depends on the weekday
+-- (Wednesday Market Day prices, Monday winners, morning and lapsed pushes). daily_return_test.sql switches what it tests back on.
+update public.game_config set value = 'false'::jsonb
+ where key in ('weekly.wed_market_enabled', 'weekly.push_enabled', 'return.push_enabled', 'return.gap_push_enabled');

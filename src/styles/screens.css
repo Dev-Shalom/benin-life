@@ -2078,3 +2078,11 @@
   font-size: 13px;
   color: var(--muted);
 }
+
+/* Growth: the optional "How did you hear about Benin Life?" chips at the end of the Dream step */
+.heard { margin-top: 22px; padding: 16px; border-radius: 16px; background: rgba(255, 255, 255, 0.6); border: 1px dashed rgba(0, 0, 0, 0.14); }
+.heard__ask { margin: 0 0 12px; font-weight: 700; font-size: 0.9375rem; line-height: 1.35; }
+.heard__ask span { font-weight: 600; font-size: 0.75rem; color: #6b7280; margin-left: 6px; }
+.heard__chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.heard__chip { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px solid rgba(0, 0, 0, 0.16); background: #fff; font: inherit; font-weight: 600; font-size: 0.9375rem; color: inherit; cursor: pointer; }
+.heard__chip.is-on { background: #0b7a43; border-color: #0b7a43; color: #fff; }

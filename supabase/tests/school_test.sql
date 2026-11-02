@@ -236,9 +236,9 @@ end $$;
 -- ---------- 2. seeds and defaults ----------
 do $$
 begin
-  perform pg_temp.assert((select count(*) from courses) = 10 and (select count(*) from certificates) = 10, 'ten courses, ten certificates');
+  perform pg_temp.assert((select count(*) from courses) = 11 and (select count(*) from certificates) = 11, 'eleven courses, eleven certificates (the Court adds Law and Advocacy)');
   perform pg_temp.assert((select count(*) from courses where cert_id is null) = 0, 'every course awards a certificate');
-  perform pg_temp.assert((select count(*) from courses where classes >= 4 and fee > 0 and class_seconds >= 1) = 10, 'fees and classes set');
+  perform pg_temp.assert((select count(*) from courses where classes >= 4 and fee > 0 and class_seconds >= 1) = 11, 'fees and classes set');
   perform pg_temp.assert((select cardinality(modules) from courses where id = 'uniben_bsc') = 4 and (select classes from courses where id = 'uniben_bsc') = 12, 'BSc: 12 classes in 4 modules');
   perform pg_temp.assert((select count(*) from courses where exam) >= 5, 'several courses have an exam');
   perform pg_temp.assert((select prereq_cert from courses where id = 'digital_marketing') = 'ict'
@@ -340,7 +340,7 @@ begin
   perform pg_temp.advance(40);
   perform pg_temp.login(b);
   perform course_finish_class();
-  perform pg_temp.assert(pg_temp.done(b, 'driving_school') = 1 and pg_temp.xp(b, 'driving') = 8, 'driving school: 1 class, 8 Driving XP');
+  perform pg_temp.assert(pg_temp.done(b, 'driving_school') = 1 and pg_temp.xp(b, 'driving') = 12, 'driving school: 1 class, 8 x 1.5 = 12 Driving XP (Fix it 11)');
   raise notice 'ok 4: place, hours, enrolment';
 end $$;
 
@@ -365,7 +365,7 @@ begin
   perform pg_temp.advance(31);
   v := course_finish_class();
   perform pg_temp.assert(v->>'outcome' = 'ok' and (v->>'done')::int = 1, 'class 1 done');
-  perform pg_temp.assert((v->>'xp')::int = 8 and pg_temp.xp(a, 'yahoo') = v_xp0 + 8, 'ICT gives 8 Yahoo (IT) XP per class (got ' || (v->>'xp') || ')');
+  perform pg_temp.assert((v->>'xp')::int = 12 and pg_temp.xp(a, 'yahoo') = v_xp0 + 12, 'ICT gives 8 x 1.5 = 12 Yahoo (IT) XP per class while level 1 to 3 (got ' || (v->>'xp') || ')');
   perform pg_temp.assert(pg_temp.done(a, 'ict_basics') = 1, 'progress saved');
   perform pg_temp.assert((select busy_label from profiles where id = a) is null, 'busy cleared');
   perform pg_temp.assert(pg_temp.hint_of('select course_finish_class()') = 'no_run', 'no class running now');
@@ -386,10 +386,10 @@ begin
   perform pg_temp.cfg('skills.enabled', 'false');
   perform pg_temp.at(pg_temp.u('b'), 'ramat_park');
   v := pg_temp.cls(pg_temp.u('b'), 'driving_school');
-  perform pg_temp.assert((v->>'xp')::int = 0 and pg_temp.xp(pg_temp.u('b'), 'driving') = 8 and (v->>'done')::int = 2, 'skills off: the class counts, no XP');
+  perform pg_temp.assert((v->>'xp')::int = 0 and pg_temp.xp(pg_temp.u('b'), 'driving') = 12 and (v->>'done')::int = 2, 'skills off: the class counts, no XP');
   perform pg_temp.cfg('skills.enabled', 'true');
   v := pg_temp.cls(pg_temp.u('b'), 'driving_school');
-  perform pg_temp.assert((v->>'xp')::int = 8 and pg_temp.xp(pg_temp.u('b'), 'driving') = 16 and (v->>'done')::int = 3, 'driving school gives 8 Driving XP per class');
+  perform pg_temp.assert((v->>'xp')::int = 12 and pg_temp.xp(pg_temp.u('b'), 'driving') = 24 and (v->>'done')::int = 3, 'driving school gives 8 x 1.5 = 12 Driving XP per class while the skill is level 1 to 3');
   perform pg_temp.cfg('school.cooldown_mult', '1');
   raise notice 'ok 5: class';
 end $$;
@@ -646,6 +646,7 @@ declare c uuid := pg_temp.u('c'); b uuid := pg_temp.u('b'); h hustles; m0 numeri
 begin
   -- hustle: Music Production +10 % on DJ sets (c has the certificate from group 10, b does not)
   select * into h from hustles where id = 'dj_set';
+  delete from player_skills where user_id in (c, b) and skill_id = 'music'; -- Fix it 11: faster early XP lifts c's Music level; compare the certificate alone
   m1 := bl_hustle_pay_mult(c, h);
   m0 := bl_hustle_pay_mult(b, h);
   perform pg_temp.assert(round(m1 / m0, 4) = 1.10, 'certificate: +10 % on the DJ set (ratio ' || round(m1 / m0, 4) || ')');
@@ -706,7 +707,7 @@ begin
   perform pg_temp.assert(pg_temp.hint_of(format('select admin_grant_cert(%L, ''nope'', null)', d)) = 'bad_cert', 'unknown certificate');
   perform pg_temp.assert(pg_temp.hint_of(format('select admin_grant_cert(%L, ''ict'', null)', gen_random_uuid())) = 'no_player', 'unknown player');
   v := admin_player_certs(d);
-  perform pg_temp.assert(jsonb_array_length(v->'catalog') = 10 and exists (select 1 from jsonb_array_elements(v->'rows') r where r->>'id' = 'catering' and r->>'source' = 'admin'), 'admin list: owned rows + the catalogue');
+  perform pg_temp.assert(jsonb_array_length(v->'catalog') = 11 and exists (select 1 from jsonb_array_elements(v->'rows') r where r->>'id' = 'catering' and r->>'source' = 'admin'), 'admin list: owned rows + the catalogue');
   perform pg_temp.assert(exists (select 1 from jsonb_array_elements(v->'catalog') r where r->>'id' = 'catering' and (r->>'has')::boolean), 'catalogue marks owned');
   -- revoke
   v := admin_revoke_cert(d, 'catering', 'granted by mistake');

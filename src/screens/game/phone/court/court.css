@@ -1,0 +1,111 @@
+/* Court app (docs/COURT.md): dark indigo like the UI-pass overlays, roomy spacing, cards = small grey label / big bold line / meta / divider / people. */
+.phone-app--court {
+  --ct-bg: #171a3d; --ct-card: rgba(255, 255, 255, .07); --ct-card2: rgba(255, 255, 255, .11); --ct-line: rgba(255, 255, 255, .13);
+  --ct-ink: #fff; --ct-ink2: rgba(255, 255, 255, .82); --ct-ink3: rgba(255, 255, 255, .62); --ct-green: #4ddc96; --ct-gold: #f5c451; --ct-red: #ff8a7e;
+  background: var(--ct-bg); color: var(--ct-ink);
+}
+.phone-app--court .phone-app__bar { background: var(--ct-bg); }
+.phone-app--court .phone-app__back { background: var(--ct-card2); color: var(--ct-ink); }
+.phone-app--court .phone-app__title { color: var(--ct-ink); }
+.court-app { --text: var(--ct-ink); --ink: var(--ct-ink); --ink-2: var(--ct-ink2); --muted: var(--ct-ink3); --line: var(--ct-line); --surface: var(--ct-bg); --surface-2: var(--ct-card); --surface-3: var(--ct-card2); color: var(--ct-ink); padding: 8px 16px 56px !important; }
+.ct-stack { display: grid; gap: 14px; align-content: start; }
+.ct-title { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.ct-title--sm { font-size: 20px; }
+.ct-lead { margin: 0; font-size: 14px; line-height: 1.45; color: var(--ct-ink3); }
+.ct-h { margin: 6px 2px 0; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ct-ink3); }
+.ct-label { font-size: 12px; color: var(--ct-ink3); }
+.ct-main { font-size: 17px; font-weight: 800; line-height: 1.3; display: block; overflow-wrap: anywhere; }
+.ct-meta { font-size: 13px; color: var(--ct-ink3); line-height: 1.4; }
+.ct-divider { height: 1px; background: var(--ct-line); margin: 2px 0; width: 100%; display: block; }
+.ct-warn { margin: 0; padding: 12px 14px; border-radius: 16px; background: rgba(247, 187, 60, .16); color: #ffcf6b; font-size: 13px; }
+.ct-back { justify-self: start; border: 0; background: transparent; color: var(--ct-ink2); font-weight: 700; font-size: 14px; min-height: 40px; padding: 0; }
+.ct-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.ct-ok { color: var(--ct-green); }
+.ct-input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--ct-line); background: var(--ct-card); color: var(--ct-ink); font-size: 15px; font-family: inherit; resize: vertical; }
+.ct-input::placeholder { color: var(--ct-ink3); }
+.ct-field { display: grid; gap: 6px; }
+.ct-skel { display: grid; gap: 12px; }
+.ct-skel span { height: 120px; border-radius: 20px; background: linear-gradient(90deg, var(--ct-card), var(--ct-card2), var(--ct-card)); background-size: 200% 100%; animation: ct-shim 1.4s linear infinite; }
+@keyframes ct-shim { to { background-position: -200% 0; } }
+
+.ct-panel, .ct-card, .ct-verdict { display: grid; gap: 8px; padding: 16px; border-radius: 22px; background: var(--ct-card); box-shadow: inset 0 0 0 1px var(--ct-line); text-align: left; color: inherit; border: 0; font: inherit; width: 100%; box-sizing: border-box; }
+.ct-panel--gold { box-shadow: inset 0 0 0 1px rgba(245, 196, 81, .5); }
+.ct-panel--warn { box-shadow: inset 0 0 0 1px rgba(255, 138, 126, .5); }
+.ct-card { cursor: pointer; transition: transform 140ms ease-out, background 140ms ease-out; }
+.ct-card:active { transform: scale(.985); }
+.ct-card.is-live { box-shadow: inset 0 0 0 1.5px rgba(255, 99, 99, .7); }
+.ct-card--pick.is-on { box-shadow: inset 0 0 0 2px var(--ct-green); background: rgba(77, 220, 150, .12); }
+.ct-card:disabled { opacity: .55; }
+.ct-card__top, .ct-card__foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ct-card__foot { flex-wrap: wrap; }
+.ct-cta { font-weight: 800; color: var(--ct-green); font-size: 13px; }
+.ct-gal { font-size: 12px; color: var(--ct-ink2); }
+
+.ct-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 800; letter-spacing: .04em; background: var(--ct-card2); color: var(--ct-ink2); }
+.ct-badge--live { background: rgba(255, 70, 70, .2); color: #ff8a8a; }
+.ct-badge--live i { width: 7px; height: 7px; border-radius: 50%; background: #ff4646; animation: ct-pulse 1.2s ease-in-out infinite; }
+.ct-badge--win { background: rgba(77, 220, 150, .2); color: var(--ct-green); }
+.ct-badge--lose { background: rgba(255, 138, 126, .2); color: var(--ct-red); }
+.ct-badge--soon { background: rgba(245, 196, 81, .18); color: var(--ct-gold); }
+@keyframes ct-pulse { 50% { opacity: .35; } }
+
+.ct-face { display: inline-grid; place-items: center; flex: none; border-radius: 50%; overflow: hidden; background: var(--ct-card2); font-weight: 800; }
+.ct-sides { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.ct-side { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ct-side--r { justify-content: flex-end; text-align: right; }
+.ct-side > span { display: grid; min-width: 0; }
+.ct-side small { font-size: 11px; color: var(--ct-ink3); }
+.ct-name { font-weight: 700; font-size: 13px; overflow-wrap: anywhere; }
+.ct-name em { font-style: normal; color: var(--ct-gold); }
+.ct-vs { font-size: 11px; font-weight: 800; color: var(--ct-ink3); text-transform: uppercase; }
+.ct-people { display: flex; flex-wrap: wrap; gap: 6px; }
+.ct-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px; background: var(--ct-card2); font-size: 12px; }
+.ct-clock { margin: 0; font-size: 13px; color: var(--ct-ink2); }
+
+.ct-rank { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 99px; background: var(--ct-card2); color: var(--ct-ink2); }
+.ct-rank--gold { background: rgba(245, 196, 81, .22); color: var(--ct-gold); }
+.ct-rank--violet { background: rgba(160, 130, 255, .22); color: #c4b0ff; }
+.ct-rank--green { background: rgba(77, 220, 150, .18); color: var(--ct-green); }
+.ct-lawyer { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 20px; background: var(--ct-card); box-shadow: inset 0 0 0 1px var(--ct-line); border: 0; color: inherit; font: inherit; text-align: left; width: 100%; box-sizing: border-box; flex-wrap: wrap; }
+.ct-lawyer.is-on { box-shadow: inset 0 0 0 2px var(--ct-green); background: rgba(77, 220, 150, .12); }
+.ct-lawyer__main { display: grid; gap: 3px; flex: 1; min-width: 140px; }
+.ct-lawyer__name { font-weight: 800; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ct-lawyer__fee { display: grid; text-align: right; }
+.ct-lawyer__fee small { font-size: 11px; color: var(--ct-ink3); }
+.ct-lawyer__act { width: 100%; }
+.ct-bio { font-size: 13px; color: var(--ct-ink2); }
+
+.ct-steps { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.ct-steps li { flex: 1; display: grid; justify-items: center; gap: 4px; font-size: 11px; color: var(--ct-ink3); text-align: center; }
+.ct-steps b { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--ct-card2); font-size: 13px; }
+.ct-steps .is-on { color: var(--ct-ink); } .ct-steps .is-on b { background: var(--ct-green); color: #08301d; }
+.ct-steps .is-done b { background: rgba(77, 220, 150, .3); color: var(--ct-green); }
+.ct-dl { margin: 0; display: grid; gap: 8px; }
+.ct-dl > div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.ct-dl dt { color: var(--ct-ink3); } .ct-dl dd { margin: 0; font-weight: 700; text-align: right; }
+.ct-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
+.ct-checks .is-ok { color: var(--ct-green); }
+
+.ct-thread { max-height: none; }
+.ct-msg { display: grid; gap: 4px; padding: 10px 12px; border-radius: 16px; max-width: 88%; background: rgba(90, 140, 255, .18); }
+.ct-msg p, .ct-ruling p { margin: 0; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.ct-msg__who { font-size: 11px; color: var(--ct-ink3); }
+.ct-msg--defendant { background: rgba(255, 138, 126, .16); justify-self: end; }
+.ct-msg--bench { background: rgba(245, 196, 81, .16); justify-self: center; max-width: 100%; text-align: center; }
+.ct-ruling { display: grid; gap: 6px; padding: 14px; border-radius: 18px; background: rgba(245, 196, 81, .16); box-shadow: inset 0 0 0 1px rgba(245, 196, 81, .5); }
+.ct-verdict--win { box-shadow: inset 0 0 0 2px var(--ct-green); } .ct-verdict--lose { box-shadow: inset 0 0 0 2px var(--ct-red); }
+.ct-verdict__word { font-size: 30px; font-weight: 900; letter-spacing: .04em; }
+.ct-compose { display: grid; gap: 8px; position: sticky; bottom: 0; padding: 12px; margin: 0 -4px; border-radius: 20px; background: var(--ct-bg); box-shadow: 0 -8px 20px rgba(0, 0, 0, .25), inset 0 0 0 1px var(--ct-line); }
+.ct-compose__row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+
+.court-app .bl-tab { background: var(--ct-card2); color: var(--ct-ink2); }
+.court-app .bl-tab.is-active { background: #fff; color: #171a3d; }
+.court-app .bl-seg { background: var(--ct-card2); }
+.court-app .bl-seg__thumb { background: #fff; }
+.court-app .bl-seg button { color: var(--ct-ink2); }
+.court-app .bl-seg button[aria-selected="true"] { color: #171a3d; }
+.court-app .bl-btn--ghost { background: var(--ct-card2); color: var(--ct-ink); }
+.court-app .bl-empty { color: var(--ct-ink); }
+.court-app .bl-empty__icon { background: var(--ct-card2); color: var(--ct-ink2); }
+.ct-lawyer__fee { margin-left: auto; white-space: nowrap; }
+.ct-back { color: var(--ct-ink2) !important; }

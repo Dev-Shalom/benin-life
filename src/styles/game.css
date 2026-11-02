@@ -6771,6 +6771,10 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 
 /* the election-day banner (game screen) */
 .banner--vote { cursor: pointer; text-align: left; width: 100%; border: 0; font: inherit; color: inherit; }
+.banner--dismiss { flex-wrap: wrap; cursor: default; }
+.banner--dismiss .banner__main { display: flex; align-items: center; gap: 12px; flex: 1 1 100%; min-width: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.banner--dismiss .banner__acts { flex: 1 1 100%; display: flex; justify-content: flex-end; }
+.banner--dismiss .banner__x { border: 0; background: none; color: var(--glass-muted); font: inherit; font-size: 12px; text-decoration: underline; padding: 6px 4px; min-height: 40px; cursor: pointer; }
 .banner--vote .banner__icon { font-size: 18px; font-family: var(--font-emoji); }
 
 /* E4: "incl. VAT" under a price */
@@ -6846,3 +6850,51 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
   margin: 0;
   font-size: 13px;
 }
+/* "Keep my own music playing": the non-blocking club music chip */
+.club-music-chip {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  color: var(--glass-text);
+  box-shadow: var(--e2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.club-music-chip__text { flex: 1; min-width: 0; line-height: 1.25; }
+.club-music-chip__btn, .club-music-chip__x {
+  flex: none;
+  min-height: 34px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.club-music-chip__btn { padding: 0 14px; background: var(--surface-3, rgba(0, 0, 0, 0.08)); }
+.club-music-chip__btn.is-primary { background: var(--green-600, #1f8f5a); color: #fff; }
+.club-music-chip__x { width: 34px; font-size: 20px; line-height: 1; opacity: 0.7; }
+
+/* Fix it 10: Drive + Sell buttons wrap under the car name on a narrow phone */
+.cars-mine__row { flex-wrap: wrap; row-gap: 8px; }
+.cars-mine__row > .grow { flex: 1 1 140px; min-width: 0; }
+
+/* Fix it 12: money history */
+.mh { display: grid; gap: 12px; }
+.mh__sum { display: grid; gap: 6px; padding: 14px; border-radius: 16px; background: #fff; box-shadow: var(--e1); }
+.mh__sumrow { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; }
+.mh__sumrow b { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: right; }
+.mh__sumrow b.is-in { color: var(--green-700); }
+.mh__top { display: grid; gap: 4px; margin: 4px 0 0; padding: 8px 0 0; border-top: 1px solid var(--line); list-style: none; }
+.mh__top li { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; color: var(--ink-3); }
+.mh__top b { color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.mh__note { margin: 0; font-size: 12px; color: var(--ink-3); }
+.mh__day { margin: 10px 2px 4px; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
+.mh__li:first-child .mh__day { margin-top: 0; }
+.mh__detail { font-style: italic; }
+.bank-hist__amt { flex: none; max-width: 42%; text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }

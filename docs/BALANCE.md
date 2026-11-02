@@ -589,3 +589,22 @@ The owner chose the "middle ground": Yahoo and group-mission pay ranges and gate
 
 ## E4 money sinks (2026-10-19)
 Tax, bills, VAT, transfer charges and prestige sinks now remove roughly 10 % (mid) to 20-25 % (rich) of daily money creation at the defaults. See docs/ECONOMY_SINKS.md.
+
+## Fix it 11 (2026-11-10): less robbery and EFCC, faster early skills
+
+Player feedback: too many street robberies on the road, EFCC catches too often, and skills feel slow at the start. Migration `20261110000700_balance_fixit.sql`, tests `fixit_test.sql` group 11. **Guarded:** a setting moves only while it still equals its old default, so anything the owner already tuned in Admin stays. Every number, old -> new:
+
+| Setting (Admin -> Settings) | Old | New | Effect |
+|---|---:|---:|---|
+| `crime.npc_base_pct` base robbery chance on a trip | 6 | **4.5** | about a quarter fewer robberies on trips and walks |
+| `crime.npc_max_pct` ceiling on that chance | 35 | **25** | the worst night-time, rich, in traffic case is capped lower |
+| `crime.loss_min_pct` / `crime.loss_max_pct` share of your pocket one robbery takes | 20 / 60 | **10 / 35** | a robbery takes 10 to 35 % of the cash on you (was 20 to 60 %) |
+| `crime.robbery_cap_pct` (new) hard cap on that share | none | **35** | holds even if an admin raises the min / max percents. **Bank money is never touched by a robbery** (it takes cash only; test checks the bank balance) |
+| `crime.steal_caught_pct` thief caught chance (player pickpocketing) | 62 | **70** | a pickpocket succeeds 30 % of the time (was 38 %) |
+| `crime.steal_max_pct` most of the victim's cash one steal takes | 15 | **10** | |
+| Yahoo `caught_pct` (EFCC catch chance, per job, before skill and gear): chat client / romance / Elon format / big job / cash-out | 12 / 16 / 20 / 24 / 14 | **10 / 14 / 17 / 20 / 12** | a little lower on every job; skill cut and ThinkPad points still apply on top (Content -> Yahoo jobs) |
+| `skills.early_xp_mult` (new) XP multiplier while a skill is level 1, 2 or 3 | 1 (none) | **1.5** | levels 1 to 3 come 50 % faster; level 4 and up unchanged. A level-up past 3 stops the boost by itself |
+
+Untouched on purpose: the rich-list and earning ladders above, Yahoo pay, jail and bail amounts, the night multiplier, travel mode multipliers, group (gang) job catch chances, `yahoo.escape_caught_pct`.
+
+Tests updated for the new defaults, nothing deleted: `economy_balance_test` (yahoo catch chances 10/14/20/12), `core_test` (robbery base 4.5, ceiling 25 %, loss 10 to 35 %), `skills_test` (the first XP a skill earns is x1.5: 8 -> 12, 6 -> 9, 10 -> 15, 4 -> 6, 7/3 -> 11/5, 44 -> 48; the xp_mult 2 case 12 -> 18), `yahoo_strategy_test` (Elon format 20 -> 17, with skill 19 / 16.72 -> 16 / 14.08). `money_sinks_test` passes unchanged.

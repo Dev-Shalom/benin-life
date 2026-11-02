@@ -25,9 +25,12 @@ import Companies from './Companies';
 import RealBusiness from './RealBusiness';
 import Crews from './Crews';
 import Elections from './Elections';
+import Offices from './Offices';
+import Court from './Court';
 import Economy from './Economy';
 import Love from './Love';
 import Gist from './Gist';
+import Growth from './Growth';
 import Property from './Property';
 import './admin.css';
 
@@ -36,6 +39,7 @@ const NAV = [
   { to: '/admin/settings', label: 'Settings', icon: 'gear' },
   { to: '/admin/content', label: 'Content', icon: 'file' },
   { to: '/admin/players', label: 'Players', icon: 'people' },
+  { to: '/admin/growth', label: 'Growth', icon: 'star' },
   { to: '/admin/broadcast', label: 'Broadcast', icon: 'send' },
   { to: '/admin/earn', label: 'Earn', icon: 'cash' },
   { to: '/admin/music', label: 'Music', icon: 'music' },
@@ -46,6 +50,8 @@ const NAV = [
   { to: '/admin/real-business', label: 'Real business', icon: 'bell' },
   { to: '/admin/crews', label: 'Gangs', icon: 'people' },
   { to: '/admin/elections', label: 'Elections', icon: 'star' },
+  { to: '/admin/offices', label: 'Offices', icon: 'star' },
+  { to: '/admin/court', label: 'Court', icon: 'star' },
   { to: '/admin/economy', label: 'Economy', icon: 'cash' },
   { to: '/admin/love', label: 'Love', icon: 'heart' },
   { to: '/admin/payments', label: 'Payments', icon: 'cash' },
@@ -93,8 +99,31 @@ function useAdminUnread(): number {
   return unread;
 }
 
+/** Copies each table column title onto its cells so the phone layout (admin.css) can show it as a label. */
+function useTableLabels() {
+  useEffect(() => {
+    let raf = 0;
+    const label = () => {
+      raf = 0;
+      document.querySelectorAll<HTMLTableElement>('.adm-main table.adm-table').forEach((t) => {
+        const heads = Array.from(t.querySelectorAll('thead th')).map((h) => (h.textContent ?? '').trim());
+        t.querySelectorAll('tbody tr').forEach((tr) => {
+          Array.from(tr.children).forEach((td, i) => {
+            if (td instanceof HTMLElement && td.getAttribute('data-label') !== (heads[i] ?? '')) td.setAttribute('data-label', heads[i] ?? '');
+          });
+        });
+      });
+    };
+    const mo = new MutationObserver(() => { if (!raf) raf = requestAnimationFrame(label); });
+    mo.observe(document.body, { childList: true, subtree: true });
+    label();
+    return () => { mo.disconnect(); if (raf) cancelAnimationFrame(raf); };
+  }, []);
+}
+
 export default function AdminApp() {
   ensureConfig();
+  useTableLabels();
   const name = useGame((s) => s.state?.profile.username);
   const unread = useAdminUnread();
   return (
@@ -136,6 +165,7 @@ export default function AdminApp() {
           <Route path="settings" element={<Settings />} />
           <Route path="content" element={<Content />} />
           <Route path="players" element={<Players />} />
+          <Route path="growth" element={<Growth />} />
           <Route path="chat" element={<Chat />} />
           <Route path="gist" element={<Gist />} />
           <Route path="property" element={<Property />} />
@@ -152,6 +182,8 @@ export default function AdminApp() {
           <Route path="real-business" element={<RealBusiness />} />
           <Route path="crews" element={<Crews />} />
           <Route path="elections" element={<Elections />} />
+          <Route path="offices" element={<Offices />} />
+          <Route path="court" element={<Court />} />
           <Route path="economy" element={<Economy />} />
           <Route path="love" element={<Love />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />

@@ -176,7 +176,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'today',
     target: '[data-tour="today"]',
     title: 'Today and Challenges',
-    body: 'The Today pill gathers your tips and daily rewards. Open it to see your Challenges.',
+    body: 'The Today pill gathers your tips and daily rewards. New players also find "Your first days" here: a short quest line with a small reward on each step.',
     points: [
       'Three daily and three weekly goals pay cash and prizes.',
       'A red dot means something is ready to collect.',
@@ -243,6 +243,18 @@ export const TOUR_STEPS: TourStep[] = [
       'Winners get a title next to their name (Hon., Gov.), a daily salary and small powers.',
       'Polling units open on voting day only. Check the app for the dates and the fees.',
       'Vote buying is not allowed: there is a report button.',
+    ],
+    isNew: true,
+    before: () => toPhone('home'),
+  },
+  {
+    id: 'court',
+    target: '[data-tour="app-court"]',
+    title: 'The Court: sue, or be a lawyer',
+    body: 'Robbed or cheated? Take them to court over things the game recorded. Hire a real player as your lawyer, or become one. Judges are players too, and hearings are live.',
+    points: [
+      'Only recorded events can be sued over, so nobody can make up a story.',
+      'If no judge rules in time, the record decides. Check the app for fees and times.',
     ],
     isNew: true,
     before: () => toPhone('home'),

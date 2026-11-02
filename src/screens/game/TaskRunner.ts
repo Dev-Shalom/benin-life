@@ -38,6 +38,8 @@ export interface PlaceTaskOpts {
   walkTo?: string;
   icon?: string;
   qty?: number;
+  /** Fix it 4: the tapped home furniture piece id. */
+  piece?: string | null;
 }
 
 /** Add an activity (or, inside a place, a shift / purchase) to the queue (a toast when it is full). */
@@ -49,6 +51,7 @@ export function queueTask(a: { id: string; name: string; home_only?: boolean }, 
       name: a.name,
       icon: opts.icon ?? activityIcon(a.id),
       group: a.home_only && !opts.zone ? activityGroup(a.id) : null,
+      piece: a.home_only && !opts.zone ? opts.piece ?? null : null,
       locationId,
       kind: opts.kind,
       zone: opts.zone ?? null,
@@ -85,6 +88,8 @@ export interface HomeTask {
   key: string;
   activity: string;
   group: HomeGroup;
+  /** Fix it 4: walk to this piece (the one the player tapped), not just the first one that fits. */
+  piece?: string | null;
 }
 
 /**
@@ -252,7 +257,7 @@ export function useTaskRunner(state: GameState | null, homeLive: boolean, placeL
   }, []);
 
   const homeTask: HomeTask | null =
-    current?.phase === 'walking' && current.group ? { key: current.uid, activity: current.id, group: current.group } : null;
+    current?.phase === 'walking' && current.group ? { key: current.uid, activity: current.id, group: current.group, piece: current.piece ?? null } : null;
   // L2: a queued task inside a place walks to its zone first
   const placeTask: PlaceTask | null =
     current?.phase === 'walking' && current.zone ? { key: current.uid, zone: current.zone } : null;

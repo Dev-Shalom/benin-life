@@ -6,6 +6,8 @@ import { naira, nairaShort, parseNaira } from '../lib/format';
 import { useGame } from '../state/game';
 import { adminBusinessGet, adminBusinessGrant, adminBusinessRemove } from '../api/business';
 import { adminApi, type CharmRow, type JailCaseRow, type PlayerDetail, type PlayerRow, type PlayerSkillRow } from './api';
+import GrantToolbox from './Grants';
+import { grantSummary } from './grantAudit';
 import { Badge, Btn, ConfirmButton, DetailPane, LoadError, PageHead, Skeleton } from './parts';
 import { timeShort, useLoad } from './util';
 
@@ -213,17 +215,12 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
             </div>
           </section>
 
-          <PlayerSkills id={id} />
-
-          <PlayerLounge id={id} />
-
-          <PlayerHouseUpgrades id={id} />
-
-          <PlayerBusinesses id={id} />
-
-          <PlayerCertificates id={id} />
-
-          <PlayerCharms id={id} />
+          <GrantToolbox id={id} onChanged={() => { void reload(); onChanged(); }} slots={{
+            skills: <><PlayerSkills id={id} /><PlayerCertificates id={id} /></>,
+            home: <PlayerHouseUpgrades id={id} />,
+            business: <PlayerBusinesses id={id} />,
+            perks: <><PlayerLounge id={id} /><PlayerCharms id={id} /></>,
+          }} />
 
           {!p.is_admin && p.id !== me && (
             <DeleteAccount id={id} username={p.username} onDeleted={() => { onChanged(); onClose(); }} />
@@ -251,7 +248,7 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
             <section>
               <h3 className="adm-h3">Admin history</h3>
               <ul className="adm-mini">
-                {data.audit.map((a) => <li key={a.id}><b>{a.action.replace(/_/g, ' ')}</b> by {a.admin ?? 'system'} · {timeShort(a.created_at)}</li>)}
+                {data.audit.map((a) => <li key={a.id}><b>{a.action.replace(/_/g, ' ')}</b> by {a.admin ?? 'system'} · {timeShort(a.created_at)}{grantSummary(a.action, a.data) && <> · {grantSummary(a.action, a.data)}</>}</li>)}
               </ul>
             </section>
           )}

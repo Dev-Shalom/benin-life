@@ -14,10 +14,12 @@ export interface Prefs {
   clean: boolean;
   /** F1: 3D quality. auto = detect (src/art/feel/quality.ts). */
   graphics: 'auto' | 'low' | 'high';
+  /** Keep the player's own music (Spotify etc.) playing: the game starts no media element and no game music on its own. */
+  keepOwnMusic: boolean;
 }
 
 const KEY = 'bl.prefs.v1';
-const DEFAULTS: Prefs = { muted: false, sfx: true, music: true, liteMap: false, clean: false, graphics: 'auto' };
+const DEFAULTS: Prefs = { muted: false, sfx: true, music: true, liteMap: false, clean: false, graphics: 'auto', keepOwnMusic: true };
 
 function load(): Prefs {
   try {
@@ -31,6 +33,8 @@ function load(): Prefs {
       liteMap: typeof v.liteMap === 'boolean' ? v.liteMap : DEFAULTS.liteMap,
       clean: typeof v.clean === 'boolean' ? v.clean : DEFAULTS.clean,
       graphics: v.graphics === 'low' || v.graphics === 'high' ? v.graphics : 'auto',
+      // older saved prefs have no key: default ON, their Music / SFX choices stay as they were
+      keepOwnMusic: typeof v.keepOwnMusic === 'boolean' ? v.keepOwnMusic : DEFAULTS.keepOwnMusic,
     };
   } catch {
     return { ...DEFAULTS };
@@ -54,8 +58,8 @@ export const usePrefs = create<PrefsStore>((set, get) => ({
   ...load(),
   set: (patch) => {
     set(patch);
-    const { muted, sfx, music, liteMap, clean, graphics } = get();
-    save({ muted, sfx, music, liteMap, clean, graphics });
+    const { muted, sfx, music, liteMap, clean, graphics, keepOwnMusic } = get();
+    save({ muted, sfx, music, liteMap, clean, graphics, keepOwnMusic });
   },
   toggle: (k) => get().set({ [k]: !get()[k] } as Partial<Prefs>),
 }));

@@ -22,6 +22,7 @@ import { useCatalog } from '../../state/catalog';
 import { useDaily } from '../../state/daily';
 import { useChat } from '../../state/chat';
 import { useGame } from '../../state/game';
+import { markDreamSeen } from '../../state/journey';
 import { useUi, type SimTab } from '../../state/ui';
 import { Button, CrewTag, EmptyState, Logo, OfficeTag, Sheet, Switch, Tabs, toast } from '../../ui';
 import { usePolitics } from '../../state/politics';
@@ -29,7 +30,8 @@ import { SkillsTab } from './Skills';
 import { CertificatesCard } from './School';
 import LookPanel from '../creator/LookPanel';
 import { startTour } from '../../onboarding/tourStore';
-import { NotificationsSettings } from './NotificationsSettings';
+import { DeleteAccount } from './DeleteAccount';
+import { ClubAlertsSettings, NotificationsSettings } from './NotificationsSettings';
 import { JobCard, PerfBar, Promotion, ShiftStats } from '../../panels/careers/CareerUI';
 
 const TABS: { id: SimTab; label: string }[] = [
@@ -219,6 +221,7 @@ function NeedsTab({ state }: { state: GameState }) {
 
 function GoalsTab({ state }: { state: GameState }) {
   const p = state.profile;
+  useEffect(() => { markDreamSeen(); }, []); // the first-days quest: "check your dream"
   const catalog = useCatalog((s) => s.catalog);
   const dream = catalog?.dreams.find((d) => d.id === p.dream);
   const tier = state.origin?.id ?? p.origin;
@@ -403,7 +406,10 @@ function SettingsTab({ state }: { state: GameState }) {
     <div className="sim-tab">
       <div className="settings-list">
         <Switch label="Sound effects" checked={prefs.sfx && !prefs.muted} onChange={(v) => prefs.set({ sfx: v, muted: v ? false : prefs.muted })} />
-        <Switch label="Music" checked={prefs.music && !prefs.muted} onChange={(v) => prefs.set({ music: v, muted: v ? false : prefs.muted })} />
+        <Switch label="Music" checked={prefs.music && !prefs.muted} onChange={(v) => prefs.set({ music: v, muted: v ? false : prefs.muted })}
+          hint={prefs.keepOwnMusic ? 'Game music stays off while your own music is kept. Club music starts only when you tap Play in a club.' : undefined} />
+        <Switch label="Keep my own music playing" hint="Your music from other apps keeps playing. The game stays quiet and does not pause it. On iPhone the silent switch also mutes the game's sounds."
+          checked={prefs.keepOwnMusic} onChange={(v) => prefs.set({ keepOwnMusic: v })} />
         <Switch label="Lite map for weak network" hint="A lighter 2D map that loads fast on slow or expensive data."
           checked={prefs.liteMap} onChange={(v) => prefs.set({ liteMap: v })} />
         <div className="settings-row">
@@ -422,6 +428,7 @@ function SettingsTab({ state }: { state: GameState }) {
         </div>
       </div>
       <NotificationsSettings />
+      <ClubAlertsSettings />
       <h4 className="settings-head">Account</h4>
       <div className="settings-row">
         <div>
@@ -437,6 +444,7 @@ function SettingsTab({ state }: { state: GameState }) {
           <Button variant="gold" icon="crown" block onClick={() => nav('/admin')}>Open admin panel</Button>
         )}
         <Button variant="ghost" icon="logout" block onClick={() => { setOverlay(null); void signOut(); }}>{P.logout}</Button>
+        {!state.profile.is_admin && <DeleteAccount />}
       </div>
       <div className="settings-brand"><Logo variant="full" size={44} /></div>
       <p className="hint settings-foot"><span className="age-badge">18+</span> {P.ageNote}</p>

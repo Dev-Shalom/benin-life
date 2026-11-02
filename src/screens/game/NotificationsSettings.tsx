@@ -8,6 +8,7 @@ import {
   type PushCategory, type PushPrefs,
 } from '../../lib/push';
 import { Button, Switch, toast } from '../../ui';
+import { loadClubAlerts, saveClubAlerts, useClubAlerts } from '../../state/clubAlerts';
 
 const CATEGORIES: { id: PushCategory; label: string; hint: string }[] = [
   { id: 'messages', label: 'Messages', hint: 'DMs and house chat, when you are not looking at it.' },
@@ -107,6 +108,26 @@ export function NotificationsSettings() {
         </div>
       )}
       <p className="notif-global">Pings never include private details. A chat sends one ping at a time, then bundles the rest.</p>
+    </section>
+  );
+}
+
+/** Fix it 3: how loud other people's spraying is. In-club cards on, everything else off until the player asks. */
+export function ClubAlertsSettings() {
+  const a = useClubAlerts();
+  useEffect(() => { void loadClubAlerts(); }, []);
+  const set = (k: 'toasts' | 'strip' | 'push') => (v: boolean) => { saveClubAlerts({ [k]: v }).catch((e) => toast(errorMessage(e), 'bad')); };
+  return (
+    <section aria-labelledby="club-alerts-head" data-testid="club-alerts">
+      <h4 className="settings-head" id="club-alerts-head">Club spray alerts</h4>
+      <div className="settings-list">
+        <Switch label="Shout-outs in my club" hint="The small card at the top when somebody sprays or pops bottles where you stand. Your own always shows."
+          checked={a.toasts} onChange={set('toasts')} />
+        <Switch label="Big sprays in other clubs" hint="A strip on your screen when somebody sprays big in a club you are not in."
+          checked={a.strip} onChange={set('strip')} />
+        <Switch label="Phone pings for club hype" hint="A push on your phone about club hype. Needs Game events switched on above."
+          checked={a.push} onChange={set('push')} />
+      </div>
     </section>
   );
 }

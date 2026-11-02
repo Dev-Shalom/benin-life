@@ -228,12 +228,16 @@ function buildParking(b: HomeBuilder, L: HomeLayout, P: Parking, rich: boolean, 
     drawVehicle(b, id, x0 + BAY * (i + 0.5), zm + 0.1, 0);
     vehicles.push({ index: i, id, x: x0 + BAY * (i + 0.5), z: zm + 0.1, w: 2.2, d: 3.6 });
   });
-  const extra = P.cars[inside.length];
-  if (extra && density >= 1) {
-    drawVehicle(b, extra, x0 + W / 2, L.lot[3] + 3.95, Math.PI / 2);
-    vehicles.push({ index: inside.length, id: extra, x: x0 + W / 2, z: L.lot[3] + 3.95, w: 3.6, d: 2.2 });
-  }
-  else if (!P.cars.length) b.box(1.8, 0.012, 0.045, (x0 + x1) / 2, 0.02, zm, '#d7d1c5', { noOcc: true });
+  // Fix it 10: every owned car is parked at home, up to a cap (the picked car comes first, so it is always drawn): the rest
+  // line up on the street in front of the compound. Cap 6 cars in all (3 on Low graphics), so a rich player stays light.
+  const maxTotal = density >= 1 ? 6 : 3;
+  const street = P.cars.slice(inside.length, Math.max(inside.length, maxTotal));
+  street.forEach((extra, k) => {
+    const sx = x0 + W / 2 + (k - (street.length - 1) / 2) * 4.0;
+    drawVehicle(b, extra, sx, L.lot[3] + 3.95, Math.PI / 2);
+    vehicles.push({ index: inside.length + k, id: extra, x: sx, z: L.lot[3] + 3.95, w: 3.6, d: 2.2 });
+  });
+  if (!P.cars.length) b.box(1.8, 0.012, 0.045, (x0 + x1) / 2, 0.02, zm, '#d7d1c5', { noOcc: true });
   return [x0 - 0.2, zb - 0.2, x1 + 0.2, zf + 0.1];
 }
 

@@ -56,6 +56,18 @@ export function primeRadioDecks(ctx: AudioContext) {
   }
 }
 
+/** Own-music mode: drop the two decks entirely (pause, empty the source, disconnect), so no media element stays
+ *  alive holding audio focus. The next primeRadioDecks builds fresh ones. */
+export function releaseRadioDecks() {
+  for (const d of pool) {
+    d.owner = null;
+    try { d.el.pause(); d.el.removeAttribute('src'); d.el.load(); } catch { /* gone */ }
+    try { d.gain.disconnect(); } catch { /* not connected */ }
+  }
+  pool = [];
+  poolCtx = null;
+}
+
 export interface RadioInfo {
   playlist: string; playlistId: string; track: string; trackId: string; slot: number; cycle: number; index: number;
   expectedS: number; actualS: number; driftS: number; durationS: number; next: string; paused: boolean; playing: boolean; ready: number;

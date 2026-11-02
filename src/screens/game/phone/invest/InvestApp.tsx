@@ -560,6 +560,31 @@ export function SaveTab({ active, goWhere }: { active: boolean; goWhere: () => v
   );
 }
 
+/** Fix it 6: a land deal waiting on its development levy shows here (it used to be visible only in the sheet that opened it,
+ *  so closing the sheet left a deal that silently blocked every new purchase). Pay the levy or walk away. */
+function OpenLandDeal({ d, run, goWhere }: { d: InvestOverview; run: Run; goWhere: () => void }) {
+  const deal = d.pending_deal!;
+  const mk = d.markets.find((m) => m.id === deal.area);
+  const total = deal.subtotal + deal.agent_fee + deal.community + deal.levy;
+  const left = Math.max(0, Math.round((Date.parse(deal.expires_at) - Date.now()) / 60_000));
+  return (
+    <div className="inv-levy" data-testid="open-land-deal">
+      <b>Open land deal: {deal.plots} plot{deal.plots > 1 ? 's' : ''}{mk ? ` in ${mk.name.replace(/^Land:?\s*/i, '')}` : ''}</b>
+      <p>The community wants a development levy before they sign. You cannot buy more land until you pay it or walk away. The deal goes cold in about {left} min.</p>
+      <Rows rows={[
+        ['Plot + agent + settlement', naira(deal.subtotal + deal.agent_fee + deal.community)],
+        ['Development levy', naira(deal.levy)],
+        ['Total to close the deal', naira(total), true],
+      ]} />
+      <NeedBank need={total} bank={d.bank} goWhere={goWhere} />
+      <div className="row bank-confirm__btns">
+        <Button variant="ghost" className="grow" onClick={() => void run(() => landLevy(deal.id, false))}>Walk away</Button>
+        <Button variant="green" className="grow" disabled={total > d.bank} onClick={() => void run(() => landLevy(deal.id, true))}>Pay levy</Button>
+      </div>
+    </div>
+  );
+}
+
 export function InvestTab({ active, goWhere }: { active: boolean; goWhere: () => void }) {
   const { data: d, err, reload, run } = useInvest(active);
   const sheets = useSheets(d, run, goWhere);
@@ -593,6 +618,7 @@ export function InvestTab({ active, goWhere }: { active: boolean; goWhere: () =>
         {prods(['pos']).map(pcard)}
       </Section>
       <Section title="High risk" sub="Big upside, real swings. Land costs settlement and agent fees; crypto can halve.">
+        {d.pending_deal && <OpenLandDeal d={d} run={run} goWhere={goWhere} />}
         <h4 className="inv-sub">Land by area</h4>
         {mkts('land').map(mcard)}
         <h4 className="inv-sub">Rental flats</h4>

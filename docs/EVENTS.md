@@ -76,3 +76,6 @@ bad weekday / time refused, players can't edit, can't insert tickets, helpers re
 Admin → Content → Events → Add: place id, title, kind, icon, weekly (weekday 0–6 + start / end time) or one-off (starts at /
 ends at with the +01 offset), ticket price (0 = free), capacity, perks. For special action cards: add an activity (SQL; the
 admin can't insert activities) with `requires_event` = the kind or the event id, then a row in Zone actions for the zone.
+
+## Weekly events (2026-11-08)
+A separate, tiny layer on top: "This week in Benin" (Friday Club Night, Saturday Owambe, Sunday Rest Day, Monday Winners, Wednesday Market Day). They are not `place_events` rows (no ticket, no single place); they are computed by `weekly_calendar()` from the Benin weekday, with a check-in reward, a Monday broadcast and a Wednesday Oba Market discount. The day's event shows in the same top banner slot as place events when none of those is showing. See docs/DAILY_RETURN.md part 3.

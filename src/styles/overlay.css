@@ -1,0 +1,352 @@
+/* UI pass: one dark indigo palette for everything that floats over the game (HUD, left rail, dock,
+ * sheets, pop-ups). Phone app screens stay light inside the phone.
+ *
+ * It only re-points the colour tokens inside each overlay, so every component that already reads
+ * --ink / --surface / --line / --glass-strong flips with it. Brand colours (green actions, coral, gold)
+ * are not touched. Shape, spacing and type scale are shared: --ov-radius, --ov-gap, --ov-pad.
+ */
+:root {
+  --ov-bg: rgba(20, 22, 52, 0.95); /* brand indigo */
+  --ov-bg-solid: #171a3d;
+  --ov-card: rgba(255, 255, 255, 0.07);
+  --ov-card-2: rgba(255, 255, 255, 0.11);
+  --ov-line: rgba(255, 255, 255, 0.12);
+  --ov-text: #ffffff;
+  --ov-text-2: rgba(255, 255, 255, 0.82);
+  --ov-text-3: rgba(255, 255, 255, 0.62);
+  --ov-radius: 24px;
+  --ov-gap: 8px;
+  --ov-pad: 16px;
+}
+
+/* the token flip */
+:root :is(.pill-bar, .left-rail, .game__dockrow, .where-chip, .where-enter, .home-chip-row, .place-card, .task-col, .bl-sheet, .bl-modal, .bl-toast) {
+  --glass-strong: var(--ov-bg);
+  --glass: var(--ov-bg);
+  --glass-text: var(--ov-text);
+  --glass-muted: var(--ov-text-3);
+  --surface: var(--ov-bg-solid);
+  --surface-2: var(--ov-card);
+  --surface-3: var(--ov-card-2);
+  --chip-bg: var(--ov-card-2);
+  --text: var(--ov-text);
+  --text-2: var(--ov-text-2);
+  --ink: var(--ov-text);
+  --ink-2: var(--ov-text-2);
+  --ink-3: var(--ov-text-3);
+  --muted: var(--ov-text-3);
+  --line: var(--ov-line);
+  --line-strong: rgba(255, 255, 255, 0.2);
+  --primary-soft: rgba(47, 191, 119, 0.16);
+  --green-50: rgba(47, 191, 119, 0.16);
+  --green-100: rgba(47, 191, 119, 0.28);
+  --amber-50: rgba(247, 187, 60, 0.16);
+  --red-50: rgba(224, 71, 58, 0.18);
+  --blue-50: rgba(47, 127, 214, 0.2);
+  --green-600: #4ddc96;
+  --green-700: #6fe6ab;
+  --amber-800: #ffcf6b;
+  --red-600: #ff8a7e;
+  color: var(--ov-text);
+}
+
+/* ---------- Top pill ---------- */
+:root .pill-bar {
+  background: var(--ov-bg);
+  box-shadow: var(--e2), inset 0 0 0 1px var(--ov-line);
+}
+:root .pill-bar__cash {
+  background: var(--ov-card-2);
+}
+:root .pill-bar__sep {
+  background: var(--ov-line);
+}
+:root .pill-bar__mute:hover {
+  background: var(--ov-card-2);
+}
+
+/* ---------- Left rail: compact, evenly spaced dark chips ---------- */
+:root .left-rail {
+  gap: var(--ov-gap);
+}
+:root .today-pill,
+:root .clean-toggle,
+:root .wish-chip {
+  background: var(--ov-bg);
+  box-shadow: var(--e1), inset 0 0 0 1px var(--ov-line);
+  min-height: var(--tap);
+}
+:root .today-pill__icon {
+  background: var(--ov-card-2);
+  box-shadow: 0 0 0 2px var(--ov-bg-solid);
+}
+:root .today-pill__dot {
+  box-shadow: 0 0 0 2px var(--ov-bg-solid);
+}
+:root .today-list {
+  background: var(--ov-bg);
+  padding: 8px;
+  gap: 4px;
+  border-radius: var(--ov-radius);
+}
+:root .today-list .wish-chip {
+  background: transparent;
+  box-shadow: none;
+  padding: 6px 12px 6px 6px;
+}
+:root .today-head__x {
+  background: var(--ov-card-2);
+}
+:root .today-week:active {
+  background: var(--ov-card);
+}
+:root .wish-chip__bar {
+  background: rgba(255, 255, 255, 0.16);
+}
+:root .wish-chip__icon {
+  background: var(--ov-card-2);
+}
+:root .wish-chip--event .wish-chip__icon {
+  background: rgba(247, 187, 60, 0.22);
+}
+:root .wish-chip--need .wish-chip__icon {
+  background: rgba(224, 71, 58, 0.26);
+}
+:root .beta-badge--hud {
+  opacity: 0.95;
+}
+
+/* ---------- Bottom: needs pill and dock ---------- */
+:root .needs-card__bars {
+  background: var(--ov-bg);
+  box-shadow: var(--e2), inset 0 0 0 1px var(--ov-line);
+}
+:root .mini-need__track {
+  background: rgba(255, 255, 255, 0.18);
+}
+:root .needs-card__face {
+  box-shadow: 0 0 0 3px var(--ov-bg-solid), 0 0 0 5.5px var(--green-500), var(--e2);
+}
+:root .dock {
+  background: var(--ov-bg);
+  box-shadow: var(--e3), inset 0 0 0 1px var(--ov-line);
+}
+:root .dock__btn.is-active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+:root .dock__btn:not(.is-active):hover {
+  background: var(--ov-card);
+}
+:root .dock__badge {
+  box-shadow: 0 0 0 2px var(--ov-bg-solid);
+}
+:root .kbd-btn {
+  background: var(--ov-bg);
+}
+:root .where-chip {
+  background: var(--ov-bg);
+  box-shadow: var(--e3), inset 0 0 0 1px var(--ov-line);
+}
+:root .where-chip__dot {
+  box-shadow: 0 0 0 4px rgba(47, 191, 119, 0.28);
+}
+
+/* ---------- Sheets ---------- */
+:root .bl-sheet {
+  background: var(--ov-bg-solid);
+  border-radius: 28px 28px 0 0;
+}
+:root .bl-sheet-backdrop,
+:root .bl-modal-backdrop {
+  background: rgba(8, 10, 30, 0.55);
+}
+:root .bl-sheet__grab span {
+  background: rgba(255, 255, 255, 0.28);
+}
+:root .bl-sheet__title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ov-text);
+}
+:root .bl-sheet__sub {
+  color: var(--ov-text-3);
+  font-size: 14px;
+  line-height: 1.4;
+}
+:root .bl-sheet__foot {
+  background: var(--ov-bg-solid);
+  border-top-color: var(--ov-line);
+  display: grid;
+  gap: 10px;
+}
+:root .bl-sheet .bl-iconbtn--plain,
+:root .bl-modal .bl-iconbtn--plain,
+:root .bl-sheet__close {
+  background: var(--ov-card-2);
+  color: var(--ov-text);
+}
+:root .bl-sheet .bl-tab:not(.is-active) {
+  background: var(--ov-card);
+  color: var(--ov-text-2);
+}
+:root .bl-sheet .bl-tab.is-active {
+  background: #ffffff;
+  color: var(--indigo);
+}
+:root :is(.bl-sheet, .bl-modal, .place-card) .bl-btn--ghost {
+  background: transparent;
+  color: var(--ov-text);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.3);
+}
+:root :is(.bl-sheet, .bl-modal, .place-card) .bl-btn--ghost:hover:not(:disabled) {
+  background: var(--ov-card);
+}
+
+/* ---------- Pop-ups (modals, life moments, announcements) ---------- */
+:root .bl-modal {
+  background: var(--ov-bg-solid);
+  border-radius: 28px;
+  padding: 28px var(--ov-pad) var(--ov-pad);
+  box-shadow: var(--e3), inset 0 0 0 1px var(--ov-line);
+}
+:root .bl-modal__title {
+  font-weight: 800;
+}
+:root .bl-modal__body {
+  color: var(--ov-text-2);
+}
+:root .bl-modal--bad .bl-modal__art,
+:root .bl-modal--good .bl-modal__art {
+  background: var(--ov-card);
+}
+:root .bl-modal__actions {
+  gap: 10px;
+}
+:root .bl-toast {
+  background: var(--ov-bg-solid);
+  box-shadow: var(--e3), inset 0 0 0 1px var(--ov-line);
+}
+
+/* ---------- Light chips and selected states inside the dark overlays keep dark text ---------- */
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) :is(.seg__btn.is-on, .opt.is-active, .buy-tier--all, .buy-tier.is-on, .loc-share, .origin-pill, .notif-note--warn, .tcard__risk.is-good, .btq__cat.is-on) {
+  color: #131a24;
+}
+:root .left-rail .beta-badge {
+  color: #7a4d1f;
+}
+:root .bl-sheet .beta-badge {
+  color: #ffcf6b;
+}
+:root .bl-sheet .tcard__risk.is-warn {
+  color: #7a4f00;
+}
+:root .shrine-svc__price {
+  color: #ffcf6b;
+}
+:root .shrine-svc__note {
+  color: #e8c28a;
+}
+:root [class*='btq'] .bl-sheet__title {
+  color: #131a24;
+}
+:root .buy-card__tier--mid {
+  color: #08331d;
+}
+:root .sk-chip.is-ok {
+  color: #6fe6ab;
+}
+:root .place-card {
+  background: var(--ov-bg);
+  box-shadow: var(--e3), inset 0 0 0 1px var(--ov-line);
+}
+
+/* ---------- White fills that were hard-coded: dark glass inside the overlays ---------- */
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) :is(.wish-chip__icon, .garage-opt__emoji, .wk-chip, .loc-district, .chip, .bankx__chip, .wallet__bank-link, .item__icon, .item__qty, .need-row__track, .career-card__emoji, .home-sheet__emoji, .risk-chip--info) {
+  background: var(--ov-card-2);
+  color: var(--ov-text);
+}
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .need-row__track {
+  background: rgba(255, 255, 255, 0.18);
+}
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .risk-chip--bad {
+  background: rgba(224, 71, 58, 0.24);
+  color: #ffa095;
+}
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .chip--yahoo {
+  background: rgba(47, 191, 119, 0.2);
+  color: #6fe6ab;
+}
+:root .wk-row.is-today {
+  background: rgba(247, 187, 60, 0.16);
+  box-shadow: inset 0 0 0 1.5px rgba(247, 187, 60, 0.5);
+}
+:root .wk-today {
+  color: #2a1a00;
+}
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .bankx__chip {
+  box-shadow: none;
+}
+
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .item .chip:not(.good):not(.bad):not(.warn),
+:root :is(.bl-sheet, .bl-modal, .place-card, .left-rail) .act .chip:not(.good):not(.bad):not(.warn) {
+  background: var(--ov-card-2);
+  color: var(--ov-text);
+}
+:root .home-chip,
+:root .home-chip-chat,
+:root .where-enter {
+  background: var(--ov-bg);
+  color: var(--ov-text);
+  box-shadow: var(--e2), inset 0 0 0 1px var(--ov-line);
+  min-height: var(--tap);
+}
+:root .home-chip__go {
+  background: rgba(47, 191, 119, 0.2);
+  color: #6fe6ab;
+}
+:root .left-rail .wish-chip__icon,
+:root .today-list .wish-chip__icon {
+  background: var(--ov-card-2) !important;
+}
+
+/* ---------- Phone apps: clear title, calm cards, tidy empty states (the phone interior stays light) ---------- */
+:root .phone-app__title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+:root .phone-app__body .item,
+:root .phone-app__body .card {
+  border-radius: 20px;
+}
+:root .phone-app .bl-empty,
+:root .phone-app .empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 28px var(--gutter);
+  text-align: center;
+}
+:root .phone-app .bl-empty h3,
+:root .phone-app .empty h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+:root .phone-app .bl-empty p,
+:root .phone-app .empty p {
+  margin: 0;
+  max-width: 28ch;
+  color: var(--muted);
+  font-size: 14px;
+}
+:root .bl-sheet .age-badge {
+  color: #131a24;
+}
+:root .rk-row__name {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}

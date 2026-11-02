@@ -11,6 +11,7 @@ import { useGame } from '../../../state/game';
 import { EmptyState, toast } from '../../../ui';
 import { ItemCard } from '../../../panels/shop/ShopUI';
 import { SellCarButton } from '../SellCar';
+import { DriveButton } from '../DriveButton';
 import { Thumb } from '../../../art/thumbs/Thumb';
 import { taxNote } from '../../../lib/tax';
 
@@ -82,6 +83,7 @@ export default function CarsApp({ state, onGo }: { state: GameState; onGo: (id: 
                 <span className="cars-mine__name">{c.name}</span>
                 <span className="cars-mine__sub">List price {nairaShort(c.price)}</span>
               </span>
+              <DriveButton itemId={c.id} only={mine.length === 1} />
               <SellCarButton car={{ id: c.id, name: c.name, price: c.price }} icon={c.icon} />
             </div>
           ))}

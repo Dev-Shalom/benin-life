@@ -1,0 +1,30 @@
+/* Admin -> Offices. Cards that wrap: nothing runs off a phone screen. */
+.adm-page [data-testid='admin-offices'], [data-testid='admin-offices'] { min-width: 0; }
+[data-testid='admin-offices'] { display: flex; flex-direction: column; gap: 12px; }
+[data-testid='admin-offices'] > * { min-width: 0; }
+.ao-h { margin: 6px 2px 0; font-size: 1rem; }
+.ao-office { display: grid; gap: 10px; }
+.ao-head { display: flex; gap: 10px; align-items: flex-start; }
+.ao-head__who { display: grid; gap: 3px; min-width: 0; flex: 1; }
+.ao-head__who b { overflow-wrap: anywhere; }
+.ao-head__who .adm-sub { overflow-wrap: anywhere; }
+.ao-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 12px; background: var(--surface-2, #eef1f5); font-size: 22px; }
+.ao-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.ao-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ao-body { display: grid; gap: 10px; padding-top: 8px; border-top: 1px solid var(--adm-line); }
+.ao-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.ao-fields--appoint { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.ao-field { display: grid; gap: 3px; font-size: .75rem; color: var(--muted); font-weight: 700; min-width: 0; }
+.ao-field .adm-input { width: 100%; min-width: 0; }
+.ao-lever { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--adm-line); border-radius: 12px; }
+.ao-lever.is-changed { border-color: #e8b431; background: #fff9e6; }
+.ao-lever__top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; align-items: baseline; }
+.ao-lever__top b { overflow-wrap: anywhere; }
+.ao-lever__val { font-weight: 800; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.ao-lever__val small { font-weight: 500; color: var(--muted); }
+.ao-applicant { display: grid; gap: 8px; padding: 10px 0; border-top: 1px solid var(--adm-line); }
+.ao-applicant:first-of-type { border-top: 0; }
+.ao-applicant__who { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.ao-pitch { margin: 0; font-style: italic; font-size: .875rem; }
+.ao-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ao-list li { display: grid; gap: 1px; overflow-wrap: anywhere; font-size: .875rem; }

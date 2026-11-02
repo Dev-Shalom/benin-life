@@ -112,3 +112,6 @@ While in the cell, the jail banner shows **Bail ₦X** (the current price) and *
 10. Concurrent double steal
 11. Admin list, release and audit
 12. RLS
+
+## The Court (later change)
+A pickpocket victim can now take the thief to the High Court from the Police app (button) or Phone, Court. The case is filed from the recorded `crime_attempts` row; a guilty verdict returns the stolen amount (cash then bank, the rest as court debt) plus a fine, and the 2nd guilty verdict within 30 days opens a normal jail case (popup, bail, escape). See docs/COURT.md.

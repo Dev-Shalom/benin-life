@@ -9,6 +9,7 @@ import { naira } from '../../lib/format';
 import { current, dismissEvent, occKey, patchEvent, reloadEvents, startsIn, useEvents } from '../../state/events';
 import { useGame } from '../../state/game';
 import { useHype } from '../../state/hype';
+import { bannerEvent, useWeekly } from '../../state/weekly';
 import { Icon, toast } from '../../ui';
 
 /** Today's events at one place, live-flag kept fresh. */
@@ -144,7 +145,16 @@ export function EventBanner({ hereId, onOpen }: { hereId: string | null; onOpen:
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shownKey, enabled, ticker, hypeBanner]);
-  const visible = enabled && !ticker && !hypeBanner && items.length > 0;
+  // the weekly event of the day (Friday Club Night ...): shown only when no place event is, same slot, same look
+  const wkCal = useWeekly((s) => s.cal);
+  const wkDismissed = useWeekly((s) => s.dismissed);
+  const wk = items.length === 0 ? bannerEvent(wkCal, wkDismissed) : null;
+  useEffect(() => {
+    if (!wk || !enabled || ticker || hypeBanner || typeof window === 'undefined' || window.innerWidth >= 600) return;
+    const id = window.setTimeout(() => useWeekly.getState().dismissBanner(), 8000);
+    return () => window.clearTimeout(id);
+  }, [wk?.key, enabled, ticker, hypeBanner]); // eslint-disable-line react-hooks/exhaustive-deps
+  const visible = enabled && !ticker && !hypeBanner && (items.length > 0 || wk !== null);
   const wrapRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -165,8 +175,24 @@ export function EventBanner({ hereId, onOpen }: { hereId: string | null; onOpen:
     if (rail) ro.observe(rail);
     window.addEventListener('resize', sync);
     return () => { ro.disconnect(); window.removeEventListener('resize', sync); root.style.removeProperty('--ev-h'); };
-  }, [visible, shownKey]);
+  }, [visible, shownKey, wk?.key]);
   if (!visible) return null;
+  if (wk) {
+    return (
+      <div className="ev-banner-wrap" ref={wrapRef}>
+        <div className="ev-banner" key={`wk-${wk.key}`}>
+          <button type="button" className="ev-banner__main" onClick={() => useWeekly.getState().setOpen(true)}
+            aria-label={`${wk.title} is on today. Open this week in Benin`}>
+            <span className="ev-banner__icon" aria-hidden>{wk.icon}</span>
+            <span className="ev-banner__text"><b>{wk.title}</b> is on today</span>
+          </button>
+          <button type="button" className="ev-banner__x" onClick={() => useWeekly.getState().dismissBanner()} aria-label="Hide this banner">
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      </div>
+    );
+  }
   const e = items[i % items.length];
   const place = e.location_name.replace(/\s*\(.*\)\s*$/, '');
   return (

@@ -4,6 +4,10 @@
 //           opens into a list (UI1), then a small "Clean screen · Beta" row
 //   b-left  round cached portrait + 6 tiny need bars -> Sim sheet
 //   bottom  dock: Home · Buy · Map · Phone (badge = unread alerts)
+import { TodayRows, TodaySync, TodayWeekLink, useTodayRows } from './Today';
+import { JourneyCard, useJourneyChip } from './Journey';
+import './Today.css';
+import { markTodayOpened, todayAlreadyOpened } from '../../state/today';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AvatarPortrait } from '../../art/avatar3d';
 import { dateLabel, useGameClock, weekdayOf } from '../../lib/clock';
@@ -194,8 +198,10 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   const bankAt = useBankTip(state, status.free);
   const dailyIcons = useDailyChipIcons();
   const chal = useChallengeChip();
-  const count = tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0) + (bankAt ? 1 : 0) + dailyIcons.length + (chal.show ? 1 : 0);
-  const ready = dadReady || dailyIcons.includes('🎁') || chal.ready;
+  const tr = useTodayRows();
+  const jc = useJourneyChip();
+  const count = (jc.show ? 1 : 0) + tr.count + tips.length + (dadReady ? 1 : 0) + (protectedNow ? 1 : 0) + (workAt ? 1 : 0) + (bankAt ? 1 : 0) + dailyIcons.length + (chal.show ? 1 : 0);
+  const ready = dadReady || tr.ready || dailyIcons.includes('🎁') || chal.ready || jc.ready;
   const open = !clean && count > 0 && (mode === 'open' || (mode === 'auto' && roomy && !compact));
 
   useEffect(() => {
@@ -206,6 +212,12 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
   }, []);
   // Switching between home / place / map goes back to the screen's default.
   useEffect(() => setMode('auto'), [compact]);
+  // Today card: open by itself once per Benin day when the game opens (not on the map or in a place on a phone), then stay out of the way.
+  useEffect(() => {
+    if (!tr.loaded || compact || clean || count === 0 || todayAlreadyOpened(tr.day)) return;
+    markTodayOpened(tr.day);
+    setMode('open');
+  }, [tr.loaded, tr.day, compact, clean, count]);
   // Tap outside folds a list the player opened (a desktop list that is open by default stays put).
   useEffect(() => {
     if (mode !== 'open') return;
@@ -247,11 +259,12 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
     else select(p.location_id);
   };
 
-  const icons = [...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...dailyIcons, ...(chal.show ? ['🏆'] : []), ...(protectedNow ? ['🛡️'] : [])];
+  const icons = [...(jc.show ? ['🌱'] : []), ...tips.map((t) => t.emoji), ...(workAt ? ['💼'] : []), ...(bankAt ? ['🏦'] : []), ...(dadReady ? ['💸'] : []), ...tr.icons, ...dailyIcons, ...(chal.show ? ['🏆'] : []), ...(protectedNow ? ['🛡️'] : [])];
   const shown = icons.slice(0, 4);
 
   return (
     <div className={`left-rail${clean ? ' is-clean' : ''}${compact ? ' is-compact' : ''}`}>
+      <TodaySync />
       <TaskPill state={state} status={status} />
       {!clean && count > 0 && (
         <div className={`today${open ? ' is-open' : ''}`} ref={todayRef} data-tour="today">
@@ -267,6 +280,11 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
           </button>
           {open && (
             <div className="today-list" id="today-list">
+              <div className="today-head">
+                <b>Today in Benin</b>
+                <button type="button" className="today-head__x" onClick={() => setMode('shut')} aria-label="Close the Today card"><Icon name="close" size={14} /></button>
+              </div>
+              <JourneyCard onPick={fold} />
               {tips.map((t) => (
                 <button key={t.key} type="button" className="wish-chip" onClick={() => onTip(t.key)}>
                   <span className="wish-chip__icon" style={{ background: `${NEED_META[t.key].color}22` }} aria-hidden>{t.emoji}</span>
@@ -308,8 +326,10 @@ export function LeftRail({ state, status, atHome, compact = false }: { state: Ga
                   <span className="daily-dot" aria-hidden />
                 </button>
               )}
+              <TodayRows onPick={fold} />
               <DailyChips onPick={fold} />
               <ChallengeChip onPick={fold} />
+              <TodayWeekLink onPick={fold} />
               {protectedNow && (
                 <div className="wish-chip wish-chip--protect" title="New player protection: nobody can rob you yet">
                   <span className="wish-chip__icon" aria-hidden>🛡️</span>

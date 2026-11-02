@@ -4,6 +4,7 @@
 // Bank (V1-5), Ranks (PAY), Yahoo (Y1: gear, dirty balance, jobs, cash out, rank), Feedback (S1-D suggestion box), Messages (friend requests, private text/voice chat and house visits), Wallet, Alerts and Settings.
 // Apps without working features stay hidden.
 // Esc closes the phone.
+import { trackAppOpen } from '../../lib/growth';
 import { useBroadcasts } from '../../state/broadcasts';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -13,6 +14,7 @@ import type { GameClock, GameState } from '../../lib/types';
 import { useChat } from '../../state/chat';
 import { useGist } from '../../state/gist';
 import { usePolitics } from '../../state/politics';
+import { useOffices } from '../../state/offices';
 import { useGame } from '../../state/game';
 import { useKids } from '../../state/kids';
 import { useMoments } from '../../state/moments';
@@ -37,6 +39,7 @@ const RanksApp = lazy(() => import('./phone/RanksApp'));
 const CarsApp = lazy(() => import('./phone/CarsApp'));
 const StoriesApp = lazy(() => import('./phone/StoriesApp'));
 const PoliceApp = lazy(() => import('./phone/PoliceApp'));
+const CourtApp = lazy(() => import('./phone/CourtApp'));
 const BillboardsApp = lazy(() => import('./phone/BillboardsApp'));
 const FeedbackApp = lazy(() => import('./phone/FeedbackApp'));
 const YahooApp = lazy(() => import('./phone/YahooApp'));
@@ -54,6 +57,7 @@ function coTabFor(app: string | null): CoTab {
 }
 const CrewApp = lazy(() => import('./phone/CrewApp'));
 const PoliticsApp = lazy(() => import('./phone/PoliticsApp'));
+const OfficeApp = lazy(() => import('./phone/OfficeApp'));
 const FamilyApp = lazy(() => import('./phone/FamilyApp'));
 type FamTab = 'linkups' | 'us' | 'family';
 function famTabFor(app: string | null): FamTab {
@@ -87,10 +91,12 @@ const APPS: App[] = [
   { id: 'business', name: 'Business', emoji: '🏪', bg: 'linear-gradient(160deg,#f0b43a,#b86a12)', pitch: 'Start an online company with no plot, own a shop on a map plot, discover and rank other companies, or put your real business on the map.' },
   { id: 'crew', name: 'Gang', emoji: '🤝', bg: 'linear-gradient(160deg,#3b3f58,#16182a)', pitch: 'Start a gang, recruit players and pull group jobs for big loot. The police can catch everybody.' },
   { id: 'politics', name: 'Benin Votes', emoji: '🗳️', bg: 'linear-gradient(160deg,#2f9e6b,#0e5a3a)', pitch: 'Run for councillor, chairman or governor, campaign, and vote at your ward polling unit. Fictional parties only.' },
+  { id: 'office', name: 'My Office', emoji: '🏛️', bg: 'linear-gradient(160deg,#c9a227,#6b4a00)', pitch: 'Everything you can do in office, in one place. Only office holders see this app.' },
   { id: 'billboards', name: 'Billboards', emoji: '📺', bg: 'linear-gradient(160deg,#ff6b78,#d93646)', pitch: '' },
   { id: 'hustles', name: 'Hustles', emoji: '💪', bg: 'linear-gradient(160deg,#ffb347,#e2552c)', pitch: '' },
   { id: 'school', name: 'School', emoji: '🎓', bg: 'linear-gradient(160deg,#9b72f0,#4a2aa0)', pitch: '' },
   { id: 'yahoo', name: 'Yahoo', emoji: '💻', bg: 'linear-gradient(160deg,#1f2a36,#0b0f14)', pitch: '' },
+  { id: 'court', name: 'Court', emoji: '⚖️', bg: 'linear-gradient(160deg,#3b3f8f,#171a3d)', pitch: 'Sue over what the game recorded, hire a player as your lawyer and watch live hearings.' },
   { id: 'police', name: 'Police', emoji: '🚓', bg: 'linear-gradient(160deg,#4f6bd8,#26388f)', pitch: 'Report a robbery, check your case file and pay bail.' },
   { id: 'wallet', name: 'Wallet', emoji: '👛', bg: 'linear-gradient(160deg,#34c77f,#0a6f40)', pitch: '' },
   { id: 'help', name: 'Help', emoji: '🛟', bg: 'linear-gradient(160deg,#ff8a6b,#c0392b)', pitch: 'Short guides for everything in Benin Life, with a Show me button.' },
@@ -169,13 +175,18 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
   const familyUnread = events.filter((e) => (e.kind.startsWith('love_') || (e.kind.startsWith('kids_') && e.kind !== 'kids_needs')) && e.id > lastReadEventId).length + kidsAttention;
   const open = overlay === 'phone';
   const polBadge = usePolitics((s) => Boolean(s.status?.cycle && ((s.status.cycle.voting_open && s.status.me.voted.length < 3) || (s.status.cycle.status === 'registration' && !s.status.me.candidacy))));
+  const officeMine = useOffices((s) => s.mine);
+  const holdsOffice = Boolean(officeMine?.holds);
   const wardrobeOn = useConfig().cfg<boolean>('wardrobe.enabled', true);
   const billboardsOn = useConfig().cfg<boolean>('billboards.enabled', true);
   const yahooOn = useConfig().cfg<boolean>('yahoo.enabled', true);
   const loveOn = useConfig().cfg<boolean>('love.enabled', true);
+  const courtOn = useConfig().cfg<boolean>('court.enabled', true);
+  const courtUnread = events.filter((e) => e.kind.startsWith('court_') && e.id > lastReadEventId).length;
   const kidsOn = useConfig().cfg<boolean>('kids.enabled', true);
   const { mounted, closing } = usePresence(open, 200);
   const [screen, setScreen] = useState<'lock' | 'home' | string>('lock');
+  useEffect(() => { if (screen !== 'lock' && screen !== 'home') trackAppOpen(screen); }, [screen]); // growth: apps opened per day (docs/GROWTH.md)
   const [wasOpen, setWasOpen] = useState(open);
   const [seenNonce, setSeenNonce] = useState(phoneNonce);
   const [bbTab, setBbTab] = useState<'boards' | 'mine'>('boards');
@@ -208,6 +219,14 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
     }, () => period, { immediate: true });
     return () => p.stop();
   }, [open, loveOn, kidsOn]);
+
+  // an old link, a cached app or a seat that just ended: the app is only for current holders
+  useEffect(() => {
+    if (open && screen === 'office' && officeMine && !officeMine.holds) {
+      setScreen('home');
+      toast('You no longer hold this office.');
+    }
+  }, [open, screen, officeMine]);
 
   if (!mounted) return null;
 
@@ -283,7 +302,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
           {screen === 'home' && (
             <div className="phone-home">
               <div className="phone-home__grid">
-                {APPS.filter((a) => (a.id !== 'boutique' || wardrobeOn) && (a.id !== 'billboards' || billboardsOn) && (a.id !== 'yahoo' || yahooOn) && (a.id !== 'family' || loveOn)).map((a) => (
+                {APPS.filter((a) => (a.id !== 'boutique' || wardrobeOn) && (a.id !== 'billboards' || billboardsOn) && (a.id !== 'yahoo' || yahooOn) && (a.id !== 'family' || loveOn) && (a.id !== 'office' || holdsOffice) && (a.id !== 'court' || courtOn)).map((a) => (
                   <button key={a.id} type="button" className="app-icon" data-tour={`app-${a.id}`} onClick={() => launch(a.id)}>
                     <span className="app-icon__tile" style={{ background: a.bg }} aria-hidden>
                       {a.emoji}
@@ -292,6 +311,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
                       {a.id === 'gist' && gistUnread > 0 && <span className="app-icon__badge">{gistUnread > 9 ? '9+' : gistUnread}</span>}
                       {a.id === 'houses' && (state.rent?.owed ?? 0) > 0 && <span className="app-icon__badge">!</span>}
                       {a.id === 'family' && familyUnread > 0 && <span className="app-icon__badge">{familyUnread > 9 ? '9+' : familyUnread}</span>}
+                      {a.id === 'court' && courtUnread > 0 && <span className="app-icon__badge">{courtUnread > 9 ? '9+' : courtUnread}</span>}
                       {a.id === 'politics' && polBadge && <span className="app-icon__badge">!</span>}
                       {a.id === 'stories' && storyWaiting > 0 && <span className="app-icon__badge">{storyWaiting > 9 ? '9+' : storyWaiting}</span>}
                     </span>
@@ -302,7 +322,7 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
             </div>
           )}
           {app && (
-            <div className={`phone-app${app.id === 'gist' || app.id === 'messages' ? ' phone-app--messages' : ''}${app.id === 'ride' ? ' phone-app--bolt' : ''}${app.id === 'yahoo' ? ' phone-app--yahoo' : ''}`}>
+            <div className={`phone-app${app.id === 'gist' || app.id === 'messages' ? ' phone-app--messages' : ''}${app.id === 'ride' ? ' phone-app--bolt' : ''}${app.id === 'yahoo' ? ' phone-app--yahoo' : ''}${app.id === 'court' ? ' phone-app--court' : ''}`}>
               {app.id !== 'gist' && app.id !== 'messages' && <div className="phone-app__bar">
                 <button type="button" className="phone-app__back" onClick={() => setScreen('home')} aria-label="Back to apps">
                   <Icon name="back" size={20} stroke={2.6} />
@@ -312,11 +332,12 @@ export function Phone({ state, clock }: { state: GameState; clock: GameClock }) 
               {app.id === 'jobs' ? <JobsApp state={state} onGo={goWork} />
                 : app.id === 'gist' || app.id === 'messages' ? <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}><SocialApp key={app.id} mode={app.id} state={state} onGoHome={goHome} onBack={() => setScreen('home')} onOpenAlerts={() => setScreen('alerts')} alertsUnread={unread} /></Suspense>
                 : app.id === 'alerts' ? <div className="phone-app__body"><AlertsList active={open && screen === 'alerts'} /></div>
-                  : app.id === 'cars' || app.id === 'police' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' || app.id === 'market' || app.id === 'business' || app.id === 'crew' || app.id === 'politics' || app.id === 'family' ? (
+                  : app.id === 'cars' || app.id === 'police' || app.id === 'court' || app.id === 'stories' || app.id === 'food' || app.id === 'houses' || app.id === 'bank' || app.id === 'ride' || app.id === 'ranks' || app.id === 'billboards' || app.id === 'feedback' || app.id === 'yahoo' || app.id === 'hustles' || app.id === 'school' || app.id === 'help' || app.id === 'market' || app.id === 'business' || app.id === 'crew' || app.id === 'politics' || app.id === 'family' || app.id === 'office' ? (
                       <Suspense fallback={<div className="phone-app__body"><div className="panel-skel"><span /><span /></div></div>}>
-                        {app.id === 'help' ? <HelpApp /> : app.id === 'family' ? <FamilyApp key={famTab} initialTab={famTab} /> : app.id === 'politics' ? <PoliticsApp onGo={goToPlace} /> : app.id === 'crew' ? <CrewApp onGo={goToPlace} /> : app.id === 'market' ? <MarketApp /> : app.id === 'business' ? <CompanyApp key={coTab} initialTab={coTab} state={state} onGo={goToPlace} /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
+                        {app.id === 'help' ? <HelpApp /> : app.id === 'family' ? <FamilyApp key={famTab} initialTab={famTab} /> : app.id === 'politics' ? <PoliticsApp onGo={goToPlace} /> : app.id === 'office' ? <OfficeApp onGo={goToPlace} /> : app.id === 'crew' ? <CrewApp onGo={goToPlace} /> : app.id === 'market' ? <MarketApp /> : app.id === 'business' ? <CompanyApp key={coTab} initialTab={coTab} state={state} onGo={goToPlace} /> : app.id === 'ranks' ? <RanksApp /> : app.id === 'feedback' ? <FeedbackApp /> : app.id === 'yahoo' ? <YahooApp state={state} onGo={goToPlace} /> : app.id === 'hustles' ? <HustlesApp state={state} onGo={goToPlace} /> : app.id === 'school' ? <SchoolApp state={state} onGo={goToPlace} /> : app.id === 'ride' ? <RideApp state={state} onPickOnMap={pickOnMap} onBooked={booked} />
                           : app.id === 'billboards' ? <BillboardsApp key={bbTab} initialTab={bbTab} onOpenBoard={openBoard} />
                           : app.id === 'cars' ? <CarsApp state={state} onGo={goToPlace} />
+                            : app.id === 'court' ? <CourtApp state={state} initial={phoneApp ?? undefined} />
                             : app.id === 'police' ? <PoliceApp state={state} onGo={goToPlace} />
                               : app.id === 'stories' ? <StoriesApp />
                                 : app.id === 'food' ? <FoodApp state={state} /> : app.id === 'bank' ? <BankApp state={state} /> : <HousesApp state={state} />}

@@ -4,6 +4,7 @@ import { toast } from '../ui';
 import { errorMessage } from '../lib/api';
 import { naira } from '../lib/format';
 import { adminApi, type AuditEntry } from './api';
+import { grantSummary } from './grantAudit';
 import { Badge, Btn, LoadError, PageHead, Skeleton } from './parts';
 import { timeShort, useLoad } from './util';
 
@@ -27,7 +28,7 @@ function summary(a: AuditEntry): string {
     case 'admin_claim': return `Claimed with ${d.email}`;
     case 'club_switch': return `${d.name ?? d.location_id} switched ${d.on ? 'ON' : 'OFF'}${Number(d.moved_home) ? ` · ${d.moved_home} player(s) sent home` : ''}`;
     case 'life_restart': return `Started a new life: gave up @${d.username} (${d.origin}, ${naira(Number(d.cash ?? 0) + Number(d.bank ?? 0))}), life ${d.life_no}`;
-    default: return '';
+    default: return grantSummary(a.action, d);
   }
 }
 
@@ -61,7 +62,7 @@ export default function Audit() {
                   {a.type === 'config' ? (
                     <><code className="adm-cfg__key">{a.key}</code> <span className="adm-audit__change">{show(a.old_value)} → <b>{show(a.new_value)}</b></span></>
                   ) : (
-                    <><Badge tone={a.action.includes('ban') ? 'red' : a.action.includes('admin') ? 'blue' : 'grey'}>{a.action.replace(/_/g, ' ')}</Badge>
+                    <><Badge tone={a.action.includes('ban') ? 'red' : a.action.includes('admin') ? 'blue' : /^(grant|set_|refill)/.test(a.action) ? 'green' : /^(take|remove|jail_put|career_remove|crew_remove|reset|clear)/.test(a.action) ? 'amber' : 'grey'}>{a.action.replace(/_/g, ' ')}</Badge>
                       {a.target && <b> @{a.target}</b>} <span className="adm-audit__change">{summary(a)}</span></>
                   )}
                 </div>

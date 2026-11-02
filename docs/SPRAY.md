@@ -123,3 +123,6 @@ Example: ₦1M spray = ₦200k drop = 20 notes. ₦2T spray = ₦400B drop (40M 
 
 `supabase/migrations/20261012001660_money_pick.sql`, `supabase/tests/money_pick_test.sql`, `src/api/moneyPick.ts`,
 `src/state/moneyPick.ts`, `src/screens/game/MoneyPick.tsx`, `src/styles/moneyPick.css`.
+
+## Shout-out card and alerts (Fix it 2 and 3)
+The takeover is now a compact card under the HUD (max 40 % of the screen, `pointer-events: none` except a close button) with shorter holds (spray 2.2 to 5 s). Players choose **Settings -> Club spray alerts**: shout-outs in my club (on), big sprays in other clubs (off), phone pings for club hype (off). See docs/FIXIT.md items 2 and 3.

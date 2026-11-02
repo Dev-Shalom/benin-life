@@ -16,6 +16,8 @@ import { useGame } from '../../../state/game';
 import { usePolitics } from '../../../state/politics';
 import { useUi } from '../../../state/ui';
 import { Button, CrewTag, EmptyState, OfficeTag, Tabs, toast } from '../../../ui';
+import { IndustrySection } from './IndustryOffices';
+import { useOffices } from '../../../state/offices';
 import './PoliticsApp.css';
 
 type Tab = 'gov' | 'elect' | 'vote' | 'results';
@@ -38,7 +40,7 @@ function useAct() {
   const refresh = useGame((s) => s.refresh);
   const act = useCallback(async (key: string, fn: () => Promise<{ message?: string }>, after?: () => void) => {
     setBusy(key);
-    try { const r = await fn(); if (r?.message) toast(r.message, 'good'); after?.(); } catch (e) { toast(errorMessage(e), 'bad'); } finally { setBusy(null); void load(); void refresh(); }
+    try { const r = await fn(); if (r?.message) toast(r.message, 'good'); after?.(); } catch (e) { toast(errorMessage(e), 'bad'); } finally { setBusy(null); void load(); void refresh(); void useOffices.getState().load(); }
   }, [load, refresh]);
   return { busy, act };
 }
@@ -83,7 +85,7 @@ function SeatRow({ seat }: { seat: PolSeat }) {
   );
 }
 
-function MyOffice({ s, h }: { s: PolStatus; h: PolHolder }) {
+export function MyOffice({ s, h }: { s: PolStatus; h: PolHolder }) {
   const { busy, act } = useAct();
   const now = useNow(1000);
   const pw = s.me.powers;
@@ -183,7 +185,13 @@ function GovTab({ s }: { s: PolStatus }) {
   const now = useNow(1000);
   return (
     <div className="po-stack" data-testid="pol-gov">
-      {s.me.office && <MyOffice s={s} h={s.me.office} />}
+      {s.me.office && (
+        <section className="po-card" data-testid="pol-my-office-link">
+          <h4><OfficeTag title={s.me.office.title} />{s.me.office.office}{s.me.office.ward ? ` · ${s.me.office.ward}` : ''}</h4>
+          <p className="po-hint">You hold office. Your powers (appointments, announcements, policy, ward notice) are in the <b>My Office</b> app on your phone.</p>
+          <Button size="sm" variant="gold" onClick={() => useUi.getState().openPhone('office')}>Open My Office</Button>
+        </section>
+      )}
       {s.policy ? (
         <section className="po-card" data-testid="pol-policy">
           <h4>{s.policy.icon} Government policy: {s.policy.name}</h4>
@@ -199,6 +207,7 @@ function GovTab({ s }: { s: PolStatus }) {
       <div className="po-list">{comm.map((x) => <SeatRow key={x.office_id} seat={x} />)}</div>
       <h4 className="po-h">Councillors, one per ward</h4>
       <div className="po-list">{council.map((x) => <SeatRow key={`${x.office_id}:${x.ward_id}`} seat={x} />)}</div>
+      <IndustrySection />
     </div>
   );
 }

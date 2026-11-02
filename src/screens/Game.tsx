@@ -6,6 +6,9 @@ import { BroadcastHost } from './game/Broadcasts';
 import { CrimeHost, PlacePlayerSheet } from './game/Crime';
 import { ShrineHost } from './game/Shrine';
 import { MomentsHost } from './game/MomentsHost';
+import { ReturnGiftHost } from './game/ReturnGift';
+import { WeeklyHost } from './game/Weekly';
+import { JourneyHost } from './game/Journey';
 import { CrewHost, YahooHost } from './game/Yahoo';
 import { HustleHost } from './game/Hustles';
 import { SkillHost } from './game/Skills';
@@ -44,6 +47,7 @@ import { GlobalPanelSheet } from './game/PanelHost';
 import { Phone } from './game/Phone';
 import { LookSheet, SimSheet } from './game/SimSheet';
 import { StatusBanners } from './game/StatusBanners';
+import { ClubMusicChip } from './game/ClubMusicChip';
 import { ElectionBanner, PoliticsHost } from './game/PollingStrip';
 import { deriveStatus } from './game/status';
 import { useTaskRunner } from './game/TaskRunner';
@@ -82,6 +86,7 @@ import { houseUpgradeHome, type UpgradeHome } from '../api/upgrades';
 import { useUpgradeWatcher, useUpgrades } from '../state/upgrades';
 import { BuildersPill } from './game/BuildersPill';
 import { canPoll } from '../lib/activity';
+import { flushChannel } from '../lib/growth';
 
 const Boutique = lazy(() => import('./game/Boutique'));
 const BillboardSheet = lazy(() => import('./game/BillboardSheet'));
@@ -118,6 +123,7 @@ function rowPosition(row: HouseFurniturePlacement): SavedHomePosition {
 }
 
 export default function Game() {
+  useEffect(() => { flushChannel(); }, []); // growth: a ?src= channel the creator could not save yet (docs/GROWTH.md)
   const state = useGame((s) => s.state);
   const locations = useGame((s) => s.locations);
   const byId = useGame((s) => s.locationsById);
@@ -936,6 +942,7 @@ export default function Game() {
               <span className="chat-chip__dot" aria-hidden /> <Icon name="chat" size={15} /> {chatUnread > 9 ? '9+' : chatUnread} new in chat
             </button>
           )}
+          {showPlace && inClub && <ClubMusicChip key={state.location.id} />}
           {!clean && showPlace && (
             <PlaceCard state={state} data={interior.data} error={interior.error} zone={placeZone} onZone={setPlaceZone}
               peopleCount={crowdPlan.total + 1} moodSeconds={Number(cfg('places.mood_seconds', 7)) || 7}
@@ -993,6 +1000,9 @@ export default function Game() {
       <CrimeHost />
       <ShrineHost />
       <MomentsHost />
+      <ReturnGiftHost />
+      <WeeklyHost />
+      <JourneyHost />
       <YahooHost />
       <CrewHost />
       <PoliticsHost />
