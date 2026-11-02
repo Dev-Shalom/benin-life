@@ -52,6 +52,7 @@ const CATS: [Cat, string, string][] = [
   ['bathroom', 'Bathroom', '🛁'],
   ['utility', 'Outside', '⚡'],
   ['decor', 'Decor', '🖼️'],
+  ['lighting', 'Lighting', '💡'],
 ];
 const TIERS: { id: TierFilter; label: string }[] = [
   { id: 'all', label: 'All' },

@@ -86,12 +86,14 @@ export class LampSystem {
   /** Overall lit-ness of the room 0..1 (sum of brightness, for the ambient light). */
   litness = 0;
   private envDark = 0;
+  private boost = 1;
   /** Real PointLights currently shining (> 0.01): HomeScene shows / hides the whole set from this. */
   active = 0;
   private shown = false;
 
   constructor(room: BuiltRoom, offset: [number, number], maxReal: number) {
     this.fixtures = room.fixtures;
+    this.boost = 1 + (room.boost ?? 0);
     this.ox = offset[0];
     this.oz = offset[1];
     const n = this.fixtures.length;
@@ -227,7 +229,7 @@ export class LampSystem {
       const k = instant ? 1 : Math.min(1, dt * 7);
       for (let s = 0; s < this.maxReal; s++) {
         const fx = this.slotFx[s];
-        const want = fx >= 0 && !this.slotFade[s] ? this.fixtures[fx].b * INTENSITY_PER_B * this.level[fx] : 0;
+        const want = fx >= 0 && !this.slotFade[s] ? this.fixtures[fx].b * INTENSITY_PER_B * this.boost * this.level[fx] : 0;
         const cur = this.slotI[s];
         const next = Math.abs(want - cur) < 0.01 ? want : cur + (want - cur) * k;
         if (next !== cur) moving = true;
@@ -331,9 +333,9 @@ export class LampSystem {
         const k = this.offK[i] + (1 - this.offK[i]) * lv;
         this.scaleRuns(this.glow, this.baseGlow, runs.glow, k);
       }
-      if (runs && this.light && this.baseLight) this.scaleRuns(this.light, this.baseLight, runs.light, lv);
+      if (runs && this.light && this.baseLight) this.scaleRuns(this.light, this.baseLight, runs.light, lv * (1 + (this.boost - 1) * 0.6));
       if (this.haloCol) {
-        const hk = lv * gainDay * 1.25;
+        const hk = lv * gainDay * 1.25 * (1 + (this.boost - 1) * 0.5);
         this.haloCol[i * 3] = this.colour[i * 3] * hk;
         this.haloCol[i * 3 + 1] = this.colour[i * 3 + 1] * hk;
         this.haloCol[i * 3 + 2] = this.colour[i * 3 + 2] * hk;

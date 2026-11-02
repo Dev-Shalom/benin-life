@@ -258,6 +258,21 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: 'furniture arrange move rotate decorate room layout',
   },
   {
+    id: 'home-lights',
+    topic: 'home',
+    title: 'Lights for your home',
+    summary: 'Every home comes with a light in each room. Buy more to make it beautiful.',
+    steps: [
+      'Tap Buy, then the Lighting tab: bulbs, ceiling lights, lamps, wall lights, chandeliers and yard lights. Check the app for current prices.',
+      'Place a light in Arrange like any furniture. Ceiling and wall lights hang up, lamps stand on a table, and yard lights go outside.',
+      'Lights come on by themselves at dusk, and by day in dim rooms. Tap a light at home to switch it on or off.',
+      'When NEPA take light, only a rechargeable lamp, battery bulb, lantern or candle keeps shining.',
+    ],
+    where: 'Buy, then Lighting (at home).',
+    tour: ['buy'],
+    keywords: 'light bulb lamp lantern candle chandelier dark night nepa power cut rechargeable solar inverter generator',
+  },
+  {
     id: 'house-upgrades',
     topic: 'home',
     title: 'Upgrade your home',

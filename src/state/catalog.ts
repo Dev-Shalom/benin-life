@@ -37,7 +37,7 @@ export interface ShopFurniture {
   name: string;
   emoji: string;
   kind: string;
-  category: 'living' | 'bedroom' | 'kitchen' | 'bathroom' | 'utility' | 'decor';
+  category: 'living' | 'bedroom' | 'kitchen' | 'bathroom' | 'utility' | 'decor' | 'lighting';
   tier: 'lapo' | 'mid' | 'nepo';
   price: number;
   description: string;
@@ -48,6 +48,10 @@ export interface ShopFurniture {
   max_qty: number;
   placement: string;
   sort: number;
+  /** L1 lighting: 0-10 (0 = not a light), kelvin, works in a power cut. */
+  brightness?: number;
+  warmth?: number;
+  works_without_power?: boolean;
 }
 
 let shopLoading: Promise<void> | null = null;
@@ -77,7 +81,7 @@ interface FurnitureJoin {
   source?: string | null;
   /** H4: copies that came with a house (the highest copy numbers). */
   house_qty?: number | null;
-  furniture: { kind: string; slot: string; activities: string[] | null; color: string | null; active: boolean; sort: number; name?: string } | null;
+  furniture: { kind: string; slot: string; activities: string[] | null; color: string | null; active: boolean; sort: number; name?: string; brightness?: number | null; warmth?: number | null; works_without_power?: boolean | null } | null;
 }
 
 export const useCatalog = create<CatalogStore>((set, get) => ({
@@ -91,7 +95,7 @@ export const useCatalog = create<CatalogStore>((set, get) => ({
     shopLoading ??= (async () => {
       const { data, error } = await supabase
         .from('furniture')
-        .select('id, name, emoji, kind, category, tier, price, description, activities, bonus, rest_pct, color, max_qty, placement, sort')
+        .select('id, name, emoji, kind, category, tier, price, description, activities, bonus, rest_pct, color, max_qty, placement, sort, brightness, warmth, works_without_power')
         .eq('active', true).eq('buyable', true).order('sort');
       if (!error) set({ shop: ((data ?? []) as ShopFurniture[]).map((r) => ({ ...r, price: Number(r.price) })) });
     })().finally(() => {
@@ -104,7 +108,7 @@ export const useCatalog = create<CatalogStore>((set, get) => ({
     furnLoading ??= (async () => {
       const { data, error } = await supabase
         .from('player_furniture')
-        .select('furniture_id, slot, qty, source, house_qty, furniture(kind, slot, activities, color, active, sort, name)')
+        .select('furniture_id, slot, qty, source, house_qty, furniture(kind, slot, activities, color, active, sort, name, brightness, warmth, works_without_power)')
         .eq('user_id', userId);
       if (error) {
         set({ furnitureOf: userId, furniture: null }); // tried: the home keeps its default furnishing
@@ -125,6 +129,7 @@ export const useCatalog = create<CatalogStore>((set, get) => ({
           name: r.furniture!.name,
           source: r.source ?? undefined,
           houseQty: r.house_qty ?? 0,
+          light: r.furniture!.brightness ? { b: Number(r.furniture!.brightness), k: r.furniture!.warmth || undefined, np: Boolean(r.furniture!.works_without_power) } : undefined,
         })),
       });
     })().finally(() => {

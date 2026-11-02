@@ -27,6 +27,8 @@ export interface BuiltRoom {
   /** L1: where each fixture's glow and floor pool sit in the merged 'glow' / 'light' geometries (by piece id; '~led' = the
    * electric indicator LEDs of ACs and fridges). */
   lamps: Record<string, LampRuns>;
+  /** L1: 0..1 how much stronger the home's lights shine at night with a solar system (+0.35) and / or a generator house (+0.2) built. */
+  boost: number;
   /** Parked vehicles (layout space, footprint centre + size) so the scene can make them tappable. `index` is the
    * position in Parking.cars. */
   vehicles: { index: number; id: string; x: number; z: number; w: number; d: number }[];
@@ -446,7 +448,7 @@ export function buildRoom(L: HomeLayout, opts: { dollhouse?: boolean; density?: 
     });
   }
   const layers = b.finish();
-  return { layers, tris: b.tris, radius, rich, fan, bulb, frame, vehicles, fixtures, lamps: b.lamps };
+  return { layers, tris: b.tris, radius, rich, fan, bulb, frame, vehicles, fixtures, lamps: b.lamps, boost: (L.structs ?? []).reduce((m, st) => m + (st.kind === 'solar' ? 0.35 : st.kind === 'genhouse' ? 0.2 : 0), 0) };
 }
 
 function mixCol(a: string, c: string): string {
@@ -564,6 +566,11 @@ function buildStruct(b: HomeBuilder, kind: string, r: Rect, rich: boolean) {
     for (let i = 0; i < 5; i++) b.box(w * 0.6, 0.03, 0.03, cx, 0.4 + i * 0.13, z1 + 0.01, '#4a4f55', { mat: 'metal' });
     b.cyl(0.05, 0.05, 0.9, x1 - 0.2, H, z0 + 0.2, '#3b3f44', { seg: 8, mat: 'metal' });
     b.box(0.5, 0.35, 0.02, cx, 0.4, z1 + 0.02, '#e8c13a');
+    // the generator itself, rolled out in front of its house: body, fuel tank, exhaust and a power light
+    b.box(0.6, 0.42, 0.4, cx, 0, z1 + 0.35, '#c0392b', { mat: 'metal' });
+    b.box(0.5, 0.1, 0.3, cx, 0.42, z1 + 0.35, '#2b2f36', { mat: 'metal' });
+    b.cyl(0.03, 0.03, 0.3, cx + 0.26, 0.42, z1 + 0.5, '#3b3f44', { seg: 6, mat: 'metal' });
+    b.box(0.08, 0.04, 0.01, cx - 0.2, 0.3, z1 + 0.551, '#3ddc84', { layer: 'glow' });
     return;
   }
   if (kind === 'solar') {
@@ -577,6 +584,9 @@ function buildStruct(b: HomeBuilder, kind: string, r: Rect, rich: boolean) {
       b.box(w / 2 - 0.08, 0.05, d - 0.1, px, 1.0, cz, '#1d3557', { rx: -0.45, mat: 'metal' });
       b.box(w / 2 - 0.2, 0.01, d - 0.28, px, 1.03, cz, '#274b7a', { rx: -0.45, layer: 'glass' });
     }
+    // the inverter box on the rack, with its status light
+    b.box(0.4, 0.5, 0.16, cx, 0.1, z1 - 0.12, '#e9eef2', { mat: 'metal' });
+    b.box(0.08, 0.04, 0.01, cx + 0.1, 0.45, z1 - 0.03, '#3ddc84', { layer: 'glow' });
     return;
   }
   if (kind === 'borehole') {
