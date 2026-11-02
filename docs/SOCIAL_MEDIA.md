@@ -221,3 +221,11 @@ Live since the last pack: a cleaner dark look for every screen, "Your first days
 - **Caption:** "✨ Benin Life just got a glow-up! Cleaner look, and something new every day: 🛍️ Wednesday Market Day (Oba Market cheaper) 🎶 Friday Club Night 🎉 Saturday Owambe 😴 Sunday Rest Day 🏆 Monday Winners. New here? 'Your first days' pays you to learn the game 💰 Been away? A welcome-back gift dey wait you 🎁 Play free 👉 playbeninlife.app #BeninLife #BeninCity #Edo #NaijaGames #GlowUp"
 - **Announce (it's Monday tomorrow):** post last week's top earners (Hustles -> Top earners); the game also broadcasts them on Monday.
 - **Channel link:** use playbeninlife.app/?src=tiktok in the TikTok bio so Admin -> Growth shows how many come from TikTok.
+
+### Pack: NEPA don take light, the Court, and Monday winners (2 Nov 2026)
+Live since the last pack: power cuts by area with generators, inverters and solar, 7 filling stations and fuel shortages, a hidden night-time black market, real home lighting, the High Court Benin (sue, player lawyers, live hearings), and the Fix it update (choose your car, phone banking, money history, less robbery).
+- **TikTok:** screen-record a power cut: the home goes dark, the "NEPA don take light" pop-up, tap Turn on generator, lights come back. Hook: "Even for game, NEPA no dey let us rest 😭💡". Sound: a trending funny "lights off" or suspense sound.
+- **Poster prompt (ChatGPT):** sleek vertical 4:5 Pixar-like 3D poster of a stylised Benin City street at night in a blackout, every house dark except one glowing home with a small generator humming in the yard, a young Nigerian avatar holding a jerrycan and laughing. Text exactly: "NEPA DON TAKE LIGHT" / "Generator, inverter or candle?" / "playbeninlife.app". Colours bronze #C8922E, coral #C0392B, warm black #1E1410, ivory #F7EBD3. No real brands.
+- **Caption:** "💡 NEPA don take light for Benin Life too 😭 Buy fuel for your generator, get an inverter and solar, or sit in the dark with candle 🕯️ Filling stations, fuel scarcity, even a hidden black market at night 👀 And if dem rob you, take them to the High Court, Benin ⚖️ Play free 👉 playbeninlife.app #BeninLife #NEPA #BeninCity #Edo #NaijaGames"
+- **Monday:** post last week's top earners (the game also announces them).
+- **Owner tip:** do a live blackout from Admin -> Power during your TikTok live for a fun moment.
