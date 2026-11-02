@@ -3,7 +3,11 @@
 // R5's lite map reads liteMap.
 import { create } from 'zustand';
 
+export type ThemeChoice = 'light' | 'dark' | 'system';
+
 export interface Prefs {
+  /** Appearance: Light (default), Dark, or follow the phone (prefers-color-scheme). docs/THEME.md */
+  theme: ThemeChoice;
   /** Master mute (the speaker in the HUD pill). */
   muted: boolean;
   sfx: boolean;
@@ -19,7 +23,7 @@ export interface Prefs {
 }
 
 const KEY = 'bl.prefs.v1';
-const DEFAULTS: Prefs = { muted: false, sfx: true, music: true, liteMap: false, clean: false, graphics: 'auto', keepOwnMusic: true };
+const DEFAULTS: Prefs = { theme: 'light', muted: false, sfx: true, music: true, liteMap: false, clean: false, graphics: 'auto', keepOwnMusic: true };
 
 function load(): Prefs {
   try {
@@ -27,6 +31,7 @@ function load(): Prefs {
     if (!raw) return { ...DEFAULTS };
     const v = JSON.parse(raw) as Partial<Prefs>;
     return {
+      theme: v.theme === 'dark' || v.theme === 'system' ? v.theme : 'light',
       muted: typeof v.muted === 'boolean' ? v.muted : DEFAULTS.muted,
       sfx: typeof v.sfx === 'boolean' ? v.sfx : DEFAULTS.sfx,
       music: typeof v.music === 'boolean' ? v.music : DEFAULTS.music,
@@ -51,15 +56,15 @@ function save(p: Prefs) {
 
 interface PrefsStore extends Prefs {
   set: (patch: Partial<Prefs>) => void;
-  toggle: (k: Exclude<keyof Prefs, 'graphics'>) => void;
+  toggle: (k: Exclude<keyof Prefs, 'graphics' | 'theme'>) => void;
 }
 
 export const usePrefs = create<PrefsStore>((set, get) => ({
   ...load(),
   set: (patch) => {
     set(patch);
-    const { muted, sfx, music, liteMap, clean, graphics, keepOwnMusic } = get();
-    save({ muted, sfx, music, liteMap, clean, graphics, keepOwnMusic });
+    const { theme, muted, sfx, music, liteMap, clean, graphics, keepOwnMusic } = get();
+    save({ theme, muted, sfx, music, liteMap, clean, graphics, keepOwnMusic });
   },
   toggle: (k) => get().set({ [k]: !get()[k] } as Partial<Prefs>),
 }));

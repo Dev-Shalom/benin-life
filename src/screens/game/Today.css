@@ -1,8 +1,8 @@
 /* HUD Today card extras (docs/DAILY_RETURN.md part 4): a small header with a close button, the event / need rows, a quiet link. */
 .today-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 4px 12px; font: 700 13px var(--font-display); color: var(--text); }
-.today-head__x { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.06); color: inherit; cursor: pointer; }
+.today-head__x { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--surface-3); color: inherit; cursor: pointer; }
 .wish-chip--event .wish-chip__icon { background: rgba(224, 160, 18, 0.18); }
 .wish-chip--need .wish-chip__icon { background: rgba(226, 59, 46, 0.12); }
 .today-week { margin: 2px 4px 4px; min-height: 40px; padding: 0 12px; border: 0; border-radius: 14px; background: transparent; color: var(--muted, #5b6472); font: 600 13px var(--font-display); text-align: left; cursor: pointer; }
-.today-week:active { background: rgba(0, 0, 0, 0.05); }
+.today-week:active { background: var(--surface-3); }
 .wish-chip--need .wish-chip__title, .wish-chip--event .wish-chip__title { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; }

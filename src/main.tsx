@@ -10,6 +10,7 @@ import './styles/overlay.css';
 import App from './App.tsx';
 import { initAuth } from './state/game';
 import { initSound } from './lib/sound';
+import { initTheme } from './lib/theme';
 import { captureReferral } from './lib/referral';
 import { captureChannel } from './lib/growth';
 import { captureDeepLink } from './lib/deeplink';
@@ -23,6 +24,7 @@ captureChannel(); // growth: remember ?src=tiktok (a channel link, not a player 
 captureDeepLink(); // P1: remember ?go=dm:12 from a tapped notification
 initAuth();
 initSound();
+initTheme(); // Light / Dark / Match my phone (docs/THEME.md); index.html already set data-theme before first paint
 initKeyboardInset(); // --vvh / --kb / html.has-kb for every text field (docs/MOBILE_INPUT.md)
 
 // After a new deploy, an open tab may ask for old chunk files that no longer exist.

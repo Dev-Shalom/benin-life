@@ -21,7 +21,7 @@
 .yh .grow { flex: 1; min-width: 0; }
 
 .yh-skel { display: grid; gap: 10px; padding-top: 8px; }
-.yh-skel span { height: 64px; border-radius: 14px; background: linear-gradient(90deg, #131a22, #1b2531, #131a22); background-size: 200% 100%; animation: yh-shimmer 1.4s linear infinite; }
+.yh-skel span { height: 64px; border-radius: 14px; background: linear-gradient(90deg, var(--ink-solid), #1b2531, var(--ink-solid)); background-size: 200% 100%; animation: yh-shimmer 1.4s linear infinite; }
 @keyframes yh-shimmer { to { background-position: -200% 0; } }
 
 /* laptop screen */
@@ -130,7 +130,7 @@
 .yh-sheet small { display: block; color: var(--yh-ink-2); font-size: 12px; line-height: 1.35; }
 .yh-sheet .yh-fine { margin: 10px 2px 0; font-size: 11.5px; color: var(--yh-ink-2); }
 .yh-sheet .yh-skel { display: grid; gap: 10px; padding-top: 8px; }
-.yh-sheet .yh-skel span { height: 84px; border-radius: 14px; background: linear-gradient(90deg, #131a22, #1b2531, #131a22); background-size: 200% 100%; animation: yh-shimmer 1.4s linear infinite; }
+.yh-sheet .yh-skel span { height: 84px; border-radius: 14px; background: linear-gradient(90deg, var(--ink-solid), #1b2531, var(--ink-solid)); background-size: 200% 100%; animation: yh-shimmer 1.4s linear infinite; }
 .yh-co { display: grid; gap: 10px; padding-top: 4px; }
 .yh-co__opt { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: 16px; border: 1px solid var(--yh-line); background: var(--yh-card); color: inherit; text-align: left; font: inherit; cursor: pointer; transition: border-color .15s, background .15s; }
 .yh-co__opt.is-on { border-color: var(--yh-gold); background: #1e1a0e; }

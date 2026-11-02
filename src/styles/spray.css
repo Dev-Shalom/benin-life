@@ -106,7 +106,7 @@
 .spray-sheet.is-vip .spray__field { background: #17110a; }
 .spray-sheet.is-vip .spray__field:focus-within { border-color: #d9a441; background: #1f170c; }
 .spray-sheet.is-vip .spray__input, .spray-sheet.is-vip .spray__cur { color: #f7d774; }
-.spray-sheet.is-vip .spray__chip.is-on { border-color: #d9a441; background: #fff6dc; color: #7a4d1f; }
+.spray-sheet.is-vip .spray__chip.is-on { border-color: #d9a441; background: var(--tint-amber); color: var(--c-amber); }
 
 @media (prefers-reduced-motion: reduce) {
   .spray__chip, .spray-go, .spray__field { transition: none; }

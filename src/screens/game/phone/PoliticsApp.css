@@ -5,8 +5,8 @@
 .po-card { display: grid; gap: 8px; padding: 12px; border-radius: 18px; background: var(--surface); box-shadow: var(--e1); color: var(--ink); }
 .po-hint { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
 .po-fine { font-size: 12px; line-height: 1.4; color: var(--ink-3); }
-.po-warn { margin: 0; padding: 8px 10px; border-radius: 12px; background: var(--amber-50); color: var(--amber-800); font-size: 13px; }
-.po-ok { margin: 0; padding: 8px 10px; border-radius: 12px; background: var(--green-50, #e6f7ee); color: var(--green-700); font-size: 13px; }
+.po-warn { margin: 0; padding: 8px 10px; border-radius: 12px; background: var(--amber-50); color: var(--c-amber); font-size: 13px; }
+.po-ok { margin: 0; padding: 8px 10px; border-radius: 12px; background: var(--green-50, #e6f7ee); color: var(--c-green); font-size: 13px; }
 .po-link { background: none; border: 0; padding: 6px 4px; font: 700 12.5px var(--font-display); color: var(--ink-3); text-decoration: underline; }
 .po-head { display: grid; gap: 4px; padding: 12px; border-radius: 18px; color: #fff; background: linear-gradient(135deg, #1f6f4a, #0e3d2a); box-shadow: var(--e1); }
 .po-head.is-voting { background: linear-gradient(135deg, #b8860b, #6b4a00); }
@@ -17,7 +17,7 @@
 .po-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .po-step { display: grid; gap: 1px; padding: 7px 8px; border-radius: 12px; background: var(--surface-2); font-size: 12px; color: var(--ink-3); text-align: left; }
 .po-step b { font: 800 12.5px var(--font-display); color: var(--ink-2); }
-.po-step.is-on { background: #fff4d1; box-shadow: inset 0 0 0 2px #e8b431; color: var(--ink); }
+.po-step.is-on { background: var(--tint-amber); box-shadow: inset 0 0 0 2px #e8b431; color: var(--ink); }
 .po-step.is-done { opacity: .6; }
 .po-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .po-row__who { display: grid; gap: 2px; flex: 1; min-width: 120px; text-align: left; }
@@ -30,11 +30,11 @@
 .po-field input, .po-field select, .po-field textarea, .po-inline input { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line, #d8dde3); background: var(--surface-2); color: var(--ink); font-size: 16px; font-family: inherit; }
 .po-field textarea { min-height: 70px; resize: vertical; }
 .po-inline { display: flex; gap: 8px; align-items: center; }
-.po-ticket { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 8px; font: 800 11px var(--font-display); color: var(--amber-800); background: var(--amber-50); vertical-align: middle; }
+.po-ticket { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 8px; font: 800 11px var(--font-display); color: var(--c-amber); background: var(--amber-50); vertical-align: middle; }
 .po-ticketbox { display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px; border: 1px dashed var(--amber-800); background: var(--surface-2); }
 .po-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 13px; }
-.po-checks li.is-bad { color: var(--red-600); }
-.po-checks li.is-ok { color: var(--green-700); }
+.po-checks li.is-bad { color: var(--c-red); }
+.po-checks li.is-ok { color: var(--c-green); }
 .po-bar { height: 8px; border-radius: 99px; background: var(--chip-bg); overflow: hidden; }
 .po-bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #f0c25a, #e0a030); transition: width 240ms ease-out; }
 .po-mom { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; color: var(--ink-3); }
@@ -46,12 +46,12 @@
 .po-race { display: grid; gap: 8px; }
 .po-race > summary { cursor: pointer; font: 800 14px var(--font-display); padding: 6px 2px; }
 .po-pick { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 14px; border: 2px solid transparent; background: var(--surface-2); text-align: left; width: 100%; }
-.po-pick.is-on { border-color: #e8b431; background: #fff9e6; }
+.po-pick.is-on { border-color: #e8b431; background: var(--tint-amber); }
 .po-pick > span { display: grid; gap: 2px; min-width: 0; }
 .po-pick b { overflow-wrap: anywhere; }
 .po-tally { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; }
 .po-tally span:nth-child(even) { font-variant-numeric: tabular-nums; text-align: right; font-weight: 700; }
-.po-win { display: inline-block; padding: 1px 7px; border-radius: 99px; background: #e8f7ee; color: var(--green-700); font: 800 11px var(--font-display); }
-.po-tie { display: inline-block; padding: 1px 7px; border-radius: 99px; background: #fff0d1; color: var(--amber-800); font: 800 11px var(--font-display); }
+.po-win { display: inline-block; padding: 1px 7px; border-radius: 99px; background: var(--tint-green); color: var(--c-green); font: 800 11px var(--font-display); }
+.po-tie { display: inline-block; padding: 1px 7px; border-radius: 99px; background: var(--tint-amber); color: var(--c-amber); font: 800 11px var(--font-display); }
 .po-poll { display: grid; gap: 4px; }
 .po-poll.is-open { box-shadow: inset 0 0 0 2px #e8b431, var(--e1); }

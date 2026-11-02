@@ -5,7 +5,7 @@
 .cr-card { display: grid; gap: 8px; padding: 12px; border-radius: 18px; background: var(--surface); box-shadow: var(--e1); color: var(--ink); }
 .cr-hint { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
 .cr-fine { font-size: 12px; line-height: 1.4; color: var(--ink-3); }
-.cr-warn { margin: 0; padding: 8px 10px; border-radius: 12px; background: var(--amber-50); color: var(--amber-800); font-size: 13px; }
+.cr-warn { margin: 0; padding: 8px 10px; border-radius: 12px; background: var(--amber-50); color: var(--c-amber); font-size: 13px; }
 .cr-link { background: none; border: 0; padding: 6px 4px; font: 700 12.5px var(--font-display); color: var(--ink-3); text-decoration: underline; }
 .cr-tag { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 8px; font: 800 12px var(--font-display); letter-spacing: .04em; color: #fff; background: var(--cr, #e0a030); vertical-align: middle; }
 .cr-tag i { font-style: normal; font-family: var(--font-emoji); }
@@ -38,7 +38,7 @@
 .cr-bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #f0c25a, #e0a030); transition: width 240ms ease-out; }
 .cr-next { display: grid; gap: 4px; padding-top: 4px; }
 .cr-next small { font-size: 12.5px; color: var(--ink-3); }
-.cr-next small.is-ok { color: var(--green-700); }
+.cr-next small.is-ok { color: var(--c-green); }
 .cr-members, .cr-cands, .cr-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .cr-member, .cr-cands li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .cr-member__who { display: grid; gap: 1px; flex: 1; min-width: 0; text-align: left; }
@@ -56,8 +56,8 @@
 .cr-job.is-locked { opacity: .6; }
 .cr-result.is-paid { box-shadow: inset 0 0 0 2px #2fbf71, var(--e1); }
 .cr-result.is-caught { box-shadow: inset 0 0 0 2px #d2342a, var(--e1); }
-.cr-plus { color: var(--green-700); font-variant-numeric: tabular-nums; }
-.cr-minus { color: var(--red-600); font-variant-numeric: tabular-nums; }
+.cr-plus { color: var(--c-green); font-variant-numeric: tabular-nums; }
+.cr-minus { color: var(--c-red); font-variant-numeric: tabular-nums; }
 .cr-deposit { display: flex; gap: 8px; }
 .cr-log li { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .cr-log span { display: grid; gap: 1px; min-width: 0; }

@@ -42,7 +42,7 @@
   border-color: rgba(217, 164, 65, 0.55);
   background:
     radial-gradient(120% 90% at 100% 0%, rgba(243, 195, 90, 0.32), transparent 62%),
-    linear-gradient(180deg, #fffaf0, var(--surface));
+    linear-gradient(180deg, var(--tint-amber), var(--surface));
 }
 .topup:last-child:nth-child(odd) { grid-column: 1 / -1; min-height: 96px; }
 .topup__ribbon {
@@ -194,7 +194,7 @@
   background: conic-gradient(from 210deg, var(--ring), #fff8, var(--ring), #0003, var(--ring));
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 6px 18px rgba(0, 0, 0, 0.35);
 }
-.rk-pod--1 .rk-pod__ring { --ring: var(--rk-gold); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 26px rgba(243, 195, 90, 0.45); }
+.rk-pod--1 .rk-pod__ring { --ring: var(--rk-gold); box-shadow: 0 0 0 1px var(--line-strong), 0 0 26px rgba(243, 195, 90, 0.45); }
 .rk-pod--3 .rk-pod__ring { --ring: var(--rk-bronze); }
 .rk-pod__ring .rk-face { border-radius: 50%; background: #2a2d5c; overflow: hidden; display: block; }
 .rk-pod__medal { font-size: 18px; line-height: 1; margin-top: -12px; z-index: 1; }
@@ -239,7 +239,7 @@
 }
 .rk-tier--1 { color: #e8f0ff; background: rgba(160, 186, 230, 0.22); }
 .rk-tier--2 { color: #2a1a00; background: linear-gradient(90deg, #f7d37c, #e3a93f); }
-.rk-tier--3 { color: #102a2a; background: linear-gradient(90deg, #c8f3ea, #8fd8ff); }
+.rk-tier--3 { color: #102a2a; background: linear-gradient(90deg, var(--tint-green), #8fd8ff); }
 .rk-tier--4 { color: #fff; background: linear-gradient(90deg, #d2342a, #b0793a 55%, #d9a441); box-shadow: 0 0 10px rgba(217, 164, 65, 0.45); }
 
 .rk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -279,7 +279,7 @@
   border-radius: 6px;
   font-size: 10px;
   font-weight: 800;
-  color: #2a1a00;
+  color: var(--text);
   background: var(--rk-gold);
 }
 .rk-row__sub { font-size: 11px; color: rgba(243, 241, 234, 0.55); }

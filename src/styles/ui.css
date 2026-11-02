@@ -147,7 +147,7 @@
   background: var(--red-500);
   color: #fff;
   font: 700 11px/19px var(--font-body);
-  box-shadow: 0 0 0 2px #fff;
+  box-shadow: 0 0 0 2px var(--surface);
   animation: bl-pop 200ms var(--ease-out);
 }
 
@@ -206,7 +206,7 @@
   gap: 6px;
   min-height: 100dvh;
   padding: 24px calc(24px + var(--sar, 0px)) calc(24px + var(--sab, 0px)) calc(24px + var(--sal, 0px));
-  background: #eef1f6;
+  background: var(--tint-blue);
   text-align: center;
   animation: bl-loading-in 260ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) both;
 }
@@ -217,13 +217,13 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.1;
-  color: #1a2233;
+  color: var(--text);
 }
 .bl-loading__text {
   margin: 0;
   font-size: var(--fs-lg, 1.125rem);
   font-weight: 500;
-  color: #7a8599;
+  color: var(--muted);
 }
 @keyframes bl-loading-in {
   from {
@@ -275,7 +275,7 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--need-color) 14%, #fff);
+  background: color-mix(in srgb, var(--need-color) 14%, var(--surface));
   color: var(--need-color);
 }
 .bl-need__label {
@@ -288,7 +288,7 @@
   position: relative;
   height: 8px;
   border-radius: 99px;
-  background: #e8ecf1;
+  background: var(--tint-blue);
   overflow: hidden;
 }
 .bl-need__fill {
@@ -360,7 +360,7 @@
   }
 }
 .bl-tab.is-active {
-  background: var(--ink);
+  background: var(--ink-solid);
   color: #fff;
 }
 .bl-tab__badge {
@@ -447,15 +447,15 @@
   height: 26px;
   border-radius: 50%;
   background: var(--blue-50);
-  color: var(--blue-500);
+  color: var(--c-blue);
 }
 .bl-toast--good .bl-toast__icon {
   background: var(--green-50);
-  color: var(--green-600);
+  color: var(--c-green);
 }
 .bl-toast--bad .bl-toast__icon {
   background: var(--red-50);
-  color: var(--red-600);
+  color: var(--c-red);
 }
 .bl-toast__msg {
   padding-top: 3px;
@@ -524,7 +524,7 @@
   width: 40px;
   height: 5px;
   border-radius: 9px;
-  background: #d5dbe3;
+  background: var(--surface-3);
 }
 .bl-sheet__close {
   position: absolute !important;
@@ -694,7 +694,7 @@
   width: min(300px, 100%);
   padding: 18px 16px 12px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--glass);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
   backdrop-filter: blur(16px) saturate(1.4);
   color: var(--ink, #14202e);

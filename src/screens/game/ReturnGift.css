@@ -6,7 +6,7 @@
   align-items: center;
   padding: 16px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #fff6d9 0%, #ffe9b0 100%);
+  background: linear-gradient(135deg, var(--tint-amber) 0%, #ffe9b0 100%);
   border: 1.5px solid rgba(238, 164, 26, 0.45);
   color: #4a3200;
   text-align: left;
@@ -19,7 +19,7 @@
 .rg__chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .rg__chip { padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.75); font-weight: 700; font-size: 0.875rem; }
 .rg__btn { grid-column: 1 / -1; width: 100%; min-height: 48px; }
-.rg.is-done { background: linear-gradient(135deg, #e3f7e8 0%, #c8efd2 100%); border-color: rgba(10, 111, 64, 0.35); color: #0b3d22; }
+.rg.is-done { background: linear-gradient(135deg, var(--tint-green) 0%, var(--tint-green) 100%); border-color: rgba(10, 111, 64, 0.35); color: var(--text); }
 .rg--compact { padding: 12px 14px; gap: 8px 12px; }
 .rg--compact .rg__art { font-size: 1.75rem; }
 .rg--compact .rg__title { font-size: 1rem; }

@@ -78,7 +78,7 @@
 .ct-steps { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; }
 .ct-steps li { flex: 1; display: grid; justify-items: center; gap: 4px; font-size: 11px; color: var(--ct-ink3); text-align: center; }
 .ct-steps b { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--ct-card2); font-size: 13px; }
-.ct-steps .is-on { color: var(--ct-ink); } .ct-steps .is-on b { background: var(--ct-green); color: #08301d; }
+.ct-steps .is-on { color: var(--ct-ink); } .ct-steps .is-on b { background: var(--ct-green); color: var(--text); }
 .ct-steps .is-done b { background: rgba(77, 220, 150, .3); color: var(--ct-green); }
 .ct-dl { margin: 0; display: grid; gap: 8px; }
 .ct-dl > div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
@@ -99,11 +99,11 @@
 .ct-compose__row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 
 .court-app .bl-tab { background: var(--ct-card2); color: var(--ct-ink2); }
-.court-app .bl-tab.is-active { background: #fff; color: #171a3d; }
+.court-app .bl-tab.is-active { background: var(--surface); color: var(--text); }
 .court-app .bl-seg { background: var(--ct-card2); }
 .court-app .bl-seg__thumb { background: #fff; }
 .court-app .bl-seg button { color: var(--ct-ink2); }
-.court-app .bl-seg button[aria-selected="true"] { color: #171a3d; }
+.court-app .bl-seg button[aria-selected="true"] { color: var(--text); }
 .court-app .bl-btn--ghost { background: var(--ct-card2); color: var(--ct-ink); }
 .court-app .bl-empty { color: var(--ct-ink); }
 .court-app .bl-empty__icon { background: var(--ct-card2); color: var(--ct-ink2); }

@@ -19,7 +19,7 @@
 .pw-row span { opacity: .75; }
 .pw-row b { text-align: right; overflow-wrap: anywhere; }
 .pw-row b.is-good { color: var(--green-500, #36c07a); }
-.pw-row b.is-bad { color: var(--red-500, #ef5b66); }
+.pw-row b.is-bad { color: var(--c-red); }
 .pw-card { display: grid; gap: 12px; padding: 14px; border-radius: 18px; background: var(--surface-2, rgba(255, 255, 255, .08)); }
 .pw-card__top { display: flex; align-items: center; gap: 10px; }
 .pw-card__top > span[aria-hidden] { font-family: var(--font-emoji); font-size: 24px; }
@@ -49,11 +49,11 @@
 .fs-strip__prices small { font-size: 12px; opacity: .7; }
 .fs-strip__prices b { font: 800 17px var(--font-display, inherit); font-variant-numeric: tabular-nums; }
 .fs-strip__prices i { font: 700 12px var(--font-display, inherit); font-style: normal; }
-.fs-strip__prices i.is-up { color: var(--red-500, #ef5b66); }
+.fs-strip__prices i.is-up { color: var(--c-red); }
 .fs-strip__prices i.is-down { color: var(--green-500, #36c07a); }
 .fs-strip__warn, .fs-strip__dry { margin: 0; font-size: 13px; line-height: 1.4; }
 .fs-strip__warn { color: #f2c14e; }
-.fs-strip__dry { color: var(--red-500, #ef5b66); font-weight: 700; }
+.fs-strip__dry { color: var(--c-red); font-weight: 700; }
 
 /* the yard: always dark, whatever the theme */
 .yd-strip { display: flex; align-items: center; gap: 12px; width: 100%; margin: 10px 0 0; padding: 14px; border: 0; border-radius: 16px; background: #14101f; color: #f3e9ff; text-align: left; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(190, 120, 255, .35); }

@@ -405,7 +405,7 @@
   background: linear-gradient(180deg, rgba(14, 8, 26, 0.86) 0%, rgba(14, 8, 26, 0.72) 62%, rgba(14, 8, 26, 0) 100%);
 }
 .hx.tier-calm .hx-backdrop { background: linear-gradient(180deg, rgba(18, 12, 6, 0.74), rgba(18, 12, 6, 0)); }
-.hx.tier-vip .hx-backdrop { background: linear-gradient(180deg, rgba(26, 18, 6, 0.92), rgba(0, 0, 0, 0.7) 62%, rgba(0, 0, 0, 0)); }
+.hx.tier-vip .hx-backdrop { background: linear-gradient(180deg, rgba(26, 18, 6, 0.92), rgba(0, 0, 0, 0.7) 62%, var(--surface-3)); }
 .hx .hx-aura { top: 38%; width: 90vmin; height: 90vmin; }
 .hx .hx-hit {
   inset: 0;

@@ -5,13 +5,13 @@
   position: relative;
 }
 .wish-chip--story .wish-chip__icon {
-  background: #ffeede;
+  background: var(--tint-amber);
 }
 .wish-chip--daily .wish-chip__icon {
   background: var(--amber-50);
 }
 .wish-chip--gem .wish-chip__icon {
-  background: #eef0ff;
+  background: var(--tint-blue);
 }
 .daily-dot {
   position: absolute;
@@ -56,7 +56,7 @@
 }
 .daily-step.is-big {
   grid-column: span 2;
-  background: linear-gradient(160deg, #fff6df, #ffe9b8);
+  background: linear-gradient(160deg, var(--tint-amber), var(--tint-amber));
 }
 .daily-step__day {
   font-size: 11px;
@@ -98,14 +98,14 @@
   font-weight: 800;
 }
 .daily-step.is-claimed .daily-step__cash {
-  color: var(--green-700);
+  color: var(--c-green);
 }
 .daily-step.is-today {
   background: var(--surface);
   box-shadow: inset 0 0 0 2px var(--amber-500), 0 6px 16px -8px rgba(238, 164, 26, 0.7);
 }
 .daily-step.is-today .daily-step__day {
-  color: var(--amber-800);
+  color: var(--c-amber);
 }
 .daily-step.is-upcoming {
   opacity: 0.72;
@@ -179,7 +179,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #eef0ff;
+  background: var(--tint-blue);
   font-family: var(--font-emoji);
   font-size: 18px;
   filter: grayscale(0.2);
@@ -201,7 +201,7 @@
   color: var(--ink-3);
 }
 .gem-hint.is-found .gem-hint__text small {
-  color: var(--green-700);
+  color: var(--c-green);
 }
 .gem-hunt__prize {
   margin: 0;

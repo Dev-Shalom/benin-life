@@ -7,6 +7,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#e4f0fa" />
     <meta name="color-scheme" content="light" />
+    <script>
+      /* Light / Dark before first paint (docs/THEME.md): read the saved choice, resolve "system", set data-theme. */
+      (function () {
+        var d = document.documentElement, t = 'light';
+        try {
+          var c = (JSON.parse(localStorage.getItem('bl.prefs.v1') || '{}') || {}).theme;
+          if (c === 'dark') t = 'dark';
+          else if (c === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+        } catch (e) {}
+        d.setAttribute('data-theme', t);
+        if (t === 'dark') {
+          var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', '#0f1130');
+          var k = document.querySelector('meta[name="color-scheme"]'); if (k) k.setAttribute('content', 'dark');
+        }
+      })();
+    </script>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -84,6 +100,7 @@
     <style>
       /* Paint the sky before JS loads so slow connections never flash a blank page. */
       html, body { margin: 0; background: #eef4fa; }
+      html[data-theme='dark'], html[data-theme='dark'] body { background: #0f1130; }
     </style>
   </head>
   <body>
