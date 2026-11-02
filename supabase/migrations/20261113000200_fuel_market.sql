@@ -57,12 +57,16 @@ values
 ('fs_ugbowo',    'Ugbowo Filling Station',        'ugbowo',      'motorpark', 'Beside the UNIBEN road. Petrol, diesel and cans for the lecturers'' generators.', 0.2, 1.8, true,  true, 1.3, 0, 500, 160, '{shop}', 404, null, null, true),
 ('fs_ikpoba',    'Ikpoba Hill Filling Station',   'ikpoba_hill', 'motorpark', 'Up on the hill. When fuel is scarce the queue reaches the junction.', 0.2, 1.8, false, true, 1.2, 0, 745, 415, '{shop}', 405, null, null, true),
 ('fs_new_benin', 'New Benin Filling Station',     'new_benin',   'motorpark', 'Off Mission Road, close to the market. Petrol, diesel and cans.', 0.2, 1.8, true,  true, 1.3, 0, 690, 350, '{shop}', 406, null, null, true),
-('bm_yard',      'The Yard (Ogida timber sheds)', 'ogida',       'street',    'Behind the timber sheds at Ogida. No sign, no receipt, nobody asks your name. Opens after dark.', 0.5, 2.5, false, false, 1.0, 0, 230, 470, '{}', 900, null, null, true)
+('bm_yard',      'The Yard (Ogida timber sheds)', 'oredo',       'street',    'Behind the timber sheds at Ogida. No sign, no receipt, nobody asks your name. Opens after dark.', 0.5, 2.5, false, false, 1.0, 0, 230, 470, '{}', 900, null, null, true)
 on conflict (id) do nothing;
 
 -- the stations sell the fuel items; a player-owned Filling station (same scene) sells them too through bl_biz_sells
 update public.items set sold_at = (select array_agg(id order by sort) from public.locations where id like 'fs\_%')
  where id in ('petrol', 'petrol_can', 'diesel', 'diesel_can') and coalesce(cardinality(sold_at), 0) = 0;
+
+-- fuel is VAT-exempt (as petrol and diesel are in Nigeria): the pump price IS the price paid
+update public.game_config set value = to_jsonb((value #>> '{}') || ',fuel')
+ where key = 'economy.vat_exempt_categories' and not ('fuel' = any (string_to_array(replace(value #>> '{}', ' ', ''), ',')));
 
 -- the yard is hidden from players who have not earned their way in (the map and every place list read this policy)
 drop policy if exists locations_read on public.locations;
@@ -94,11 +98,11 @@ revoke all on public.bm_offers from public, anon, authenticated;
 insert into public.bm_offers (id, name, emoji, blurb, kind, ref, price_pct, faulty_pct, stolen_pct, sort) values
 ('grey_petrol',  'Grey petrol (litre)',            '⛽', 'Poured from a drum. Cheap, no queue. Sometimes it is mixed with something.', 'grey_fuel', 'petrol_bm', 100, 0, 0, 10),
 ('grey_diesel',  'Grey diesel (litre)',            '⛽', 'For the big generators. Same story as the petrol.', 'grey_fuel', 'diesel_bm', 100, 0, 0, 20),
-('tk_tiger',     'Tokunbo Tiger gen',              '🔌', 'Used. It does start. Mostly.', 'gear', 'gen_tiger', 60, 20, 8, 30),
-('tk_firman',    'Tokunbo Firman 2.8KVA gen',      '🔌', 'Fell off a truck at Ugbowo. Probably.', 'gear', 'gen_firman', 60, 20, 8, 40),
-('tk_inverter',  'Tokunbo 1.5KVA inverter',        '🔋', 'Comes with a battery that "still dey strong".', 'gear', 'inverter_small', 60, 25, 8, 50),
-('tk_battery',   'Tokunbo tubular battery',        '🔋', 'Second-hand 200Ah. Ask no questions.', 'gear', 'battery_tubular', 55, 25, 6, 60),
-('tk_panels',    'Tokunbo solar panels',           '☀️', 'A frame of used panels, dust and all.', 'gear', 'solar_panels', 60, 10, 10, 70)
+('tk_tiger',     'Tokunbo Tiger gen',              '🔌', 'Used. It does start. Mostly.', 'gear', 'gen_tiger', 70, 20, 8, 30),
+('tk_firman',    'Tokunbo Firman 2.8KVA gen',      '🔌', 'Fell off a truck at Ugbowo. Probably.', 'gear', 'gen_firman', 70, 20, 8, 40),
+('tk_inverter',  'Tokunbo 1.5KVA inverter',        '🔋', 'Comes with a battery that "still dey strong".', 'gear', 'inverter_small', 70, 25, 8, 50),
+('tk_battery',   'Tokunbo tubular battery',        '🔋', 'Second-hand 200Ah. Ask no questions.', 'gear', 'battery_tubular', 70, 25, 6, 60),
+('tk_panels',    'Tokunbo solar panels',           '☀️', 'A frame of used panels, dust and all.', 'gear', 'solar_panels', 70, 10, 10, 70)
 on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------------------------
@@ -137,7 +141,7 @@ begin
   v_loc := coalesce(p_loc, v_loc);
   select * into l from public.locations where id = v_loc;
   if not found then return jsonb_build_object('station', false); end if;
-  if l.id not like 'fs\_%' and not (l.biz_type = 'filling_station') then return jsonb_build_object('station', false); end if;
+  if l.id not like 'fs\_%' and coalesce(l.biz_type, '') <> 'filling_station' then return jsonb_build_object('station', false); end if;
   v_dry := bl_fuel_dry(l.id); v_scarce := bl_fuel_scarce();
   select * into it from public.items where id = 'petrol';
   v_today := bl_fuel_price(it, l.id);
@@ -206,6 +210,7 @@ begin
   v_raid := least(100, v_raid);
   v_ok := (1 - v_raid / 100) * (1 - v_scam / 100) * (1 - v_rob / 100) * (1 - o.stolen_pct / 100);
   v_value := v_ok * (1 - o.faulty_pct / 100 * 0.4);   -- a faulty piece is worth about 60 % of a good one
+  if o.kind = 'grey_fuel' then v_value := v_value * (1 - bl_power_num('power.bad_fuel_pct', 25) / 100 * 0.3); end if;   -- a bad batch costs about 30 % of a litre
   v_unit := bl_bm_unit_price(o);
   v_shop := case when o.kind = 'grey_fuel' then
                    bl_fuel_price((select i from public.items i where i.id = case o.ref when 'diesel_bm' then 'diesel' else 'petrol' end), null)

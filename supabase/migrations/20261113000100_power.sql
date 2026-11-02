@@ -52,8 +52,8 @@ insert into public.game_config (key, value, category, label, description, kind, 
 ('power.random_blackout_chance_pct', '0', 'power', 'Random city-wide blackout: chance per day (%)',
  'Each real day (UTC) has this chance of one city-wide blackout at a random time. 0 = never (default). Keep it tiny: 2 means about one every 50 days.', 'percent', 0, 100),
 ('power.random_blackout_minutes', '90', 'power', 'Random blackout length (real minutes)', 'How long a random city-wide blackout lasts.', 'minutes', 5, 1440),
-('power.speed_mult', '2', 'power', 'Use speed (fuel and battery)',
- 'Fast-forward for fuel burn, battery drain and charging, because a real cut lasts only 15-60 minutes. 2 = a tank or battery empties twice as fast as the table says. 1 = as listed.', 'number', 0.1, 20),
+('power.speed_mult', '3', 'power', 'Use speed (fuel and battery)',
+ 'Fuel burns and batteries drain by real time. A real cut lasts only 15-60 minutes, so this fast-forwards them a little. 3 = a tank or battery empties three times as fast as the table says. 1 = pure real time.', 'number', 0.1, 20),
 ('power.mains_charge_kw', '0.5', 'power', 'Inverter charge from the mains (kW)', 'How fast batteries fill while NEPA is on (before the speed multiplier). Slow on purpose.', 'number', 0.05, 10),
 ('power.load_base_kw', '0.25', 'power', 'Home base load (kW)', 'Lights, charging and standby. Every placed appliance (fan, TV, fridge, AC...) adds its own load from Content -> Power gear.', 'number', 0, 10),
 ('power.sun_start_hour', '7', 'power', 'Solar day starts (Benin hour)', 'Panels charge between this hour and the end hour, strongest at midday.', 'number', 0, 12),
@@ -1061,6 +1061,25 @@ select pg_temp.pw_patch('public.bl_ledger_label(text, jsonb)', 'power_repair',
     when 'rent' then return case when (p_meta->>'settle')::boolean then 'Rent paid (owed)' else 'Rent' end;$o$);
 
 -- ---------------------------------------------------------------------------------------------
+-- 14b. power_area_status: the cheap, cacheable read (no player, no bl_me()): the same answer for everybody in an area, so a CDN or the
+--      app can keep it for a minute. One area, or every area.
+-- ---------------------------------------------------------------------------------------------
+create or replace function public.power_area_status(p_area text default null) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare t double precision := extract(epoch from bl_now()); m record; a record; v jsonb := '[]'::jsonb;
+begin
+  for a in select id, name from public.power_areas where active and (p_area is null or id = p_area) order by sort loop
+    select * into m from bl_power_mains(a.id, t);
+    v := v || jsonb_build_object('id', a.id, 'name', a.name, 'outage_pct', bl_power_num('power.outage_pct.' || a.id, 0),
+      'mains', case when m.mains_on then 'on' else 'off' end, 'city', coalesce(m.city, false), 'until', bl_power_flip_at(a.id, t));
+  end loop;
+  return jsonb_build_object('enabled', bl_power_on(), 'areas', v, 'server_time', bl_now());
+end $$;
+
+-- the old random "NEPA takes light" life moment is replaced by the real thing (only while its weight is still the seeded 5)
+update public.life_moments set weight = 0 where id = 'nepa_light' and weight = 5;
+
+-- ---------------------------------------------------------------------------------------------
 -- 15. Grants
 -- ---------------------------------------------------------------------------------------------
 do $$
@@ -1076,7 +1095,7 @@ begin
     execute format('grant execute on function %s to authenticated, service_role', p.sig);
   end loop;
   for p in select oid::regprocedure as sig from pg_proc where pronamespace = 'public'::regnamespace
-            and proname in ('admin_power_event_start', 'admin_power_event_end', 'admin_power_overview') loop
+            and proname in ('admin_power_event_start', 'admin_power_event_end', 'admin_power_overview', 'power_area_status') loop
     execute format('revoke all on function %s from public, anon', p.sig);
     execute format('grant execute on function %s to authenticated, service_role', p.sig);
   end loop;

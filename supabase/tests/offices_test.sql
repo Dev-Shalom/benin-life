@@ -115,7 +115,7 @@ do $$
 declare r record; n int;
 begin
   perform pg_temp.assert((select count(*) from ind_offices) = 11, 'seven industry offices plus the four High Court judge seats');
-  perform pg_temp.assert((select count(*) from ind_offices where active) = 10 and not (select active from ind_offices where id = 'nepa_md'), 'NEPA MD is inactive');
+  perform pg_temp.assert((select count(*) from ind_offices where active) = 11 and (select active from ind_offices where id = 'nepa_md'), 'NEPA MD is active (the power levers exist, 20261113000300_power_office.sql)');
   perform pg_temp.assert(not exists (select 1 from ind_offices where election_enabled) and not exists (select 1 from ind_offices where seats <> 1), 'election_enabled off, one seat');
   perform pg_temp.assert(not exists (select 1 from ind_offices where name = '' or title = '' or blurb = '' or industry = ''), 'offices are labelled');
   perform pg_temp.assert((select salary_per_day from ind_offices where id = 'bank_governor') = 5000000 and (select salary_per_day from ind_offices where id = 'nepa_md') = 3000000
@@ -164,7 +164,7 @@ begin
   perform pg_temp.login(pg_temp.u('l'));
   perform pg_temp.assert(pg_temp.hint_of($q$ select ind_apply('bank_governor', 'I will keep the fees fair for everybody.') $q$) = 'level_low', 'career level refused');
   perform pg_temp.login(pg_temp.u('b'));
-  perform pg_temp.assert(pg_temp.hint_of($q$ select ind_apply('nepa_md', 'Lights for everybody, every day, always.') $q$) = 'bad_office', 'inactive office refused');
+  perform pg_temp.assert(pg_temp.hint_of($q$ select ind_apply('no_such_office', 'Lights for everybody, every day, always.') $q$) = 'bad_office', 'unknown office refused');
   perform pg_temp.assert(pg_temp.hint_of($q$ select ind_apply('bank_governor', 'short') $q$) = 'too_short', 'pitch too short');
   perform pg_temp.assert(pg_temp.hint_of($q$ select ind_apply('bank_governor', repeat('x', 200)) $q$) = 'too_long', 'pitch too long');
   perform pg_temp.assert(pg_temp.hint_of($q$ select ind_apply('bank_governor', 'Visit www.example.com for my plan') $q$) = 'blocked_text', 'no links');

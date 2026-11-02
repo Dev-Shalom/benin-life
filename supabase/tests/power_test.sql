@@ -3,7 +3,7 @@
 -- Groups: 1 settings and seeds (labels, ranges) · 2 deterministic outages by area (same for everybody, the percentage over many slots,
 -- cut lengths) · 3 admin blackout (audited, limits, non-admin refused, random one) · 4 power_status per backup kind · 5 generator (on, off,
 -- burn by real time, empty, refill, wrong fuel) · 6 inverter (takeover, drain, mains recharge, solar by day, batteries = longer, empty) ·
--- 7 notices (cut, back, fuel, battery) · 8 effects (TV refused, bonuses and rest) · 9 visiting uses the host's area · 10 grants / RLS.
+-- 7 notices (cut, back, fuel, battery) · 8 effects (TV refused, bonuses and rest) · 9 visiting uses the host's area · 10 NEPA MD office levers (rail, cooldown, restore) · 11 grants / RLS.
 -- All times are pinned with bl.test_offset_seconds to a fixed Benin time, so it passes at any hour. An area is forced always-on (0 %)
 -- or always-off (100 %) with its outage % setting when a test needs a certain state.
 create or replace function pg_temp.hint_of(p_sql text) returns text
@@ -506,7 +506,56 @@ begin
   perform pg_temp.set_area('gra', 8);
 end $$;
 
--- ---------- 10. grants / RLS ----------
+-- ---------- 10. Power (NEPA) Managing Director (20261113000300_power_office.sql) ----------
+do $$
+declare
+  md uuid := pg_temp.uid('none'); r jsonb; n int;
+begin
+  perform pg_temp.at('2026-11-20 10:00:00');
+  perform pg_temp.assert((select active from ind_offices where id = 'nepa_md'), 'the NEPA MD office is switched on');
+  perform pg_temp.assert((select count(*) from ind_levers where office_id = 'nepa_md') = (select count(*) from power_areas where active), 'one lever per area');
+  perform pg_temp.assert(not exists (select 1 from ind_levers where office_id = 'nepa_md' and config_key not like 'power.outage\_pct.%'),
+                         'the only levers are outage chances: never the blackout, fuel scarcity, fuel price or the black market');
+  perform pg_temp.assert(not exists (select 1 from ind_levers l join game_config g on g.key = l.config_key
+                          where l.office_id = 'nepa_md' and (l.band_min < floor((g.value #>> '{}')::numeric * 0.75) - 1e-9 or l.band_max > ceil((g.value #>> '{}')::numeric * 1.25) + 1e-9)),
+                         'a tight rail: every band is 75 to 125 percent of the default');
+  perform pg_temp.assert(not exists (select 1 from ind_levers where office_id = 'nepa_md' and (label = '' or effect = '' or direction = '' or blurb = '')), 'levers have plain words');
+  perform pg_temp.assert((select band_min from ind_levers where id = 'power.ekenwan') = 30 and (select band_max from ind_levers where id = 'power.ekenwan') = 50, 'Ekenwan: 40 % can move 30 to 50');
+  perform pg_temp.assert((select band_min from ind_levers where id = 'power.gra') = 6 and (select band_max from ind_levers where id = 'power.gra') = 10, 'GRA: 8 % can move 6 to 10');
+  perform pg_temp.assert((select max_total_drift_pct from ind_offices where id = 'nepa_md') <= 100 and (select max_changes_per_day from ind_offices where id = 'nepa_md') <= 4, 'drift and daily change caps');
+  -- appoint a holder (admin), then use the levers
+  perform pg_temp.login(pg_temp.uid('admin'));
+  perform pg_temp.set_area('ekenwan', 40); perform pg_temp.set_area('gra', 8);
+  r := admin_ind_appoint('nepa_md', 'PW_none', 'test');
+  perform pg_temp.login(md);
+  perform pg_temp.assert(pg_temp.hint_of($q$select ind_set_lever('power.gra', 20)$q$) = 'out_of_band', 'above the rail refused');
+  perform pg_temp.assert(pg_temp.hint_of($q$select ind_set_lever('power.gra', 2)$q$) = 'out_of_band', 'below the rail refused');
+  perform pg_temp.assert(pg_temp.hint_of($q$select ind_set_lever('power.gra', 8)$q$) = 'same', 'no change refused');
+  perform pg_temp.assert(pg_temp.hint_of($q$select ind_set_lever('bank.fee1', 1)$q$) = 'not_yours', 'another office''s lever is not yours');
+  perform pg_temp.assert(pg_temp.hint_of($q$select ind_set_lever('power.salt', 1)$q$) = 'not_yours', 'power.salt is not a lever');
+  r := ind_set_lever('power.ekenwan', 32);
+  perform pg_temp.assert((select value::text from game_config where key = 'power.outage_pct.ekenwan') = '32', 'the MD cut the Ekenwan outage chance: live at once');
+  perform pg_temp.assert(pg_temp.hint_of($q$select ind_set_lever('power.ekenwan', 33)$q$) = 'cooldown', 'a day between moves of one lever');
+  -- the lowered chance is what the outage maths uses: about 32 % over many slots
+  select count(*) into n from generate_series(0, 1999) g where not (bl_power_mains('ekenwan', extract(epoch from '2026-11-20 10:00:00+01'::timestamptz) + g * 420)).mains_on;
+  perform pg_temp.assert(abs(n / 20.0 - 32) <= 4, 'Ekenwan now loses light about 32 % of the time (' || n / 20.0 || ')');
+  perform pg_temp.assert(pg_temp.hint_of($q$select admin_power_event_start('blackout', 1, 'I want a blackout')$q$) = 'not_admin', 'the MD cannot start a blackout');
+  -- a frozen lever
+  perform pg_temp.login(pg_temp.uid('admin'));
+  perform admin_ind_freeze('nepa_md', 'power.gra', true);
+  perform pg_temp.login(md);
+  perform pg_temp.assert(pg_temp.hint_of($q$select ind_set_lever('power.gra', 7)$q$) = 'frozen', 'an admin freeze stops it');
+  perform pg_temp.login(pg_temp.uid('admin'));
+  perform admin_ind_freeze('nepa_md', 'power.gra', false);
+  -- the term ends: everything goes back to the owner's number
+  perform pg_temp.at('2026-12-10 10:00:00');
+  perform pg_temp.login(md);
+  perform ind_tick();
+  perform pg_temp.assert((select value::text from game_config where key = 'power.outage_pct.ekenwan') = '40', 'when the term ends the outage chance goes back to 40');
+  perform pg_temp.at('2026-11-20 10:00:00');
+end $$;
+
+-- ---------- 11. grants / RLS ----------
 do $$
 declare p text; v_none uuid := pg_temp.uid('none');
 begin
