@@ -3,12 +3,14 @@
 // o = lapo | nepo (the seeded starter furniture set; omit for the full default furnishing).
 // R8: up = finished upgrades (comma list of upgrade ids, e.g. up=ext_bedroom,paint_fresh,finish_pop,fence_wall,gate_security,gen_house),
 // build = upgrades the builders are on (scaffolding), e.g. build=ext_guest_wing.
+// L1 lighting: power=off draws a home without power (mains lights, fans, TV, AC LEDs off); ex=kind@x,z;kind@x,z adds bought
+// lights (e.g. ex=table_lamp@3,3;candle@2,4); nolights=1 leaves out the built-in lights (what a player sees before the grant).
 import { useMemo, useState } from 'react';
 import { defaultAvatar } from '../../avatar3d';
 import { HomeView } from '../HomeView';
 import { applyUpgrades } from '../upgrades';
 import { placementIssue } from '../arrange';
-import { furnishLayout, KINDS, LAYOUTS, type FurnitureItem, type FurnitureKind, type HomeGroup, type HomeLayout, type HomeLayoutId, type OwnedPiece } from '../model';
+import { furnishHome, furnitureKey, KINDS, LAYOUTS, LIGHT_BUILTIN_IDS, type SavedHomePosition, type FurnitureItem, type FurnitureKind, type HomeGroup, type HomeLayout, type HomeLayoutId, type OwnedPiece } from '../model';
 
 /** B1: ?show=1 lays every furniture kind out in rows on the duplex lot (model check). */
 function showroom(): HomeLayout {
@@ -59,7 +61,28 @@ export default function HomeLab() {
     const ids = (k: string) => (q.get(k) ?? '').split(',').filter(Boolean).map(info);
     return applyUpgrades(LAYOUTS[layout], ids('up'), ids('build'));
   }, [layout, q]);
-  const furnished = useMemo(() => (q.get('show') ? showroom() : furnishLayout(upgraded, SETS[origin] ?? null)), [upgraded, origin, q]);
+  const furnished = useMemo(() => {
+    if (q.get('show')) return showroom();
+    const set = SETS[origin];
+    if (!set) return upgraded;
+    // like the server: the home's built-in lights (+ any bought ones from ?ex=) are the player's own pieces at their spots
+    const pieces: OwnedPiece[] = [...set];
+    const rows: Record<string, SavedHomePosition> = {};
+    const give = (id: string, kind: string, x: number, z: number, rot: number, bought: boolean) => {
+      let p = pieces.find((o) => o.id === id);
+      if (!p) pieces.push((p = { id, kind, slot: 'none', activities: [], qty: 0, houseQty: 0 }));
+      p.qty = (p.qty ?? 0) + 1;
+      if (!bought) p.houseQty = (p.houseQty ?? 0) + 1;
+      rows[furnitureKey(id, p.qty)] = { x, z, rotation: rot };
+    };
+    if (!q.get('nolights')) for (const f of upgraded.furniture) if (f.included && LIGHT_BUILTIN_IDS.has(f.included)) give(f.included, f.kind, f.x, f.z, f.rot ?? 0, false);
+    for (const spec of (q.get('ex') ?? '').split(';').filter(Boolean)) {
+      const [kind, at] = spec.split('@');
+      const [x, z] = (at ?? '3,3').split(',').map(Number);
+      if (kind in KINDS) give(kind, kind, x, z, 0, true);
+    }
+    return furnishHome(upgraded, pieces, rows);
+  }, [upgraded, origin, q]);
   const avatar = useMemo(() => defaultAvatar(q.get('g') === 'female' ? 'female' : 'male'), [q]);
   // ?cars=gwagon_g63,benz_c300&garage=garage:2 parks cars so the tap-to-name label can be checked
   const parking = useMemo(() => {
@@ -77,7 +100,7 @@ export default function HomeLab() {
   }, [q, upgraded, furnished]);
   return (
     <div style={{ position: 'fixed', inset: 0 }}>
-      <HomeView layoutId={layout} ghost={ghost} parking={parking} layout={furnished} origin={origin === 'nepo' ? 'nepo' : origin === 'lapo' ? 'lapo' : undefined} avatar={avatar} hour={hour} busy={busy ? { group: busy, key: busy } : null}
+      <HomeView layoutId={layout} ghost={ghost} parking={parking} layout={furnished} origin={origin === 'nepo' ? 'nepo' : origin === 'lapo' ? 'lapo' : undefined} avatar={avatar} hour={hour} powered={q.get('power') !== 'off'} busy={busy ? { group: busy, key: busy } : null}
         selectedId={picked} onPick={(f) => setPicked(f.id)} fallbackScene="home_flat" insetTop={70} insetBottom={110} />
       <div style={{ position: 'fixed', left: 8, top: 8, display: 'flex', gap: 6, flexWrap: 'wrap', zIndex: 5 }}>
         {(Object.keys(LAYOUTS) as HomeLayoutId[]).map((l) => (

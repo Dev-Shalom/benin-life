@@ -20,7 +20,6 @@ import {
   MeshLambertMaterial,
   OrthographicCamera,
   PlaneGeometry,
-  PointLight,
   RingGeometry,
   Vector3,
 } from 'three';
@@ -29,11 +28,12 @@ import { avatarKey } from '../../avatar3d/catalog';
 import { buildCharacter } from '../../avatar3d/engine/character';
 import { applyPose, capturePose, DEFAULT_WALK, gaitFor, legRotationDiff, mixPose, poseGait, poseIdle, poseLife, POSE_SIZE, resetRig, stepLength } from '../../avatar3d/engine/anim';
 import { makeShadow } from '../../avatar3d/engine/scene';
-import { activityGroup, GROUP_META, itemGroup, KINDS, LAYOUTS, pieceFor, type FurnitureItem, type HomeGroup, type HomeLayout, type HomeLayoutId, type HomePose } from '../model';
+import { activityGroup, GROUP_META, isLight, itemGroup, KINDS, LAYOUTS, liftLights, lightPoint, pieceFor, type FurnitureItem, type HomeGroup, type HomeLayout, type HomeLayoutId, type HomePose } from '../model';
 import { buildGrid, footprint, planPath, randomFree, toLayout, type NavGrid, type P2 } from '../nav';
 import { freeAt } from '../../sim/nav';
 import { angleTo, DEFAULT_GAIT, makeWalker, place, stepWalker, stopWalk, walkPath, type Gait, type Walker } from '../../sim/locomotion';
-import { homeLight } from './light';
+import { homeLight, MAX_REAL_LIGHTS, MAX_REAL_LIGHTS_LOW, phaseOf, type LampSwitch } from './light';
+import { LampSystem } from './lamps';
 import { looksNight, mixHex } from '../../../lib/daylight';
 import { poseCook, poseDance, poseGreet, poseLie, poseScrub, poseSit, sitRootY } from './poses';
 import { decodeAct, encodeAct } from '../../../api/interactions';
@@ -103,6 +103,10 @@ export interface HomeSceneProps {
   /** B1 arrange: the piece being moved, drawn on its own (live, no room rebuild) and tinted red when
    * `invalid`. Leave it out of `layout`. */
   ghost?: { item: FurnitureItem; invalid: boolean } | null;
+  /** L1: does the home have power? Default true. false = mains lights, fans, TV, AC LEDs are off and the room is dark;
+   * only lights that work without power (rechargeable lamp, candle, lantern, battery bulb) stay lit. The caller owns the
+   * power logic (generator, inverter, battery); the scene only draws it. */
+  powered?: boolean;
   onReady?: (api: HomeApi) => void;
   onLost?: () => void;
   /** Pixels covered by HUD chrome at the top / bottom, so the house is framed between them. */
@@ -142,6 +146,8 @@ interface Gesture {
   y: number;
   multi: boolean;
 }
+/** How much the ambient light drops at night when nothing is lit (the room goes properly dark). */
+const AMBIENT_DROP = 0.5;
 const TAP_MS = 550;
 const TAP_PX = 8;
 
@@ -559,7 +565,13 @@ function House(props: HomeSceneProps & {
   onHint: (text: string, x: number, y: number) => void;
 }) {
   const { layoutId, avatar, busy, hour, selectedId, onPick, onReady, insetTop = 0, insetBottom = 0, view, actorRef } = props;
-  const L = props.layout ?? LAYOUTS[layoutId];
+  const L0 = props.layout ?? LAYOUTS[layoutId];
+  // L1: table lamps, lanterns and candles rest on the surface under them
+  const L = useMemo(() => {
+    const f = liftLights(L0.furniture);
+    return f === L0.furniture ? L0 : { ...L0, furniture: f };
+  }, [L0]);
+  const powered = props.powered !== false;
   const { gl, scene, camera, size, invalidate } = useThree();
   const cx = (L.lot[0] + L.lot[2]) / 2;
   const cz = (L.lot[1] + L.lot[3]) / 2;
@@ -634,7 +646,17 @@ function House(props: HomeSceneProps & {
     const g = new Group();
     for (const f of L.furniture) {
       const grp = itemGroup(f);
-      if (!grp && !(props.editableFurniture && f.id.startsWith('own_'))) continue;
+      if (!grp && !isLight(f.kind) && !(props.editableFurniture && f.id.startsWith('own_'))) continue;
+      if (isLight(f.kind) && !itemGroup(f) && !props.editableFurniture) {
+        // a light is tapped where it glows (a ceiling bulb hangs in the air), not on the floor under it
+        const [lx, ly, lz] = lightPoint(f, L.wallH);
+        const lm = new Mesh(pickGeo, mats.pick);
+        lm.scale.set(0.6, 0.6, 0.6);
+        lm.position.set(lx, ly, lz);
+        lm.userData.item = f;
+        g.add(lm);
+        continue;
+      }
       const [x0, z0, x1, z1] = footprint(f);
       const m = new Mesh(pickGeo, mats.pick);
       const h = pickHeight(f);
@@ -739,44 +761,68 @@ function House(props: HomeSceneProps & {
     const g = new Group();
     const hemi = new HemisphereLight('#f2f7ff', '#b7a58f', 1.5);
     const sun = new DirectionalLight('#fff1dc', 2);
-    const lamp = new PointLight('#ffcf8a', 0, Math.max(L.w, L.d) * 1.8, 1);
-    lamp.position.set(L.w * 0.5 - (L.lot[0] + L.lot[2]) / 2, 2.4, L.d * 0.55 - (L.lot[1] + L.lot[3]) / 2);
-    g.add(hemi, sun, lamp);
-    return { g, hemi, sun, lamp };
+    g.add(hemi, sun);
+    return { g, hemi, sun };
   }, [L]);
+  // L1 lamps: the fixtures' glow, pools, halos and a few shared real PointLights (docs/HUD_HOME.md "Lighting")
+  const maxReal = q.tier === 'low' ? MAX_REAL_LIGHTS_LOW : MAX_REAL_LIGHTS;
+  const sys = useMemo(() => new LampSystem(room, [cx, cz], maxReal), [room, cx, cz, maxReal]);
+  useEffect(() => {
+    sys.prewarm(gl, scene, camera);
+    return () => sys.dispose();
+  }, [sys, gl, scene, camera]);
+  // the player's switches: on or off for this day or night, kept on this device per home plan
+  const switchKey = `bl.lamps.v1:${L.id}`;
+  const [switches, setSwitches] = useState<Record<string, LampSwitch>>(() => {
+    try { return JSON.parse(localStorage.getItem(switchKey) ?? '{}') as Record<string, LampSwitch>; } catch { return {}; }
+  });
+  const darkNow = useRef(0);
+  const hemiBase = useRef(1);
   const hourKey = Math.round(hour * 60); // S1: re-light every minute (continuous curve, one redraw)
   const lightGain = useRef(1);
   const radius = Math.hypot(L.lot[2] - L.lot[0], L.lot[3] - L.lot[1]) / 2;
   useEffect(() => {
     const lt = homeLight(hourKey / 60);
+    darkNow.current = lt.dark;
     lights.hemi.color.set(lt.hemiSky);
     lights.hemi.groundColor.set(lt.hemiGround);
-    lights.hemi.intensity = lt.hemi;
     lights.sun.color.set(lt.sun);
     lights.sun.intensity = lt.sunI;
     lights.sun.position.set(lt.sunDir[0] * 20 + cx, lt.sunDir[1] * 20, lt.sunDir[2] * 20 + cz);
     lights.sun.target.position.set(cx, 0, cz);
     lights.sun.target.updateMatrixWorld();
-    // F1 rig: darker ambient (contrast, corners), the room's own light colour, a warm lamp at night
-    lights.hemi.intensity = lt.hemi * (doll ? 1 : rig.ambient + (1 - rig.ambient) * (1 - lt.dark) * 0.5);
+    // F1 rig: darker ambient (contrast, corners), the room's own light colour
+    hemiBase.current = lt.hemi * (doll ? 1 : rig.ambient + (1 - rig.ambient) * (1 - lt.dark) * 0.5);
+    lights.hemi.intensity = hemiBase.current * (1 - AMBIENT_DROP * lt.dark * (1 - sys.litness));
     if (!doll) lights.hemi.color.set(mixHex(lt.hemiSky, rig.tint, rig.tintMix * (0.4 + 0.6 * lt.dark)));
-    lights.lamp.color.set(rig.lamp);
-    lights.lamp.intensity = doll ? lt.lamp : rig.lampDay + (rig.lampNight - rig.lampDay) * lt.dark;
-    lights.lamp.position.set(room.bulb[0] - cx, room.bulb[1], room.bulb[2] - cz);
     mats.glass.color.set(lt.glass);
     mats.glow.color.set(mixHex('#ddd6c8', '#f1ece2', lt.dark)); // P1: softer lamp glow
-    mats.light.color.set(rig.pool);
-    lightGain.current = rig.poolDay + (rig.poolNight - rig.poolDay) * lt.dark;
+    mats.light.color.set('#ffffff'); // L1: each floor pool carries its lamp's own colour
+    lightGain.current = 0.18 + 0.4 * lt.dark;
     tickFeel(feel, rig, 0, lightGain.current, q.motion);
     applyFeelRender(gl, scene, { fog: q.fog && !doll, color: lt.horizon, depth: 40 * Math.hypot(1, CAM_ELEV), radius, exposure: doll ? 1.2 : rig.exposure });
+    sys.setEnv({ dark: lt.dark, powered, switches });
     invalidate();
-  }, [hourKey, lights, mats, cx, cz, invalidate, rig, room, feel, q.fog, q.motion, doll, gl, scene, radius]);
+  }, [hourKey, lights, mats, cx, cz, invalidate, rig, room, feel, q.fog, q.motion, doll, gl, scene, radius, sys, powered, switches]);
+
+  /** A tap on a light: switch it (until the day turns into night or back). */
+  const toggleLight = (item: FurnitureItem): string => {
+    const i = sys.index.get(item.id);
+    if (i === undefined) return '';
+    const fx = sys.fixtures[i];
+    if (!powered && !fx.np) return 'No power right now';
+    const on = sys.isOn(item.id);
+    const next = { ...switches, [item.id]: [on ? 0 : 1, phaseOf(darkNow.current)] as LampSwitch };
+    setSwitches(next);
+    try { localStorage.setItem(switchKey, JSON.stringify(next)); } catch { /* private window: the switch lasts this visit */ }
+    return on ? 'Light off' : 'Light on';
+  };
 
   // ---- TV on while watching
   useEffect(() => {
-    mats.screen.color.set(busy?.group === 'media' ? '#7ec8ff' : '#15181d');
+    mats.screen.color.set(busy?.group === 'media' && powered ? '#7ec8ff' : '#15181d');
     invalidate();
-  }, [busy?.group, mats, invalidate]);
+  }, [busy?.group, mats, invalidate, powered]);
 
   // ---- floor tap target (invisible, the whole lot) and the tap marker (a ring that fades)
   const floorGeo = useMemo(() => new PlaneGeometry(1, 1), []);
@@ -1323,10 +1369,14 @@ function House(props: HomeSceneProps & {
     shadow.visible = rootRotX > -0.5;
     // F1 small motion: the ceiling fan turns (frames only come at the idle rate; none when hidden)
     if (q.motion && !view.current.reduced) {
-      if (fan) fan.rotation.y = t * 3.2;
+      if (fan && powered) fan.rotation.y = t * 3.2;
       tickFeel(feel, rig, t, lightGain.current, true);
     }
-    a.hot = a.mode === 'walk' || a.gait > 0 || blending || marking;
+    // L1 lamps: fades, the real-light pick near the Sim, the room's ambient follows how lit it is
+    sys.setScale(camera, gl.getPixelRatio());
+    const lampsMoving = sys.update(dt, a.w.pos[0], a.w.pos[1], view.current.reduced);
+    lights.hemi.intensity = hemiBase.current * (1 - AMBIENT_DROP * darkNow.current * (1 - sys.litness));
+    a.hot = a.mode === 'walk' || a.gait > 0 || blending || marking || lampsMoving;
   });
 
   // ---- API for the parent (snapshot while paused, stats/bench for checks)
@@ -1393,6 +1443,11 @@ function House(props: HomeSceneProps & {
     }
     const item = e.object.userData.item as FurnitureItem | undefined;
     if (!item) return;
+    if (isLight(item.kind) && !itemGroup(item) && !props.editableFurniture) {
+      hint(e, toggleLight(item));
+      invalidate();
+      return;
+    }
     if (props.editableFurniture) {
       if (item.id.startsWith('own_')) props.onSelectFurniture?.(item);
       else hint(e, 'Only your movable furniture can be arranged here.');
@@ -1443,6 +1498,7 @@ function House(props: HomeSceneProps & {
   return (
     <>
       <primitive object={lights.g} />
+      <primitive object={sys.group} />
       <group position={[-cx, 0, -cz]}>
         <primitive object={group} />
         {fan && <primitive object={fan} />}
