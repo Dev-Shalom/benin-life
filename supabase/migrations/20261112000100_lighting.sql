@@ -184,7 +184,7 @@ revoke execute on function public.bl_house_lights_for(uuid) from public, anon, a
 
 -- ---------------------------------------------------------------- 5. hooks (guarded: skipped when already applied,
 -- an error when the function changed shape)
-create or replace function pg_temp.l1_patch(p_fn regprocedure, p_guard text, p_marker text, p_new text) returns void
+create or replace function pg_temp.lighting_patch_l1(p_fn regprocedure, p_guard text, p_marker text, p_new text) returns void
 language plpgsql as $$
 declare v_def text; v_n int;
 begin
@@ -196,12 +196,12 @@ begin
 end $$;
 
 -- every call of the home items grant (first home, moving, any furniture action) also gives the lights it is missing
-select pg_temp.l1_patch('public.bl_house_items_grant(uuid,bigint)'::regprocedure, 'bl_house_lights_grant(',
+select pg_temp.lighting_patch_l1('public.bl_house_items_grant(uuid,bigint)'::regprocedure, 'bl_house_lights_grant(',
   E'  v_layout := bl_home_layout_id(v_me.housing_id);\n',
   E'  v_layout := bl_home_layout_id(v_me.housing_id);\n  perform bl_house_lights_grant(p_uid, v_home, v_layout); -- L1: the home''s lights, once per home\n');
 
 -- sign-in: the home screen reads this first, so the lights are there when the room opens (and after a build finishes)
-select pg_temp.l1_patch('public.house_upgrade_state()'::regprocedure, 'bl_house_lights_for(',
+select pg_temp.lighting_patch_l1('public.house_upgrade_state()'::regprocedure, 'bl_house_lights_for(',
   E'  select * into v_me from profiles where id = v_me.id; -- a finished tier upgrade changed the home\n',
   E'  select * into v_me from profiles where id = v_me.id; -- a finished tier upgrade changed the home\n  perform public.bl_house_lights_for(v_me.id); -- L1: lights of this home and of finished extension rooms, once\n');
 
