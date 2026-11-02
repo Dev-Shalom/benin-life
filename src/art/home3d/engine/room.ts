@@ -71,7 +71,7 @@ function dimAt(L: HomeLayout, x: number, z: number): number {
 function lightPool(b: HomeBuilder, f: { x: number; z: number; y?: number; rot?: number; kind: string }, L: RoomLight) {
   const col = kelvinHex(L.k);
   const yaw = ((f.rot ?? 0) * Math.PI) / 2;
-  const str = Math.min(1, 0.35 + L.b / 10) * 0.22;
+  const str = Math.min(1, 0.35 + L.b / 10) * 0.16;
   const mount = LIGHTS[f.kind as keyof typeof LIGHTS]!.mount;
   if (mount === 'table') b.pool(L.x, L.z, 0.5 + L.b * 0.14, col, (f.y ?? 0) + 0.015, str * 0.7);
   else if (mount === 'wall') b.pool(L.x + Math.sin(yaw) * 0.5, L.z + Math.cos(yaw) * 0.5, 0.9 + L.b * 0.2, col, 0.04, str * 0.8);

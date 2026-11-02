@@ -14,7 +14,7 @@ import { kelvinHex, lampTarget, type LampSwitch } from './light';
 import type { BuiltRoom, RoomLight } from './room';
 
 /** PointLight intensity per brightness point, and the light's reach (m) = REACH_BASE + brightness * REACH_PER_B. */
-const INTENSITY_PER_B = 1.0;
+const INTENSITY_PER_B = 0.85;
 const REACH_BASE = 3.6;
 const REACH_PER_B = 0.75;
 const DECAY = 1.35;
