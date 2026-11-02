@@ -485,6 +485,7 @@ function Rig(p: DriveSceneProps) {
       const tagById = new Map(tagEls.map((e) => [e.dataset.id ?? '', e]));
       const sz = gl.domElement.clientWidth;
       const sh = gl.domElement.clientHeight;
+      const tagPlaced: { x: number; y: number; z: number; el: HTMLElement; op: number }[] = [];
       for (const o of props.others) {
         const s = slotOf.get(o.id);
         if (s === undefined) continue;
@@ -501,11 +502,23 @@ function Rig(p: DriveSceneProps) {
           if (show && sl.z < 4 && sl.z > -48) {
             _tmp.set(LANE_IN, 2.1, sl.z).project(cam);
             if (_tmp.z < 1) {
-              el.style.transform = `translate(${(_tmp.x * 0.5 + 0.5) * sz}px, ${(-_tmp.y * 0.5 + 0.5) * sh}px) translate(-50%, -100%)`;
-              el.style.opacity = String(Math.max(0, Math.min(1, (48 + sl.z) / 16)));
+              const tx = (_tmp.x * 0.5 + 0.5) * sz;
+              const ty = (-_tmp.y * 0.5 + 0.5) * sh;
+              el.style.transform = `translate(${tx}px, ${ty}px) translate(-50%, -100%)`;
+              tagPlaced.push({ x: tx, y: ty, z: sl.z, el, op: Math.max(0, Math.min(1, (48 + sl.z) / 16)) });
             } else el.style.opacity = '0';
           } else el.style.opacity = '0';
         }
+      }
+      // nearer cars keep their tag; a farther tag that would overlap one already shown is hidden
+      tagPlaced.sort((a, b) => b.z - a.z);
+      const tagShown: { x: number; y: number; w: number }[] = [];
+      for (const t of tagPlaced) {
+        if (!t.el.dataset.w) t.el.dataset.w = String(t.el.offsetWidth || 80); // measured once, not every frame
+        const w = Number(t.el.dataset.w);
+        const clash = tagShown.some((q) => Math.abs(q.x - t.x) < (q.w + w) / 2 + 4 && Math.abs(q.y - t.y) < 26);
+        t.el.style.opacity = clash ? '0' : String(t.op);
+        if (!clash) tagShown.push({ x: t.x, y: t.y, w });
       }
 
       // ---- signs

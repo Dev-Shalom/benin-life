@@ -420,6 +420,7 @@ begin
   perform pg_temp.assert(not exists (select 1 from activities where max_seconds > 15 or min_seconds > max_seconds), 'all activities <= 15 s');
   -- travel capped
   update profiles set busy_until = null, cash = 100000 where id = v;
+  update locations set active = true where id = 'benin_airport';  -- under construction in the game; reopened here only to test a far trip
   perform pg_temp.assert(not exists (select 1 from jsonb_array_elements(travel_quote('benin_airport')->'options') o
                                       where (o->>'real_seconds')::numeric > bl_cfg('action.travel_max_seconds')), 'travel <= travel_max_seconds');
   -- shift: action.shift_seconds real seconds (worker from L1-3)

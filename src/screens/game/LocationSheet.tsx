@@ -93,7 +93,7 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
   const loungeBlock = loungeAccess === 'none' ? 'Members only. Get a day pass or a membership first.' : null;
   const isHome = loc.id === state.profile.home_location_id;
   const closedReason = !isHome && hours && !hours.open
-    ? (loc.active === false ? `${loc.name} is closed for now. Check back soon.` : `${loc.name} is closed right now. ${hours.label.replace('Closed now · opens', 'It opens at')}.`)
+    ? (loc.active === false ? `${loc.name} is ${/^under construction/i.test(loc.blurb ?? '') ? 'under construction' : 'closed for now'}. Check back soon.` : `${loc.name} is closed right now. ${hours.label.replace('Closed now · opens', 'It opens at')}.`)
     : null;
 
   if (!here) {
