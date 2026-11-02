@@ -36,3 +36,6 @@ The daily stories are rows of the same table with kinds `daily` and `chapter`, v
 - **Luck** moves a choice's `chance` by at most `stories.luck_chance_cap` points (never 0 or 100; doctor, school and university cards are left fair).
 - **Blessings and police scenes**: `bl_moment_roll` may swap the rolled moment for a `path_blessing_*` (goodwill) or a `path_police_*` / `path_efcc_*` (trouble) system moment, rarely and with a cooldown. They count against `moments.daily_cap`.
 - `moments_pending()` also returns `story` (`{waiting, daily, chapters}`), the badge for the Stories icon and the HUD chip.
+
+## Power cuts (docs/POWER.md)
+The random `nepa_light` moment has weight 0 now: real power cuts replace it. The new power pop-ups look like life-moment cards but are separate (`PowerHost`): they do not count against `moments.daily_cap`, wait for any other popup, and are never shown in a club or lounge or during a spray.

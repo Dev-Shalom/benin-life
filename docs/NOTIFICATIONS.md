@@ -109,3 +109,6 @@ Sent from `bl_return_push_tick()` (called by `bl_push_tick`, throttled to every 
 
 ## Club hype pushes are opt-in (Fix it 3)
 `bl_push_on_hype` only pushes a player who switched on **Club spray alerts -> Phone pings for club hype** (table `club_alert_prefs`, default off), on top of `push.cat_events`, a saved device and the usual limits.
+
+## Power cuts (2026-11-13)
+"NEPA don take light" (and "for all of Benin" for a city-wide blackout), "Your fuel don finish" and "Battery low" are sent through `bl_push_enqueue` in the Game events category, once per outage per player, queued ahead from `power_status` and sent when the cut starts. Link `go=power` opens the Power sheet. See docs/POWER.md.

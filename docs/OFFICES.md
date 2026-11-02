@@ -105,3 +105,6 @@ More levers once they can be balanced and tested: Security Commissioner (bail am
 
 ## Court judges (later change)
 Four more offices in `ind_offices`: `court_judge_1..4` ("High Court Judge I..IV", badge **Hon. Justice**, salary, 14-day term, no levers). Admin -> Court appoints (first free seat) and removes judges with the same code as the other offices; they also show in Admin -> Offices. A sitting judge is assigned to hearings and rules on them. See docs/COURT.md.
+
+## Power (NEPA) Managing Director: live (2026-11-13)
+Migration `20261113000300_power_office.sql` added one lever per area (`power.outage_pct.<area>`, band 75 to 125 percent of the default, 24 hours between moves) and switched the office on. The blackout button, fuel scarcity, fuel prices and the black market are not levers. Tested in `power_test.sql` group 10.

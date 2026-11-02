@@ -74,3 +74,6 @@ Pure data in `src/art/home3d/upgrades.ts`: `applyUpgrades(baseLayout, done, buil
 
 ## Tests
 `supabase/tests/house_upgrades_test.sql`: catalogue and list, who may upgrade (hostel, visiting, rent owed, wrong home type, switch off), requirements, paying (bank first, landlord fee, ledger), build timer with time travel (`bl.test_offset_seconds`: builders working, half way, lazy settle, toast list once), effects (room furnishable, doorway blocks, bonuses reach `do_activity`, capped, garage + car space), in-place tier upgrade (furniture and garage kept, rent, scene, released old tier), sale value and moving out (refund, ledger), admin grant + audit, grants and RLS.
+
+## Power (docs/POWER.md)
+The generator house now makes any generator soundproof, and the solar and inverter upgrade is a real inverter with 4.8 kWh of battery and 2 kW of panels in the power system (Content -> Power gear). They still give their comfort bonus, but the bonus stops while the home has no light (no mains, no running generator, no battery). New battery pieces (200Ah tubular, 5kWh lithium) add hours to an inverter.
