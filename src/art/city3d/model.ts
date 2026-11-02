@@ -120,7 +120,7 @@ export const COMING_SOON: { id: string; x: number; y: number; emoji: string; lab
     y: 655,
     emoji: '✈️',
     label: 'Airport link',
-    note: 'Fly to Lagos and Abuja from Benin Airport. Coming soon.',
+    note: 'Fly to Abuja and beyond from Benin Airport. Coming soon.',
   },
 ];
 

@@ -263,7 +263,7 @@ export function BuySheet({ tab, onTab, home, onBought, onSold, onArrange }: {
               })}
             </div>
           )}
-          <p className="muted buy-note">Prices from Benin and Lagos shops (2025/26). Every piece lands in your house: place it, move it, store it.</p>
+          <p className="muted buy-note">Prices from Benin shops (2025/26). Every piece lands in your house: place it, move it, store it.</p>
         </>
       )}
       {tab === 'arrange' && (
