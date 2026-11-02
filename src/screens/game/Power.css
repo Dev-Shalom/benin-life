@@ -18,7 +18,7 @@
 .pw-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2, rgba(255, 255, 255, .06)); font-size: 13.5px; }
 .pw-row span { opacity: .75; }
 .pw-row b { text-align: right; overflow-wrap: anywhere; }
-.pw-row b.is-good { color: var(--green-500, #36c07a); }
+.pw-row b.is-good { color: var(--c-green); }
 .pw-row b.is-bad { color: var(--c-red); }
 .pw-card { display: grid; gap: 12px; padding: 14px; border-radius: 18px; background: var(--surface-2, rgba(255, 255, 255, .08)); }
 .pw-card__top { display: flex; align-items: center; gap: 10px; }
@@ -50,7 +50,7 @@
 .fs-strip__prices b { font: 800 17px var(--font-display, inherit); font-variant-numeric: tabular-nums; }
 .fs-strip__prices i { font: 700 12px var(--font-display, inherit); font-style: normal; }
 .fs-strip__prices i.is-up { color: var(--c-red); }
-.fs-strip__prices i.is-down { color: var(--green-500, #36c07a); }
+.fs-strip__prices i.is-down { color: var(--c-green); }
 .fs-strip__warn, .fs-strip__dry { margin: 0; font-size: 13px; line-height: 1.4; }
 .fs-strip__warn { color: #f2c14e; }
 .fs-strip__dry { color: var(--c-red); font-weight: 700; }

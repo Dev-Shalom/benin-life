@@ -3020,7 +3020,7 @@ kbd {
   padding: 18px;
   border-radius: 22px;
   color: #fff;
-  background: linear-gradient(140deg, #5b4fd6, #8a6cf0 60%, #b08cff);
+  background: linear-gradient(140deg, #4a3fc4, #6b4fe0 60%, #7f5fe6);
   box-shadow: var(--e2);
 }
 .bank-card__label {
@@ -3702,7 +3702,7 @@ kbd {
   padding: 14px;
   border-radius: 20px;
   color: #fff;
-  background: linear-gradient(140deg, #0f7a4c, #4fc98a);
+  background: linear-gradient(140deg, #0a6f40, #0e874e);
   box-shadow: var(--e2);
 }
 .chop__hero-emoji {
@@ -3769,7 +3769,7 @@ kbd {
   padding: 16px;
   border-radius: 22px;
   color: #fff;
-  background: linear-gradient(140deg, #c96a1f, #f2a65a);
+  background: linear-gradient(140deg, #a8530f, #bd6414);
   box-shadow: var(--e2);
 }
 .house-card__emoji {
@@ -6162,7 +6162,7 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 /* M4: Messages app redesign (docs/CHAT.md "M4") */
 .phone-app--messages { position: relative; background: var(--surface); }
 .phone__screen--app:has(.phone-app--messages) { background: var(--surface); }
-.msgs, .dm { --m-blue: #2a6fd6; --m-link: var(--c-blue); --m-red: #e5484d; --m-fill: var(--surface-2); --m-text: var(--text); --m-muted: var(--muted); }
+.msgs, .dm { --m-blue: #2a6fd6; --m-link: var(--c-blue); --m-red: #cf3a3f; --m-fill: var(--surface-2); --m-text: var(--text); --m-muted: var(--muted); }
 .msgs { gap: 12px; padding: 0 16px 40px; color: var(--m-text); }
 .msgs-head, .dm-head { position: relative; display: flex; align-items: center; gap: 6px; min-height: 52px; flex: none; }
 .dm-head { min-height: 48px; }
@@ -6830,7 +6830,7 @@ button.people-row:hover, button.people-row:focus-visible { background: var(--sur
 .mm-choice.is-main { background: var(--green-600, #1f9d55); border-color: var(--green-600, #1f9d55); color: #fff; }
 @media (hover: hover) { .mm-choice.is-main:hover:not(:disabled) { background: var(--green-700); border-color: var(--green-700); } }
 .mm-choice.is-ignore { border-style: dashed; color: var(--text-2); font-weight: 700; }
-.mm-choice.is-off { opacity: 0.55; }
+.mm-choice.is-off { opacity: 0.75; }
 .mm-choice__label { min-width: 0; overflow-wrap: anywhere; }
 .mm-choice__cost { flex: none; padding: 3px 10px; border-radius: 99px; background: var(--surface-3); font: 800 13px var(--font-display); font-variant-numeric: tabular-nums; }
 .mm-choice.is-main .mm-choice__cost { background: rgba(255, 255, 255, 0.22); }

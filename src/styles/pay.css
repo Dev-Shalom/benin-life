@@ -279,7 +279,7 @@
   border-radius: 6px;
   font-size: 10px;
   font-weight: 800;
-  color: var(--text);
+  color: #1a1206;
   background: var(--rk-gold);
 }
 .rk-row__sub { font-size: 11px; color: rgba(243, 241, 234, 0.55); }

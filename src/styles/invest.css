@@ -5,7 +5,7 @@
 .inv { gap: 14px; }
 .is-up { color: var(--c-green); }
 .is-down { color: var(--c-red); }
-.inv-port { display: grid; gap: 6px; padding: 16px; border-radius: 20px; color: #fff; background: linear-gradient(140deg, #0a6f40, #17a05c 65%, #2fbf77); box-shadow: var(--e2); }
+.inv-port { display: grid; gap: 6px; padding: 16px; border-radius: 20px; color: #fff; background: linear-gradient(140deg, #0a6f40, #0c7b46 65%, #0e874e); box-shadow: var(--e2); }
 .inv-port__label { font-size: 12.5px; opacity: 0.88; }
 .inv-port__amt { font-family: var(--font-display); font-weight: 700; font-size: 28px; overflow-wrap: anywhere; }
 .inv-port__grid { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 8px; margin-top: 4px; }

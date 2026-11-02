@@ -2035,7 +2035,7 @@
 }
 .legal__updated {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text-2);
 }
 .legal__card {
   padding: 20px 20px 24px;

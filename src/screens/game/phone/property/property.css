@@ -20,7 +20,7 @@
 .pp-chip { flex: none; display: grid; gap: 1px; justify-items: center; min-height: 40px; padding: 7px 13px; border: 0; border-radius: 999px; background: var(--surface); box-shadow: var(--e1); font: 800 13px var(--font-display); color: var(--ink-2); cursor: pointer; }
 .pp-chip small { font: 700 10.5px var(--font-display); color: var(--ink-3); }
 .pp-chip.is-on { background: var(--primary); color: #fff; }
-.pp-chip.is-on small { color: rgba(255, 255, 255, .85); }
+.pp-chip.is-on small { color: #fff; }
 .pp-chips--sm .pp-chip { min-height: 34px; padding: 5px 11px; font-size: 12.5px; background: var(--surface-2); box-shadow: none; }
 .pp-chips--sm .pp-chip.is-on { background: var(--ink-solid); color: #fff; }
 
@@ -114,8 +114,8 @@
 .pp-players { display: flex; flex-direction: column; gap: 10px; }
 .pp-players > * { flex: none; }
 
-.house-card--own { background: linear-gradient(140deg, #0f7a49, #3cbf7c); }
-.house-card--let { background: linear-gradient(140deg, #2a5db0, #5b93e6); }
+.house-card--own { background: linear-gradient(140deg, #0a6f40, #0e874e); }
+.house-card--let { background: linear-gradient(140deg, #234f9c, #2f66bd); }
 @keyframes ppSway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
 @media (prefers-reduced-motion: reduce) { .pp-build__scaffold { animation: none; } .pp-bar > span { transition: none; } }
 .pp-sheet { text-align: left; }
