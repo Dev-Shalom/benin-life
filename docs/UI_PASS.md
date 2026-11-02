@@ -8,7 +8,7 @@ This was a polish pass. Game logic, RPCs, the database, text, the brand and the 
 | File | What |
 |---|---|
 | `src/styles/polish.css` | Shared comfort rules loaded after every stylesheet (selectors start with `:root` so lazy chunks cannot beat them): tap targets 40px, labels 12px, phone frame width, top pill fit at 360, sheet/modal padding and safe areas, chip rows scroll inside their own row, text wrapping, the fixes listed below. The tap and font lists are generated from the audit. |
-| `src/styles/overlay.css` | One dark indigo palette (`--ov-*`) for everything that floats over the game: top pill, left rail, Today card, dock, needs pill, place card, sheets, modals, toasts. It only re-points colour tokens inside each overlay, so components flip with it. Phone app interiors stay light. Also phone titles and empty states. |
+| `src/styles/overlay.css` | Shared shape and spacing for everything that floats over the game (top pill, left rail, Today card, dock, needs pill, place card, sheets, modals, toasts), phone titles and empty states. **Superseded by the theme pass below:** its `--ov-*` names are now aliases of the theme tokens, so the overlays are light by default and dark indigo only when the player picks Dark. |
 | `src/admin/admin.css` + `AdminApp.tsx` | Admin tables had no styles at all. They now look calm on wide screens and become wrapping cards on phones (column titles are copied into `data-label`). Admin buttons 40px, labels 12px, squeezed inputs take the whole row. |
 
 Spacing scale (existing `--s1..--s8` stay): `--tap` 40px, `--gutter` 16px, `--card-pad` 14px, `--stack` 12px, `--ov-gap` 8px, `--ov-pad` 16px, `--ov-radius` 24px; `--fs-label` 12px, `--fs-body` 13.5px.
@@ -65,3 +65,18 @@ Screenshots: `scratchpad/ui-pass/before/` and `scratchpad/ui-pass/after/` (named
 - The Boutique full-screen shop keeps its own light look (it is a shop, not an overlay).
 - A right-hand column of round icon buttons was not added: Benin Life has no such column (map zoom buttons and the dock do that job) and adding one would change layouts.
 - Long single-line names that are meant to be one line (chat names, list rows) still end with an ellipsis.
+
+## Theme pass: Light default, Dark on request (2026-11-14)
+The dark indigo overlays were forced on everyone. They are now the **Dark** theme, chosen in Sim sheet, Settings, Appearance (Light / Dark / Match my phone). Light is the default and restores the light HUD, sheets, pop-ups and phone apps with the UI pass's spacing, sizes and consistency kept. How it works, the token table and how to add a themed component: `docs/THEME.md`.
+
+What changed in CSS: colours on themed surfaces are variables (`src/styles/tokens.css`); ~780 hard-coded colours in 40 stylesheets were converted; Court, Messages, Boutique and the Spark chart use tokens; the overlay flip block was removed. Contrast fixes found by the audit (both themes): primary green button 3.4:1 to 4.6:1 (`--green-500/600`, `--grad-primary`), danger gradient, red badges, disabled buttons (now grey fill with `--muted` text instead of a faded green), Day badge, Claim button, Messages blue, Bank/House/Invest/Cooking/Food gradient cards (white labels never fade), "You" tag.
+
+### Contrast results (390x844, automated, `scratchpad/theme/audit.mjs`)
+Every visible text node on 94 states per theme: landing, sign-in, sign-up, terms, privacy; home and the Today list; the Sim sheet (7 tabs); Alerts, Buy, Shortcuts and Look overlays; a pop-up; the phone home; 28 phone apps with their tabs. Rule: normal text 4.5:1, large text (24px, or 18.7px bold) 3:1, worst gradient stop.
+| | Failing text nodes before fixes | After fixes |
+|---|---|---|
+| Light | 692 (258 selectors) on the first full run | 35 (8 selectors) |
+| Dark | 626 (249 selectors) | 35 (8 selectors) |
+The 8 left are the same in both themes and are not themed surfaces: the phone home wallpaper (status bar and icon labels over a sunset gradient, measured at the brightest stop, with a text shadow), the Ranks podium step numbers (decorative, animated), the crew-tag preview (colour picked by the player), and a dimmed "Vacant" label in Politics. The Ranks app and the Yahoo app keep their own dark look in both themes.
+Screenshots (Light and Dark pairs, 390x844, plus a mid-transition frame): `scratchpad/theme/`.
+
