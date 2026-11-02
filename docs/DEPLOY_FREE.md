@@ -1,7 +1,7 @@
 # Free hosting backup (if Vercel pauses the site)
 
 The game is a static Vite site (about 6 MB) and all game data lives in Supabase, so any static host works.
-`public/_redirects` and `public/_headers` already contain the single-page-app fallback and cache rules
+`wrangler.jsonc` (single-page-app fallback) and `public/_headers` (cache rules) are already set up
 (Vercel ignores them; `vercel.json` stays as is).
 
 ## Cloudflare Pages (free, no card, very generous traffic)
