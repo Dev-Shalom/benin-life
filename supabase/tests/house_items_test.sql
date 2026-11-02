@@ -256,7 +256,7 @@ begin
   r := house_move('gra_duplex');
   perform pg_temp.assert((r->>'came_with')::int = 14, 'duplex: 14 pieces');
   perform pg_temp.assert((select allowance from player_house_grants where user_id = l and home_key = 'gra_duplex') = 75000, 'duplex allowance 75,000');
-  perform pg_temp.assert((select count(*) from player_house_grants where user_id = l and home_key <> 'starter') = 3, 'one grant per home');
+  perform pg_temp.assert((select count(*) from player_house_grants where user_id = l and home_key <> 'starter' and home_key not like '%#light%') = 3, 'one grant per home (the L1 lights have their own rows)');
   perform pg_temp.assert(pg_temp.all_valid(l), 'all valid in the duplex');
 
   -- the rule for every tier: what moving in can add to the allowance is below the move-in fee

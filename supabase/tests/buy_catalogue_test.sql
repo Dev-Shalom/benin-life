@@ -55,7 +55,7 @@ do $$
 begin
   perform pg_temp.assert((select count(*) from furniture where active and buyable) >= 80, 'catalogue has 80+ items');
   perform pg_temp.assert((select count(distinct tier) from furniture where active) = 3, 'LAPO, mid and Nepo tiers');
-  perform pg_temp.assert((select count(distinct category) from furniture where active) = 6, 'six categories');
+  perform pg_temp.assert((select count(distinct category) from furniture where active) = 7, 'seven categories (Lighting added by L1)');
   perform pg_temp.assert(not exists (select 1 from furniture where active and buyable and price <= 0), 'every item has a price');
   perform pg_temp.assert((select price from furniture where id = 'tv_75') = 1250000, '75" TV price');
   perform pg_temp.assert((select tier from furniture where id = 'gen_tiger') = 'lapo'

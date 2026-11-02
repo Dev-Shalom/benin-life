@@ -72,7 +72,7 @@ do $$
 declare l uuid; n uuid; h uuid; d uuid;
 begin
   l := pg_temp.make_home('LapoFu', 'lapo', 'ekenwan_face_me');
-  perform pg_temp.assert(pg_temp.owned(l) = '{drum_bucket,foam_mat,kerosene_stove,stool}', 'LAPO basics: ' || pg_temp.owned(l)::text);
+  perform pg_temp.assert(pg_temp.owned(l) = '{bulb_holder,drum_bucket,foam_mat,kerosene_stove,stool}', 'LAPO basics (+ the face-me room bulb, L1): ' || pg_temp.owned(l)::text);
   n := pg_temp.make_home('NepoFu', 'nepo', 'gra_duplex');
   -- H4: the duplex also gives its came-with-the-house pieces (ACs, dining set ...); the starter set is the 'starter' rows
   perform pg_temp.assert((select coalesce(array_agg(furniture_id order by furniture_id), '{}') from player_furniture where user_id = n and source = 'starter')
@@ -87,7 +87,7 @@ begin
   perform pg_temp.login(d);
   update game_config set value = '"lapo"' where key = 'origin.force_next';
   perform create_profile('V1Fu', 'male', '{"gender":"male"}');
-  perform pg_temp.assert(pg_temp.owned(d) = '{drum_bucket,foam_mat,kerosene_stove,stool}', 'v1 LAPO gets the basics: ' || pg_temp.owned(d)::text);
+  perform pg_temp.assert(pg_temp.owned(d) = '{bulb_holder,drum_bucket,foam_mat,kerosene_stove,stool}', 'v1 LAPO gets the basics: ' || pg_temp.owned(d)::text);
 end $$;
 
 -- ---------- 3. actions follow the furniture ----------
@@ -154,13 +154,13 @@ begin
   insert into player_furniture (user_id, furniture_id, slot, source) values (l, 'tv', 'tv', 'bought');
   v := bl_give_starter_furniture(l);
   perform pg_temp.assert(v = 0, 'nothing new to give');
-  perform pg_temp.assert(pg_temp.owned(l) = '{drum_bucket,foam_mat,kerosene_stove,stool,tv}', 'bought TV kept');
+  perform pg_temp.assert(pg_temp.owned(l) = '{bulb_holder,drum_bucket,foam_mat,kerosene_stove,stool,tv}', 'bought TV kept');
   perform pg_temp.login(l);
   perform do_activity('watch_tv');           -- the bought TV unlocks it
   perform pg_temp.free(l);
   -- the trigger fires only when the home is first chosen
   update profiles set home_chosen = true where id = l;
-  perform pg_temp.assert((select count(*) from player_furniture where user_id = l) = 5, 'no re-give on a no-op update');
+  perform pg_temp.assert((select count(*) from player_furniture where user_id = l) = 6, 'no re-give on a no-op update');
 end $$;
 
 -- ---------- 5. RLS: own rows only ----------
@@ -168,7 +168,7 @@ select pg_temp.login(pg_temp.fu('LapoFu'));
 set local role authenticated;
 do $$
 begin
-  perform pg_temp.assert((select count(*) from player_furniture) = 5, 'sees own furniture only');
+  perform pg_temp.assert((select count(*) from player_furniture) = 6, 'sees own furniture only');
   perform pg_temp.assert((select count(*) from furniture) >= 13, 'reads the catalog');
   perform pg_temp.assert((select count(*) from starter_furniture) >= 12, 'reads starter sets');
 end $$;

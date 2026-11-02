@@ -113,7 +113,9 @@ begin
   perform pg_temp.assert(not exists (select 1 from player_house_furniture where owner_id = a and layout <> 'flat'), 'all rows are for the flat');
   select count(*) into n from player_furniture pf, generate_series(1, pf.qty) where pf.user_id = a;
   perform pg_temp.assert((select count(*) from player_house_furniture where owner_id = a) = n, 'every owned copy has a row');
-  perform pg_temp.assert((r->>'placed')::int >= 3 and (select count(*) from player_house_furniture where owner_id = a and not stored) = (r->>'placed')::int + (r->>'came_with')::int, 'starters re-placed (+ H4 came-with pieces): ' || r::text);
+  perform pg_temp.assert((r->>'placed')::int >= 3 and (select count(*) from player_house_furniture where owner_id = a and not stored) = (r->>'placed')::int + (r->>'came_with')::int + coalesce((select jsonb_array_length(g.items) from player_house_grants g where g.user_id = a and g.home_key = 'mission_rd_mini_flat#lights'), 0), 'starters re-placed (+ H4 came-with pieces + the flat''s L1 lights): ' || r::text);
+  -- L1: the old home's bulb moved with them and the flat's own lights came with it
+  perform pg_temp.assert((select count(*) from player_house_furniture h where h.owner_id = a and not h.stored and bl_furniture_id_of(h.furniture_key) in (select id from furniture where category = 'lighting')) >= 8, 'the flat lights are up after the move');
   perform pg_temp.assert(not exists (select 1 from player_house_furniture where owner_id = a and stored and furniture_key = 'own_stool'), 'stool takes the flat''s seat slot');
   perform pg_temp.assert(pg_temp.all_valid(a), 'placements valid in the flat');
 
