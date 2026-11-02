@@ -11,7 +11,7 @@
   background: var(--amber-50);
 }
 .wish-chip--gem .wish-chip__icon {
-  background: var(--tint-blue);
+  background: var(--surface-2);
 }
 .daily-dot {
   position: absolute;
@@ -20,7 +20,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--red-500);
+  background: var(--red-600);
   box-shadow: 0 0 0 2px var(--surface);
 }
 @media (max-width: 599px) {
@@ -179,7 +179,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--tint-blue);
+  background: var(--surface-2);
   font-family: var(--font-emoji);
   font-size: 18px;
   filter: grayscale(0.2);

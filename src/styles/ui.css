@@ -40,7 +40,8 @@
 }
 .bl-btn:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
+  background: var(--surface-3);
+  color: var(--muted); /* readable (4.5:1) in both themes; a faded brand colour was not */
   box-shadow: none;
 }
 .bl-btn[aria-busy='true'] {
@@ -54,12 +55,12 @@
   --btn-shadow: 0 1px 2px rgba(122, 79, 0, 0.2), 0 8px 18px -8px rgba(238, 164, 26, 0.6);
 }
 .bl-btn--danger {
-  --btn-bg: linear-gradient(180deg, #e65445 0%, #cc392d 100%);
+  --btn-bg: linear-gradient(180deg, #d03a2e 0%, #b82e23 100%);
   --btn-shadow: 0 1px 2px rgba(120, 20, 12, 0.22), 0 8px 18px -8px rgba(204, 57, 45, 0.55);
 }
 .bl-btn--dark {
-  --btn-bg: var(--ink);
-  --btn-fg: #ffffff;
+  --btn-bg: var(--ink-solid);
+  --btn-fg: var(--on-fill);
   --btn-shadow: 0 1px 2px rgba(17, 32, 56, 0.2), 0 8px 18px -8px rgba(17, 32, 56, 0.45);
 }
 .bl-btn--ghost {
@@ -144,7 +145,7 @@
   height: 19px;
   padding: 0 5px;
   border-radius: 99px;
-  background: var(--red-500);
+  background: var(--red-600);
   color: #fff;
   font: 700 11px/19px var(--font-body);
   box-shadow: 0 0 0 2px var(--surface);
@@ -206,7 +207,7 @@
   gap: 6px;
   min-height: 100dvh;
   padding: 24px calc(24px + var(--sar, 0px)) calc(24px + var(--sab, 0px)) calc(24px + var(--sal, 0px));
-  background: var(--tint-blue);
+  background: var(--surface-2);
   text-align: center;
   animation: bl-loading-in 260ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) both;
 }
@@ -288,7 +289,7 @@
   position: relative;
   height: 8px;
   border-radius: 99px;
-  background: var(--tint-blue);
+  background: var(--surface-3);
   overflow: hidden;
 }
 .bl-need__fill {
@@ -367,7 +368,7 @@
   min-width: 18px;
   padding: 0 5px;
   border-radius: 99px;
-  background: var(--red-500);
+  background: var(--red-600);
   color: #fff;
   font-size: 11px;
   line-height: 18px;

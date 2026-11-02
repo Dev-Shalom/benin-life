@@ -3,9 +3,9 @@
 .lounge > * { min-width: 0; }
 .lounge-load { display: grid; place-items: center; padding: 40px 0; }
 .lounge-note { display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); font-size: 13px; color: var(--ink-2); }
-.lounge-note.is-bad { background: var(--tint-red); color: var(--c-red); }
+.lounge-note.is-bad { background: var(--surface-2); color: var(--c-red); }
 .lounge-pass { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-lg); color: #2a1a05;
-  background: linear-gradient(135deg, #f7e2a5, #e3b44d); box-shadow: 0 8px 18px -12px rgba(160, 110, 10, 0.8); }
+  background: linear-gradient(135deg, var(--tint-amber), #e3b44d); box-shadow: 0 8px 18px -12px rgba(160, 110, 10, 0.8); }
 .lounge-pass.is-vip { background: linear-gradient(135deg, #2b2438, #4a3a63); color: #f8e3a3; }
 .lounge-pass.is-none, .lounge-pass.is-guest { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
 .lounge-pass__icon { font-family: var(--font-emoji); font-size: 32px; line-height: 1; }
@@ -33,8 +33,8 @@
 
 /* the slim status line in the place card and the map sheet */
 .lounge-strip { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; border-radius: var(--r-pill, 99px); color: #3a2706;
-  background: linear-gradient(90deg, #f7e2a5, #ecc767); font-size: 13px; font-weight: 700; }
-.lounge-strip.is-locked { background: var(--tint-violet); color: var(--c-violet); }
+  background: linear-gradient(90deg, var(--tint-amber), #ecc767); font-size: 13px; font-weight: 700; }
+.lounge-strip.is-locked { background: var(--surface-3); color: var(--c-violet); }
 .lounge-strip__text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .lounge-strip__btn { flex: none; min-height: 32px; padding: 0 14px; border: 0; border-radius: 99px; background: #2b2438; color: #f8e3a3; font: 700 13px var(--font-display); cursor: pointer; }
 .lounge-strip__btn:active { transform: scale(0.96); }

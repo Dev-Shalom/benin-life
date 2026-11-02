@@ -32,12 +32,12 @@
   /* ---- Core palette ---- */
   --ink: #131a24;
   --ink-2: #435064;
-  --ink-3: #5f6b7d;
+  --ink-3: #596477;
   --green-50: #e9f7ef;
   --green-100: #d2efdf;
   --green-400: #2fbf77;
-  --green-500: #17a05c;
-  --green-600: #0e874e;
+  --green-500: #0e874e; /* white text on it: 4.6:1 */
+  --green-600: #0b7a45;
   --green-700: #0a6f40;
   --amber-50: #fff6e2;
   --amber-100: #ffe9b8;
@@ -82,7 +82,7 @@
 
   /* ---- Gradients ---- */
   --grad-sky: linear-gradient(180deg, #c8e1f6 0%, #e2eff9 38%, #eef4fa 72%, #f4f7fb 100%);
-  --grad-primary: linear-gradient(180deg, #16a05b 0%, #0d854d 100%);
+  --grad-primary: linear-gradient(180deg, #0e874e 0%, #0a7544 100%); /* white label 4.6 to 5.8:1 */
   --grad-amber: linear-gradient(180deg, #ffcd55 0%, #f1a91d 100%);
   /* Legacy names (old dusk theme). Kept so nothing breaks; do not use for new chrome. */
   --grad-coral: linear-gradient(180deg, #ef5b45 0%, #d2342a 55%, #b0251d 100%);
@@ -168,6 +168,13 @@
   --on-fill: #ffffff; /* text on --ink-solid and on brand fills */
   --amber-fill: #fff4d1; /* soft warm card (hints, today row) */
   --coral-fill: #fdecea;
+  --card: var(--surface);
+  --text-3: var(--muted);
+  --paper: var(--surface);
+  --sky-50: var(--tint-blue);
+  --phone-bg: #f4f6f9; /* phone app interior: cards (--surface) sit on it */
+  --gold-600: var(--c-gold);
+  --ink-1: var(--text);
   --border: var(--line);
   --shadow: var(--e2);
   --text-muted: var(--muted);
@@ -180,7 +187,8 @@
   --sel-text: #ffffff;
   --map-bg: #dfe9dc;
   --knob: #ffffff;
-  --logo-ink: #1e1410;
+  --pill-on: #ffffff; /* selected segment on a --surface-2 track */
+  --logo-accent: #c0392b; /* the wordmark's coral; the ink follows currentColor */
 
   /* ---- Overlay shape (UI pass) ---- */
   --ov-radius: 24px;
@@ -256,7 +264,9 @@
   --sel-text: #131a24;
   --map-bg: #1d2542;
   --knob: #ffffff;
-  --logo-ink: #f7ebd3;
+  --pill-on: #3a4180;
+  --phone-bg: #0f1130;
+  --logo-accent: #e8664f;
 
   --grad-sky: linear-gradient(180deg, #0b0c22 0%, #141634 45%, #0f1130 100%);
   --glass: rgba(23, 26, 61, 0.95);

@@ -42,11 +42,11 @@
 .ck-meta, .ck-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .ck-chip { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 99px; font-size: 11.5px; font-weight: 600; background: rgba(120, 130, 145, .14); color: var(--ink); }
 .ck-chip.is-good { background: var(--green-50); color: var(--c-green); }
-.ck-chip.is-ok { background: var(--tint-green); color: var(--c-green); }
+.ck-chip.is-ok { background: var(--surface-3); color: var(--c-green); }
 .ck-chip.is-need { background: var(--tint-amber); color: var(--c-amber); }
 .ck-ing { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 8px; }
 .ck-ing li { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 4px 8px; border-radius: 10px; font-size: 12px; background: var(--green-50); }
-.ck-ing li.is-short { background: var(--tint-red); color: var(--c-red); }
+.ck-ing li.is-short { background: var(--surface-2); color: var(--c-red); }
 .ck-ing__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ck-ing b { font-variant-numeric: tabular-nums; }
 .ck-h { margin: 8px 2px 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -64,7 +64,7 @@
 .ck-place { display: grid; gap: 4px; align-content: start; justify-items: start; padding: 12px; border-radius: 18px; background: var(--surface); box-shadow: var(--e1); }
 .ck-place b { font-size: 13.5px; line-height: 1.25; }
 .ck-place .ck-pill { background: var(--green-100); color: var(--c-green); }
-.ck-place.is-closed .ck-pill { background: var(--tint-red); color: var(--c-red); }
+.ck-place.is-closed .ck-pill { background: var(--surface-2); color: var(--c-red); }
 .ck-filter { display: flex; gap: 6px; flex-wrap: wrap; }
 .ck-fchip { padding: 7px 12px; border: 0; border-radius: 99px; background: var(--surface); color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 700; box-shadow: var(--e1); cursor: pointer; min-height: 36px; }
 .ck-fchip.is-on { background: var(--ink-solid); color: #fff; }

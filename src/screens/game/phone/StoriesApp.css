@@ -14,8 +14,8 @@
 
 /* ---- the story card ---- */
 .st-card { overflow: hidden; border-radius: 24px; background: var(--surface); box-shadow: var(--e2); animation: st-in 280ms var(--st-ease) both; }
-.st-story__art { display: grid; place-items: center; height: 112px; background: radial-gradient(120% 140% at 20% 0%, #ffe3b0 0%, transparent 55%), linear-gradient(135deg, #e8a35e, #b5552b 70%, #7c3216); }
-.st-story.is-chapter .st-story__art { background: radial-gradient(120% 140% at 80% 0%, var(--tint-blue) 0%, transparent 55%), linear-gradient(135deg, #6b63e0, #3b3a8f 70%, #1f1e56); }
+.st-story__art { display: grid; place-items: center; height: 112px; background: radial-gradient(120% 140% at 20% 0%, var(--tint-amber) 0%, transparent 55%), linear-gradient(135deg, #e8a35e, #b5552b 70%, #7c3216); }
+.st-story.is-chapter .st-story__art { background: radial-gradient(120% 140% at 80% 0%, var(--surface-2) 0%, transparent 55%), linear-gradient(135deg, #6b63e0, #3b3a8f 70%, #1f1e56); }
 .st-story__art span { font-family: var(--font-emoji); font-size: 58px; line-height: 1; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .22)); animation: st-bob 3.4s var(--st-ease) infinite; }
 .st-story__body { display: grid; gap: 8px; padding: 16px 16px 18px; }
 .st-story__title { margin: 0; font: 800 21px/1.2 var(--font-display); color: var(--ink); text-wrap: balance; }
@@ -41,7 +41,7 @@
 .st-done { display: grid; gap: 4px; margin-top: 4px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); border-left: 4px solid var(--ink-3); }
 .st-done--good { border-left-color: var(--green-500); background: var(--green-50); }
 .st-done--bad { border-left-color: var(--red-500); background: var(--red-50); }
-.st-done--twist { border-left-color: var(--violet-500); background: var(--tint-blue); }
+.st-done--twist { border-left-color: var(--violet-500); background: var(--surface-2); }
 .st-done--funny { border-left-color: var(--amber-500); background: var(--amber-50); }
 .st-done__chosen { margin: 0; font-size: 12.5px; color: var(--ink-3); }
 .st-done__text { margin: 0; font: 500 15px/1.5 var(--font-body); color: var(--ink); }
@@ -74,7 +74,7 @@
 .st-chip--up { background: var(--green-50); color: var(--c-green); box-shadow: inset 0 0 0 1.5px var(--green-100); }
 .st-chip--down { background: var(--red-50); color: var(--c-red); box-shadow: inset 0 0 0 1.5px #f6cfca; }
 .st-streak-win { margin: 0; padding: 10px 12px; border-radius: 14px; background: linear-gradient(135deg, var(--tint-amber), #ffd36b); color: #6b4300; font: 800 15px var(--font-display); animation: st-chip 420ms var(--st-spring) both; }
-.st-seed { margin: 2px 0 0; padding: 10px 12px; border-radius: 14px; background: var(--tint-blue); color: var(--c-blue); font: italic 700 15px var(--font-display); animation: st-up 420ms var(--st-ease) both, st-glow 2.6s ease-in-out 1.2s infinite; }
+.st-seed { margin: 2px 0 0; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); color: var(--c-blue); font: italic 700 15px var(--font-display); animation: st-up 420ms var(--st-ease) both, st-glow 2.6s ease-in-out 1.2s infinite; }
 .st-whisper { margin: 0; padding: 0 2px; color: var(--ink-3); font: italic 500 14.5px/1.5 var(--font-body); animation: st-up 420ms var(--st-ease) both; }
 .st-go { min-height: 52px; margin-top: 4px; border: 0; border-radius: 999px; background: var(--grad-primary); color: #fff; font: 800 16px var(--font-display); cursor: pointer; box-shadow: 0 6px 16px rgba(14, 135, 78, .28); transition: transform 160ms var(--st-ease); -webkit-tap-highlight-color: transparent; }
 .st-go:active { transform: scale(0.97); }

@@ -23,7 +23,7 @@
   min-height: 100dvh;
   overflow-x: clip;
   color: var(--text);
-  background: linear-gradient(180deg, var(--tint-blue) 0px, var(--tint-blue) 360px, var(--tint-blue) 680px, var(--bg) 980px);
+  background: linear-gradient(180deg, var(--tint-blue) 0px, var(--tint-blue) 360px, var(--surface-2) 680px, var(--bg) 980px);
 }
 .lp-wrap {
   width: 100%;
@@ -72,7 +72,7 @@
   color: var(--ink);
   text-decoration: none;
   white-space: nowrap;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--glass);
   box-shadow: inset 0 0 0 1px var(--line);
   transition:
     background-color var(--t-fast) ease,
@@ -117,7 +117,7 @@
   gap: 6px;
   padding: 6px 13px 6px 10px;
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--glass);
   box-shadow: inset 0 0 0 1px var(--line);
   font-size: 13px;
   font-weight: 600;
@@ -179,7 +179,7 @@
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: var(--r-lg);
-  background: linear-gradient(160deg, var(--tint-blue) 0%, var(--tint-blue) 100%);
+  background: linear-gradient(160deg, var(--tint-blue) 0%, var(--surface-3) 100%);
 }
 .lp-art > svg {
   position: absolute;
@@ -284,22 +284,22 @@
   display: grid;
   gap: 24px;
   background:
-    radial-gradient(90% 120% at 100% 0%, var(--tint-green) 0%, rgba(227, 245, 235, 0) 62%),
+    radial-gradient(90% 120% at 100% 0%, var(--surface-3) 0%, rgba(227, 245, 235, 0) 62%),
     var(--surface);
 }
 .bento__cell--travel {
   display: flex;
   flex-direction: column;
-  background: linear-gradient(165deg, var(--tint-green) 0%, var(--tint-green) 100%);
+  background: linear-gradient(165deg, var(--surface-3) 0%, var(--tint-green) 100%);
 }
 .bento__cell--hustle {
   background: linear-gradient(165deg, var(--tint-amber) 0%, var(--tint-amber) 100%);
 }
 .bento__cell--live {
-  background: linear-gradient(165deg, var(--tint-blue) 0%, var(--tint-blue) 100%);
+  background: linear-gradient(165deg, var(--surface-2) 0%, var(--tint-blue) 100%);
 }
 .bento__cell--night {
-  background: linear-gradient(165deg, var(--tint-blue) 0%, var(--tint-blue) 100%);
+  background: linear-gradient(165deg, var(--surface-2) 0%, var(--tint-blue) 100%);
 }
 .bento__goslow {
   width: 100%;
@@ -482,7 +482,7 @@
   border-radius: 32px;
   text-align: center;
   background:
-    radial-gradient(80% 60% at 50% 0%, var(--tint-green) 0%, rgba(227, 245, 235, 0) 70%),
+    radial-gradient(80% 60% at 50% 0%, var(--surface-3) 0%, rgba(227, 245, 235, 0) 70%),
     var(--surface);
   box-shadow:
     var(--e2),
@@ -1487,7 +1487,7 @@
   color: var(--c-green);
 }
 .tag-pill--violet {
-  background: var(--tint-blue);
+  background: var(--surface-2);
   color: var(--c-blue);
 }
 .tag-pill--grey {
@@ -1528,7 +1528,7 @@
 }
 .pick-skel {
   border-radius: var(--r-lg);
-  background: linear-gradient(90deg, var(--surface-2) 0%, var(--tint-blue) 50%, var(--surface-2) 100%);
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-2) 50%, var(--surface-2) 100%);
   background-size: 200% 100%;
   animation: bl-shimmer 1.2s linear infinite;
 }
@@ -1713,7 +1713,7 @@
   transform: translateX(-50%);
   padding: 3px 10px;
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--glass);
   color: var(--ink-3);
   font-size: 12px;
   font-weight: 600;
@@ -1750,14 +1750,14 @@
   max-height: 100%;
   background:
     radial-gradient(circle at 50% 42%, var(--ph-skin, #8a5131) 0 21%, transparent 22%),
-    radial-gradient(ellipse 46% 30% at 50% 100%, #c5d3e2 0 98%, transparent 100%);
+    radial-gradient(ellipse 46% 30% at 50% 100%, var(--tint-blue) 0 98%, transparent 100%);
   opacity: 0.55;
   animation: bl-ph-pulse 1.2s ease-in-out infinite alternate;
 }
 .avatar-img--full.avatar-ph {
   background:
     radial-gradient(circle at 50% 14%, var(--ph-skin, #8a5131) 0 13%, transparent 14%),
-    radial-gradient(ellipse 26% 38% at 50% 50%, #c5d3e2 0 98%, transparent 100%);
+    radial-gradient(ellipse 26% 38% at 50% 50%, var(--tint-blue) 0 98%, transparent 100%);
 }
 .avatar-ph.is-failed {
   animation: none;
@@ -2080,7 +2080,7 @@
 }
 
 /* Growth: the optional "How did you hear about Benin Life?" chips at the end of the Dream step */
-.heard { margin-top: 22px; padding: 16px; border-radius: 16px; background: rgba(255, 255, 255, 0.6); border: 1px dashed var(--line-strong); }
+.heard { margin-top: 22px; padding: 16px; border-radius: 16px; background: var(--glass); border: 1px dashed var(--line-strong); }
 .heard__ask { margin: 0 0 12px; font-weight: 700; font-size: 0.9375rem; line-height: 1.35; }
 .heard__ask span { font-weight: 600; font-size: 0.75rem; color: var(--muted); margin-left: 6px; }
 .heard__chips { display: flex; flex-wrap: wrap; gap: 10px; }

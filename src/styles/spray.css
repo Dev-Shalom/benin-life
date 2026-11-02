@@ -100,7 +100,7 @@
 }
 .spray-go:active:not(:disabled) { transform: scale(0.98); }
 .spray-go:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
-.spray-go.is-vip { color: #1a1206; background: linear-gradient(180deg, #ffe49a, #d9a441 55%, #b0793a); box-shadow: 0 6px 18px rgba(176, 121, 58, 0.35); }
+.spray-go.is-vip { color: #1a1206; background: linear-gradient(180deg, var(--tint-amber), #d9a441 55%, #b0793a); box-shadow: 0 6px 18px rgba(176, 121, 58, 0.35); }
 
 /* VIP sheet: gold on black */
 .spray-sheet.is-vip .spray__field { background: #17110a; }

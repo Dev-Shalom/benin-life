@@ -66,7 +66,7 @@
 .pp-field input { height: 48px; padding: 0 14px; border: 2px solid var(--surface-2); border-radius: 14px; background: var(--surface); font: 800 18px var(--font-display); color: var(--ink); font-variant-numeric: tabular-nums; }
 .pp-field input:focus { outline: none; border-color: var(--primary); }
 .pp-band { display: grid; gap: 4px; }
-.pp-band__bar { position: relative; height: 8px; border-radius: 99px; background: linear-gradient(90deg, var(--tint-green), #9bd5b3 50%, #f1d7a3); }
+.pp-band__bar { position: relative; height: 8px; border-radius: 99px; background: linear-gradient(90deg, var(--surface-3), #9bd5b3 50%, #f1d7a3); }
 .pp-band__bar span { position: absolute; top: -3px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--ink-solid); border: 2px solid var(--surface); box-shadow: var(--e1); }
 .pp-band__labels { display: flex; justify-content: space-between; }
 .pp-band__labels small { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
@@ -87,7 +87,7 @@
 .pp-tenant .pp-tenant__warn { color: var(--c-amber); font-weight: 700; }
 
 /* build */
-.pp-build { display: grid; gap: 10px; padding: 12px 14px; border-radius: 18px; background: linear-gradient(140deg, var(--tint-amber), #ffe3b3); box-shadow: var(--e1); color: #4a3414; }
+.pp-build { display: grid; gap: 10px; padding: 12px 14px; border-radius: 18px; background: linear-gradient(140deg, var(--tint-amber), var(--tint-amber)); box-shadow: var(--e1); color: var(--c-amber); }
 .pp-build__head { display: flex; align-items: center; gap: 10px; }
 .pp-build__head b { display: block; font: 800 15px var(--font-display); }
 .pp-build__head small { font-size: 12.5px; opacity: .8; }
@@ -99,7 +99,7 @@
 .pp-bar { height: 10px; border-radius: 999px; background: rgba(74, 52, 20, .15); overflow: hidden; }
 .pp-bar > span { display: block; height: 100%; border-radius: inherit; background: repeating-linear-gradient(135deg, #e8892b 0 10px, #f3b24d 10px 20px); transition: width 600ms ease-out; }
 .pp-stages { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.pp-stages li { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 4px 6px; border-radius: 999px; background: rgba(255, 255, 255, .55); font: 700 12px var(--font-display); color: #6b5230; }
+.pp-stages li { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 4px 6px; border-radius: 999px; background: var(--glass); font: 700 12px var(--font-display); color: var(--c-amber); }
 .pp-stages li i { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(74, 52, 20, .3); font-style: normal; font-size: 10px; line-height: 1; }
 .pp-stages li.is-done i { background: #2c9b5e; border-color: #2c9b5e; color: #fff; }
 .pp-stages li.is-now { background: var(--surface); color: var(--c-amber); box-shadow: 0 0 0 2px #e8892b inset; }

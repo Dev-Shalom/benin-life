@@ -339,7 +339,7 @@
 }
 .bb-day.is-on {
   border-color: #22b26b;
-  background: var(--tint-green);
+  background: var(--surface-3);
 }
 .bb-day.is-on small {
   color: var(--c-green);

@@ -13,7 +13,7 @@
 .sk-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .sk-chips:empty { display: none; }
 .sk-chip { padding: 2px 8px; border-radius: 99px; font-size: 11px; background: var(--surface-3); }
-.sk-chip.is-ok { background: rgba(31,157,85,.15); color: #14733e; }
+.sk-chip.is-ok { background: var(--green-100); color: var(--c-green); }
 .sk-next, .sk-train { margin: 0; font-size: 12.5px; line-height: 1.35; }
 .sk-train { color: var(--ink-2, #666); }
 .sk-skel { height: 150px; border-radius: 14px; background: var(--surface-3); animation: sk-pulse 1.2s ease-in-out infinite; }

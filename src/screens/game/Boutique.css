@@ -28,7 +28,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--tint-amber);
+  background: var(--surface-2);
   color: var(--btq-ink);
   font-family: var(--font-body);
   animation: btq-in 220ms var(--btq-ease);
@@ -67,7 +67,7 @@
   height: min(40dvh, 400px);
   background:
     radial-gradient(70% 60% at 50% 42%, var(--surface) 0%, rgba(255, 255, 255, 0) 70%),
-    linear-gradient(170deg, var(--tint-violet) 0%, var(--tint-violet) 55%, var(--tint-amber) 100%);
+    linear-gradient(170deg, var(--surface-2) 0%, var(--surface-3) 55%, var(--tint-amber) 100%);
   overflow: hidden;
 }
 .btq__canvas { position: absolute; inset: 0; }
@@ -95,7 +95,7 @@
   flex-direction: column;
   margin-top: -18px;
   border-radius: 24px 24px 0 0;
-  background: var(--tint-amber);
+  background: var(--surface-2);
   box-shadow: 0 -10px 30px -18px rgba(80, 30, 60, 0.35);
 }
 .btq__scroll {
@@ -200,7 +200,7 @@
   aspect-ratio: 5 / 4;
   background:
     radial-gradient(60% 60% at 50% 45%, var(--glass), rgba(255, 255, 255, 0) 75%),
-    linear-gradient(160deg, color-mix(in srgb, var(--swatch) 22%, var(--surface)) 0%, color-mix(in srgb, var(--swatch) 45%, var(--tint-amber)) 100%);
+    linear-gradient(160deg, color-mix(in srgb, var(--swatch) 22%, var(--surface)) 0%, color-mix(in srgb, var(--swatch) 45%, var(--surface-3)) 100%);
 }
 .btq-card__icon { font-family: var(--font-emoji); font-size: 44px; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.18)); }
 .btq-card__badges { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; flex-wrap: wrap; gap: 4px; justify-content: space-between; }

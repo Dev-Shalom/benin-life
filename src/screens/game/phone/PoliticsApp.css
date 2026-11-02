@@ -51,7 +51,7 @@
 .po-pick b { overflow-wrap: anywhere; }
 .po-tally { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; }
 .po-tally span:nth-child(even) { font-variant-numeric: tabular-nums; text-align: right; font-weight: 700; }
-.po-win { display: inline-block; padding: 1px 7px; border-radius: 99px; background: var(--tint-green); color: var(--c-green); font: 800 11px var(--font-display); }
+.po-win { display: inline-block; padding: 1px 7px; border-radius: 99px; background: var(--surface-3); color: var(--c-green); font: 800 11px var(--font-display); }
 .po-tie { display: inline-block; padding: 1px 7px; border-radius: 99px; background: var(--tint-amber); color: var(--c-amber); font: 800 11px var(--font-display); }
 .po-poll { display: grid; gap: 4px; }
 .po-poll.is-open { box-shadow: inset 0 0 0 2px #e8b431, var(--e1); }
