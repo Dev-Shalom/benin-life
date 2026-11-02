@@ -85,6 +85,8 @@ import { garageHome, type GarageHome } from '../api/garage';
 import { houseUpgradeHome, type UpgradeHome } from '../api/upgrades';
 import { useUpgradeWatcher, useUpgrades } from '../state/upgrades';
 import { BuildersPill } from './game/BuildersPill';
+import { PowerChip, PowerHost, PowerSheet } from './game/Power';
+import { useLit } from '../state/power';
 import { canPoll } from '../lib/activity';
 import { flushChannel } from '../lib/growth';
 
@@ -262,6 +264,7 @@ export default function Game() {
     : null, [garage]);
   // R8: house upgrades (extension rooms, yard buildings, finish, scaffolding) of the home owner (the host's when visiting)
   useUpgradeWatcher(Boolean(p));
+  const lit = useLit();
   const upgradeVersion = useUpgrades((s) => s.version);
   const [upgradeHome, setUpgradeHome] = useState<UpgradeHome | null>(null);
   useEffect(() => {
@@ -815,6 +818,7 @@ export default function Game() {
           <div className="home3d home3d--loading"><span className="home3d__loader" aria-label="Loading your home" /></div>
         ) : showHome ? (
           <HomeView
+            powered={lit}
             layoutId={layout}
             layout={sceneLayout}
             ghost={ghost}
@@ -920,6 +924,7 @@ export default function Game() {
       )}
 
       {!clean && <TopPill state={state} clock={clock} />}
+      {!clean && <PowerChip />}
       <HypeTakeover mcName={people?.npcs.find((n) => n.motion === 'hype')?.name ?? 'MC Lightning'} />
       <MoneyPickLayer />
       <HypeStrip top={insets.narrow ? 14 : 72}
@@ -1000,6 +1005,8 @@ export default function Game() {
       <CrimeHost />
       <ShrineHost />
       <MomentsHost />
+      <PowerHost />
+      <PowerSheet />
       <ReturnGiftHost />
       <WeeklyHost />
       <JourneyHost />

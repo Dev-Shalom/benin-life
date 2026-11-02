@@ -6,6 +6,7 @@
 // place sheet on that tab. The server stays authoritative (hours, cash, night only...).
 import { LoungeStrip } from './Lounge';
 import { BusinessStrip } from './BusinessStrip';
+import { FuelStrip, YardStrip } from './Fuel';
 import { useLounge } from '../../state/lounge';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { placeInterior, placePeople, type PlaceInterior, type PlaceNpc, type PlacePeople, type PlaceZone, type ZoneAction } from '../../api/places';
@@ -535,6 +536,8 @@ export function PlaceCard({ state, data, error, zone, onZone, peopleCount, moodS
       {open && current?.note && <p className="place-card__note"><span aria-hidden>{data?.location.scene === 'shrine' ? current.icon : '🎩'}</span> {current.note}</p>}
       {open && data?.lounge && <LoungeStrip card={data.lounge} />}
       {open && <BusinessStrip locId={loc.id} />}
+      {open && <FuelStrip locId={loc.id} />}
+      {open && <YardStrip locId={loc.id} />}
       {open && <PollingStrip locId={loc.id} />}
       {open && data?.open && data.weekend_price && <p className="place-card__note"><span aria-hidden>🥂</span> Weekend prices tonight: Friday and Saturday nights cost more.</p>}
       {open && current && current.actions.length === 0 && (

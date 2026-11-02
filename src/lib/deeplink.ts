@@ -22,11 +22,12 @@
 import { startTour } from '../onboarding/tourStore';
 import { useDaily } from '../state/daily';
 import { useJourney } from '../state/journey';
+import { usePower } from '../state/power';
 import { useUi } from '../state/ui';
 import { useWeekly } from '../state/weekly';
 
 const KEY = 'bl.go';
-const SAFE = /^(dm:\d{1,12}|house|friends|gist(?::(?:feed|groups|chats|friends|post:\d{1,12}|group:\d{1,12}))?|bank|alerts|ranks|hustles|school|yahoo|market|business(?::(?:mine|plots|discover|real))?|company(?::(?:plots|discover|real))?|crew|gang|office|court(?::\d{1,12})?|politics(?::(?:gov|elect|vote|results))?|family(?::(?:linkups|us|family))?|food(?::(?:kitchen|prices))?|stories|week|journey|map|home|tour|daily|dream|help(?::[a-z0-9-]{1,40})?|place:[a-z0-9_]{1,40})$/;
+const SAFE = /^(dm:\d{1,12}|house|friends|gist(?::(?:feed|groups|chats|friends|post:\d{1,12}|group:\d{1,12}))?|bank|power|alerts|ranks|hustles|school|yahoo|market|business(?::(?:mine|plots|discover|real))?|company(?::(?:plots|discover|real))?|crew|gang|office|court(?::\d{1,12})?|politics(?::(?:gov|elect|vote|results))?|family(?::(?:linkups|us|family))?|food(?::(?:kitchen|prices))?|stories|week|journey|map|home|tour|daily|dream|help(?::[a-z0-9-]{1,40})?|place:[a-z0-9_]{1,40})$/;
 
 /** Remember ?go= from the address bar and clean the URL. Call once at startup. */
 export function captureDeepLink(): void {
@@ -68,6 +69,7 @@ export function runDeepLink(go: string): void {
     ui.setMapOpen(true);
     ui.select(arg);
   } else if (kind === 'help' || kind === 'court' || kind === 'stories' || kind === 'food' || kind === 'politics' || kind === 'family' || kind === 'business' || kind === 'company') ui.openPhone(go); // 'help:<article id>', 'politics:vote', 'business:discover', 'family:us'
+  else if (kind === 'power') usePower.getState().openSheet();
   else if (kind === 'week') useWeekly.getState().setOpen(true);
   else if (kind === 'journey') useJourney.getState().setSheet(true);
   else if (kind === 'map') ui.setMapOpen(true);

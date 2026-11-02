@@ -16,6 +16,7 @@ import { useProperty } from '../../../state/property';
 import { useUi } from '../../../state/ui';
 import { Button, Tabs, toast } from '../../../ui';
 import HouseUpgrades from './HouseUpgrades';
+import { PowerPanel } from '../Power';
 import BuildTab from './property/BuildTab';
 import BuyTab from './property/BuyTab';
 import MineTab from './property/MineTab';
@@ -24,8 +25,8 @@ import RentTab from './property/RentTab';
 import { dateShort, daysLeft } from './property/util';
 import './property/property.css';
 
-type Tab = 'home' | 'rent' | 'buy' | 'build' | 'mine' | 'past';
-const TAB_IDS: Tab[] = ['home', 'rent', 'buy', 'build', 'mine', 'past'];
+type Tab = 'home' | 'power' | 'rent' | 'buy' | 'build' | 'mine' | 'past';
+const TAB_IDS: Tab[] = ['home', 'power', 'rent', 'buy', 'build', 'mine', 'past'];
 
 export default function HousesApp({ state }: { state: GameState }) {
   const refresh = useGame((s) => s.refresh);
@@ -45,7 +46,7 @@ export default function HousesApp({ state }: { state: GameState }) {
   }, [loadCatalog]);
   // deep links: houses:buy, houses:build, houses:mine ...
   useEffect(() => {
-    const m = /^houses:(home|rent|buy|build|mine|past)$/.exec(phoneApp ?? '');
+    const m = /^houses:(home|power|rent|buy|build|mine|past)$/.exec(phoneApp ?? '');
     if (m) setTab(m[1] as Tab);
   }, [phoneApp, nonce]);
   // the whole property picture (builds, rent income and tenancies settle on this call), again after any move
@@ -88,6 +89,7 @@ export default function HousesApp({ state }: { state: GameState }) {
 
   const tabs = [
     { id: 'home', label: 'Home' },
+    { id: 'power', label: 'Power' },
     { id: 'rent', label: 'Rent' },
     { id: 'buy', label: 'Buy' },
     { id: 'build', label: 'Build', badge: building || null },
@@ -172,12 +174,13 @@ export default function HousesApp({ state }: { state: GameState }) {
           )}
         </>
       )}
+      {tab === 'power' && <PowerPanel />}
       {tab === 'rent' && prop && <RentTab data={prop} opts={opts} owed={owed} visiting={visiting} onMoved={() => setTab('home')} />}
       {tab === 'buy' && prop && <BuyTab data={prop} onBought={() => setTab('mine')} />}
       {tab === 'build' && prop && <BuildTab data={prop} onStarted={() => undefined} />}
       {tab === 'mine' && prop && <MineTab data={prop} onBuy={() => setTab('buy')} />}
       {tab === 'past' && <PastTab opts={opts} owed={owed} visiting={visiting} onChanged={() => void loadProp()} />}
-      {tab !== 'home' && tab !== 'past' && !prop && <div className="panel-skel"><span /><span /></div>}
+      {tab !== 'home' && tab !== 'past' && tab !== 'power' && !prop && <div className="panel-skel"><span /><span /></div>}
     </div>
   );
 }

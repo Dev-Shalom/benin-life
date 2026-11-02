@@ -14,7 +14,7 @@ import { startMoments, useMoments } from '../../state/moments';
 import { Button, Modal, toast } from '../../ui';
 
 /** Hold a card while something else owns the screen: another popup, the spray sheet, a money drop, a task, the road, a club floor. */
-function useHeld(active: boolean): boolean {
+export function useHeld(active: boolean, own = '[data-moment-card]'): boolean {
   const scene = useGame((s) => s.state?.location?.scene);
   const busyUntil = useGame((s) => s.state?.profile?.busy_until ?? null);
   const travelling = useGame((s) => !!s.state?.travel);
@@ -24,7 +24,7 @@ function useHeld(active: boolean): boolean {
   useEffect(() => {
     if (!active) return;
     const check = () => {
-      setOther(!!document.querySelector('.spray-sheet') || [...document.querySelectorAll('.bl-modal-root')].some((el) => !el.querySelector('[data-moment-card]')));
+      setOther(!!document.querySelector('.spray-sheet') || [...document.querySelectorAll('.bl-modal-root')].some((el) => !el.querySelector(own)));
       setTick((n) => n + 1);
     };
     check();

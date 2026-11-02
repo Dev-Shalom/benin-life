@@ -1,0 +1,88 @@
+/* Power cuts, filling stations and the yard (docs/POWER.md). Token based so it flips with the dark indigo overlays and the light phone apps. */
+.power-chip { position: absolute; z-index: 4; right: 12px; top: calc(var(--hud-bottom, 56px) + 8px); display: inline-flex; align-items: center; gap: 6px; min-height: 36px; max-width: calc(100vw - 32px); padding: 6px 12px; border: 0; border-radius: 999px; background: rgba(28, 25, 60, 0.92); color: #fff; box-shadow: var(--e2); font: 800 13px/1 var(--font-display, inherit); cursor: pointer; white-space: nowrap; }
+.power-chip span[aria-hidden] { font-family: var(--font-emoji); font-size: 16px; line-height: 1; }
+.power-chip--on { background: rgba(24, 78, 52, 0.94); }
+.power-chip--gen, .power-chip--warn { background: rgba(120, 78, 12, 0.95); }
+.power-chip--batt { background: rgba(32, 70, 120, 0.95); }
+.power-chip--off { background: rgba(120, 28, 36, 0.95); }
+
+.pw { display: flex; flex-direction: column; gap: 14px; padding-bottom: 8px; }
+.pw > * { flex: none; }
+.pw-hero { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 18px; background: var(--surface-2, rgba(255, 255, 255, .08)); }
+.pw-hero--off { background: rgba(190, 50, 60, 0.18); }
+.pw-hero--on { background: rgba(40, 160, 90, 0.16); }
+.pw-hero__icon { font-family: var(--font-emoji); font-size: 34px; line-height: 1; }
+.pw-hero b { display: block; font: 800 16px/1.25 var(--font-display, inherit); overflow-wrap: anywhere; }
+.pw-hero small { display: block; margin-top: 2px; font-size: 13px; opacity: .8; }
+.pw-rows { display: grid; gap: 8px; }
+.pw-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2, rgba(255, 255, 255, .06)); font-size: 13.5px; }
+.pw-row span { opacity: .75; }
+.pw-row b { text-align: right; overflow-wrap: anywhere; }
+.pw-row b.is-good { color: var(--green-500, #36c07a); }
+.pw-row b.is-bad { color: var(--red-500, #ef5b66); }
+.pw-card { display: grid; gap: 12px; padding: 14px; border-radius: 18px; background: var(--surface-2, rgba(255, 255, 255, .08)); }
+.pw-card__top { display: flex; align-items: center; gap: 10px; }
+.pw-card__top > span[aria-hidden] { font-family: var(--font-emoji); font-size: 24px; }
+.pw-card__top b { flex: 1; min-width: 0; font: 800 15px var(--font-display, inherit); overflow-wrap: anywhere; }
+.pw-pill { padding: 4px 10px; border-radius: 99px; background: rgba(255, 255, 255, .12); font: 800 12px var(--font-display, inherit); }
+.pw-pill.is-on { background: rgba(40, 160, 90, .3); }
+.pw-fuel { display: grid; gap: 6px; }
+.pw-fuel small { font-size: 12.5px; opacity: .8; }
+.pw-bar { display: block; height: 12px; border-radius: 99px; background: rgba(255, 255, 255, .14); overflow: hidden; }
+.pw-bar > span { display: block; height: 100%; border-radius: 99px; transition: width .4s; }
+.pw-bar--fuel > span { background: linear-gradient(90deg, #e8892b, #f2c14e); }
+.pw-bar--batt > span { background: linear-gradient(90deg, #2b9fe8, #4ee0a1); }
+.pw-actions { display: grid; gap: 10px; }
+.pw-note { margin: 0; font-size: 13px; line-height: 1.4; opacity: .8; }
+.pw-warn { margin: 0; padding: 10px 12px; border-radius: 12px; background: rgba(232, 137, 43, .2); font-size: 13px; line-height: 1.4; }
+
+/* filling station strip */
+.fs-strip { display: grid; gap: 10px; margin: 10px 0 0; padding: 12px; border-radius: 16px; background: var(--surface-2, rgba(255, 255, 255, .08)); }
+.fs-strip--scarce { box-shadow: inset 0 0 0 2px rgba(232, 137, 43, .55); }
+.fs-strip--dry { box-shadow: inset 0 0 0 2px rgba(239, 91, 102, .55); }
+.fs-strip__att { display: flex; gap: 10px; align-items: flex-start; }
+.fs-strip__face { font-family: var(--font-emoji); font-size: 30px; line-height: 1; }
+.fs-strip__line { margin: 0; font-size: 13.5px; line-height: 1.4; font-style: italic; }
+.fs-strip__line small { display: block; margin-top: 3px; font-style: normal; font-size: 12px; opacity: .65; }
+.fs-strip__prices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fs-strip__prices > span { display: grid; gap: 1px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .07); }
+.fs-strip__prices small { font-size: 12px; opacity: .7; }
+.fs-strip__prices b { font: 800 17px var(--font-display, inherit); font-variant-numeric: tabular-nums; }
+.fs-strip__prices i { font: 700 12px var(--font-display, inherit); font-style: normal; }
+.fs-strip__prices i.is-up { color: var(--red-500, #ef5b66); }
+.fs-strip__prices i.is-down { color: var(--green-500, #36c07a); }
+.fs-strip__warn, .fs-strip__dry { margin: 0; font-size: 13px; line-height: 1.4; }
+.fs-strip__warn { color: #f2c14e; }
+.fs-strip__dry { color: var(--red-500, #ef5b66); font-weight: 700; }
+
+/* the yard: always dark, whatever the theme */
+.yd-strip { display: flex; align-items: center; gap: 12px; width: 100%; margin: 10px 0 0; padding: 14px; border: 0; border-radius: 16px; background: #14101f; color: #f3e9ff; text-align: left; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(190, 120, 255, .35); }
+.yd-strip span[aria-hidden] { font-family: var(--font-emoji); font-size: 28px; }
+.yd-strip b { display: block; font: 800 15px var(--font-display, inherit); }
+.yd-strip small { display: block; font-size: 12.5px; opacity: .7; }
+.yd-sheet .bl-sheet { background: #120e1c; color: #f3e9ff; }
+.yd { display: flex; flex-direction: column; gap: 14px; }
+.yd > * { flex: none; }
+.yd-line { margin: 0; font-size: 14px; font-style: italic; line-height: 1.45; color: #d9c6f5; }
+.yd-hot, .yd-shut { margin: 0; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.4; }
+.yd-hot { background: rgba(239, 91, 102, .2); color: #ffb3ba; }
+.yd-shut { background: rgba(255, 255, 255, .08); }
+.yd-deal { margin: 0; padding: 12px; border-radius: 14px; font-size: 13.5px; line-height: 1.4; background: rgba(255, 255, 255, .08); }
+.yd-deal--ok { background: rgba(40, 160, 90, .22); }
+.yd-deal--scam, .yd-deal--raid, .yd-deal--robbery, .yd-deal--stolen { background: rgba(239, 91, 102, .22); }
+.yd-offer { display: grid; gap: 10px; padding: 14px; border-radius: 18px; background: #1d1730; box-shadow: inset 0 0 0 1px rgba(190, 120, 255, .18); }
+.yd-offer__top { display: flex; gap: 10px; align-items: flex-start; }
+.yd-offer__emoji { font-family: var(--font-emoji); font-size: 26px; line-height: 1; }
+.yd-offer__top b { display: block; font: 800 15px var(--font-display, inherit); overflow-wrap: anywhere; }
+.yd-offer__top small { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.35; opacity: .7; }
+.yd-price { font: 800 15px var(--font-display, inherit); color: #f2c14e; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.yd-risks { display: flex; flex-wrap: wrap; gap: 6px; }
+.yd-risks span { padding: 3px 9px; border-radius: 99px; background: rgba(255, 255, 255, .09); font-size: 12px; }
+.yd-risk--low { background: rgba(40, 160, 90, .3) !important; }
+.yd-risk--medium { background: rgba(232, 137, 43, .3) !important; }
+.yd-risk--high { background: rgba(239, 91, 102, .35) !important; }
+.yd-offer__buy { display: grid; gap: 10px; }
+.yd-qty { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.yd-qty button { width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .12); color: inherit; font: 800 20px var(--font-display, inherit); cursor: pointer; }
+.yd-qty b { min-width: 56px; text-align: center; font: 800 16px var(--font-display, inherit); }
+.yd-foot { margin: 0; font-size: 12.5px; line-height: 1.45; opacity: .65; }
