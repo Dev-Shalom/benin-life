@@ -50,14 +50,14 @@ on conflict (key) do nothing;
 -- ---------------------------------------------------------------------------------------------
 insert into public.locations (id, name, district, scene, blurb, risk, night_risk_mult, cctv, keke_ok, congestion, remote_km, x, y, actions, sort, open_hour, close_hour, active)
 values
-('fs_sapele',    'Sapele Road Filling Station',   'sapele_rd',   'motorpark', 'Pumps under a big canopy on the busy Sapele Road. Petrol, diesel and jerrycans for generators.', 0.15, 1.6, true,  true, 1.4, 0, 640, 610, '{shop}', 400, null, null, true),
-('fs_airport',   'Airport Road Filling Station',  'airport_rd',  'motorpark', 'The airport-side station: quicker queues, same price. Petrol, diesel and cans.', 0.15, 1.6, true,  true, 1.2, 0, 300, 570, '{shop}', 401, null, null, true),
-('fs_ring_road', 'Ring Road Filling Station',     'oredo',       'motorpark', 'Always busy. The attendants know every okada boy by name. Petrol, diesel and cans.', 0.2, 1.8, true,  true, 1.6, 0, 520, 395, '{shop}', 402, null, null, true),
-('fs_uselu',     'Uselu Filling Station',         'uselu',       'motorpark', 'Near the campus road: students with jerrycans for the hostel generator.', 0.2, 1.8, true,  true, 1.3, 0, 430, 350, '{shop}', 403, null, null, true),
-('fs_ugbowo',    'Ugbowo Filling Station',        'ugbowo',      'motorpark', 'Beside the UNIBEN road. Petrol, diesel and cans for the lecturers'' generators.', 0.2, 1.8, true,  true, 1.3, 0, 500, 160, '{shop}', 404, null, null, true),
-('fs_ikpoba',    'Ikpoba Hill Filling Station',   'ikpoba_hill', 'motorpark', 'Up on the hill. When fuel is scarce the queue reaches the junction.', 0.2, 1.8, false, true, 1.2, 0, 745, 415, '{shop}', 405, null, null, true),
-('fs_new_benin', 'New Benin Filling Station',     'new_benin',   'motorpark', 'Off Mission Road, close to the market. Petrol, diesel and cans.', 0.2, 1.8, true,  true, 1.3, 0, 690, 350, '{shop}', 406, null, null, true),
-('bm_yard',      'The Yard (Ogida timber sheds)', 'oredo',       'street',    'Behind the timber sheds at Ogida. No sign, no receipt, nobody asks your name. Opens after dark.', 0.5, 2.5, false, false, 1.0, 0, 230, 470, '{}', 900, null, null, true)
+('fs_sapele',    'Sapele Road Filling Station',   'sapele_rd',   'motorpark', 'Pumps under a big canopy on the busy Sapele Road. Petrol, diesel and jerrycans for generators.', 0.15, 1.6, true,  true, 1.4, 0, 679, 631, '{shop}', 400, null, null, true),
+('fs_airport',   'Airport Road Filling Station',  'airport_rd',  'motorpark', 'The airport-side station: quicker queues, same price. Petrol, diesel and cans.', 0.15, 1.6, true,  true, 1.2, 0, 300, 633, '{shop}', 401, null, null, true),
+('fs_ring_road', 'Ring Road Filling Station',     'oredo',       'motorpark', 'Always busy. The attendants know every okada boy by name. Petrol, diesel and cans.', 0.2, 1.8, true,  true, 1.6, 0, 574, 320, '{shop}', 402, null, null, true),
+('fs_uselu',     'Uselu Filling Station',         'uselu',       'motorpark', 'Near the campus road: students with jerrycans for the hostel generator.', 0.2, 1.8, true,  true, 1.3, 0, 391, 335, '{shop}', 403, null, null, true),
+('fs_ugbowo',    'Ugbowo Filling Station',        'ugbowo',      'motorpark', 'Beside the UNIBEN road. Petrol, diesel and cans for the lecturers'' generators.', 0.2, 1.8, true,  true, 1.3, 0, 494, 163, '{shop}', 404, null, null, true),
+('fs_ikpoba',    'Ikpoba Hill Filling Station',   'ikpoba_hill', 'motorpark', 'Up on the hill. When fuel is scarce the queue reaches the junction.', 0.2, 1.8, false, true, 1.2, 0, 790, 370, '{shop}', 405, null, null, true),
+('fs_new_benin', 'New Benin Filling Station',     'new_benin',   'motorpark', 'Off Mission Road, close to the market. Petrol, diesel and cans.', 0.2, 1.8, true,  true, 1.3, 0, 678, 335, '{shop}', 406, null, null, true),
+('bm_yard',      'The Yard (Ogida timber sheds)', 'oredo',       'street',    'Behind the timber sheds at Ogida. No sign, no receipt, nobody asks your name. Opens after dark.', 0.5, 2.5, false, false, 1.0, 0, 227, 461, '{}', 900, null, null, true)
 on conflict (id) do nothing;
 
 -- the stations sell the fuel items; a player-owned Filling station (same scene) sells them too through bl_biz_sells
@@ -69,11 +69,26 @@ update public.game_config set value = to_jsonb((value #>> '{}') || ',fuel')
  where key = 'economy.vat_exempt_categories' and not ('fuel' = any (string_to_array(replace(value #>> '{}', ' ', ''), ',')));
 
 -- the yard is hidden from players who have not earned their way in (the map and every place list read this policy)
+create or replace function public.bl_social_can_enter_yard(p_uid uuid) returns boolean
+language sql stable security definer set search_path = public as $$ select public.bl_bm_unlocked(p_uid) $$;
+revoke all on function public.bl_social_can_enter_yard(uuid) from public, anon;
+grant execute on function public.bl_social_can_enter_yard(uuid) to authenticated;
+
+-- RLS helpers named bl_social_can_* are the ones allowed to be called from a policy; anon never gets the yard
 drop policy if exists locations_read on public.locations;
 create policy locations_read on public.locations for select to anon, authenticated
-  using (((private_home_owner_id is null) and (coalesce(active, true) or (scene = 'club'))
-          and (id not like 'bm\_%' or (select public.bl_bm_unlocked((select auth.uid())))))
+  using (((private_home_owner_id is null) and (coalesce(active, true) or (scene = 'club')) and id not like 'bm\_%')
          or public.bl_social_can_view_private_home(id, private_home_owner_id));
+drop policy if exists locations_read_yard on public.locations;
+create policy locations_read_yard on public.locations for select to authenticated
+  using (id like 'bm\_%' and private_home_owner_id is null and coalesce(active, true) and (select public.bl_social_can_enter_yard((select auth.uid()))));
+
+-- the fuel cards live on the motor park kiosk zone: a plain park does not sell fuel (so nothing shows), a station and a player-owned
+-- Filling station do
+insert into public.zone_actions (id, zone_id, kind, ref, sort) values
+('motorpark.kiosk.petrol', 'motorpark.kiosk', 'shop', 'petrol', 10), ('motorpark.kiosk.petrol_can', 'motorpark.kiosk', 'shop', 'petrol_can', 11),
+('motorpark.kiosk.diesel', 'motorpark.kiosk', 'shop', 'diesel', 12), ('motorpark.kiosk.diesel_can', 'motorpark.kiosk', 'shop', 'diesel_can', 13)
+on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------------------------
 -- 3. Black market catalogue and per-deal state
@@ -404,7 +419,5 @@ begin
     execute format('grant execute on function %s to authenticated, service_role', p.sig);
   end loop;
 end $$;
--- the policy calls bl_bm_unlocked for every signed-in reader
-grant execute on function public.bl_bm_unlocked(uuid) to anon, authenticated;
 
 notify pgrst, 'reload schema';

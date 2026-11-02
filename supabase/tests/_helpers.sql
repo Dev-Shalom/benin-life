@@ -32,3 +32,7 @@ end $$;
 -- (Wednesday Market Day prices, Monday winners, morning and lapsed pushes). daily_return_test.sql switches what it tests back on.
 update public.game_config set value = 'false'::jsonb
  where key in ('weekly.wed_market_enabled', 'weekly.push_enabled', 'return.push_enabled', 'return.gap_push_enabled');
+
+-- Power cuts (docs/POWER.md): the no-light effects (TV refused, smaller bonuses, poorer sleep) depend on the real clock and the player's area, so they are
+-- switched off for every suite. power_test.sql switches them back on.
+update public.game_config set value = 'false'::jsonb where key = 'power.effects_enabled';

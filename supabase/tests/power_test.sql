@@ -45,6 +45,7 @@ declare
   v uuid; r record;
 begin
   update game_config set value = 'true' where key = 'power.enabled';
+  update game_config set value = 'true' where key = 'power.effects_enabled';
   for r in select * from (values ('none', 'ekenwan_face_me', 'lapo'), ('gen', 'ekenwan_face_me', 'lapo'), ('inv', 'ekenwan_face_me', 'lapo'),
                                  ('host', 'uselu_self_contain', 'lapo'), ('gra', 'gra_duplex', 'nepo'), ('admin', 'aduwawa_face_me', 'lapo'),
                                  ('mini', 'mission_rd_mini_flat', 'nepo')) x(n, home, origin) loop
