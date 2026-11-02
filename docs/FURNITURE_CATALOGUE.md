@@ -1,6 +1,6 @@
 # Furniture catalogue (B1 Buy mode + arrange)
 
-103 pieces in six rooms (Parlour, Bedroom, Kitchen, Bathroom, Outside, Decor), in three tiers:
+116 pieces in seven rooms (Parlour, Bedroom, Kitchen, Bathroom, Outside, Decor, Lighting, the last added by L1), in three tiers:
 **LAPO** (31, trench basics), **Mid** (43) and **Nepo** (29, luxury). The rows live in `furniture`
 (migration `20261012000200_buy_catalogue.sql`). Prices, tiers, bonuses and the rest are editable in
 Admin → Content → Furniture.
@@ -124,3 +124,28 @@ washer's +4; store the washer and it is gone).
 To change the catalogue, edit the rows in Admin, or add a new migration that upserts by id. A new
 `kind` also needs a `KINDS` entry in `src/art/home3d/model.ts` and a model in
 `src/art/home3d/engine/furniture.ts`. Its w/d/solid/placement in SQL must match `KINDS`.
+
+## Lighting (L1, 2026-11-12)
+A seventh shop room, **Lighting**, with 17 pieces. See docs/HUD_HOME.md "Lighting" for how they look and work in 3D. Prices are Benin City 2026 estimates (Alaba / Jumia / Jiji street prices); the shop adds the usual furniture VAT at the till, so the price shown is the catalogue price. Brightness is 0-10, warmth is in kelvin, "works without power" means it still shines in a power cut.
+
+| Piece (id) | Tier | Price | Brightness | Warmth | Works without power | Placement |
+|---|---|---|---|---|---|---|
+| Bulb holder with bulb (`bulb_holder`) | LAPO | ₦1,500 | 3 | 2700 | no | ceiling, inside |
+| Energy-saving bulb 20W (`bulb_energy`) | LAPO | ₦3,500 | 4 | 4000 | no | ceiling, inside |
+| Rechargeable bulb (`bulb_rechargeable`) | LAPO | ₦4,500 | 3 | 5000 | **yes** | ceiling, inside |
+| Fluorescent tube light 4ft (`tube_light`) | LAPO | ₦7,500 | 6 | 6000 | no | ceiling, inside |
+| LED ceiling light (`ceiling_light`) | Mid | ₦14,000 | 6 | 3500 | no | ceiling, inside |
+| LED strip lights 5 m (`led_strip`) | Mid | ₦12,000 | 3 | 3000 | no | north / west wall |
+| Table lamp (`table_lamp`) | Mid | ₦16,000 | 3 | 2700 | no | any (rests on a table) |
+| Floor lamp (`lamp_floor`, existing) | Mid | ₦65,000 | 4 | 2700 | no | inside, standing |
+| Bedside lamp (`lamp_bedside`, existing) | Mid | ₦18,000 | 2 | 2700 | no | any (rests on a table) |
+| Wall light (`wall_light`) | Mid | ₦18,000 | 3 | 2700 | no | north / west wall |
+| Pendant chandelier (`chandelier_modern`) | Mid | ₦185,000 | 7 | 3000 | no | ceiling, inside |
+| Crystal chandelier (`chandelier`, existing) | Nepo | ₦950,000 | 9 | 2700 | no | ceiling, inside |
+| Garden lamp post (`yard_lamp`) | Mid | ₦28,000 | 4 | 3000 | no | outside |
+| Security floodlight pole (`gate_light`, existing) | Mid | ₦60,000 | 7 | 5500 | no | outside |
+| Rechargeable lamp (`lamp_rechargeable`) | LAPO | ₦9,500 | 4 | 5000 | **yes** | any |
+| Hurricane lantern (`lantern`) | LAPO | ₦6,500 | 2 | 2200 | **yes** | any |
+| Candles, pack of 6 (`candle`) | LAPO | ₦1,500 | 1 | 1900 | **yes** | any |
+
+The four existing lights moved into the category (first run only; later admin edits are kept). The bedside lamp is no longer solid and the floodlight pole can be owned up to 6 times. What each home comes with (a light in every room) is in docs/HUD_HOME.md "Lighting"; they are given lazily by `bl_house_lights_grant`, never by a loop over players, and they never add to the resale allowance.
