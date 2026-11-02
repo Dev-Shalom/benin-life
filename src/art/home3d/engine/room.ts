@@ -69,13 +69,13 @@ function dimAt(L: HomeLayout, x: number, z: number): number {
 function lightPool(b: HomeBuilder, f: { x: number; z: number; y?: number; rot?: number; kind: string }, L: RoomLight) {
   const col = kelvinHex(L.k);
   const yaw = ((f.rot ?? 0) * Math.PI) / 2;
-  const str = Math.min(1, 0.35 + L.b / 10) * 0.7;
+  const str = Math.min(1, 0.35 + L.b / 10) * 0.22;
   const mount = LIGHTS[f.kind as keyof typeof LIGHTS]!.mount;
   if (mount === 'table') b.pool(L.x, L.z, 0.5 + L.b * 0.14, col, (f.y ?? 0) + 0.015, str * 0.7);
-  else if (mount === 'wall') b.pool(L.x + Math.sin(yaw) * 0.5, L.z + Math.cos(yaw) * 0.5, 0.9 + L.b * 0.2, col, 0.02, str * 0.8);
-  else if (mount === 'yard') b.pool(L.x, L.z, 1.6 + L.b * 0.25, col, 0.02, str);
-  else if (mount === 'floor') b.pool(L.x, L.z, 1.4 + L.b * 0.25, col, 0.02, str * 0.9);
-  else b.pool(L.x, L.z, 1.3 + L.b * 0.3, col, 0.02, str);
+  else if (mount === 'wall') b.pool(L.x + Math.sin(yaw) * 0.5, L.z + Math.cos(yaw) * 0.5, 0.9 + L.b * 0.2, col, 0.04, str * 0.8);
+  else if (mount === 'yard') b.pool(L.x, L.z, 1.6 + L.b * 0.25, col, 0.04, str);
+  else if (mount === 'floor') b.pool(L.x, L.z, 1.4 + L.b * 0.25, col, 0.04, str * 0.9);
+  else b.pool(L.x, L.z, 1.3 + L.b * 0.3, col, 0.04, str);
 }
 
 /** F1: LAPO-type layouts get cement + peeling plaster + louvres; flat/duplex get tiles + paint. */

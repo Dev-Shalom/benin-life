@@ -14,8 +14,8 @@ import { kelvinHex, lampTarget, type LampSwitch } from './light';
 import type { BuiltRoom, RoomLight } from './room';
 
 /** PointLight intensity per brightness point, and the light's reach (m) = REACH_BASE + brightness * REACH_PER_B. */
-const INTENSITY_PER_B = 1.35;
-const REACH_BASE = 3.0;
+const INTENSITY_PER_B = 1.0;
+const REACH_BASE = 3.6;
 const REACH_PER_B = 0.75;
 const DECAY = 1.35;
 /** How a switched-off shade looks (fraction of its lit colour) by kind; the default is a pale lamp shade. */
@@ -136,7 +136,7 @@ export class LampSystem {
         pos[i * 3] = f.x - offset[0];
         pos[i * 3 + 1] = f.y;
         pos[i * 3 + 2] = f.z - offset[1];
-        size[i] = 0.5 + f.b * 0.17; // metres across (a candle ~0.7, a chandelier ~2)
+        size[i] = 0.9 + f.b * 0.28; // metres across (a candle ~0.7, a chandelier ~2)
       });
       this.haloCol = new Float32Array(n * 3);
       this.haloAttr = new Float32BufferAttribute(this.haloCol, 3);
@@ -333,7 +333,7 @@ export class LampSystem {
       }
       if (runs && this.light && this.baseLight) this.scaleRuns(this.light, this.baseLight, runs.light, lv);
       if (this.haloCol) {
-        const hk = lv * gainDay * 0.9;
+        const hk = lv * gainDay * 1.25;
         this.haloCol[i * 3] = this.colour[i * 3] * hk;
         this.haloCol[i * 3 + 1] = this.colour[i * 3 + 1] * hk;
         this.haloCol[i * 3 + 2] = this.colour[i * 3 + 2] * hk;

@@ -147,7 +147,7 @@ interface Gesture {
   multi: boolean;
 }
 /** How much the ambient light drops at night when nothing is lit (the room goes properly dark). */
-const AMBIENT_DROP = 0.5;
+const AMBIENT_DROP = 0.35;
 const TAP_MS = 550;
 const TAP_PX = 8;
 
@@ -769,6 +769,7 @@ function House(props: HomeSceneProps & {
   const sys = useMemo(() => new LampSystem(room, [cx, cz], maxReal), [room, cx, cz, maxReal]);
   useEffect(() => {
     sys.prewarm(gl, scene, camera);
+    if (import.meta.env.DEV) (window as unknown as { __lampSys?: LampSystem }).__lampSys = sys;
     return () => sys.dispose();
   }, [sys, gl, scene, camera]);
   // the player's switches: on or off for this day or night, kept on this device per home plan
