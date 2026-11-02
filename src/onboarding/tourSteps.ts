@@ -211,6 +211,18 @@ export const TOUR_STEPS: TourStep[] = [
     before: () => toPhone('home'),
   },
   {
+    id: 'power',
+    target: '[data-tour="app-houses"]',
+    title: 'NEPA don take light?',
+    body: 'When NEPA takes light your room goes dark. Open Houses, then Power, to see when it comes back, turn on your generator, pour fuel or check your inverter battery. The same sheet opens from the power chip on the game screen.',
+    points: [
+      'Buy a generator, inverter or batteries in Buy. Buy petrol and diesel at a filling station on the map.',
+      'An inverter takes over by itself. A generator is switched on by you.',
+    ],
+    isNew: true,
+    before: () => toPhone('home'),
+  },
+  {
     id: 'houses',
     target: '[data-tour="app-houses"]',
     title: 'Upgrade the home you have',
