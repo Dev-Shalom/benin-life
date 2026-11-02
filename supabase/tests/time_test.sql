@@ -421,8 +421,13 @@ begin
   -- travel capped
   update profiles set busy_until = null, cash = 100000 where id = v;
   update locations set active = true where id = 'benin_airport';  -- under construction in the game; reopened here only to test a far trip
+  -- (the short-mode cap is the old pace; with real-distance trip time on, drive.travel.max_seconds replaces it: see drive2_test.sql)
+  update game_config set value = 'false' where key = 'drive.travel.real_time_enabled';
   perform pg_temp.assert(not exists (select 1 from jsonb_array_elements(travel_quote('benin_airport')->'options') o
                                       where (o->>'real_seconds')::numeric > bl_cfg('action.travel_max_seconds')), 'travel <= travel_max_seconds');
+  update game_config set value = 'true' where key = 'drive.travel.real_time_enabled';
+  perform pg_temp.assert(not exists (select 1 from jsonb_array_elements(travel_quote('benin_airport')->'options') o
+                                      where (o->>'real_seconds')::numeric > bl_cfg('drive.travel.max_seconds')), 'real-time travel <= drive.travel.max_seconds');
   -- shift: action.shift_seconds real seconds (worker from L1-3)
   perform pg_temp.assert(bl_cfg('action.shift_seconds') between 15 and 20, 'shift default 15-20 s');
   -- jail / hospital capped to seconds in short mode, uncapped in game_minutes mode

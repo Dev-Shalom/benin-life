@@ -7,7 +7,7 @@ Senior full-stack game developer + systems designer who has shipped real-time mu
 - Reference product: **Lagos Life** — free browser Sims-style life-sim. Account holds Sim, house, money, jobs, relationships; illustrated city map where tapping a landmark opens a location panel; player chat; virtual naira (top-up with real money, no cash value). Hit ~50k concurrent; its global chat ran out of bandwidth (we scope chat per location). AbujaLife / PHLife planned, linked via in-game airport.
 - Audience: young Nigerians (Benin + nationwide), mostly Android phones, data-cost sensitive.
 - Benin City: Ring Road (King's Square) hub; radial roads Sapele Rd, Airport Rd, Siluko Rd, Mission Rd, Sakponba Rd, Ugbowo–Lagos Rd (Uselu), Ikpoba Hill/Auchi Rd. Districts: Ring Road/Oredo, GRA, Ugbowo, Uselu, New Benin, Sakponba/Ekiosa, Upper Sakponba, Third East Circular, Sapele Rd, Ikpoba Hill/Ramat Park, Airport Rd, Aduwawa, Oluku, Ekenwan, Iguobazuwa (farmland).
-- Traffic: Ramat Park worst choke point (flyover nearly done), keke banned from major roads, ECTS green buses, expressway jams.
+- Traffic: Ramat Park worst choke point (flyover nearly done), keke banned from major roads, ECTS buses (yellow and red), expressway jams.
 - Crime: PoS robberies on Sapele Rd, Ring Road, New Benin, Siluko, Ugbowo, Aduwawa, Sakponba, Ekenwan; people rush home by 8pm; highway kidnap risk on Benin–Auchi & Benin–Lagos roads (kept light: "hold-up", money loss). **Upper Sakponba and Third East Circular are extra high-risk at night (user request).**
 
 ## TASK

@@ -3,7 +3,7 @@
 // Off when: the player turned it off (Settings), the admin turned it off (drive.enabled), walking, no WebGL, the
 // player skipped this trip, or the scene lost its GPU context. Then travel is the old plain flow.
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { routeRoads } from '../../art/drive3d/model';
+import { buildTrack } from '../../art/drive3d/track';
 import { webglAvailable } from '../../art/city3d/model';
 import { useConfig } from '../../lib/config';
 import { usePrefs } from '../../lib/prefs';
@@ -69,8 +69,18 @@ export function DriveHost({ state, hour }: { state: GameState; hour: number }) {
 
   const from = session ? byId[session.from] : undefined;
   const to = session ? byId[session.to] : undefined;
-  const roads = useMemo(() => (from && to ? routeRoads(from, to) : null), [from, to]);
-  if (!session || !from || !to || !roads) return null;
+  // the real road route, built once per trip; its timing is stretched to the server's trip length (arrival minus start)
+  const first = session ? { key: session.key, total: (session.arrivesAt - session.startedAt) / 1000 } : null;
+  const track = useMemo(
+    () =>
+      from && to && first
+        ? buildTrack({ from, to, mode: session!.mode, totalSec: first.total, vehicleId: session!.mode === 'car' ? driving : null })
+        : null,
+    // a new trip = a new key; events that move the arrival time do not rebuild the track
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [from, to, first?.key, session?.mode, session?.mode === 'car' ? driving : null],
+  );
+  if (!session || !from || !to || !track) return null;
 
   const close = () => {
     setSession(null);
@@ -84,11 +94,14 @@ export function DriveHost({ state, hour }: { state: GameState; hour: number }) {
           fromName: from.id.startsWith('home_') ? 'Home' : from.name,
           toName: to.name,
           toScene: to.scene,
+          toId: to.id,
+          toX: to.x,
+          toY: to.y,
           mode: session.mode,
           startedAt: session.startedAt,
           arrivesAt: session.arrivesAt,
           vehicleId: session.mode === 'car' ? driving : null,
-          roads,
+          track,
         }}
         arrived={arrived}
         hour={hour}

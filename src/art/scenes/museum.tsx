@@ -125,7 +125,7 @@ export default function MuseumScene({ night }: { night: boolean }) {
         {/* far-side traffic */}
         <Car x={70} y={214} s={0.45} body="#e9e9ee" />
         <Car x={640} y={218} s={0.45} flip body="#d2342a" />
-        <Bus x={700} y={222} s={0.42} flip body={PAL.ects} stripe="#f4f4f4" />
+        <Bus x={700} y={222} s={0.42} flip body="#f0b72a" stripe="#c2372c" />
         <Keke x={250} y={232} s={0.5} flip />
 
         {/* museum drum */}
@@ -180,7 +180,7 @@ export default function MuseumScene({ night }: { night: boolean }) {
         ))}
 
         {/* near-side traffic */}
-        <Bus x={430} y={400} s={0.95} body={PAL.ects} stripe="#f4f4f4" label="ECTS • RING ROAD" labelColor="#ffffff" />
+        <Bus x={430} y={400} s={0.95} body="#f0b72a" stripe="#c2372c" label="ECTS • RING ROAD" labelColor="#7a1f12" />
         <Car x={120} y={384} s={0.9} flip body="#f2f2f6" />
         <Car x={640} y={420} s={1} body="#3a6fb5" dark="#22436f" />
 

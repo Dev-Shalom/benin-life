@@ -372,7 +372,7 @@ export function Car({ x, y, s = 1, flip = false, body = '#c8ccd6', dark = '#5b61
   );
 }
 
-/** Danfo-style minibus (yellow + black stripes) or ECTS green bus. */
+/** Danfo-style minibus (yellow + black stripes) or the ECTS bus (yellow with a red band). */
 export function Bus({
   x, y, s = 1, flip = false, body = '#f4c20d', stripe = '#1f1a26', label, labelColor = '#1f1a26',
 }: { x: number; y: number; s?: number; flip?: boolean; body?: string; stripe?: string; label?: string; labelColor?: string }) {
