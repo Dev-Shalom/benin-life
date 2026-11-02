@@ -500,3 +500,18 @@
 :root .qty__btn { min-width: 32px; min-height: 32px; }
 :root .rk-row__you { flex: none; }
 :root .place-card__name, :root .pc-event__text { overflow-wrap: anywhere; }
+
+/* ---------- Theme pass: white text on brand gradient cards (same in Light and Dark) never fades and keeps 4.5:1 ---------- */
+:root :is(.bank-card__label, .bank-card__sub, .house-card__label, .house-card__sub, .inv-port__label, .inv-port__note, .inv-port__grid span, .chop__hero-sub, .ck-top small, .ck-top__note) {
+  opacity: 1;
+  color: #fff;
+}
+:root .bank-card { background: linear-gradient(140deg, #4a3fc4, #5a3fd0 60%, #6a4fda); }
+:root .house-card:not(.house-card--own):not(.house-card--let) { background: linear-gradient(140deg, #8f4309, #a6530f); }
+:root .inv-port { background: linear-gradient(140deg, #0a6f40, #0b7843); }
+:root .inv-port .is-up { color: #e3ffee; }
+:root .ck-top__note { background: rgba(0, 0, 0, 0.22); }
+:root .hs-ref__btns .hs-btn:not(.hs-btn--ghost) { background: #0e7d47; }
+:root .inv-port__grid > div { background: rgba(0, 0, 0, 0.22); }
+:root .hs-btn:disabled { opacity: 0.8; }
+

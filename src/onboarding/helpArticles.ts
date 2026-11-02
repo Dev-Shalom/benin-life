@@ -89,6 +89,21 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: 'lagos life inspired benin city edo about who made',
   },
 
+  {
+    id: 'settings',
+    topic: 'start',
+    title: 'Settings and dark mode',
+    summary: 'Sound, music, graphics, notifications and how the game looks are all in one place.',
+    steps: [
+      'Open your Sim (the avatar at the bottom left), then Settings.',
+      'Appearance: pick Light, Dark or Match my phone. Light is the default. Dark is easier on the eyes at night. Match my phone follows your phone\'s own light or dark setting, even when it changes by itself in the evening.',
+      'Sound effects, Music, Lite map and Graphics are in the same list. Notifications and Club alerts are just below.',
+    ],
+    where: 'Sim sheet, then Settings.',
+    tips: ['Your choice is saved on this phone. It switches with a short fade, and with no fade if your phone is set to reduce motion.'],
+    keywords: 'settings dark mode light theme night appearance black background screen colour color',
+  },
+
   // ---- Needs -----------------------------------------------------------------------------------------------------
   {
     id: 'needs',

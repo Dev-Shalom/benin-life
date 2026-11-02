@@ -3,9 +3,9 @@
 .lounge > * { min-width: 0; }
 .lounge-load { display: grid; place-items: center; padding: 40px 0; }
 .lounge-note { display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); font-size: 13px; color: var(--ink-2); }
-.lounge-note.is-bad { background: #fdeceb; color: #a02a22; }
+.lounge-note.is-bad { background: var(--surface-2); color: var(--c-red); }
 .lounge-pass { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-lg); color: #2a1a05;
-  background: linear-gradient(135deg, #f7e2a5, #e3b44d); box-shadow: 0 8px 18px -12px rgba(160, 110, 10, 0.8); }
+  background: linear-gradient(135deg, var(--tint-amber), #e3b44d); box-shadow: 0 8px 18px -12px rgba(160, 110, 10, 0.8); }
 .lounge-pass.is-vip { background: linear-gradient(135deg, #2b2438, #4a3a63); color: #f8e3a3; }
 .lounge-pass.is-none, .lounge-pass.is-guest { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
 .lounge-pass__icon { font-family: var(--font-emoji); font-size: 32px; line-height: 1; }
@@ -17,7 +17,7 @@
 .lounge-wallet b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .lounge-tiers { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 0; padding: 0; list-style: none; }
 .lounge-tier { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; padding: 12px; border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
-.lounge-tier.is-vip { box-shadow: inset 0 0 0 1.5px #c99b2e; background: linear-gradient(170deg, var(--surface), #fbf4dc); }
+.lounge-tier.is-vip { box-shadow: inset 0 0 0 1.5px #c99b2e; background: linear-gradient(170deg, var(--surface), var(--tint-amber)); }
 .lounge-tier.is-current { box-shadow: inset 0 0 0 2px var(--green-500); }
 .lounge-tier__top { display: flex; align-items: center; gap: 10px; }
 .lounge-tier__icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--surface-2); font-family: var(--font-emoji); font-size: 22px; }
@@ -28,13 +28,13 @@
 .lounge-tier__blurb { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
 .lounge-perks { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .lounge-perks li { padding: 3px 9px; border-radius: 99px; background: var(--surface-2); font-size: 12px; color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
-.lounge-req { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: #a05a10; }
-.lounge-req.is-ok { color: var(--green-700); }
+.lounge-req { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: var(--c-amber); }
+.lounge-req.is-ok { color: var(--c-green); }
 
 /* the slim status line in the place card and the map sheet */
 .lounge-strip { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; border-radius: var(--r-pill, 99px); color: #3a2706;
-  background: linear-gradient(90deg, #f7e2a5, #ecc767); font-size: 13px; font-weight: 700; }
-.lounge-strip.is-locked { background: #ece8f3; color: #3b2f57; }
+  background: linear-gradient(90deg, var(--tint-amber), #ecc767); font-size: 13px; font-weight: 700; }
+.lounge-strip.is-locked { background: var(--surface-3); color: var(--c-violet); }
 .lounge-strip__text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .lounge-strip__btn { flex: none; min-height: 32px; padding: 0 14px; border: 0; border-radius: 99px; background: #2b2438; color: #f8e3a3; font: 700 13px var(--font-display); cursor: pointer; }
 .lounge-strip__btn:active { transform: scale(0.96); }

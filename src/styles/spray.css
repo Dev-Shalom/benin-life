@@ -100,13 +100,13 @@
 }
 .spray-go:active:not(:disabled) { transform: scale(0.98); }
 .spray-go:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
-.spray-go.is-vip { color: #1a1206; background: linear-gradient(180deg, #ffe49a, #d9a441 55%, #b0793a); box-shadow: 0 6px 18px rgba(176, 121, 58, 0.35); }
+.spray-go.is-vip { color: #1a1206; background: linear-gradient(180deg, var(--tint-amber), #d9a441 55%, #b0793a); box-shadow: 0 6px 18px rgba(176, 121, 58, 0.35); }
 
 /* VIP sheet: gold on black */
 .spray-sheet.is-vip .spray__field { background: #17110a; }
 .spray-sheet.is-vip .spray__field:focus-within { border-color: #d9a441; background: #1f170c; }
 .spray-sheet.is-vip .spray__input, .spray-sheet.is-vip .spray__cur { color: #f7d774; }
-.spray-sheet.is-vip .spray__chip.is-on { border-color: #d9a441; background: #fff6dc; color: #7a4d1f; }
+.spray-sheet.is-vip .spray__chip.is-on { border-color: #d9a441; background: var(--tint-amber); color: var(--c-amber); }
 
 @media (prefers-reduced-motion: reduce) {
   .spray__chip, .spray-go, .spray__field { transition: none; }

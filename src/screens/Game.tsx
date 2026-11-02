@@ -89,6 +89,7 @@ import { PowerChip, PowerHost, PowerSheet } from './game/Power';
 import { useLit } from '../state/power';
 import { canPoll } from '../lib/activity';
 import { flushChannel } from '../lib/growth';
+import { setDaypart } from '../lib/theme';
 
 const Boutique = lazy(() => import('./game/Boutique'));
 const BillboardSheet = lazy(() => import('./game/BillboardSheet'));
@@ -96,13 +97,11 @@ const RealBizSheet = lazy(() => import('./game/RealBizSheet'));
 
 function useNightTheme(night: boolean) {
   useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.theme = night ? 'night' : 'day';
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', night ? '#1d2542' : '#e4f0fa');
+    setDaypart(night);
   }, [night]);
   useEffect(
     () => () => {
-      delete document.documentElement.dataset.theme;
+      setDaypart(null);
     },
     [],
   );

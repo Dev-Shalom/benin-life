@@ -49,7 +49,7 @@ export function Spark({ pts, width = 96, height = 34, label }: { pts: Pt[]; widt
       </defs>
       <path d={g.area} fill={`url(#${id})`} />
       <path d={g.line} fill="none" stroke={col} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={g.lx} cy={g.ly} r="2.6" fill={col} stroke="#fff" strokeWidth="1.5" />
+      <circle cx={g.lx} cy={g.ly} r="2.6" fill={col} style={{ stroke: "var(--surface)" }} strokeWidth="1.5" />
     </svg>
   );
 }
@@ -94,16 +94,16 @@ export function LineChart({ pts, height = 150, format = (v: number) => naira(Mat
             <stop offset="1" stopColor={col} stopOpacity="0" />
           </linearGradient>
         </defs>
-        {gridY.map((y) => <line key={y} x1="0" x2={W} y1={y} y2={y} stroke="rgba(17,32,56,0.07)" strokeWidth="1" />)}
+        {gridY.map((y) => <line key={y} x1="0" x2={W} y1={y} y2={y} style={{ stroke: "var(--line)" }} strokeWidth="1" />)}
         <path d={g.area} fill={`url(#${id})`} />
         <path d={g.line} fill="none" stroke={col} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
         {hp ? (
           <g>
-            <line x1={g.s.sx(hp[0])} x2={g.s.sx(hp[0])} y1="0" y2={height} stroke="rgba(17,32,56,0.3)" strokeWidth="1" />
-            <circle cx={g.s.sx(hp[0])} cy={g.s.sy(hp[1])} r="4" fill={col} stroke="#fff" strokeWidth="2" />
+            <line x1={g.s.sx(hp[0])} x2={g.s.sx(hp[0])} y1="0" y2={height} style={{ stroke: "var(--line-strong)" }} strokeWidth="1" />
+            <circle cx={g.s.sx(hp[0])} cy={g.s.sy(hp[1])} r="4" fill={col} style={{ stroke: "var(--surface)" }} strokeWidth="2" />
           </g>
         ) : (
-          <circle cx={g.s.sx(pts[pts.length - 1][0])} cy={g.s.sy(pts[pts.length - 1][1])} r="3.5" fill={col} stroke="#fff" strokeWidth="2" />
+          <circle cx={g.s.sx(pts[pts.length - 1][0])} cy={g.s.sy(pts[pts.length - 1][1])} r="3.5" fill={col} style={{ stroke: "var(--surface)" }} strokeWidth="2" />
         )}
       </svg>
       <div className="inv-chart__axis"><span>{when(pts[0][0])}</span><span>{hp ? '' : 'now'}</span></div>

@@ -412,6 +412,20 @@ function SettingsTab({ state }: { state: GameState }) {
           checked={prefs.keepOwnMusic} onChange={(v) => prefs.set({ keepOwnMusic: v })} />
         <Switch label="Lite map for weak network" hint="A lighter 2D map that loads fast on slow or expensive data."
           checked={prefs.liteMap} onChange={(v) => prefs.set({ liteMap: v })} />
+        <div className="settings-row settings-row--stack" data-tour="appearance">
+          <div>
+            <div>Appearance</div>
+            <div className="muted settings-row__hint">Light is the default. Dark is easier on the eyes at night. Match my phone follows your phone's own setting.</div>
+          </div>
+          <div className="seg seg--wide" role="radiogroup" aria-label="Appearance">
+            {([['light', 'Light'], ['dark', 'Dark'], ['system', 'Match my phone']] as const).map(([k, label]) => (
+              <button key={k} type="button" role="radio" aria-checked={prefs.theme === k}
+                className={`seg__btn${prefs.theme === k ? ' is-on' : ''}`} onClick={() => prefs.set({ theme: k })}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="settings-row">
           <div>
             <div>Graphics</div>

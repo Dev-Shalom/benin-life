@@ -32,12 +32,12 @@
   /* ---- Core palette ---- */
   --ink: #131a24;
   --ink-2: #435064;
-  --ink-3: #5f6b7d;
+  --ink-3: #596477;
   --green-50: #e9f7ef;
   --green-100: #d2efdf;
   --green-400: #2fbf77;
-  --green-500: #17a05c;
-  --green-600: #0e874e;
+  --green-500: #0e874e; /* white text on it: 4.6:1 */
+  --green-600: #0b7a45;
   --green-700: #0a6f40;
   --amber-50: #fff6e2;
   --amber-100: #ffe9b8;
@@ -82,7 +82,7 @@
 
   /* ---- Gradients ---- */
   --grad-sky: linear-gradient(180deg, #c8e1f6 0%, #e2eff9 38%, #eef4fa 72%, #f4f7fb 100%);
-  --grad-primary: linear-gradient(180deg, #16a05b 0%, #0d854d 100%);
+  --grad-primary: linear-gradient(180deg, #0e874e 0%, #0a7544 100%); /* white label 4.6 to 5.8:1 */
   --grad-amber: linear-gradient(180deg, #ffcd55 0%, #f1a91d 100%);
   /* Legacy names (old dusk theme). Kept so nothing breaks; do not use for new chrome. */
   --grad-coral: linear-gradient(180deg, #ef5b45 0%, #d2342a 55%, #b0251d 100%);
@@ -151,12 +151,151 @@
   --z-modal: 70;
   --z-toast: 90;
 
+  /* ---- Theme-aware semantic tokens (docs/THEME.md). Light values here, dark values below. ---- */
+  --c-green: #0a6f40; /* green TEXT / icons on a surface (backgrounds keep --green-*) */
+  --c-red: #c3352a;
+  --c-amber: #7a4f00;
+  --c-blue: #1b66b5;
+  --c-violet: #4f46c8;
+  --c-gold: #8a5a00; /* gold/bronze text on a surface */
+  /* pale tinted card fills (hints, states); text on them uses --c-* */
+  --tint-amber: #fff4d1;
+  --tint-red: #fdecea;
+  --tint-green: #e6f7ee;
+  --tint-blue: #eaf1fb;
+  --tint-violet: #efeaff;
+  --ink-solid: #131a24; /* a dark FILL (selected chip, tooltip) that always carries white text */
+  --on-fill: #ffffff; /* text on --ink-solid and on brand fills */
+  --amber-fill: #fff4d1; /* soft warm card (hints, today row) */
+  --coral-fill: #fdecea;
+  --card: var(--surface);
+  --text-3: var(--muted);
+  --paper: var(--surface);
+  --sky-50: var(--tint-blue);
+  --phone-bg: #f4f6f9; /* phone app interior: cards (--surface) sit on it */
+  --gold-600: var(--c-gold);
+  --ink-1: var(--text);
+  --border: var(--line);
+  --shadow: var(--e2);
+  --text-muted: var(--muted);
+  --scrim: rgba(16, 26, 42, 0.36); /* behind sheets and modals */
+  --scrim-strong: rgba(8, 10, 30, 0.55);
+  --input-bg: var(--surface-2);
+  --placeholder: #6b7486;
+  --skeleton: #e6eaf0;
+  --sel-bg: #131a24; /* a selected segment/chip: fill + text */
+  --sel-text: #ffffff;
+  --map-bg: #dfe9dc;
+  --knob: #ffffff;
+  --pill-on: #ffffff; /* selected segment on a --surface-2 track */
+  --logo-accent: #c0392b; /* the wordmark's coral; the ink follows currentColor */
+
+  /* ---- Overlay shape (UI pass) ---- */
+  --ov-radius: 24px;
+  --ov-gap: 8px;
+  --ov-pad: 16px;
+
   color-scheme: light;
 }
 
-/* Night (set on <html data-theme="night"> by the game). The map goes dark on its own;
-   the UI chrome stays light so it reads the same day and night. Only the backdrop deepens. */
-[data-theme='night'] {
+/* Night (set on <html data-daypart="night"> by the game). The map goes dark on its own; in the light
+   theme only the page backdrop deepens (it is the area behind the map while it loads). */
+:root:not([data-theme='dark'])[data-daypart='night'] {
   --bg: #1d2542;
   --bg-2: #252e50;
+}
+
+/* ============================================================================================
+   DARK THEME: the UI-pass dark indigo look, applied to every token. Brand accents (green fills,
+   gold, bronze, coral) keep their light-theme values. Text/icon colours get their own tokens.
+   Contrast (WCAG): body --text on --surface 15:1, --muted on --surface 7:1, --muted on --surface-3 5:1.
+   ============================================================================================ */
+:root[data-theme='dark'] {
+  --ink: #f4f5ff;
+  --ink-2: #cfd2f0;
+  --ink-3: #a9aed6;
+  --text: var(--ink);
+  --text-2: var(--ink-2);
+  --muted: var(--ink-3);
+
+  --bg: #0f1130;
+  --bg-2: #171a3d;
+  --surface: #171a3d;
+  --surface-2: #212551;
+  --surface-3: #2c316a;
+  --chip-bg: #2c316a;
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.24);
+  --overlay: rgba(5, 6, 20, 0.62);
+  --scrim: rgba(5, 6, 20, 0.62);
+  --scrim-strong: rgba(3, 4, 14, 0.72);
+  --focus-ring: 0 0 0 4px rgba(77, 220, 150, 0.35);
+  --shadow-color: 235deg 60% 4%;
+
+  --primary-soft: rgba(47, 191, 119, 0.18);
+  --green-50: rgba(47, 191, 119, 0.16);
+  --green-100: rgba(47, 191, 119, 0.28);
+  --amber-50: rgba(247, 187, 60, 0.16);
+  --amber-100: rgba(247, 187, 60, 0.28);
+  --red-50: rgba(224, 71, 58, 0.2);
+  --blue-50: rgba(47, 127, 214, 0.22);
+  --sky-1: #1b1e46;
+  --sky-2: #141634;
+  --sky-3: #0f1130;
+
+  --c-green: #6fe6ab;
+  --c-red: #ff9a8f;
+  --c-amber: #ffcf6b;
+  --c-blue: #8dbcff;
+  --c-gold: #f3d28a;
+  --c-violet: #c2bcff;
+  --tint-amber: rgba(247, 187, 60, 0.16);
+  --tint-red: rgba(224, 71, 58, 0.2);
+  --tint-green: rgba(47, 191, 119, 0.16);
+  --tint-blue: rgba(47, 127, 214, 0.2);
+  --tint-violet: rgba(107, 99, 224, 0.26);
+  --ink-solid: #3a4180;
+  --amber-fill: rgba(247, 187, 60, 0.16);
+  --coral-fill: rgba(224, 71, 58, 0.2);
+  --input-bg: #212551;
+  --placeholder: #9399c6;
+  --skeleton: #2c316a;
+  --sel-bg: #ffffff;
+  --sel-text: #131a24;
+  --map-bg: #1d2542;
+  --knob: #ffffff;
+  --pill-on: #3a4180;
+  --phone-bg: #0f1130;
+  --logo-accent: #e8664f;
+
+  --grad-sky: linear-gradient(180deg, #0b0c22 0%, #141634 45%, #0f1130 100%);
+  --glass: rgba(23, 26, 61, 0.95);
+  --glass-strong: #171a3d;
+  --glass-text: var(--ink);
+  --glass-muted: var(--ink-3);
+
+  --e1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.28);
+  --e2: 0 2px 6px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.42);
+  --e3: 0 6px 16px rgba(0, 0, 0, 0.4), 0 24px 60px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
+}
+
+/* ---- Smooth switch: the class exists only for ~300 ms while the player flips the theme. ---- */
+html.theme-fade,
+html.theme-fade *,
+html.theme-fade *::before,
+html.theme-fade *::after {
+  transition-property: background-color, color, border-color, fill, stroke, box-shadow, outline-color !important;
+  transition-duration: 250ms !important;
+  transition-timing-function: ease !important;
+  transition-delay: 0s !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.theme-fade,
+  html.theme-fade *,
+  html.theme-fade *::before,
+  html.theme-fade *::after {
+    transition: none !important;
+  }
 }

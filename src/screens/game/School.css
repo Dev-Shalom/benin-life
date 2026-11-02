@@ -14,8 +14,8 @@
 @keyframes sc-pop { 0% { opacity: 1; transform: translate(-50%, 0) rotate(0); }
   100% { opacity: 0; transform: translate(calc(-50% + cos(var(--a)) * 190px), calc(sin(var(--a)) * 120px + 60px)) rotate(calc(var(--i) * 80deg)); } }
 .sc-certs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.sc-cert { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px; background: linear-gradient(135deg, #f4ecff, #fff3d6); border: 1px solid rgba(122, 79, 224, .3); font-size: 13px; }
+.sc-cert { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px; background: linear-gradient(135deg, var(--surface-2), var(--tint-amber)); border: 1px solid rgba(122, 79, 224, .3); font-size: 13px; }
 .sc-cert-empty { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .sc-cert-empty > span:first-child { font-size: 22px; }
-.sc-link { border: 0; background: none; color: var(--green-600, #14733e); font-weight: 800; font-size: 13px; cursor: pointer; padding: 6px 4px; }
+.sc-link { border: 0; background: none; color: var(--c-green); font-weight: 800; font-size: 13px; cursor: pointer; padding: 6px 4px; }
 @media (prefers-reduced-motion: reduce) { .sc-grad, .sc-grad__confetti i { animation: none; } .sc-grad__confetti { display: none; } }

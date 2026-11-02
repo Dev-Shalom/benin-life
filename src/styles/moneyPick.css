@@ -70,7 +70,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--glass);
   border: 1.5px solid var(--n3);
   font: 800 14px/1 Outfit, system-ui, sans-serif;
   font-style: normal;

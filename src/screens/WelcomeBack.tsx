@@ -22,6 +22,7 @@ import { useGame } from '../state/game';
 import { useReturnGift } from '../state/returnGift';
 import { ReturnGiftCard } from './game/ReturnGift';
 import { Button, Icon, Logo, Modal, toast } from '../ui';
+import { setDaypart } from '../lib/theme';
 
 const ORBIT_SECONDS = 52;
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -124,13 +125,11 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
 
   // the sky behind the page follows the time of day (status bar too)
   useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.theme = night ? 'night' : 'day';
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', night ? '#1d2542' : '#e4f0fa');
+    setDaypart(night);
   }, [night]);
   useEffect(
     () => () => {
-      delete document.documentElement.dataset.theme;
+      setDaypart(null);
     },
     [],
   );
