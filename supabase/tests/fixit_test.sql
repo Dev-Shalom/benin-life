@@ -180,11 +180,28 @@ begin
   raise notice 'ok 6: land levy';
 end $$;
 
+
+-- move the Benin clock to 12:30 (markets and the Mall are open) for the checks that buy things
+create or replace function pg_temp.fx_noon() returns void language plpgsql as $f$
+declare v_clk jsonb; v_cur numeric;
+begin
+  perform set_config('bl.test_offset_seconds', '', true);
+  v_clk := bl_game_clock();
+  v_cur := (v_clk->>'hour')::numeric * 3600 + (v_clk->>'minute')::numeric * 60;
+  perform set_config('bl.test_offset_seconds', (((12 * 3600 + 1800 - v_cur) % 86400 + 86400) % 86400)::text, true);
+end $f$;
+
 -- ---------- 7. Laptops: every laptop has a buy card where it is sold, and the buy works ----------
 do $$
 declare a uuid := pg_temp.fx_make('FxLaptop', 900000000, 0); r record; n int; v_cards jsonb;
+  v_clk jsonb; v_cur numeric;
 begin
   perform pg_temp.login(a);
+  -- the Mall closes at night: move the Benin clock to 12:30 so this check does not depend on when it runs
+  perform set_config('bl.test_offset_seconds', '', true);
+  v_clk := bl_game_clock();
+  v_cur := (v_clk->>'hour')::numeric * 3600 + (v_clk->>'minute')::numeric * 60;
+  perform set_config('bl.test_offset_seconds', (((12 * 3600 + 1800 - v_cur) % 86400 + 86400) % 86400)::text, true);
   for r in select l.id as loc, i.id as item from locations l join items i on l.id = any (i.sold_at)
             where i.category = 'laptop' and l.scene in ('mall', 'office', 'cyber') loop
     update profiles set location_id = r.loc, travel_to = null, busy_until = null where id = a;
@@ -199,6 +216,7 @@ begin
   perform pg_temp.assert(exists (select 1 from zone_actions where zone_id = 'mall.shoprite' and ref = 'macbook_pro_m4')
                      and exists (select 1 from zone_actions where zone_id = 'office.desks' and ref = 'dell_xps_13'), 'premium laptops have cards at the mall and the Tech Hub');
   raise notice 'ok 7: laptops';
+  perform set_config('bl.test_offset_seconds', '', true);
 end $$;
 
 -- ---------- 8. Delete my account ----------
@@ -304,6 +322,7 @@ end $$;
 do $$
 declare a uuid := pg_temp.fx_make('FxDrive', 900000000, 0); b uuid := pg_temp.fx_make('FxNoCar'); q jsonb; r jsonb; v_mode jsonb;
 begin
+  perform pg_temp.fx_noon();
   perform pg_temp.login(a);
   update profiles set location_id = 'oba_market', travel_to = null where id = a;
   -- two vehicles in different Bolt classes: the old rule drives the expensive one
@@ -340,6 +359,7 @@ begin
   perform pg_temp.assert(pg_temp.fx_hint($q$select car_set_primary('gwagon_g63')$q$) = 'not_owned', 'cannot pick another player''s car');
   perform pg_temp.assert(not has_function_privilege('anon', 'public.car_set_primary(text)', 'execute') and not has_function_privilege('authenticated', 'public.bl_driving_item(uuid)', 'execute'), 'grants');
   raise notice 'ok 10: primary car';
+  perform set_config('bl.test_offset_seconds', '', true);
 end $$;
 
 -- ---------- 11. Balance ----------
