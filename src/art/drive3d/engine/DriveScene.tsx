@@ -1,16 +1,19 @@
 // The live 3D drive (react-three-fiber). Lazy-loaded through ../DriveView.tsx.
 //
-// The car stays at the origin of the world's z axis while the street scrolls past (src/art/drive3d/engine/world.ts is
-// periodic), so it is endless and cheap: a handful of instanced meshes, no shadows, no external assets. Three cameras
-// (chase, side, driver), a day/night look from the game clock, NPC traffic, other players' cars with name tags, road-event
-// props that stop the car, and the destination gate. All React state stays outside the frame loop (refs only).
+// The car follows the real route (./track.ts): straight streets, junctions where it turns left or right, the roundabout. Its place
+// on the track is a function of the server clock (progress = elapsed / total): the speed profile (slow into corners, stops at bus
+// stops, slow-downs behind traffic) is stretched to the trip time, and a small controller keeps the car on it, braking for road
+// events and the arrival. The streets around the car are generated chunk by chunk (world.ts), the destination is the very model the
+// city map shows there (place.ts). No shadows, no external assets, no per-frame React state (refs only).
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef, type MutableRefObject } from 'react';
 import {
   AdditiveBlending,
+  BufferGeometry,
   CanvasTexture,
   Color,
   DirectionalLight,
+  Float32BufferAttribute,
   Fog,
   Group,
   HemisphereLight,
@@ -21,22 +24,24 @@ import {
   Object3D,
   PerspectiveCamera,
   PlaneGeometry,
-  SRGBColorSpace,
-  Vector3,
-  BufferGeometry,
-  Float32BufferAttribute,
   Points,
   PointsMaterial,
+  SRGBColorSpace,
+  Vector3,
 } from 'three';
 import type { DriveKind } from '../../../api/drive';
 import { cityLight } from '../../city3d/engine/light';
-import { CRUISE, roadAt, type CamMode, type RoadSeg, type VehicleKind, type VehicleLook } from '../model';
+import { districtAt } from '../district';
+import { roadAt, type CamMode, type VehicleKind, type VehicleLook } from '../model';
+import { LANE_OFFSET, type Track } from '../track';
+import { buildBusRig, buildStop, destBoard, type BusRig, type StopRig } from './bus';
+import { buildPlaceModel, type PlaceModel } from './place';
 import { buildCockpit, buildEventProps, buildGate, buildSign, gateAccent, type Cockpit, type EventProps, type Gate } from './props';
-import { vehicleGeometry } from './vehicles';
-import { buildWorld, LANE_IN, LANE_OUT, PERIOD } from './world';
+import { unitWheelGeometry, vehicleGeometry, vehicleKit } from './vehicles';
+import { buildJunctions, buildStreet, LANE_IN, LANE_OUT, PERIOD, ROAD_HALF, STYLE_GROUND, type Street, type StreetSpec, type Style } from './world';
 
 /** The player's lane: the outer lane, by the pavement. */
-export const MY_LANE = LANE_OUT;
+export const MY_LANE = LANE_OFFSET;
 
 export interface OtherCar {
   id: string;
@@ -49,14 +54,29 @@ export interface DriveLive {
   progress: number;
   /** Seconds to arrival (server clock). */
   left: number;
-  /** The trip has arrived (the server moved the player): park at the gate. */
+  /** The trip has arrived (the server moved the player): park at the destination. */
   arrived: boolean;
+  /** Written by the scene each frame: metres along the track, speed (m/s), the bus stop the bus is standing at (or null). */
+  s?: number;
+  v?: number;
+  stop?: string | null;
 }
 
 export interface DriveApi {
   stats(): { calls: number; triangles: number; geometries: number };
-  /** Dev: jump the car forward / set the speed (screenshots). */
-  dev(patch: { dist?: number; speed?: number }): void;
+  /** Dev: jump the car to a track distance, hold it there (pin) or set the speed (screenshots). */
+  dev(patch: { s?: number; pin?: number | null; speed?: number; dist?: number; hold?: number | null; top?: number | null }): void;
+  /** The track being driven (dev / tests). */
+  track: Track;
+  state(): Record<string, number | boolean | string>;
+}
+
+export interface DriveDest {
+  id: string;
+  name: string;
+  scene: string;
+  x: number;
+  y: number;
 }
 
 export interface DriveSceneProps {
@@ -64,21 +84,20 @@ export interface DriveSceneProps {
   tier: 'low' | 'high';
   vehicle: VehicleLook;
   cam: CamMode;
-  roads: RoadSeg[];
-  destName: string;
-  destScene: string;
+  track: Track;
+  dest: DriveDest;
   live: MutableRefObject<DriveLive>;
   /** Stop the car for a road event (a new `id` per event). */
   event: { id: number; kind: DriveKind } | null;
   /** The player chose: let the props react and drive on. */
   resolved: { id: number; ok: boolean } | null;
-  /** "Go in": open the barrier and drive through the gate. */
+  /** "Go in": push in on the destination. */
   entering: boolean;
   others: OtherCar[];
   seed?: number;
   paused?: boolean;
-  /** Dev (screenshots): start at this distance and speed. */
-  startAt?: { dist?: number; stopped?: boolean };
+  /** Dev (screenshots): start at this track distance. */
+  startAt?: { s?: number; stopped?: boolean };
   onStopped?: (id: number) => void;
   onReady?: (api: DriveApi) => void;
   onLost?: () => void;
@@ -90,19 +109,24 @@ interface Npc {
   lane: number;
   v: number;
   z: number;
-  idx: number;
   color: Color;
 }
 
-const NPC_KINDS: NpcKind[] = ['sedan', 'sedan', 'suv', 'keke', 'okada2', 'moto', 'bus', 'pickup', 'sedan', 'keke', 'moto'];
+const NPC_KINDS: NpcKind[] = ['sedan', 'sedan', 'suv', 'keke', 'okada2', 'moto', 'bus', 'pickup', 'sedan', 'keke', 'moto', 'bus'];
 const NPC_COLORS = ['#c3c7cd', '#4a5d7a', '#a23c36', '#efebe0', '#5a8068', '#6c7480', '#aab3bd', '#7d8ca0', '#9a7650', '#d6d1c2'];
 const RING_LEN = 210;
 const RING_FAR = -160;
+const WHEELBASE: Record<string, number> = { sedan: 2.7, suv: 2.9, pickup: 3.1, moto: 1.6, bike: 1.1, keke: 1.7, bus: 5.9 };
 
 const hash = (s: string) => {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return h >>> 0;
+};
+const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+const smooth = (t: number) => {
+  const k = clamp(t, 0, 1);
+  return k * k * (3 - 2 * k);
 };
 
 function skyTexture(c: ReturnType<typeof cityLight>): CanvasTexture {
@@ -154,22 +178,22 @@ function beamTexture(): CanvasTexture {
   return new CanvasTexture(cv);
 }
 
+const _tmp = new Vector3();
+
 function Rig(p: DriveSceneProps) {
   const { scene, camera, gl } = useThree();
   const P = useRef(p);
   P.current = p;
-  const st = useRef<{
-    tick: (dt: number) => void;
-    light: (hour: number) => void;
-    dispose: () => void;
-    api: DriveApi;
-  } | null>(null);
+  const st = useRef<{ tick: (dt: number) => void; dispose: () => void; api: DriveApi } | null>(null);
 
-  // build once per tier / vehicle / route; the per-frame state lives in the closure
-  const lookKey = `${p.vehicle.kind}|${p.vehicle.color}|${p.tier}|${p.destName}|${p.roads.map((r) => r.name).join('>')}`;
+  const tr = p.track;
+  const lookKey = `${p.vehicle.kind}|${p.vehicle.color}|${p.tier}|${p.dest.id}|${tr.L.toFixed(1)}|${tr.straights.length}|${tr.stops.length}`;
   useEffect(() => {
     const cam = camera as PerspectiveCamera;
     const low = P.current.tier === 'low';
+    const track = P.current.track;
+    const kind = P.current.vehicle.kind;
+    const isBus = kind === 'bus';
     const root = new Group();
     scene.add(root);
     scene.add(cam);
@@ -182,43 +206,138 @@ function Rig(p: DriveSceneProps) {
     const hemi = new HemisphereLight('#ffffff', '#b7a58f', 1.5);
     const sun = new DirectionalLight('#fff1dc', 2);
     const fill = new DirectionalLight('#dfe8ff', 0.5);
-    fill.position.set(-30, 18, 26);
     root.add(hemi, sun, sun.target, fill);
     const fog = new Fog('#cfe5f1', low ? 24 : 32, low ? 105 : 150);
     scene.fog = fog;
 
-    const world = buildWorld({ seed: P.current.seed ?? 7, density: low ? 0.6 : 1 });
-    root.add(world.fixed, world.scroll);
+    // ---- ground follows the car (a plain colour that tints with the district)
+    const groundMat = own(new MeshLambertMaterial({ color: STYLE_GROUND.res }));
+    const ground = new Mesh(own(new PlaneGeometry(1400, 1400)), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.02;
+    root.add(ground);
+    const groundCol = new Color(STYLE_GROUND.res);
+    const groundWant = new Color(STYLE_GROUND.res);
 
-    // ---- the player's vehicle
-    const carMat = own(new MeshLambertMaterial({ vertexColors: true, color: P.current.vehicle.color }));
+    // ---- streets: one per straight, generated around the car, pooled
+    const density = low ? 0.6 : 1;
+    const baseSeed = (P.current.seed ?? 7) + hash(P.current.dest.id) % 997;
+    const POOL = 4;
+    const pool: { street: Street | null; idx: number }[] = Array.from({ length: POOL }, () => ({ street: null, idx: -1 }));
+    const specs: StreetSpec[] = track.straights.map((s, i) => ({
+      seed: baseSeed + i * 131,
+      u0b: s.u0b,
+      u1b: s.u1b,
+      u0a: s.u0a,
+      u1a: s.u1a,
+      plot: null,
+      styleAt: (u: number) => {
+        const [mx, my] = track.mapAt(s.sa + Math.max(0, Math.min(s.sb - s.sa, u)));
+        return districtAt(mx, my);
+      },
+    }));
+    const junc = buildJunctions(
+      track.junctions.map((j) => {
+        // directions the two streets meet the roundabout in (so the ring of buildings leaves them open)
+        const sA = track.straights[j.from];
+        const sB = track.straights[j.to];
+        const pa = track.at(sA.sb, 0);
+        const pb = track.at(sB.sa, 0);
+        const guide: [number, number, number][] = [];
+        if (j.kind === 'turn') for (let q = j.sa - 6; q <= j.sb + 6; q += 3.2) {
+          const g = track.at(q, 4.1);
+          guide.push([g.x, g.z, g.psi]);
+        }
+        return {
+          guide,
+          kind: j.kind,
+          x: j.x,
+          z: j.z,
+          island: j.island,
+          outer: j.outer,
+          avoid: [Math.atan2(pa.z - j.z, pa.x - j.x), Math.atan2(pb.z - j.z, pb.x - j.x)],
+        };
+      }),
+    );
+    if (junc) {
+      root.add(junc.group);
+      own(junc);
+    }
+    // the roundabout island is the museum drum of King's Square, drawn by the city's own landmark builder
+    let roundMuseum: PlaceModel | null = null;
+    if (track.junctions.some((j) => j.kind === 'round')) {
+      try {
+        roundMuseum = buildPlaceModel({ id: 'national_museum', name: 'Benin National Museum', scene: 'museum', x: 500, y: 500 });
+        const j = track.junctions.find((q) => q.kind === 'round')!;
+        roundMuseum.group.position.set(j.x, 0.3, j.z);
+        roundMuseum.group.scale.setScalar(0.62);
+        root.add(roundMuseum.group);
+      } catch {
+        roundMuseum = null;
+      }
+    }
+
+    // ---- the player's vehicle: body without wheels + wheels that steer and spin
+    const kit = vehicleKit(kind);
+    const carMat = own(new MeshLambertMaterial({ vertexColors: true, color: isBus ? '#ffffff' : P.current.vehicle.color }));
     const car = new Group();
-    const carMesh = new Mesh(vehicleGeometry(P.current.vehicle.kind), carMat);
-    car.add(carMesh);
+    const rig = new Group();
+    car.add(rig);
+    const carMesh = new Mesh(kit.body, carMat);
+    rig.add(carMesh);
+    const wheelGeo = own(unitWheelGeometry());
+    const wheelMat = own(new MeshLambertMaterial({ vertexColors: true }));
+    const wheels = new InstancedMesh(wheelGeo, wheelMat, Math.max(1, kit.wheels.length));
+    wheels.frustumCulled = false;
+    rig.add(wheels);
     const shadowTex = own(radialTexture());
-    const shadow = new Mesh(own(new PlaneGeometry(3.4, 6.4)), own(new MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })));
+    const shadow = new Mesh(own(new PlaneGeometry(isBus ? 3.8 : 3.4, isBus ? 11.5 : 6.4)), own(new MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })));
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.06;
     car.add(shadow);
     const beamTex = own(beamTexture());
     const beamMat = own(new MeshBasicMaterial({ map: beamTex, transparent: true, depthWrite: false, blending: AdditiveBlending, opacity: 0 }));
     const beamGeo = own(new PlaneGeometry(2.6, 16));
+    const beamZ = isBus ? -14.6 : -10.5;
     const beams = [-0.62, 0.62].map((x) => {
       const b = new Mesh(beamGeo, beamMat);
       b.rotation.x = -Math.PI / 2;
-      b.position.set(x * 1.4, 0.08, -10.5);
+      b.position.set(x * (isBus ? 1.9 : 1.4), 0.08, beamZ);
       car.add(b);
       return b;
     });
-    const wide = P.current.vehicle.kind === 'moto' || P.current.vehicle.kind === 'bike';
+    const wide = kind === 'moto' || kind === 'bike';
     if (wide) beams.forEach((b, i) => (b.visible = i === 0));
     root.add(car);
 
-    const cockpit: Cockpit = buildCockpit(P.current.vehicle.kind);
+    // bus extras: destination board, door leaves, the inside
+    let busRig: BusRig | null = null;
+    let board: { mesh: Mesh; dispose(): void } | null = null;
+    if (isBus) {
+      busRig = buildBusRig();
+      rig.add(busRig.doors, busRig.interior);
+      board = destBoard(P.current.dest.name);
+      rig.add(board.mesh);
+    }
+
+    const cockpit: Cockpit = buildCockpit(kind);
     cam.add(cockpit.group);
     cockpit.group.visible = false;
 
-    // ---- NPC traffic: one instanced mesh per kind
+    // ---- bus stops along the way
+    const stopRigs: { rig: StopRig; s: number; name: string; arrivedAt: number; state: 'before' | 'dwell' | 'after' }[] = [];
+    if (isBus) {
+      track.stops.forEach((sp, i) => {
+        const sr = buildStop(sp.name, i + baseSeed, -1.5, 0);
+        const pose = track.at(sp.s + 4, ROAD_HALF + 1.7 + 0.5 + 0.8);
+        sr.group.position.set(pose.x, 0, pose.z);
+        sr.group.rotation.y = -pose.psi;
+        root.add(sr.group);
+        stopRigs.push({ rig: sr, s: sp.s, name: sp.name, arrivedAt: -1, state: 'before' });
+      });
+    }
+
+    // ---- NPC traffic: one instanced mesh per kind (buses are the yellow-and-red ECTS ones)
     const npcMats = own(new MeshLambertMaterial({ vertexColors: true }));
     const npcs: Npc[] = [];
     const nCars = low ? 9 : 16;
@@ -228,8 +347,8 @@ function Rig(p: DriveSceneProps) {
     for (let li = 0; li < 2; li++) {
       for (let i = 0; i < perLane[li]; i++) {
         const k = NPC_KINDS[(i * 3 + li * 5 + (P.current.seed ?? 7)) % NPC_KINDS.length];
-        const col = k === 'keke' ? '#e3b53c' : k === 'bus' ? '#e9e6dc' : NPC_COLORS[(i * 7 + li * 3) % NPC_COLORS.length];
-        npcs.push({ kind: k, lane: lanes[li], v: speeds[li], z: 30 - (i + 0.2 + li * 0.45) * (RING_LEN / perLane[li]), idx: 0, color: new Color(col) });
+        const col = k === 'keke' ? '#e3b53c' : k === 'bus' ? '#ffffff' : NPC_COLORS[(i * 7 + li * 3) % NPC_COLORS.length];
+        npcs.push({ kind: k, lane: lanes[li], v: speeds[li], z: 30 - (i + 0.2 + li * 0.45) * (RING_LEN / perLane[li]), color: new Color(col) });
       }
     }
     const kinds = [...new Set(npcs.map((n) => n.kind))];
@@ -243,23 +362,32 @@ function Rig(p: DriveSceneProps) {
     }
     const dummy = new Object3D();
 
+    // a slow vehicle ahead in our lane during the traffic slow-downs
+    const lead = new Mesh(vehicleGeometry('suv'), own(new MeshLambertMaterial({ vertexColors: true, color: '#8d96a3' })));
+    lead.visible = false;
+    root.add(lead);
+    const leadBus = isBus ? null : new Mesh(vehicleGeometry('bus'), own(new MeshLambertMaterial({ vertexColors: true, color: '#ffffff' })));
+    if (leadBus) {
+      leadBus.visible = false;
+      root.add(leadBus);
+    }
+
     // ---- other players' cars (a pool of 8) and their name tags
     const otherPool = Array.from({ length: 8 }, () => {
       const m = new Mesh(vehicleGeometry('sedan'), own(new MeshLambertMaterial({ vertexColors: true })));
       m.visible = false;
       root.add(m);
-      return { mesh: m, id: '' as string, z: 0, slot: 0 };
+      return { mesh: m, id: '' as string, z: 0 };
     });
     const tagLayer = gl.domElement.closest('.drive-canvas')?.querySelector('.drive-tags') as HTMLElement | null;
 
     // ---- signs
+    const SIGN_GAP = 130;
     const signs = [0, 1, 2].map((i) => {
       const s = buildSign();
-      s.group.position.set(ROAD_HALF_SIGN, 0, -40 - i * 130);
       root.add(s.group);
-      return { s, z: -40 - i * 130, key: '' };
+      return { s, at: 45 + i * SIGN_GAP, key: '' };
     });
-    const SIGN_GAP = 130;
 
     // ---- stars
     let stars: Points | null = null;
@@ -277,19 +405,69 @@ function Rig(p: DriveSceneProps) {
       root.add(stars);
     }
 
+    // ---- destination (the model the city map shows there), built a moment after the first frame
+    let place: PlaceModel | null = null;
+    let placeFailed = false;
+    const placeGroup = new Group();
+    placeGroup.visible = false;
+    root.add(placeGroup);
+    const lastIdx = track.straights.length - 1;
+    const lastS = track.straights[lastIdx];
+    const placeU = track.L - lastS.sa + 2;
+    let placeCenter = new Vector3();
+    let placeTimer: number | null = window.setTimeout(() => {
+      placeTimer = null;
+      try {
+        const m = buildPlaceModel(P.current.dest);
+        place = m;
+        const lat = ROAD_HALF + 3.4 + 5 + m.depth / 2;
+        const ps = track.at(track.L + 2, lat);
+        m.group.position.set(ps.x, 0, ps.z);
+        // the model's front (+z) faces the road (to the left of the heading)
+        m.group.rotation.y = Math.atan2(-Math.cos(ps.psi), -Math.sin(ps.psi));
+        placeGroup.add(m.group);
+        placeGroup.visible = true;
+        placeCenter.set(ps.x, Math.min(5, m.top * 0.4), ps.z);
+        // the entrance sign on two posts, in front of the model, facing the road
+        const sg = buildSign();
+        sg.setText(P.current.dest.name.length > 28 ? P.current.dest.name.slice(0, 27) + '…' : P.current.dest.name, '', 'green');
+        const sp = track.at(track.L + 2, ROAD_HALF + 3.4 + 2.2);
+        sg.group.position.set(sp.x, 0, sp.z);
+        sg.group.rotation.y = Math.atan2(-Math.cos(sp.psi), -Math.sin(sp.psi));
+        sg.group.scale.setScalar(0.85);
+        placeGroup.add(sg.group);
+        m.setDark(dark);
+        // keep the frontage clear on the last street
+        specs[lastIdx].plot = [placeU - m.width / 2 - 3, placeU + m.width / 2 + 3];
+      } catch {
+        placeFailed = true;
+      }
+    }, 30);
+
     // ---- state
-    let dist = P.current.startAt?.dist ?? 0;
-    let speed = P.current.startAt?.stopped ? 0 : CRUISE * 0.9;
-    let carX = MY_LANE;
+    const startS = P.current.startAt?.s ?? track.sOfT(clamp(P.current.live.current.progress, 0, 1) * track.total);
+    let sCar = clamp(startS, 0, track.L);
+    let speed = P.current.startAt?.stopped ? 0 : Math.min(track.vRef(sCar) || 0, 14);
+    let pinS: number | null = null;
+    let holdV: number | null = null;
+    let topH: number | null = null;
+    let latCar = 0;
     let t = 0;
     let skyTex: CanvasTexture | null = null;
     let lastLightKey = '';
     let dark = 0;
-    let ev: { id: number; kind: DriveKind; props: EventProps; D: number; t0: number; stopped: boolean; released: boolean; shift: number; ok: boolean; seed: number } | null = null;
+    let ev: { id: number; kind: DriveKind; props: EventProps; S: number; t0: number; stopped: boolean; released: boolean; fwd: number; ok: boolean; seed: number } | null = null;
+    let pendingEv: { id: number; kind: DriveKind; since: number } | null = null;
     let evSeen = 0;
-    let gate: { g: Gate; D: number; open: number } | null = null;
+    let gate: { g: Gate; open: number } | null = null;
     let camSnap = 3;
-    let lastSteer = 0;
+    let steerSm = 0;
+    let accSm = 0;
+    let pitchSm = 0;
+    let rollSm = 0;
+    let spin = 0;
+    let doorOpen = 0;
+    let lastV = speed;
     const camPos = new Vector3(0, 3, 8);
     const camLook = new Vector3(0, 1, -10);
     const wantPos = new Vector3();
@@ -298,6 +476,7 @@ function Rig(p: DriveSceneProps) {
     let hideOthers = false;
     let othersResetAt = -1;
     const slotOf = new Map<string, number>();
+    const wheelO = new Object3D();
 
     const applyLight = (hour: number) => {
       const c = cityLight(hour);
@@ -316,42 +495,111 @@ function Rig(p: DriveSceneProps) {
       skyTex?.dispose();
       skyTex = skyTexture(c);
       scene.background = skyTex;
-      world.setDark(c.dark);
+      for (const e of pool) e.street?.setDark(c.dark);
       beamMat.opacity = Math.max(0, (c.dark - 0.25) / 0.75) * 0.55;
       if (stars) (stars.material as PointsMaterial).opacity = Math.max(0, (c.dark - 0.55) / 0.45) * 0.9;
       cockpit.setLook(P.current.vehicle.color, c.dark);
       gate?.g.setDark(c.dark);
+      place?.setDark(c.dark);
+      roundMuseum?.setDark(c.dark);
     };
     applyLight(P.current.hour);
 
-    const roadName = (f: number) => roadAt(P.current.roads, Math.min(1, Math.max(0, f))).name;
-    const signText = (z: number) => {
-      const live = P.current.live.current;
-      const secs = Math.max(0, -z) / CRUISE;
-      const f = Math.min(1, live.progress + secs / Math.max(5, live.left + 1) * (1 - live.progress));
-      return { l1: roadName(f), l2: `Benin City · ${P.current.destName}` };
+    const roadName = (s: number) => roadAt(track.roads, clamp(s / track.L, 0, 1)).name;
+    const signFor = (s: number) => {
+      const nj = track.nextJunction(s);
+      const ahead = nj ? nj.sa - s : 999;
+      if (nj && ahead > 12 && ahead < 120) {
+        return { l1: nj.kind === 'round' ? `Roundabout · ${nj.into}` : `${nj.dir > 0 ? '→' : '←'} ${nj.into}`, l2: `${roadName(s)} · Benin City` };
+      }
+      return { l1: roadName(s), l2: `Benin City · ${P.current.dest.name}` };
     };
-    signs.forEach((sg, i) => {
-      const f = signText(sg.z);
-      sg.s.setText(f.l1, i === 0 ? '' : f.l2);
-    });
+    const hasStreet = (s: number, margin: number) => {
+      const i = track.straightAt(s);
+      const sg = track.straights[i];
+      return s > sg.sa + margin && s < sg.sb - margin && s < track.L - 30;
+    };
 
-    const spawnGate = (D: number) => {
-      const g = buildGate(P.current.destName, gateAccent(P.current.destScene));
+    // ---- the street pool: which straights are near the car, filled around it
+    const updateStreets = () => {
+      const want: number[] = [];
+      track.straights.forEach((s, i) => {
+        if (s.sb > sCar - 80 && s.sa < sCar + 240) want.push(i);
+      });
+      // free slots whose straight is no longer wanted
+      for (const e of pool) {
+        if (e.idx >= 0 && !want.includes(e.idx)) {
+          if (e.street) e.street.group.visible = false;
+          e.idx = -1;
+        }
+      }
+      for (const i of want) {
+        let slot = pool.find((e) => e.idx === i);
+        if (!slot) {
+          slot = pool.find((e) => e.idx < 0);
+          if (!slot) continue;
+          slot.idx = i;
+          if (!slot.street) {
+            slot.street = buildStreet(density);
+            slot.street.setDark(dark);
+            root.add(slot.street.group);
+          }
+          const s = track.straights[i];
+          slot.street.group.position.set(s.ox, 0, s.oz);
+          slot.street.group.rotation.y = -s.psi;
+        }
+        const s = track.straights[i];
+        slot.street!.group.visible = true;
+        const uRef = clamp(sCar - s.sa, 0, s.sb - s.sa);
+        const k0 = Math.floor((uRef - 85) / PERIOD);
+        slot.street!.fill(specs[i], k0); // cheap when nothing changed (key check)
+      }
+    };
+    updateStreets();
+
+    const spawnGate = () => {
+      const g = buildGate(P.current.dest.name, gateAccent(P.current.dest.scene));
       g.setDark(dark);
-      g.group.position.set(0, 0, 0);
+      const gp = track.at(track.L + 14, 0);
+      g.group.position.set(gp.x, 0, gp.z);
+      g.group.rotation.y = -gp.psi;
       root.add(g.group);
-      gate = { g, D, open: 0 };
+      gate = { g, open: 0 };
     };
 
     const stats = () => ({ calls: gl.info.render.calls, triangles: gl.info.render.triangles, geometries: gl.info.memory.geometries });
     const api: DriveApi = {
       stats,
+      track,
+      state: () => ({
+        s: sCar,
+        v: speed,
+        cx: car.position.x,
+        cz: car.position.z,
+        cy: car.rotation.y,
+        px: cam.position.x,
+        py: cam.position.y,
+        pz: cam.position.z,
+        carVisible: carMesh.visible,
+        hold: holdV ?? -1,
+        stop: stopRigs.map((r) => r.state + ':' + r.s).join(','),
+      }),
       dev(patch) {
-        if (patch.dist !== undefined) dist = patch.dist;
+        const target = patch.s ?? patch.dist;
+        if (target !== undefined) {
+          sCar = clamp(target, 0, track.L);
+          if (patch.pin === undefined && patch.hold === undefined) pinS = sCar;
+          camSnap = 2;
+        }
+        if (patch.pin !== undefined) pinS = patch.pin;
+        if (patch.hold !== undefined) holdV = patch.hold;
+        if (patch.top !== undefined) topH = patch.top;
         if (patch.speed !== undefined) speed = patch.speed;
       },
     };
+
+    const inJunction = (s: number, pad: number) => track.junctions.some((j) => s > j.sa - pad && s < j.sb + pad);
+    const tmpV = new Vector3();
 
     const tick = (dtRaw: number) => {
       const dt = Math.min(0.05, dtRaw);
@@ -360,14 +608,18 @@ function Rig(p: DriveSceneProps) {
       const live = props.live.current;
       applyLight(props.hour);
 
-      // ---- events: a new request spawns the props ahead
+      // ---- events: a new request waits for a straight stretch, then puts the props ahead
       if (props.event && props.event.id !== evSeen) {
         evSeen = props.event.id;
+        pendingEv = { id: evSeen, kind: props.event.kind, since: t };
+      }
+      if (pendingEv && (track.straightAhead(sCar, 80) || t - pendingEv.since > 14)) {
         ev?.props.dispose();
         if (ev) root.remove(ev.props.group);
-        const ep = buildEventProps(props.event.kind, evSeen);
+        const ep = buildEventProps(pendingEv.kind, pendingEv.id);
         root.add(ep.group);
-        ev = { id: evSeen, kind: props.event.kind, props: ep, D: dist + 62, t0: t, stopped: false, released: false, shift: 0, ok: true, seed: evSeen };
+        ev = { id: pendingEv.id, kind: pendingEv.kind, props: ep, S: Math.min(sCar + 62, track.L - 26), t0: t, stopped: false, released: false, fwd: 0, ok: true, seed: pendingEv.id };
+        pendingEv = null;
         hideOthers = true;
       }
       if (ev && props.resolved && props.resolved.id === ev.id && !ev.released) {
@@ -381,64 +633,135 @@ function Rig(p: DriveSceneProps) {
         otherPool.forEach((o, i) => (o.z = 14 + i * 24));
       }
 
-      // ---- the gate: appears as the trip ends
-      if (!gate && (live.arrived || (live.left <= 6 && live.progress > 0.5)) && !props.entering) {
-        spawnGate(dist + (live.arrived ? 46 : Math.min(90, Math.max(46, live.left * CRUISE * 0.85))));
-      }
+      // ---- the fallback gate (only when a place has no model)
+      if (!gate && placeFailed && (live.arrived || (live.left <= 6 && live.progress > 0.5)) && !props.entering) spawnGate();
 
-      // ---- speed: cruise, brake for an event or the gate, resume
-      let target = CRUISE * (0.93 + Math.sin(t * 0.35) * 0.05);
-      let stopD: number | null = null;
-      if (ev && !ev.released) stopD = ev.D - ev.props.gap - 2.4;
-      else if (gate && !props.entering) stopD = gate.D - 15;
-      if (props.entering) target = 7;
-      if (stopD !== null) {
-        const rem = stopD - dist;
-        target = rem < 0.15 ? 0 : Math.min(target, Math.sqrt(2 * 8 * Math.max(0, rem)) + 0.2);
+      // ---- where should the car be (server clock), and how fast
+      const arrived = live.arrived || props.entering;
+      const sStar = pinS ?? (live.arrived ? track.L : track.sOfT(clamp(live.progress, 0, 1) * track.total));
+      const vl = track.vLim(sCar + 0.8);
+      const gap = sStar - sCar;
+      const boost = live.arrived ? 2.4 : clamp(1 + gap * 0.025, 1, 1.8);
+      let vcmd = track.vRef(sStar) + 0.55 * gap;
+      vcmd = clamp(vcmd, 0, Math.max(vl * boost, 0));
+      if (gap < -1) vcmd = Math.min(vcmd, vl * 0.5);
+      if (ev && !ev.released) {
+        const stopD = ev.S - ev.props.gap - 2.4;
+        const rem = stopD - sCar;
+        vcmd = rem < 0.15 ? 0 : Math.min(vcmd, Math.sqrt(2 * 8 * Math.max(0, rem)) + 0.2);
       }
-      const dv = target - speed;
-      speed += Math.max(-16 * dt, Math.min(dv, 4.2 * dt));
-      if (speed < 0.02 && target === 0) speed = 0;
-      dist += speed * dt;
-      if (ev && !ev.stopped && !ev.released && speed < 0.4 && stopD !== null && stopD - dist < 1) {
+      if (gate && !props.entering) {
+        const rem = track.L + 14 - 15 - sCar;
+        vcmd = rem < 0.15 ? 0 : Math.min(vcmd, Math.sqrt(2 * 7 * Math.max(0, rem)) + 0.2);
+      }
+      if (props.entering) vcmd = 0;
+      if (holdV !== null) vcmd = holdV;
+      const dv = vcmd - speed;
+      speed += clamp(dv, -6.5 * dt, 3.1 * dt);
+      if (speed < 0.02 && vcmd === 0) speed = 0;
+      sCar += speed * dt;
+      if (!gate) sCar = Math.min(sCar, track.L);
+      if (ev && !ev.stopped && !ev.released && speed < 0.4 && ev.S - ev.props.gap - 2.4 - sCar < 1) {
         ev.stopped = true;
         props.onStopped?.(ev.id);
       }
+      const acc = (speed - lastV) / Math.max(dt, 0.001);
+      lastV = speed;
+      accSm += (acc - accSm) * Math.min(1, dt * 5);
+      live.s = sCar;
+      live.v = speed;
 
-      // ---- world scroll
-      world.scroll.position.z = dist % PERIOD;
-
-      // ---- player
-      const targetX = MY_LANE;
-      const sway = speed > 1 ? Math.sin(t * 0.55) * 0.12 + Math.sin(t * 1.3) * 0.04 : 0;
-      const nx = targetX + sway;
-      const steer = (nx - carX) / Math.max(dt, 0.001);
-      carX += (nx - carX) * Math.min(1, dt * 3);
-      lastSteer += (Math.max(-1, Math.min(1, steer * 0.25)) - lastSteer) * Math.min(1, dt * 6);
-      car.position.set(carX, Math.sin(t * 17) * 0.004 * Math.min(1, speed / 6), 0);
-      car.rotation.y = -lastSteer * 0.05;
-      cockpit.steer(lastSteer * 0.7);
-
-      // ---- gate pose
-      if (gate) {
-        gate.g.group.position.set(0, 0, -(gate.D - dist));
-        const tgt = props.entering ? 1 : 0;
-        gate.open += (tgt - gate.open) * Math.min(1, dt * 4);
-        gate.g.setOpen(gate.open);
+      // ---- bus stops: pull in to the kerb, doors, the people
+      let dwellName: string | null = null;
+      let curbWant = 0;
+      for (const sr of stopRigs) {
+        const near = sCar - sr.s;
+        if (near > -34 && near < 14) curbWant = 0.5;
+        if (sr.state === 'before' && Math.abs(near) < 1.6 && speed < 0.35) {
+          sr.state = 'dwell';
+          sr.arrivedAt = t;
+        }
+        if (sr.state === 'dwell') {
+          dwellName = sr.name;
+          if (near > 6) sr.state = 'after';
+        }
+        sr.rig.update(sr.state === 'before' ? -1 : sr.state === 'after' ? 99 : t - sr.arrivedAt);
       }
+      live.stop = dwellName;
+      let doorWant = 0;
+      for (const sr of stopRigs) {
+        if (sr.state === 'dwell') {
+          const td = t - sr.arrivedAt;
+          doorWant = td < 0.4 ? 0 : td > 4.6 ? 0 : 1;
+        }
+      }
+      doorOpen += (doorWant - doorOpen) * Math.min(1, dt * 4);
+      busRig?.setDoor(doorOpen);
+      latCar += (curbWant - latCar) * Math.min(1, dt * 1.2);
+
+      // ---- streets
+      updateStreets();
+
+      // ---- ground colour follows the district
+      {
+        const [mx, my] = track.mapAt(sCar);
+        const sty: Style = districtAt(mx, my);
+        groundWant.set(STYLE_GROUND[sty]);
+        groundCol.lerp(groundWant, Math.min(1, dt * 0.6));
+        groundMat.color.copy(groundCol);
+      }
+
+      // ---- player pose: on the lane path, leaning into the turn, nose dipping under braking, a little bob
+      const here = track.at(sCar, LANE_OFFSET + latCar);
+      const kap = track.kap[Math.min(track.kap.length - 1, Math.round(sCar))] ?? 0;
+      const wb = WHEELBASE[kind] ?? 2.7;
+      const steerTarget = clamp(Math.atan(wb * kap) * 1.4, -0.6, 0.6);
+      steerSm += (steerTarget - steerSm) * Math.min(1, dt * 7);
+      const sway = speed > 1 && Math.abs(kap) < 0.002 ? Math.sin(t * 0.55) * 0.1 + Math.sin(t * 1.3) * 0.035 : 0;
+      const yawJit = sway * 0.05;
+      car.position.set(here.x + Math.cos(here.psi) * sway, 0, here.z + Math.sin(here.psi) * sway);
+      car.rotation.y = -here.psi - yawJit;
+      const roll = clamp(speed * speed * kap * (isBus ? 0.013 : 0.02), -0.1, 0.1);
+      const pitch = clamp(accSm * 0.0055, -0.05, 0.05);
+      rollSm += (roll - rollSm) * Math.min(1, dt * 5);
+      pitchSm += (pitch - pitchSm) * Math.min(1, dt * 6);
+      const vf = Math.min(1, speed / 8);
+      const bob = (Math.sin(t * 11) * 0.5 + Math.sin(t * 17.3 + 1) * 0.5) * 0.007 * vf + (Math.sin(t * 2.1) * 0.004 + 0.004) * vf;
+      rig.position.y = bob;
+      rig.rotation.z = rollSm;
+      rig.rotation.x = pitchSm;
+      // wheels
+      spin += speed * dt;
+      kit.wheels.forEach((w, i) => {
+        wheelO.position.set(w.x, w.r, w.z);
+        wheelO.rotation.set(-spin / w.r, w.front ? -steerSm : 0, 0, 'YXZ');
+        wheelO.scale.set(w.wid, w.r, w.r);
+        wheelO.updateMatrix();
+        wheels.setMatrixAt(i, wheelO.matrix);
+      });
+      wheels.instanceMatrix.needsUpdate = true;
+      cockpit.steer(clamp(steerSm / 0.45, -1, 1));
+
+      // ---- event props
       if (ev) {
-        if (ev.released) ev.shift -= ev.props.leaves * dt;
-        const z = -(ev.D - dist) + ev.shift;
-        ev.props.group.position.set(0, 0, z);
+        if (ev.released) ev.fwd += ev.props.leaves * dt;
+        const pe = track.at(ev.S + ev.fwd, 0);
+        ev.props.group.position.set(pe.x, 0, pe.z);
+        ev.props.group.rotation.y = -pe.psi;
         ev.props.update(dt, t - ev.t0, ev.released, ev.ok);
-        if (ev.released && (z > 30 || z < -200)) {
+        if (ev.released && (ev.S + ev.fwd - sCar > 200 || ev.S + ev.fwd - sCar < -50)) {
           ev.props.dispose();
           root.remove(ev.props.group);
           ev = null;
         }
       }
+      if (gate) {
+        const tgt = props.entering ? 1 : 0;
+        gate.open += (tgt - gate.open) * Math.min(1, dt * 4);
+        gate.g.setOpen(gate.open);
+      }
 
-      // ---- NPC traffic
+      // ---- NPC traffic (ring buffer around the car, mapped onto the track; none inside junctions)
       for (const n of npcs) {
         n.z += (speed - n.v) * dt;
         if (n.z > 45) n.z -= RING_LEN;
@@ -446,9 +769,12 @@ function Rig(p: DriveSceneProps) {
       }
       for (const k of kinds) npcMesh.get(k)!.count = 0;
       for (const n of npcs) {
+        const s = sCar - n.z;
+        if (s < 0 || s > track.L - 8 || inJunction(s, 22)) continue;
+        const pn = track.at(s, n.lane);
         const im = npcMesh.get(n.kind)!;
-        dummy.position.set(n.lane, 0, n.z);
-        dummy.rotation.set(0, n.v < 0 ? Math.PI : 0, 0);
+        dummy.position.set(pn.x, 0, pn.z);
+        dummy.rotation.set(0, -pn.psi + (n.v < 0 ? Math.PI : 0), 0);
         dummy.scale.setScalar(1);
         dummy.updateMatrix();
         const i = im.count++;
@@ -459,6 +785,31 @@ function Rig(p: DriveSceneProps) {
         const im = npcMesh.get(k)!;
         im.instanceMatrix.needsUpdate = true;
         if (im.instanceColor) im.instanceColor.needsUpdate = true;
+      }
+
+      // ---- slow-downs: a vehicle ahead in our lane closes in, we sit behind it, then it pulls away
+      {
+        let gapAhead = 999;
+        let leadKind = 0;
+        track.slows.forEach((sl, i) => {
+          const d1 = sl.sa - 40;
+          const d2 = sl.sb + 55;
+          if (sCar < d1 || sCar > d2) return;
+          leadKind = i;
+          if (sCar < sl.sa) gapAhead = 11 + (1 - smooth((sCar - d1) / 40)) * 62;
+          else if (sCar <= sl.sb) gapAhead = 11;
+          else gapAhead = 11 + smooth((sCar - sl.sb) / 55) * 80;
+        });
+        const showLead = gapAhead < 88 && !(ev && !ev.released);
+        const lv = leadKind % 2 === 0 || !leadBus ? lead : leadBus;
+        lead.visible = false;
+        if (leadBus) leadBus.visible = false;
+        if (showLead && !inJunction(sCar + gapAhead, 6)) {
+          const pl = track.at(sCar + gapAhead + 2.6, LANE_OFFSET);
+          lv.position.set(pl.x, 0, pl.z);
+          lv.rotation.y = -pl.psi;
+          lv.visible = true;
+        }
       }
 
       // ---- other players: overtake us in the fast lane
@@ -478,10 +829,10 @@ function Rig(p: DriveSceneProps) {
           }
           const sl = otherPool[s];
           sl.mesh.geometry = vehicleGeometry(o.look.kind === 'bike' ? 'moto' : o.look.kind);
-          (sl.mesh.material as MeshLambertMaterial).color.set(o.look.color);
+          (sl.mesh.material as MeshLambertMaterial).color.set(o.look.kind === 'bus' ? '#ffffff' : o.look.color);
         });
       }
-      const tagEls = tagLayer ? Array.from(tagLayer.children) as HTMLElement[] : [];
+      const tagEls = tagLayer ? (Array.from(tagLayer.children) as HTMLElement[]) : [];
       const tagById = new Map(tagEls.map((e) => [e.dataset.id ?? '', e]));
       const sz = gl.domElement.clientWidth;
       const sh = gl.domElement.clientHeight;
@@ -490,17 +841,20 @@ function Rig(p: DriveSceneProps) {
         const s = slotOf.get(o.id);
         if (s === undefined) continue;
         const sl = otherPool[s];
-        const vo = CRUISE + 4 + (hash(o.id) % 5) * 0.2;
+        const vo = 15 + 4 + (hash(o.id) % 5) * 0.2;
         if (!hideOthers) sl.z += (speed - vo) * dt;
         if (sl.z < RING_FAR) sl.z += RING_LEN * 0.8;
         if (sl.z > 45) sl.z = 45 - (sl.z - 45);
-        const show = !hideOthers && sl.z < 30 && sl.z > -120 && !(sl.z > -6 && sl.z < 6);
+        const so = sCar - sl.z;
+        const show = !hideOthers && sl.z < 30 && sl.z > -120 && !(sl.z > -6 && sl.z < 6) && so > 0 && so < track.L - 8 && !inJunction(so, 22);
         sl.mesh.visible = show;
-        sl.mesh.position.set(LANE_IN, 0, sl.z);
+        const po = track.at(so, LANE_OFFSET - (LANE_OFFSET - LANE_IN));
+        sl.mesh.position.set(po.x, 0, po.z);
+        sl.mesh.rotation.y = -po.psi;
         const el = tagById.get(o.id);
         if (el) {
           if (show && sl.z < 4 && sl.z > -48) {
-            _tmp.set(LANE_IN, 2.1, sl.z).project(cam);
+            _tmp.set(po.x, 2.1, po.z).project(cam);
             if (_tmp.z < 1) {
               const tx = (_tmp.x * 0.5 + 0.5) * sz;
               const ty = (-_tmp.y * 0.5 + 0.5) * sh;
@@ -510,84 +864,141 @@ function Rig(p: DriveSceneProps) {
           } else el.style.opacity = '0';
         }
       }
-      // nearer cars keep their tag; a farther tag that would overlap one already shown is hidden
       tagPlaced.sort((a, b) => b.z - a.z);
       const tagShown: { x: number; y: number; w: number }[] = [];
-      for (const t of tagPlaced) {
-        if (!t.el.dataset.w) t.el.dataset.w = String(t.el.offsetWidth || 80); // measured once, not every frame
-        const w = Number(t.el.dataset.w);
-        const clash = tagShown.some((q) => Math.abs(q.x - t.x) < (q.w + w) / 2 + 4 && Math.abs(q.y - t.y) < 26);
-        t.el.style.opacity = clash ? '0' : String(t.op);
-        if (!clash) tagShown.push({ x: t.x, y: t.y, w });
+      for (const tg of tagPlaced) {
+        if (!tg.el.dataset.w) tg.el.dataset.w = String(tg.el.offsetWidth || 80);
+        const w = Number(tg.el.dataset.w);
+        const clash = tagShown.some((q) => Math.abs(q.x - tg.x) < (q.w + w) / 2 + 4 && Math.abs(q.y - tg.y) < 26);
+        tg.el.style.opacity = clash ? '0' : String(tg.op);
+        if (!clash) tagShown.push({ x: tg.x, y: tg.y, w });
       }
 
-      // ---- signs
+      // ---- signs on the right-hand verge, facing the driver
       for (const sg of signs) {
-        sg.z += speed * dt;
-        if (sg.z > 14) {
-          sg.z -= SIGN_GAP * signs.length;
-          const f = signText(sg.z);
-          sg.s.setText(f.l1, f.l2);
+        while (sg.at < sCar - 16) sg.at += SIGN_GAP * signs.length;
+        while (sg.at > sCar + SIGN_GAP * signs.length) sg.at -= SIGN_GAP * signs.length;
+        const sv = hasStreet(sg.at, 20) && !inJunction(sg.at, 30);
+        sg.s.group.visible = sv;
+        if (sv) {
+          const f = signFor(sg.at);
+          const key = f.l1 + '|' + f.l2;
+          if (key !== sg.key) {
+            sg.key = key;
+            sg.s.setText(f.l1, f.l2);
+          }
+          const ps = track.at(sg.at, 8.9);
+          sg.s.group.position.set(ps.x, 0, ps.z);
+          sg.s.group.rotation.y = -ps.psi;
         }
-        sg.s.group.position.z = sg.z;
       }
 
-      // ---- cameras
+      // ---- cameras (all in the track's own frame so the view swings through the turns)
       const mode = props.cam;
-      const kind = props.vehicle.kind;
       const small = kind === 'moto' || kind === 'bike' || kind === 'keke';
-      const arrived = live.arrived || props.entering;
-      // field of view from the horizontal view we want, so phones (tall) and desktops (wide) frame the car the same way
       const asp = Math.max(0.3, cam.aspect);
-      const vf = (hdeg: number) => Math.min(88, (2 * Math.atan(Math.tan((hdeg * Math.PI) / 360) / asp) * 180) / Math.PI);
-      let fov = vf(54);
-      if (arrived && gate) {
-        // gate shot: behind and to the left of the car, the arch ahead
-        const gz = -(gate.D - dist);
-        wantPos.set(carX - 4.2 + Math.sin(t * 0.25) * 0.5, 3.2, 10.5);
-        wantLook.set(1.2, 3.0, gz + 2);
-        fov = vf(66);
+      const vfov = (hdeg: number) => Math.min(88, (2 * Math.atan(Math.tan((hdeg * Math.PI) / 360) / asp) * 180) / Math.PI);
+      const sp = clamp(speed / 16, 0, 1);
+      let fov = vfov(54) + sp * 3;
+      let snapInside = false;
+      const arrivedShot = arrived && (place || gate);
+      if (arrivedShot) {
+        // arrival shot: behind and to the left of the car, the destination ahead on the right
+        const carNow = track.at(sCar, LANE_OFFSET + latCar);
+        const fx = Math.sin(carNow.psi);
+        const fz = -Math.cos(carNow.psi);
+        const rx = Math.cos(carNow.psi);
+        const rz = Math.sin(carNow.psi);
+        const back = isBus ? 17 : 13;
+        const left = isBus ? 3.2 : 2.2;
+        wantPos.set(carNow.x - fx * back - rx * left + Math.sin(t * 0.25) * 0.4 * rx, isBus ? 5.6 : 4.8, carNow.z - fz * back - rz * left);
+        if (place && !gate) {
+          // look between the car and the destination, so both stay in the picture
+          wantLook.set(carNow.x * 0.62 + placeCenter.x * 0.38 + fx * 2.5, 1.7, carNow.z * 0.62 + placeCenter.z * 0.38 + fz * 2.5);
+        } else {
+          const gp = track.at(track.L + 14, 0);
+          wantLook.set(gp.x, 3.0, gp.z);
+        }
+        fov = vfov(isBus ? 78 : 72);
         if (props.entering) {
-          wantPos.set(carX - 3.4, 2.8, 7);
-          wantLook.set(1.8, 2.8, gz - 2);
+          // push in on the entrance
+          wantPos.set(carNow.x + fx * 7 + rx * 6, 2.6, carNow.z + fz * 7 + rz * 6);
+          wantLook.set(placeCenter.x + fx * 2, 2.8, placeCenter.z + fz * 2);
+          fov = vfov(58);
         }
       } else if (mode === 'chase') {
-        wantPos.set(carX - 0.35, small ? 2.6 : 3.4, small ? 7.8 : 10);
-        wantLook.set(carX - 1.2, 1.0, -12);
-        fov = vf(small ? 50 : 56);
+        const back = isBus ? 15.5 : small ? 7.8 : 10;
+        const pb = track.at(sCar - back, LANE_OFFSET + latCar - 0.35);
+        wantPos.set(pb.x, (isBus ? 5.2 : small ? 2.6 : 3.4) + Math.abs(rollSm) * 3, pb.z);
+        // look between the car and the road ahead, so a turn swings the view without losing the car
+        const pl = track.at(sCar + 12, LANE_OFFSET - 1.0);
+        const w = 0.42;
+        wantLook.set(car.position.x + (pl.x - car.position.x) * w, isBus ? 1.6 : 1.0, car.position.z + (pl.z - car.position.z) * w);
+        fov = vfov(small ? 50 : isBus ? 62 : 56) + sp * 3;
       } else if (mode === 'side') {
-        wantPos.set(0.3, 1.5, 3.2 + Math.sin(t * 0.4) * 0.3);
-        wantLook.set(carX, 1.1, 0);
-        fov = Math.min(100, (2 * Math.atan(Math.tan(((small ? 40 : 52) * Math.PI) / 360) / asp) * 180) / Math.PI);
+        const pb = track.at(sCar - (isBus ? 6.5 : 3.2) + Math.sin(t * 0.4) * 0.3, 0.3);
+        wantPos.set(pb.x, isBus ? 2.4 : 1.5, pb.z);
+        wantLook.set(car.position.x, isBus ? 1.7 : 1.1, car.position.z);
+        fov = Math.min(100, (2 * Math.atan(Math.tan(((small ? 40 : isBus ? 62 : 52) * Math.PI) / 360) / asp) * 180) / Math.PI);
+      } else if (isBus) {
+        // passenger seat: the aisle seat of the first row on the right, looking down the aisle and out of the windscreen
+        car.updateMatrixWorld(true);
+        tmpV.set(0.56, 1.95, -2.64);
+        rig.localToWorld(tmpV);
+        wantPos.copy(tmpV);
+        const pl = track.at(sCar + 26, LANE_OFFSET - 1.1 + steerSm * 1.5);
+        wantLook.set(pl.x, 1.66, pl.z);
+        fov = vfov(40);
+        snapInside = true;
       } else {
-        wantPos.set(carX - (small ? 0 : 0.38), small ? 1.45 : 1.24, small ? 0.15 : 0.35);
-        wantLook.set(carX - (small ? 0 : 0.38) + lastSteer * 1.5, small ? 1.2 : 1.1, -22);
-        fov = vf(small ? 62 : 66);
+        car.updateMatrixWorld(true);
+        tmpV.set(small ? 0 : -0.38, small ? 1.45 : 1.24, small ? 0.15 : 0.35);
+        rig.localToWorld(tmpV);
+        wantPos.copy(tmpV);
+        const pl = track.at(sCar + 24, LANE_OFFSET - (small ? 0 : 0.38) + steerSm * 1.2);
+        wantLook.set(pl.x, small ? 1.2 : 1.1, pl.z);
+        fov = vfov(small ? 62 : 66) + sp * 2;
+        snapInside = true;
       }
-      const k = 1 - Math.exp(-dt * (camSnap > 0 ? 14 : mode === 'inside' ? 9 : 5));
+      if (topH !== null) {
+        wantPos.set(car.position.x, topH, car.position.z + 0.01);
+        wantLook.set(car.position.x, 0, car.position.z);
+        cam.up.set(0, 0, -1);
+        camSnap = 1;
+      } else cam.up.set(0, 1, 0);
+      const kk = 1 - Math.exp(-dt * (camSnap > 0 ? 14 : snapInside ? 14 : 5.5));
       camSnap = Math.max(0, camSnap - dt);
-      camPos.lerp(wantPos, k);
-      camLook.lerp(wantLook, k);
+      if (snapInside && camSnap <= 0) camPos.copy(wantPos);
+      else camPos.lerp(wantPos, kk);
+      camLook.lerp(wantLook, 1 - Math.exp(-dt * (camSnap > 0 ? 14 : snapInside ? 10 : 6)));
       cam.position.copy(camPos);
-      if (mode === 'inside' && !arrived) cam.position.y += Math.sin(t * 13) * 0.003 * Math.min(1, speed / 6);
+      if (snapInside && !arrivedShot) cam.position.y += Math.sin(t * 13) * 0.003 * Math.min(1, speed / 6);
       cam.lookAt(camLook);
       if (Math.abs(cam.fov - fov) > 0.05) {
-        cam.fov += (fov - cam.fov) * k;
+        cam.fov += (fov - cam.fov) * kk;
         cam.updateProjectionMatrix();
       }
-      const inside = mode === 'inside' && !arrived;
-      cockpit.group.visible = inside;
+      const inside = snapInside && !arrivedShot;
+      cockpit.group.visible = inside && !isBus;
       carMesh.visible = !inside;
+      wheels.visible = carMesh.visible;
+      if (busRig) {
+        busRig.interior.visible = inside;
+        busRig.doors.visible = !inside;
+        if (board) board.mesh.visible = !inside;
+      }
       shadow.visible = !inside;
       beams.forEach((b, i) => (b.visible = (wide ? i === 0 : true) && !inside));
       if (stars) stars.position.copy(cam.position);
+      ground.position.x = cam.position.x;
+      ground.position.z = cam.position.z;
     };
 
     st.current = {
       tick,
-      light: applyLight,
       api,
       dispose() {
+        if (placeTimer !== null) window.clearTimeout(placeTimer);
         scene.remove(root);
         cam.remove(cockpit.group);
         scene.fog = null;
@@ -596,9 +1007,15 @@ function Rig(p: DriveSceneProps) {
         ev?.props.dispose();
         gate?.g.dispose();
         cockpit.dispose();
-        world.dispose();
+        pool.forEach((e) => e.street?.dispose());
+        place?.dispose();
+        roundMuseum?.dispose();
+        busRig?.dispose();
+        board?.dispose();
+        stopRigs.forEach((s) => s.rig.dispose());
         owned.forEach((o) => o.dispose());
         npcMesh.forEach((m) => m.dispose());
+        wheels.dispose();
         signs.forEach((sg) => sg.s.board.geometry.dispose());
       },
     };
@@ -610,7 +1027,7 @@ function Rig(p: DriveSceneProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lookKey, scene, camera, gl]);
 
-  // dev + context loss
+  // context loss
   useEffect(() => {
     const el = gl.domElement;
     const lost = (e: Event) => {
@@ -626,9 +1043,6 @@ function Rig(p: DriveSceneProps) {
   });
   return null;
 }
-
-const ROAD_HALF_SIGN = 8.9;
-const _tmp = new Vector3();
 
 export default function DriveScene(props: DriveSceneProps) {
   return (

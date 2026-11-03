@@ -756,6 +756,19 @@ export function buildCity(L: CityLayout): CityMeshes {
   V.forEach((v, i) => vehicles.setColorAt(i, _c.set(v.color)));
   group.add(vehicles);
   countTris(vGeo, V.length);
+  // ECTS buses: yellow with a red band (a second instanced mesh that follows the buses)
+  const busSlot: number[] = [];
+  let nBus = 0;
+  V.forEach((v) => busSlot.push(v.kind === 'bus' ? nBus++ : -1));
+  const bandGeo = keep(new BoxGeometry(1.02, 0.14, 0.52));
+  bandGeo.translate(0, 0.25, 0);
+  bandGeo.deleteAttribute('uv');
+  const bandMat = keep(new MeshStandardMaterial({ color: '#c2372c', flatShading: true, roughness: 0.5, metalness: 0.05 }));
+  const bands = new InstancedMesh(bandGeo, bandMat, Math.max(1, nBus));
+  bands.name = 'bus-bands';
+  bands.count = nBus;
+  group.add(bands);
+  countTris(bandGeo, nBus);
   const SIZE: Record<Vehicle['kind'], [number, number, number]> = { car: [0.36, 0.26, 0.2], bus: [0.52, 0.36, 0.24], keke: [0.2, 0.26, 0.15] };
   const placeVehicle = (i: number, v: Vehicle, s: number) => {
     let x: number, y: number, a: number;
@@ -777,6 +790,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     _o.scale.set(l, h, w);
     _o.updateMatrix();
     vehicles.setMatrixAt(i, _o.matrix);
+    if (busSlot[i] >= 0) bands.setMatrixAt(busSlot[i], _o.matrix);
   };
   const animate = (t: number) => {
     for (let i = 0; i < V.length; i++) {
@@ -794,6 +808,7 @@ export function buildCity(L: CityLayout): CityMeshes {
       placeVehicle(i, v, s);
     }
     vehicles.instanceMatrix.needsUpdate = true;
+    bands.instanceMatrix.needsUpdate = true;
   };
   animate(0);
 
@@ -817,10 +832,14 @@ export function buildCity(L: CityLayout): CityMeshes {
 /* ------------------------------------------------------------------ */
 /* Landmarks                                                            */
 /* ------------------------------------------------------------------ */
-function buildLandmarks(b: HomeBuilder) {
+/** Which landmark pieces to draw: all of them for the city, or only the keys a place needs (`only`). Keys: museum, palace,
+ *  market (or market:<id>), uniben, stadium, ubth, hub, airport, police, bridge, parks (or park:<n>), ramat, shrine, farm. */
+export function buildLandmarks(b: HomeBuilder, only?: string[]) {
+  const want = (k: string) => !only || only.includes(k);
   const at2 = (mx: number, my: number, yaw = 0) => b.setFrame(W(mx), 0, W(my), yaw);
 
   // --- Benin National Museum: the round drum in the middle of King's Square
+  if (want('museum')) {
   at2(500, 500);
   b.cyl(1.05, 1.1, 0.06, 0, 0, 0, '#e8dcc2', { seg: 20 });
   b.cyl(0.78, 0.8, 0.62, 0, 0.06, 0, '#efe4cc', { seg: 16 });
@@ -835,7 +854,9 @@ function buildLandmarks(b: HomeBuilder) {
     b.box(0.18, 0.11, 0.01, x + 0.09, 0.56, 1.15, '#1f8a4c');
   }
 
+  }
   // --- Oba's Palace: walled compound W of King's Square, steep pyramid roofs, bronze bird
+  if (want('palace')) {
   {
     // compound wall along the polygon
     b.resetFrame();
@@ -881,8 +902,11 @@ function buildLandmarks(b: HomeBuilder) {
     b.box(0.06, 0.36, 0.56, 1.66, 0, -0.1, '#d9a441');
   }
 
+  }
   // --- Oba Market: big zinc sheds in the middle of the stalls
+  if (want('market') || only?.some((k) => k.startsWith('market:'))) {
   for (const [mx, my, mr, id] of MARKETS) {
+    if (only && !only.includes('market:' + id)) continue;
     at2(mx, my, 0.15);
     const big = id === 'oba_market';
     const l = (big ? 2.0 : 1.2) * (mr / 22) * 1.2;
@@ -896,7 +920,9 @@ function buildLandmarks(b: HomeBuilder) {
     }
   }
 
+  }
   // --- UNIBEN gate on the Ugbowo road (campus to the east of the road)
+  if (want('uniben')) {
   at2(476, 128, Math.PI / 2 - 0.15);
   for (const z of [-0.55, 0.55]) {
     b.box(0.16, 0.75, 0.16, 0, 0, z, '#f2efe6');
@@ -910,12 +936,16 @@ function buildLandmarks(b: HomeBuilder) {
   b.box(0.72, 0.5, 0.57, 0, 0.35, 0, '#9fc3d8', { layer: 'glow' });
   b.box(0.72, 0.3, 0.57, 0, 1.05, 0, '#9fc3d8', { layer: 'glow' });
   b.box(0.76, 0.05, 0.6, 0, 1.5, 0, '#3f7d4a');
+  }
   // stadium stands
+  if (want('stadium')) {
   at2(STADIUM.x, STADIUM.y);
   b.box(0.2, 0.22, 1.6, -1.95, 0, 0, '#d8d2c4');
   b.box(0.2, 0.22, 1.6, 1.95, 0, 0, '#d8d2c4');
 
+  }
   // --- UBTH: tall white teaching hospital with a red cross on the roof
+  if (want('ubth')) {
   at2(421, 170);
   b.box(1.9, 1.35, 0.75, 0, 0, 0, '#f2f4f5');
   b.box(0.7, 0.8, 1.4, -0.75, 0, 0.55, '#eef1f2');
@@ -926,7 +956,9 @@ function buildLandmarks(b: HomeBuilder) {
   b.box(0.14, 0.06, 0.5, 0, 1.4, 0, '#d63c32');
   b.box(0.5, 0.22, 0.06, 0, 0.82, 0.4, '#d63c32');
 
+  }
   // --- Bronze Tech Hub (V1-3): glass coworking block, laterite-clad wing, solar roof, gold sign
+  if (want('hub')) {
   at2(TECH_HUB.x, TECH_HUB.y, 0.1);
   b.box(2.2, 0.03, 1.9, 0, 0.01, 0.2, '#b8aea2');
   b.box(1.4, 0.95, 0.9, -0.3, 0, 0, '#dfe6e8');
@@ -940,7 +972,9 @@ function buildLandmarks(b: HomeBuilder) {
   b.box(0.8, 0.04, 0.04, -0.3, 0.47, 0.5, '#d9a441', { layer: 'glow' });
   for (const x of [-0.8, -0.4, 0, 0.4]) b.box(0.36, 0.04, 0.6, x, 1.02, -0.04, '#24407e');
 
+  }
   // --- Benin Airport: runway, terminal, tower and a parked plane
+  if (want('airport')) {
   {
     const { x1, y1, x2, y2, w } = RUNWAY;
     const ang = Math.atan2(y2 - y1, x2 - x1);
@@ -965,7 +999,9 @@ function buildLandmarks(b: HomeBuilder) {
     b.box(0.14, 0.02, 0.42, -1.1, 0.27, -0.05, '#e6e6e2');
   }
 
+  }
   // --- Police Command HQ (GRA): blue-and-white block with a flag
+  if (want('police')) {
   at2(497, 610);
   b.box(1.5, 0.62, 0.9, 0, 0, 0, '#eef2f7');
   b.box(1.52, 0.1, 0.92, 0, 0.32, 0, '#1d4f9c');
@@ -976,26 +1012,35 @@ function buildLandmarks(b: HomeBuilder) {
   b.box(0.1, 0.16, 0.012, 1.05, 0.92, 0.55, '#ffffff');
   b.box(0.1, 0.16, 0.01, 1.15, 0.92, 0.55, '#1f8a4c');
 
+  }
   // --- Bridge over the Ikpoba on Akpakpava Rd
+  if (want('bridge')) {
   b.setFrame(W(BRIDGE.x), 0, W(BRIDGE.y), -BRIDGE.a);
   b.box(2.6, 0.07, 1.5, 0, 0.12, 0, '#a7a49d');
   for (const z of [-0.72, 0.72]) b.box(2.6, 0.12, 0.06, 0, 0.19, z, '#e3ded3');
   for (const x of [-0.7, 0.7]) b.box(0.18, 0.13, 1.3, x, 0, 0, '#8d8a84');
   b.box(2.5, 0.01, 1.2, 0, 0.19, 0, '#4a4e57');
 
+  }
   // --- Motor parks: shelters on the pads
-  for (const [px, py, pr] of [[452, 282, 13], [398, 52, 12], [705, 400, 10], [828, 352, 12]] as const) {
+  if (want('parks') || only?.some((k) => k.startsWith('park:'))) {
+  for (const [pi, [px, py, pr]] of ([[452, 282, 13], [398, 52, 12], [705, 400, 10], [828, 352, 12]] as const).entries()) {
+    if (only && !only.includes('parks') && !only.includes('park:' + pi)) continue;
     at2(px, py + pr * 0.55);
     for (const x of [-pr * 0.05, pr * 0.05]) b.box(0.05, 0.32, 0.05, x, 0, 0, '#7d8389');
     b.box(pr * 0.14, 0.04, 0.45, 0, 0.32, 0, '#d63c32');
   }
 
+  }
   // --- Ramat Park: a small monument on the roundabout
+  if (want('ramat')) {
   at2(RAMAT.x, RAMAT.y);
   b.cyl(0.2, 0.25, 0.12, 0, 0.06, 0, '#e3ded3', { seg: 8 });
   b.box(0.08, 0.6, 0.08, 0, 0.18, 0, '#b0793a');
 
+  }
   // --- B2 Baba's Shrine in the grove on the outskirts: mud hut with a thatch cone, red and white cloth on poles, a fire
+  if (want('shrine')) {
   at2(GROVE.x + 3, GROVE.y + 2);
   b.cyl(0.34, 0.36, 0.3, 0, 0, 0, '#9c5a3c', { seg: 8 });
   b.cyl(0, 0.5, 0.44, 0, 0.3, 0, '#c9a45a', { seg: 8 });
@@ -1007,14 +1052,17 @@ function buildLandmarks(b: HomeBuilder) {
   }
   b.cyl(0.1, 0.12, 0.03, 0.15, 0, 0.42, '#ff8a2a', { seg: 7 });
 
+  }
   // --- Iguobazuwa farm huts on the NW edge
+  if (want('farm')) {
   for (const [x, y] of [[60, 290], [95, 330], [48, 370]] as const) {
     at2(x, y);
     b.cyl(0.3, 0.3, 0.25, 0, 0, 0, '#c9874f', { seg: 7 });
     b.cyl(0, 0.42, 0.36, 0, 0.25, 0, '#c9a45a', { seg: 7 });
   }
 
-  // --- Exit sign gantries are HTML (readable text); add their posts here
+
+  }  // --- Exit sign gantries are HTML (readable text); add their posts here
   b.resetFrame();
 }
 

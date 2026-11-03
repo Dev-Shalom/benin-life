@@ -1,9 +1,10 @@
 // Dev page for the drive scene (dev server only, no session):
-//   /dev/drive?cam=chase|side|inside&h=14&mode=car&veh=camry_new&event=ambush|police|goslow|beggar&arrived=1&others=1&gfx=low&theme=dark
-//   from=ekenwan_room&to=benin_airport (place ids are only used for their names and map positions)
+//   /dev/drive?cam=chase|side|inside&h=14&mode=car|bus|keke|drop&veh=camry_new&event=ambush|police|goslow|beggar&arrived=1&others=1&gfx=low&theme=dark
+//   from=ekenwan_room&to=oba_market&total=90&p=0.4 (route between two places, trip seconds, progress) &s=<track metres> (start there)
 import { useMemo } from 'react';
 import { DriveView } from '../DriveView';
-import { routeRoads, type CamMode } from '../model';
+import type { CamMode } from '../model';
+import { buildTrack } from '../track';
 import type { DriveEvent } from '../../../api/drive';
 import { usePrefs } from '../../../lib/prefs';
 
@@ -49,6 +50,31 @@ const EVENTS: Record<string, DriveEvent> = {
   },
 };
 
+/** A few places of the real game (id, name, scene, map position) so the lab can drive between them. */
+const P = (id: string, name: string, scene: string, x: number, y: number) => ({ id, name, scene, x, y });
+const PLACES: Record<string, { id: string; name: string; scene: string; x: number; y: number }> = Object.fromEntries(
+  [
+    P('ekenwan_room', 'Ekenwan Face-Me-I-Face-You', 'home_face_me', 298, 562),
+    P('oba_market', 'Oba Market', 'market', 448, 452),
+    P('uniben', 'UNIBEN Ugbowo Campus', 'campus', 480, 125),
+    P('national_museum', 'Benin National Museum', 'museum', 500, 500),
+    P('oba_palace', 'Oba’s Palace', 'palace', 432, 512),
+    P('ubth', 'UBTH (Teaching Hospital)', 'hospital', 440, 165),
+    P('police_hq', 'Police Command HQ (GRA)', 'police', 510, 604),
+    P('mercy_clinic', 'Mercy Clinic', 'hospital', 560, 365),
+    P('bronze_tech_hub', 'Bronze Tech Hub', 'office', 535, 190),
+    P('benin_city_mall', 'Benin City Mall', 'mall', 575, 665),
+    P('mama_ebo', 'Mama Ebo Pepper Rice', 'buka', 405, 588),
+    P('babas_shrine', 'Baba’s Shrine', 'shrine', 760, 730),
+    P('ramat_park', 'Ramat Park Junction', 'motorpark', 680, 415),
+    P('aduwawa_park', 'Aduwawa Motor Park', 'motorpark', 820, 335),
+    P('santana_market', 'Santana Market', 'market', 560, 700),
+    P('golden_tulip', 'Golden Tulip Essential', 'hotel', 486, 670),
+    P('uselu_market', 'Uselu Market', 'market', 480, 235),
+    P('ogbemudia_stadium', 'Samuel Ogbemudia Stadium', 'stadium', 372, 532),
+  ].map((p) => [p.id, p]),
+);
+
 export default function DriveLab() {
   const q = useMemo(() => new URLSearchParams(window.location.search), []);
   const hour = Number(q.get('h') ?? 14);
@@ -63,16 +89,19 @@ export default function DriveLab() {
     if (g === 'low' || g === 'high') usePrefs.setState({ graphics: g });
   }, [q]);
   const now = Date.now();
-  const total = 80_000;
-  const prog = Number(q.get('p') ?? 0.4);
-  const from = { x: 461, y: 545 };
-  const to = { x: 330, y: 612 };
-  const roadsName = q.get('road');
-  const roads = useMemo(() => {
-    const r = routeRoads(from, to);
-    return roadsName ? [{ name: roadsName, f0: 0, f1: 1 }] : r;
+  const total = Number(q.get('total') ?? 90) * 1000;
+  const fromId = q.get('from') ?? 'ekenwan_room';
+  const toId = q.get('to') ?? 'oba_market';
+  const from = PLACES[fromId] ?? PLACES.ekenwan_room;
+  const to = PLACES[toId] ?? PLACES.oba_market;
+  const mode = q.get('mode') ?? 'car';
+  const veh = q.get('veh') ?? 'camry_new';
+  const track = useMemo(
+    () => buildTrack({ from, to, mode, totalSec: total / 1000, vehicleId: mode === 'car' ? veh : null }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roadsName]);
+    [fromId, toId, mode, total],
+  );
+  const prog = q.has('s') ? Math.min(0.999, track.tOfS(Number(q.get('s'))) / (total / 1000)) : Number(q.get('p') ?? 0.4);
   const ev = q.get('event');
   const arrived = q.has('arrived');
   return (
@@ -80,14 +109,17 @@ export default function DriveLab() {
       <DriveView
         trip={{
           key: 'lab',
-          fromName: q.get('fromName') ?? 'King’s Square',
-          toName: q.get('toName') ?? 'Benin Airport',
-          toScene: q.get('scene') ?? 'airport',
-          mode: q.get('mode') ?? 'car',
+          fromName: from.name,
+          toName: to.name,
+          toScene: to.scene,
+          toId: to.id,
+          toX: to.x,
+          toY: to.y,
+          mode,
           startedAt: now - total * prog,
           arrivesAt: now + total * (1 - prog),
-          vehicleId: q.get('veh') ?? 'camry_new',
-          roads,
+          vehicleId: veh,
+          track,
         }}
         arrived={arrived}
         hour={hour}
@@ -98,7 +130,7 @@ export default function DriveLab() {
         onMap={() => undefined}
         demo={{
           event: ev ? EVENTS[ev] : undefined,
-          startDist: Number(q.get('d') ?? 0),
+          startS: q.has('s') ? Number(q.get('s')) : undefined,
           stopped: q.has('stopped'),
           cam: (q.get('cam') as CamMode | null) ?? 'chase',
           others: q.has('others'),

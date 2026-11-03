@@ -13,7 +13,9 @@ import { useDrive } from '../../state/drive';
 import { useGame } from '../../state/game';
 import { useTier } from '../feel/quality';
 import { honk } from './horn';
-import { CAMS, CAM_LABEL, clock, roadAt, roadKey, vehicleFor, type CamMode, type RoadSeg } from './model';
+import { CAMS, CAM_LABEL, clock, roadAt, roadKey, vehicleFor, type CamMode } from './model';
+import { MiniMap } from './MiniMap';
+import type { Track } from './track';
 import type { DriveApi, DriveLive } from './engine/DriveScene';
 import { useDriveOthers } from './useOthers';
 import './drive3d.css';
@@ -25,11 +27,15 @@ export interface DriveTrip {
   fromName: string;
   toName: string;
   toScene: string;
+  toId: string;
+  toX: number;
+  toY: number;
   mode: string;
   startedAt: number;
   arrivesAt: number;
   vehicleId: string | null;
-  roads: RoadSeg[];
+  /** The real route: roads, turns, roundabout, timing (./track.ts). */
+  track: Track;
 }
 
 export interface DriveViewProps {
@@ -43,7 +49,7 @@ export interface DriveViewProps {
   onMap: () => void;
   onLost?: () => void;
   /** Dev lab / screenshots: no RPCs; show this event after a moment and answer it locally. */
-  demo?: { event?: DriveEvent; startDist?: number; stopped?: boolean; cam?: CamMode; others?: boolean };
+  demo?: { event?: DriveEvent; startS?: number; stopped?: boolean; cam?: CamMode; others?: boolean };
 }
 
 const KIND_ICON: Record<string, string> = { ambush: 'warning', police: 'shield', goslow: 'road', beggar: 'people' };
@@ -66,6 +72,10 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
   const [ready, setReady] = useState(false);
   const [left, setLeft] = useState(() => Math.max(0, (trip.arrivesAt - serverNow()) / 1000));
   const [progress, setProgress] = useState(0);
+  const [carS, setCarS] = useState(0);
+  const [carV, setCarV] = useState(0);
+  const [stopName, setStopName] = useState<string | null>(null);
+  const [miniOpen, setMiniOpen] = useState(false);
   const live = useRef<DriveLive>({ progress: 0, left: 0, arrived });
   const tripRef = useRef(trip);
   tripRef.current = trip;
@@ -85,7 +95,7 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
   const refresh = useGame((s) => s.refresh);
 
   const vehicle = useMemo(() => vehicleFor(trip.mode, trip.vehicleId, me.id), [trip.mode, trip.vehicleId, me.id]);
-  const road = roadKey(trip.roads);
+  const road = roadKey(trip.track.roads);
   const presenceOn = Boolean(cfg('drive.presence_on', true)) && !demo;
   const others = useDriveOthers(road, me, vehicle, presenceOn);
   const demoOthers = useMemo(
@@ -109,9 +119,13 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
       const total = Math.max(1, t.arrivesAt - t.startedAt);
       const p = Math.min(1, Math.max(0, (now - t.startedAt) / total));
       const l = Math.max(0, (t.arrivesAt - now) / 1000);
-      live.current = { progress: arrivedRef.current ? 1 : p, left: arrivedRef.current ? 0 : l, arrived: arrivedRef.current };
+      live.current = { ...live.current, progress: arrivedRef.current ? 1 : p, left: arrivedRef.current ? 0 : l, arrived: arrivedRef.current };
       setProgress(p);
       setLeft(l);
+      const lv = live.current;
+      setCarS(lv.s ?? 0);
+      setCarV(lv.v ?? 0);
+      setStopName(lv.stop ?? null);
     };
     tick();
     const id = window.setInterval(tick, 250);
@@ -249,7 +263,8 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
     window.setTimeout(onGoIn, 1100);
   };
 
-  const seg = roadAt(trip.roads, progress);
+  const seg = roadAt(trip.track.roads, Math.min(1, carS / Math.max(1, trip.track.L)));
+  const camLabel = cam === 'inside' && vehicle.kind === 'bus' ? 'Seat' : CAM_LABEL[cam];
   const showBottomLinks = !card && !outcome && !arrived && !event;
   const camIcon = cam === 'inside' ? 'eye' : 'camera';
 
@@ -262,15 +277,14 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
             tier={tier}
             vehicle={vehicle}
             cam={cam}
-            roads={trip.roads}
-            destName={trip.toName}
-            destScene={trip.toScene}
+            track={trip.track}
+            dest={{ id: trip.toId, name: trip.toName, scene: trip.toScene, x: trip.toX, y: trip.toY }}
             live={live}
             event={event ? { id: event.id, kind: event.kind } : null}
             resolved={resolved}
             entering={entering}
             others={tier === 'low' ? shownOthers.slice(0, 4) : shownOthers}
-            startAt={demo ? { dist: demo.startDist, stopped: demo.stopped } : undefined}
+            startAt={demo ? { s: demo.startS, stopped: demo.stopped } : undefined}
             onStopped={onStopped}
             onReady={(api: DriveApi) => {
               setReady(true);
@@ -287,7 +301,9 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
         </div>
       )}
 
+      <div className="drive-speed" style={{ ['--sp' as string]: String(Math.max(0, Math.min(0.5, (carV - 10) / 14))) }} aria-hidden="true" />
       <div className="drive__top">
+        <div className="drive__left">
         <div className="drive-chip" aria-live="off">
           <div className="drive-chip__route">
             <span>{trip.fromName}</span>
@@ -295,17 +311,19 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
             <span>{trip.toName}</span>
           </div>
           <div className="drive-chip__sub">
-            <span className="drive-chip__road">{arrived ? 'Arrived' : seg.name}</span>
+            <span className="drive-chip__road">{arrived ? 'Arrived' : stopName ? `Bus stop · ${stopName.replace(/ Stop$/, '')}` : seg.name}</span>
             {!arrived && <span className="drive-chip__time">{clock(left)}</span>}
           </div>
           <div className="drive-chip__bar" aria-hidden="true">
             <i style={{ width: `${Math.round((arrived ? 1 : progress) * 100)}%` }} />
           </div>
         </div>
+        <MiniMap track={trip.track} s={arrived ? trip.track.L : carS} open={miniOpen} onToggle={() => setMiniOpen((o) => !o)} fromName={trip.fromName} toName={trip.toName} />
+        </div>
         <div className="drive__ctrls">
-          <button type="button" className="drive-btn drive-btn--cam" onClick={cycleCam} aria-label={`Camera: ${CAM_LABEL[cam]}. Tap to change`}>
+          <button type="button" className="drive-btn drive-btn--cam" onClick={cycleCam} aria-label={`Camera: ${camLabel}. Tap to change`}>
             <Icon name={camIcon} size={18} />
-            <span>{CAM_LABEL[cam]}</span>
+            <span>{camLabel}</span>
           </button>
           <button type="button" className="drive-btn drive-btn--round" onClick={honk} aria-label="Horn">
             <Icon name="horn" size={20} />

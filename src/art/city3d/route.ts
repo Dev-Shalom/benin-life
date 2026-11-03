@@ -7,7 +7,12 @@ interface Graph {
   xs: number[];
   ys: number[];
   adj: number[][];
+  /** Index into ROUTE_LINES of the road each node sits on. */
+  roadOf: number[];
 }
+
+/** Road ids in graph order: the Ring Road first, then every mapGeo road (a node's `roadOf` indexes this). */
+export const ROUTE_LINES: string[] = ['ring', ...ROADS.map((r) => r.id)];
 
 let graph: Graph | null = null;
 
@@ -80,7 +85,7 @@ function build(): Graph {
         }
       }
   }
-  return { xs, ys, adj };
+  return { xs, ys, adj, roadOf };
 }
 
 function nearest(g: Graph, x: number, y: number): number {
@@ -98,6 +103,12 @@ function nearest(g: Graph, x: number, y: number): number {
 
 /** Polyline (map space) from one place to another along the roads. */
 export function roadRoute(from: { x: number; y: number }, to: { x: number; y: number }): Pt[] {
+  return roadRouteNodes(from, to).pts;
+}
+
+/** Same route with the road each point sits on (`line[i]` indexes ROUTE_LINES; -1 for the two place ends). The drive scene
+ *  reads this to name the roads, find the roundabout and plan its turns. */
+export function roadRouteNodes(from: { x: number; y: number }, to: { x: number; y: number }): { pts: Pt[]; line: number[] } {
   const g = (graph ??= build());
   const a = nearest(g, from.x, from.y);
   const b = nearest(g, to.x, to.y);
@@ -152,10 +163,16 @@ export function roadRoute(from: { x: number; y: number }, to: { x: number; y: nu
     }
   }
   const out: Pt[] = [[to.x, to.y]];
+  const line: number[] = [-1];
   if (dist[b] < Infinity) {
-    for (let u = b; u >= 0; u = prev[u]) out.push([g.xs[u], g.ys[u]]);
+    for (let u = b; u >= 0; u = prev[u]) {
+      out.push([g.xs[u], g.ys[u]]);
+      line.push(g.roadOf[u]);
+    }
   }
   out.push([from.x, from.y]);
+  line.push(-1);
   out.reverse();
-  return out;
+  line.reverse();
+  return { pts: out, line };
 }

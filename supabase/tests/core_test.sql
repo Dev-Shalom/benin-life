@@ -708,6 +708,8 @@ begin
   -- quote: bus time uses traffic, walk ignores it; risk_pct = chance at arrival time
   perform pg_temp.as_user('d');
   update profiles set location_id = 'ekenwan_room', cash = 50000, busy_until = null where id = v_d;
+  -- this group checks the game-minutes pace; the real-distance trip time (drive2_test.sql) is switched off here
+  update game_config set value = 'false' where key = 'drive.travel.real_time_enabled';
   q := travel_quote('ramat_park');
   v_km := (q->>'km')::numeric;
   v_tr := (q->>'traffic')::numeric;
