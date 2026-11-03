@@ -32,7 +32,7 @@ begin
   perform pg_temp.setc('drive.event_pct', '100'); perform pg_temp.setc('drive.max_per_day', '100'); perform pg_temp.setc('drive.max_per_trip', '5');
   perform pg_temp.setc('drive.cooldown_s', '0'); perform pg_temp.setc('drive.roll_gap_s', '0');
   perform pg_temp.setc('drive.min_progress_pct', '0'); perform pg_temp.setc('drive.max_progress_pct', '100');
-  perform pg_temp.setc('drive.max_delay_s', '600');
+  perform pg_temp.setc('drive.max_delay_s', '600'); perform pg_temp.setc('rent.enabled', 'false'); -- weekly rent is clock-dependent and would eat the low-cash player's money
   perform pg_temp.setc('drive.w_ambush', '0'); perform pg_temp.setc('drive.w_police', '0');
   perform pg_temp.setc('drive.w_goslow', '0'); perform pg_temp.setc('drive.w_beggar', '0');
 end $$;
@@ -346,7 +346,7 @@ begin
   perform drive_event_roll(); r := drive_event_choose('wait');             -- no room
   perform pg_temp.assert((r->>'delay_s')::int = 0 and (select travel_arrives_at from profiles where id = a) = t0 + interval '25 seconds', 'no more delay once the cap is used');
   -- a card answered after the trip clock ran out: still allowed, the delay counts from now
-  perform pg_temp.setc('drive.max_delay_s', '600');
+  perform pg_temp.setc('drive.max_delay_s', '600'); perform pg_temp.setc('rent.enabled', 'false'); -- weekly rent is clock-dependent and would eat the low-cash player's money
   perform pg_temp.trip(a, 'keke', 50); perform drive_event_roll();
   perform pg_temp.adv(200);
   r := drive_event_choose('wait');
