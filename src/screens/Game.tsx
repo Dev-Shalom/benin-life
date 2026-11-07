@@ -48,6 +48,8 @@ import { Phone } from './game/Phone';
 import { LookSheet, SimSheet } from './game/SimSheet';
 import { StatusBanners } from './game/StatusBanners';
 import { DriveHost } from './game/DriveHost';
+import { RoamHost, startRoam } from './game/RoamHost';
+import { placeInRoam, roamCfg, ROAM_HUB } from '../art/roam3d/access';
 import { ClubMusicChip } from './game/ClubMusicChip';
 import { ElectionBanner, PoliticsHost } from './game/PollingStrip';
 import { deriveStatus } from './game/status';
@@ -157,6 +159,8 @@ export default function Game() {
   const openSim = useUi((s) => s.openSim);
   const openPhone = useUi((s) => s.openPhone);
   const mapOpen = useUi((s) => s.mapOpen);
+  const roamOpen = useUi((s) => Boolean(s.roam));
+  const setRoamPending = useUi((s) => s.setRoamPending);
   const setMapOpen = useUi((s) => s.setMapOpen);
   const homePick = useUi((s) => s.homePick);
   const pickHome = useUi((s) => s.pickHome);
@@ -753,15 +757,20 @@ export default function Game() {
 
   const status = deriveStatus(state, now);
   const here = byId[state.location.id] ?? state.location;
+  // free roam (docs/ROAM.md): the entry buttons exist only while the switch is on and the place is inside the phase 1 area
+  const roamC = roamCfg(cfg);
+  const roamOn = roamC.enabled;
+  const roamHere = placeInRoam(byId[state.location.id], roamC) && !state.travel && !p?.home_visit_host_id;
+  const hubLoc = byId[ROAM_HUB];
   const travel = state.travel
     ? { from: p.location_id || state.location.id, to: state.travel.to, progress: status.travelProgress, mode: state.travel.mode }
     : null;
   // Another live 3D view is open (Sim sheet turntable / look editor): the home canvas steps aside.
   const suspendHome = (overlay === 'sim' && simTab === 'profile') || overlay === 'look' || overlay === 'boutique';
-  const coveredHome = Boolean(selectedId || panel || homePick || (overlay && !suspendHome));
+  const coveredHome = Boolean(roamOpen || selectedId || panel || homePick || (overlay && !suspendHome));
   // The city stays live under the location sheet (it sits over the lower half) but pauses under
   // full-screen panels and overlays.
-  const coveredMap = Boolean(panel || (overlay && !suspendHome));
+  const coveredMap = Boolean(roamOpen || panel || (overlay && !suspendHome));
   const layout = layoutId;
   const walk = {
     speed: Math.min(4, Math.max(0.5, Number(cfg('sim.walk_speed', 1.9)) || 1.9)),
@@ -804,7 +813,7 @@ export default function Game() {
             onTapPlayer={(id, metres) => setPlacePlayer({ id, metres })}
             mood={simPosture(p)}
             suspended={suspendHome}
-            paused={Boolean(panel || selectedId || (overlay && !suspendHome))}
+            paused={Boolean(roamOpen || panel || selectedId || (overlay && !suspendHome))}
             insetTop={clean ? 70 : insets.top}
             insetBottom={placeInsetBottom}
             fallbackScene={here.scene}
@@ -936,6 +945,7 @@ export default function Game() {
       )}
       <DailySync here={dailyHere} />
       <DriveHost state={state} hour={hourF} />
+      <RoamHost state={state} hour={hourF} avatar={shownAvatar ?? p.avatar} />
       <ChallengeSync />
       <LeftRail state={state} status={status} atHome={atHome} compact={!showHome && (!showPlace || insets.narrow)} />
 
@@ -971,6 +981,11 @@ export default function Game() {
                   Go inside <Icon name="chevronRight" size={14} />
                 </button>
               )}
+              {!atHome && roamHere && (
+                <button type="button" className="where-enter where-enter--walk" data-testid="walk-the-city" onClick={() => void startRoam(here.id)}>
+                  <Icon name="walk" size={14} /> Walk the city
+                </button>
+              )}
             </div>
           )}
           {!clean && showHome && (
@@ -984,6 +999,9 @@ export default function Game() {
                   <Icon name="chat" size={15} /> House chat
                 </button>
               )}
+              {!p.home_visit_host_id && roamOn && (roamHere
+                ? <button type="button" className="home-chip-chat" data-testid="step-outside" onClick={() => void startRoam(here.id)}><Icon name="walk" size={15} /> Step outside</button>
+                : hubLoc && <button type="button" className="home-chip-chat" data-testid="walk-at-hub" onClick={() => { setRoamPending(ROAM_HUB); closeAll(); setMapOpen(true); select(ROAM_HUB); }}><Icon name="walk" size={15} /> Go to King's Square to walk</button>)}
               {p.home_visit_host_id && <button type="button" className="home-chip-chat home-chip-leave" onClick={() => void leaveHouse()} disabled={leavingHouse}>
                 <Icon name="back" size={15} /> {leavingHouse ? 'Leaving…' : 'Leave house'}
               </button>}

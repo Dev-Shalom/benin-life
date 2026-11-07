@@ -30,6 +30,10 @@ interface UiStore {
   phoneApp: string | null;
   /** Bumps on every openPhone() so an open phone can jump to another app (guided tour, Help deep links). */
   phoneNonce: number;
+  /** Free roam (docs/ROAM.md): open with the place whose door you stand at; null = closed. */
+  roam: { place: string } | null;
+  /** Go to the King's Square hub to walk: open free roam at this place once you arrive there. */
+  roamPending: { place: string; at: number } | null;
   select: (id: string | null, tab?: PanelId | null) => void;
   openPanel: (id: PanelId, params?: Record<string, unknown>, locationId?: string) => void;
   closePanel: () => void;
@@ -37,6 +41,9 @@ interface UiStore {
   openSim: (tab?: SimTab) => void;
   openPhone: (app?: string | null) => void;
   setMapOpen: (v: boolean) => void;
+  openRoam: (place: string) => void;
+  closeRoam: () => void;
+  setRoamPending: (p: string | null) => void;
   pickHome: (p: { id: string | null; group: HomeGroup; activities?: string[] } | null) => void;
   /** Close every sheet/overlay (used before switching views). */
   closeAll: () => void;
@@ -52,6 +59,8 @@ export const useUi = create<UiStore>((set) => ({
   homePick: null,
   phoneApp: null,
   phoneNonce: 0,
+  roam: null,
+  roamPending: null,
   select: (id, tab = null) => set({ selectedId: id, selectedTab: tab }),
   openPanel: (id, params, locationId) => set({ panel: { id, params, locationId } }),
   closePanel: () => set({ panel: null }),
@@ -59,6 +68,9 @@ export const useUi = create<UiStore>((set) => ({
   openSim: (tab) => set((s) => ({ overlay: 'sim', simTab: tab ?? s.simTab })),
   openPhone: (app = null) => set((s) => ({ overlay: 'phone', phoneApp: app, phoneNonce: s.phoneNonce + 1 })),
   setMapOpen: (mapOpen) => set({ mapOpen }),
+  openRoam: (place) => set({ roam: { place }, roamPending: null, selectedId: null, panel: null, overlay: null, homePick: null }),
+  closeRoam: () => set({ roam: null }),
+  setRoamPending: (p) => set({ roamPending: p ? { place: p, at: Date.now() } : null }),
   pickHome: (homePick) => set({ homePick }),
   closeAll: () => set({ selectedId: null, panel: null, overlay: null, homePick: null }),
 }));

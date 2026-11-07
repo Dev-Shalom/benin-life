@@ -5005,6 +5005,11 @@ kbd {
 .where-enter:active {
   transform: scale(0.97);
 }
+.where-enter--walk {
+  color: var(--primary);
+  background: var(--surface);
+  box-shadow: var(--e2);
+}
 
 /* the place card */
 .place-card {
