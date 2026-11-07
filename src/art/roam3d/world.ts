@@ -136,7 +136,7 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
   const buildings: RoamBuilding[] = [];
   const addBuilding = (b: Omit<RoamBuilding, 'place' | 'doorEdge' | 'doorT'>) => {
     const i = buildings.push({ ...b, place: -1, doorEdge: -1, doorT: 0.5 }) - 1;
-    if (b.detail === 1 && !b.lm) col.addPoly(b.poly, { tall: true, id: (b.osm ? 'osm ' : 'house ') + i });
+    if (b.detail === 1 && !b.lm) col.addPoly(b.poly, { tall: true, id: (b.osm ? 'osm ' : 'house ') + i, h: b.h + 1.5 });
     return i;
   };
   const polyIn = (poly: readonly Pt[], pad: number, f: (x: number, y: number, p: number) => boolean) => poly.some((p) => f(p[0], p[1], pad));
@@ -166,11 +166,11 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
   for (const [k, , x, y, rad] of lmWanted) if (inBox(x, y, rad)) landmarks.push(k);
   for (const [mx, my, mr, id] of MARKETS) if (inBox(mx, my, mr)) landmarks.push('market:' + id);
   const museumR = 10.9;
-  col.addCircle(500, 500, museumR, { tall: true, id: 'national museum' });
+  col.addCircle(500, 500, museumR, { tall: true, id: 'national museum', h: 9 });
   for (const f of MODEL_FOOTPRINTS) {
     if (f.id === 'landmark national museum') continue;
     if (!f.poly.some((p) => inBox(p[0], p[1], 6))) continue;
-    col.addPoly(f.poly as Pt[], { tall: true, id: f.id });
+    col.addPoly(f.poly as Pt[], { tall: true, id: f.id, h: f.id.includes('palace') ? 9 : f.id.includes('police') ? 8 : 5 });
     // walls that can carry a door: the police HQ and the palace compound
     if (f.id === 'landmark police hq' || f.id === 'landmark oba palace compound') {
       addBuilding({ poly: f.poly as Pt[], h: f.id.includes('palace') ? 3 : 7, wall: '#eef2f7', roof: '#1d4f9c', roofType: 'flat', rect: null, lit: false, osm: false, detail: 1, lm: true });
@@ -184,7 +184,7 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
 
   /* ---------------- trees, lamps, parked vehicles ---------------- */
   const trees = L.trees.filter((t) => inFar(t.x, t.y, 4));
-  for (const t of trees) if (inBox(t.x, t.y, 2)) col.addCircle(t.x, t.y, t.palm ? 0.22 : 0.32, { tall: true, id: 'tree' });
+  for (const t of trees) if (inBox(t.x, t.y, 2)) col.addCircle(t.x, t.y, t.palm ? 0.22 : 0.32, { tall: true, id: 'tree', h: t.palm ? 7 : 3.5 });
   const lamps = L.lamps.filter((l) => inBox(l[0], l[1], 2));
   for (const l of lamps) col.addCircle(l[0], l[1], 0.14, { tall: true, id: 'lamp' });
   const parked: RoamWorld['parked'] = [];
@@ -456,6 +456,52 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
       }
     }
     return null;
+  }
+
+  /* ---------------- parked cars along the wide roads ---------------- */
+  {
+    const CAR_COL = ['#c8c6c0', '#2f3a4a', '#8c2f2a', '#3d5f80', '#e3dfd2', '#4a5a4c', '#a8a49a', '#1f2a36'];
+    let n = 0;
+    for (const ri of roadIdx) {
+      const rd = L.roads[ri];
+      if (rd.hw < 6) continue;
+      for (let sArc = 10 + R() * 20; sArc < rd.sp.length && n < 26; sArc += 20 + R() * 45) {
+        const p = at(rd.sp, sArc);
+        if (!inArea(p.x, p.y, 4)) continue;
+        const side = R() < 0.5 ? 1 : -1;
+        const off = rd.hw - 1.2;
+        const x = p.x - Math.sin(p.a) * off * side, y = p.y + Math.cos(p.a) * off * side;
+        if (L.net.clear(x, y, false, 8, ri) < 4.2) continue; // not near a junction
+        if (!col.clear(x, y, 1.6, -1, false) || !inArea(x, y, 2)) continue;
+        if (places.some((q) => dist(q.door.sx, q.door.sy, x, y) < 6)) continue;
+        const a = p.a;
+        parked.push({ x, y, a, kind: 'car', color: CAR_COL[Math.floor(R() * CAR_COL.length)] });
+        col.addObb(x, y, 3.8, 2.0, a, { tall: false, id: 'parked car' });
+        n++;
+      }
+    }
+  }
+
+  /* ---------------- more street lamps along the wide roads (the map has few) ---------------- */
+  {
+    let side = 1;
+    for (const ri of roadIdx) {
+      const rd = L.roads[ri];
+      if (rd.kind === 'dirt' || rd.kind === 'spur' || rd.hw < 3) continue;
+      for (let sArc = 8 + R() * 10; sArc < rd.sp.length; sArc += 30) {
+        const p = at(rd.sp, sArc);
+        if (!inArea(p.x, p.y, 3)) continue;
+        side = -side;
+        const off = rd.hw + (KERB[rd.kind] ?? 1) + 0.45;
+        const x = p.x - Math.sin(p.a) * off * side, y = p.y + Math.cos(p.a) * off * side;
+        if (L.net.clear(x, y, false, 3) < 1.2) continue;
+        if (lamps.some((q) => dist(q[0], q[1], x, y) < 14)) continue;
+        if (!col.clear(x, y, 0.6, -1, false) || !inArea(x, y, 1.5)) continue;
+        if (places.some((q) => dist(q.door.sx, q.door.sy, x, y) < 2.5)) continue;
+        lamps.push([x, y]);
+        col.addCircle(x, y, 0.14, { tall: true, id: 'lamp' });
+      }
+    }
   }
 
   /* ---------------- a door on every building ---------------- */

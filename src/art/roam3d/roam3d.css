@@ -1,0 +1,386 @@
+/* Free roam HUD (docs/ROAM.md). Tokens only (src/styles/tokens.css), so Light and Dark both work.
+   Nothing here covers the middle of the screen: the street stays visible. Joystick bottom-left, Run + Action bottom-right,
+   a small top bar and the mini-map top-left. */
+.roam {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.roam-canvas {
+  position: absolute;
+  inset: 0;
+}
+.roam-canvas canvas {
+  display: block;
+}
+.roam__look {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  touch-action: none;
+}
+.roam__loading,
+.roam__fail {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  text-align: center;
+  padding: 24px;
+}
+
+/* ---- top ---- */
+.roam__top {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--sat) + 10px);
+  left: calc(var(--sal) + 12px);
+  right: calc(var(--sar) + 12px);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s2);
+  pointer-events: none;
+}
+.roam__left {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  min-width: 0;
+  flex: 1;
+}
+.roam-pill {
+  pointer-events: auto;
+  min-width: 0;
+  max-width: calc(100% - 100px);
+  padding: 7px 12px 8px;
+  border-radius: var(--r-md);
+  background: var(--glass);
+  color: var(--glass-text);
+  box-shadow: var(--e2);
+  font-size: var(--fs-xs);
+  line-height: 1.25;
+}
+.roam-pill__name {
+  display: block;
+  font-weight: 800;
+  font-size: var(--fs-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roam-pill__sub {
+  display: flex;
+  gap: 8px;
+  color: var(--glass-muted);
+  font-weight: 600;
+}
+.roam-pill__go {
+  color: var(--primary);
+  font-weight: 800;
+}
+.roam-pill__x {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--glass-muted);
+  font: inherit;
+  font-weight: 800;
+  padding: 0 0 0 6px;
+  cursor: pointer;
+}
+.roam__ctrls {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s2);
+}
+.roam-btn {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0;
+  background: var(--glass);
+  color: var(--glass-text);
+  box-shadow: var(--e2);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--t-press) var(--ease-out);
+}
+.roam-btn:active {
+  transform: scale(0.94);
+}
+.roam-btn:focus-visible,
+.roam-act:focus-visible,
+.roam-mini:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring), var(--e2);
+}
+.roam-btn--round {
+  width: 44px;
+  border-radius: 50%;
+}
+.roam-btn--pill {
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+}
+.roam-btn.is-on {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+/* ---- mini-map (tap to open, tap a pin to walk there) ---- */
+.roam-mini {
+  pointer-events: auto;
+  appearance: none;
+  border: 0;
+  padding: 3px;
+  cursor: pointer;
+  position: relative;
+  display: block;
+  flex: none;
+  width: 92px;
+  height: 92px;
+  border-radius: var(--r-md);
+  background: var(--glass);
+  color: var(--glass-text);
+  box-shadow: var(--e2);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transition: width var(--t-med, 220ms) var(--ease-out), height var(--t-med, 220ms) var(--ease-out);
+}
+.roam-mini.is-open {
+  width: min(300px, calc(100vw - 24px - var(--sal) - var(--sar)));
+  height: min(340px, 58vh);
+  cursor: default;
+}
+.roam-mini svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.rm-bld {
+  fill: var(--glass-muted);
+  opacity: 0.22;
+}
+.rm-road {
+  stroke: var(--glass-muted);
+  opacity: 0.55;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rm-road--dirt {
+  opacity: 0.3;
+}
+.rm-lawn {
+  fill: var(--green-400);
+  opacity: 0.22;
+}
+.rm-route {
+  stroke: var(--primary);
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rm-me-halo {
+  fill: var(--warn);
+  opacity: 0.28;
+}
+.rm-me {
+  fill: var(--warn);
+  stroke: var(--surface);
+}
+.rm-pin {
+  fill: var(--primary);
+  stroke: var(--surface);
+}
+.rm-pin.is-dest {
+  fill: var(--bad);
+}
+.rm-label {
+  fill: var(--glass-text);
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: var(--glass);
+  stroke-linejoin: round;
+}
+.roam-mini__hint {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--glass-muted);
+  text-shadow: 0 0 6px var(--glass);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ---- bottom controls ---- */
+.roam-stick {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--sal) + 22px);
+  bottom: calc(var(--sab) + 26px);
+  width: 124px;
+  height: 124px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--glass) 62%, transparent);
+  box-shadow: var(--e2), inset 0 0 0 2px var(--line-strong);
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.roam-stick__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  border-radius: 50%;
+  background: var(--glass-strong);
+  box-shadow: var(--e2);
+  will-change: transform;
+}
+.roam__right {
+  position: absolute;
+  z-index: 3;
+  right: calc(var(--sar) + 18px);
+  bottom: calc(var(--sab) + 26px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s3);
+  pointer-events: none;
+}
+.roam__right > * {
+  pointer-events: auto;
+}
+.roam-run {
+  width: 56px;
+  height: 56px;
+  font-size: 11px;
+  flex-direction: column;
+  gap: 1px;
+}
+.roam-act {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  min-width: 84px;
+  height: 84px;
+  padding: 0 12px;
+  border-radius: 42px;
+  background: var(--glass);
+  color: var(--glass-muted);
+  box-shadow: var(--e2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--t-press) var(--ease-out), background-color 160ms linear;
+}
+.roam-act small {
+  font-size: 10px;
+  font-weight: 700;
+  max-width: 108px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+.roam-act:active {
+  transform: scale(0.95);
+}
+.roam-act.is-ready {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.roam-act:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.roam-note {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: calc(var(--sat) + 76px);
+  transform: translateX(-50%);
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 8px 14px;
+  border-radius: var(--r-md);
+  background: var(--ink-solid, #131a24);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-align: center;
+  box-shadow: var(--e2);
+  pointer-events: none;
+}
+.roam-say {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: calc(var(--sab) + 160px);
+  transform: translateX(-50%);
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 8px 14px;
+  border-radius: var(--r-md);
+  background: var(--glass-strong);
+  color: var(--glass-text);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  box-shadow: var(--e2);
+  pointer-events: none;
+}
+.roam-fps {
+  position: absolute;
+  z-index: 5;
+  left: calc(var(--sal) + 8px);
+  bottom: calc(var(--sab) + 4px);
+  font: 11px/1.2 ui-monospace, monospace;
+  color: var(--muted);
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .roam-stick {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roam-mini,
+  .roam-btn,
+  .roam-act {
+    transition: none;
+  }
+}

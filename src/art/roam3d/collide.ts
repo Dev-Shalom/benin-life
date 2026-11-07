@@ -44,11 +44,14 @@ export const SKIN = 0.002;
 
 export class CollisionWorld {
   /** Polygons as given (for exact inside tests and the stress script). */
-  readonly polys: { pts: Pt[]; tall: boolean; id: string }[] = [];
-  readonly circs: { x: number; y: number; r: number; tall: boolean; id: string }[] = [];
+  readonly polys: { pts: Pt[]; tall: boolean; id: string; h: number }[] = [];
+  readonly circs: { x: number; y: number; r: number; tall: boolean; id: string; h: number }[] = [];
   // segments: ax, ay, bx, by, nx, ny (outward normal) ; tall flag separately
   private seg: number[] = [];
   private segTall: number[] = [];
+  private segH: number[] = [];
+  private SH = new Float32Array(0);
+  private CH = new Float32Array(0);
   private segPoly: number[] = [];
   private S = new Float64Array(0);
   private ST = new Uint8Array(0);
@@ -76,7 +79,7 @@ export class CollisionWorld {
   private pendSeg: number[] = [];
   private circCountBuilt = 0;
 
-  addPoly(pts: Pt[], opt: { tall?: boolean; id?: string } = {}) {
+  addPoly(pts: Pt[], opt: { tall?: boolean; id?: string; h?: number } = {}) {
     if (pts.length < 3) return;
     let area = 0;
     for (let i = 0; i < pts.length; i++) {
@@ -85,7 +88,7 @@ export class CollisionWorld {
       area += a[0] * b[1] - b[0] * a[1];
     }
     if (Math.abs(area) < 1e-6) return;
-    const pi = this.polys.push({ pts, tall: opt.tall !== false, id: opt.id ?? 'poly' }) - 1;
+    const pi = this.polys.push({ pts, tall: opt.tall !== false, id: opt.id ?? 'poly', h: opt.h ?? 6 }) - 1;
     // outward normal of an edge a->b: for a counter-clockwise polygon (area > 0 in x-right, y-up maths) it is (dy, -dx)
     const sgn = area > 0 ? 1 : -1;
     for (let i = 0; i < pts.length; i++) {
@@ -99,16 +102,17 @@ export class CollisionWorld {
       this.seg.push(...row);
       if (this.built) this.pendSeg.push(...row);
       this.segTall.push(opt.tall !== false ? 1 : 0);
+      this.segH.push(opt.h ?? 6);
       this.segPoly.push(pi);
     }
   }
 
-  addCircle(x: number, y: number, r: number, opt: { tall?: boolean; id?: string } = {}) {
-    this.circs.push({ x, y, r, tall: opt.tall !== false, id: opt.id ?? 'circle' });
+  addCircle(x: number, y: number, r: number, opt: { tall?: boolean; id?: string; h?: number } = {}) {
+    this.circs.push({ x, y, r, tall: opt.tall !== false, id: opt.id ?? 'circle', h: opt.h ?? 4 });
   }
 
   /** An oriented box (centre, size along / across the heading a) as a polygon. */
-  addObb(x: number, y: number, w: number, d: number, a: number, opt: { tall?: boolean; id?: string } = {}) {
+  addObb(x: number, y: number, w: number, d: number, a: number, opt: { tall?: boolean; id?: string; h?: number } = {}) {
     this.addPoly(obbCorners(x, y, w, d, a), opt);
   }
 
@@ -118,14 +122,17 @@ export class CollisionWorld {
     const n = this.seg.length / 6;
     this.S = Float64Array.from(this.seg);
     this.ST = Uint8Array.from(this.segTall);
+    this.SH = Float32Array.from(this.segH);
     const m = this.circs.length;
     this.C = new Float64Array(m * 3);
     this.CT = new Uint8Array(m);
+    this.CH = new Float32Array(m);
     this.circs.forEach((c, i) => {
       this.C[i * 3] = c.x;
       this.C[i * 3 + 1] = c.y;
       this.C[i * 3 + 2] = c.r;
       this.CT[i] = c.tall ? 1 : 0;
+      this.CH[i] = c.h;
     });
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < n; i++) {
@@ -376,18 +383,18 @@ export class CollisionWorld {
    * Camera collision: how far along (ox, oy) -> (tx, ty) a circle of radius `rad` gets before touching a TALL collider
    * (building, wall, trunk). Returns a fraction 0..1.
    */
-  rayTall(ox: number, oy: number, tx: number, ty: number, rad: number): number {
+  rayTall(ox: number, oy: number, tx: number, ty: number, rad: number, y0 = 1.5, y1 = 1.5): number {
     const len = Math.hypot(tx - ox, ty - oy);
     if (len < 1e-6) return 1;
     const n = Math.max(2, Math.ceil(len / 0.2));
     for (let i = 1; i <= n; i++) {
       const t = i / n;
-      if (this.tallNear(ox + (tx - ox) * t, oy + (ty - oy) * t, rad)) return Math.max(0, (i - 1) / n);
+      if (this.tallNear(ox + (tx - ox) * t, oy + (ty - oy) * t, rad, y0 + (y1 - y0) * t)) return Math.max(0, (i - 1) / n);
     }
     return 1;
   }
 
-  private tallNear(x: number, y: number, rad: number): boolean {
+  private tallNear(x: number, y: number, rad: number, cy: number): boolean {
     const cell = this.cell;
     const i0 = Math.floor((x - rad) / cell) - this.gx0;
     const i1 = Math.floor((x + rad) / cell) - this.gx0;
@@ -401,14 +408,14 @@ export class CollisionWorld {
         const ci = j * this.gw + i;
         for (let k = this.sStart[ci], e = this.sStart[ci + 1]; k < e; k++) {
           const s = this.sItems[k];
-          if (!this.ST[s]) continue;
+          if (!this.ST[s] || this.SH[s] < cy - 0.4) continue;
           const o = s * 6;
           if (segDistSq(x, y, S[o], S[o + 1], S[o + 2], S[o + 3]) < rad * rad) return true;
           // inside the polygon (camera far inside a building)
         }
         for (let k = this.cStart[ci], e = this.cStart[ci + 1]; k < e; k++) {
           const c = this.cItems[k];
-          if (!this.CT[c]) continue;
+          if (!this.CT[c] || this.CH[c] < cy - 0.4) continue;
           if ((x - this.C[c * 3]) ** 2 + (y - this.C[c * 3 + 1]) ** 2 < (rad + this.C[c * 3 + 2]) ** 2) return true;
         }
       }
