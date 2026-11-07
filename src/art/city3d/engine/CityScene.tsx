@@ -36,7 +36,7 @@ import { roadRoute } from '../route';
 import { buildCity, kekeGeometry, pinGeometry, radialTexture, ringGeometry, routeGeometry } from './build';
 import { boardDims, BoardsLayer, boardTop, type CityBoard } from './boards';
 import { useRealBiz } from '../../../lib/realBiz';
-import { getCityLayout } from './layout';
+import { getCityLayout, snapPlace, STREET_SCENES } from './layout';
 import { cityLight } from './light';
 import { mixHex, smoothstep } from '../../../lib/daylight';
 import { at, ROADS, type Pt } from '../../map/mapGeo';
@@ -1019,7 +1019,15 @@ const Labels = memo(function Labels(props: {
 /* Root                                                                 */
 /* ------------------------------------------------------------------ */
 export default function CityScene(props: CitySceneProps) {
-  const { locations, currentId, selectedId, onSelect, travel, crowd, hour } = props;
+  const { currentId, selectedId, onSelect, travel, crowd, hour } = props;
+  // markers are drawn on clear ground: a place seeded on a carriageway or inside a house is nudged off it (a few map units)
+  const locations = useMemo(() => {
+    const L = getCityLayout();
+    return props.locations.map((l) => {
+      const q = snapPlace(L, l.x, l.y, STREET_SCENES.has(l.scene));
+      return q.x === l.x && q.y === l.y ? l : { ...l, x: q.x, y: q.y };
+    });
+  }, [props.locations]);
   const wrap = useRef<HTMLDivElement>(null);
   const ctl = useRef<Controller | null>(null);
   const labels = useRef<LabelState>({ els: new Map(), sizes: new Map(), items: [], state: new Map(), me: null, curTop: 1 });

@@ -151,17 +151,23 @@ export class PolyIndex<T> {
       }
     return id;
   }
+  private stamp: number[] = [];
+  private gen = 0;
   /** ids whose box touches the query box */
   query(x0: number, y0: number, x1: number, y1: number): number[] {
-    const out = new Set<number>();
+    const out: number[] = [];
+    const g = ++this.gen;
     for (let j = Math.floor(y0 / this.cell); j <= Math.floor(y1 / this.cell); j++)
       for (let i = Math.floor(x0 / this.cell); i <= Math.floor(x1 / this.cell); i++) {
         const arr = this.cells.get(this.key(i, j));
-        if (arr) for (const id of arr) out.add(id);
+        if (!arr) continue;
+        for (const id of arr) {
+          if (this.stamp[id] === g) continue;
+          this.stamp[id] = g;
+          const b = this.items[id].box;
+          if (!(b[2] < x0 || b[0] > x1 || b[3] < y0 || b[1] > y1)) out.push(id);
+        }
       }
-    return [...out].filter((id) => {
-      const b = this.items[id].box;
-      return !(b[2] < x0 || b[0] > x1 || b[3] < y0 || b[1] > y1);
-    });
+    return out;
   }
 }

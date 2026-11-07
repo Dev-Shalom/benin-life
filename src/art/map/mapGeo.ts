@@ -410,7 +410,7 @@ export const MARKETS: [number, number, number, string][] = [
   [500, 235, 16, 'uselu_market'],
   [600, 598, 13, 'ekiosa_market'],
   [580, 705, 14, 'santana_market'],
-  [722, 492, 13, 'oregbeni_market'],
+  [740, 490, 13, 'oregbeni_market'],
 ];
 
 /** Warm night glows: [x, y, radius, opacity] (markets, Ramat, nightlife). */

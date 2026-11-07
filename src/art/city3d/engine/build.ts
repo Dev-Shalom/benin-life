@@ -32,7 +32,8 @@ import {
   RAMAT, RING, RUNWAY, STADIUM, TECH_HUB, TERMINAL, UBTH, at, inPoly, type Pt,
 } from '../../map/mapGeo';
 import { WS } from '../model';
-import type { CityLayout, Style, Vehicle } from './layout';
+import { FARM_HUTS } from './footprints';
+import { getCityLayout, VEHICLE_SIZE, vehicleAt, type CityLayout, type Style, type Vehicle } from './layout';
 
 const W = (mx: number) => (mx - 500) * WS;
 
@@ -364,7 +365,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     f.disc(STADIUM.x, STADIUM.y, 10, 0.016, '#6fb04f', 28, 1.45);
     f.disc(GROVE.x, GROVE.y, GROVE.r, 0.006, '#4f8a3c', 20);
     // motor park pads
-    for (const [px, py, pr] of [[452, 282, 13], [398, 52, 12], [705, 400, 10], [828, 352, 12]] as const) f.disc(px, py, pr, 0.012, '#b97b4f', 18, 1.25);
+    for (const { x: px, y: py, r: pr } of L.pads) f.disc(px, py, pr, 0.012, '#b97b4f', 18, 1.25);
     // market grounds
     for (const [mx, my, mr] of MARKETS) f.disc(mx, my, mr + 2, 0.012, '#c99a6a', 22);
     // S3: a yard under every building (lawn in the GRA, paving in the core, packed earth elsewhere)
@@ -769,25 +770,13 @@ export function buildCity(L: CityLayout): CityMeshes {
   bands.count = nBus;
   group.add(bands);
   countTris(bandGeo, nBus);
-  const SIZE: Record<Vehicle['kind'], [number, number, number]> = { car: [0.36, 0.26, 0.2], bus: [0.52, 0.36, 0.24], keke: [0.2, 0.26, 0.15] };
-  const placeVehicle = (i: number, v: Vehicle, s: number) => {
-    let x: number, y: number, a: number;
-    if (v.px !== undefined) {
-      x = v.px;
-      y = v.py!;
-      a = v.pa!;
-    } else {
-      const rd = L.roads[v.road];
-      const p = at(rd.sp, s);
-      const off = rd.hw * 0.48 * v.lane;
-      x = p.x - Math.sin(p.a) * off;
-      y = p.y + Math.cos(p.a) * off;
-      a = p.a + (v.lane < 0 ? Math.PI : 0);
-    }
-    const [l, h, w] = SIZE[v.kind];
-    _o.position.set(W(x), 0.05, W(y));
-    _o.rotation.set(0, -a, 0);
-    _o.scale.set(l, h, w);
+  const placeVehicle = (i: number, v: Vehicle, t: number) => {
+    const p = vehicleAt(L.roads, v, t);
+    const [l, w] = VEHICLE_SIZE[v.kind];
+    // heights as before (car 2.6, bus 3.6, keke 2.6 map units); k fades a vehicle out / in where its lane ends
+    _o.position.set(W(p.x), 0.05, W(p.y));
+    _o.rotation.set(0, -p.a, 0);
+    _o.scale.set(l * WS * p.k, (v.kind === 'bus' ? 0.36 : 0.26) * p.k, w * WS * p.k);
     _o.updateMatrix();
     vehicles.setMatrixAt(i, _o.matrix);
     if (busSlot[i] >= 0) bands.setMatrixAt(busSlot[i], _o.matrix);
@@ -796,16 +785,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     for (let i = 0; i < V.length; i++) {
       const v = V[i];
       if (v.px !== undefined && t > 0) continue;
-      const len = v.s1 - v.s0;
-      let s: number;
-      if (v.jam) {
-        // stop-go creep towards Ramat Park, looping inside the queue
-        const creep = t * v.speed * (0.5 + 0.5 * Math.sin(t * 0.7 + i));
-        s = v.s0 + ((((v.s - v.s0 + creep * v.lane) % len) + len) % len);
-      } else {
-        s = (((v.s + t * v.speed * v.lane) % len) + len) % len;
-      }
-      placeVehicle(i, v, s);
+      placeVehicle(i, v, t);
     }
     vehicles.instanceMatrix.needsUpdate = true;
     bands.instanceMatrix.needsUpdate = true;
@@ -1024,7 +1004,7 @@ export function buildLandmarks(b: HomeBuilder, only?: string[]) {
   }
   // --- Motor parks: shelters on the pads
   if (want('parks') || only?.some((k) => k.startsWith('park:'))) {
-  for (const [pi, [px, py, pr]] of ([[452, 282, 13], [398, 52, 12], [705, 400, 10], [828, 352, 12]] as const).entries()) {
+  for (const [pi, { x: px, y: py, r: pr }] of getCityLayout().pads.entries()) {
     if (only && !only.includes('parks') && !only.includes('park:' + pi)) continue;
     at2(px, py + pr * 0.55);
     for (const x of [-pr * 0.05, pr * 0.05]) b.box(0.05, 0.32, 0.05, x, 0, 0, '#7d8389');
@@ -1055,7 +1035,7 @@ export function buildLandmarks(b: HomeBuilder, only?: string[]) {
   }
   // --- Iguobazuwa farm huts on the NW edge
   if (want('farm')) {
-  for (const [x, y] of [[60, 290], [95, 330], [48, 370]] as const) {
+  for (const [x, y] of FARM_HUTS) {
     at2(x, y);
     b.cyl(0.3, 0.3, 0.25, 0, 0, 0, '#c9874f', { seg: 7 });
     b.cyl(0, 0.42, 0.36, 0, 0.25, 0, '#c9a45a', { seg: 7 });

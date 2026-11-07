@@ -30,6 +30,8 @@ const asJson = process.argv.includes('--json');
 const layoutMod = await import('../src/art/city3d/engine/layout.ts');
 const { RoadNet, KERB } = await import('../src/art/city3d/engine/roadnet.ts');
 const G = await import('../src/art/city3d/engine/geom.ts');
+const FP = await import('../src/art/city3d/engine/footprints.ts');
+const { PLACE_ANCHORS } = await import('../src/art/city3d/data/anchors.ts');
 const geo = await import('../src/art/map/mapGeo.ts');
 const { DEV_LOCATIONS } = await import('../src/art/city3d/dev/fixture.ts');
 const { COMING_SOON } = await import('../src/art/city3d/model.ts');
@@ -55,21 +57,10 @@ const index = new G.PolyIndex(24);
 all.forEach((b, i) => index.add(b.poly, i));
 const hitsAt = (x, y, pad = 0) => index.query(x - pad, y - pad, x + pad, y + pad).filter((i) => G.pointInPoly(x, y, all[i].poly));
 
-// Landmark models drawn by buildLandmarks() (build.ts), as footprints in map units (world size x 10, yaw from at2).
-const R = (id, x, y, w, d, a = 0) => ({ id: 'landmark ' + id, poly: G.rectCorners(x, y, w, d, a), x, y });
-const circ = (id, x, y, r) => ({ id: 'landmark ' + id, poly: Array.from({ length: 16 }, (_, k) => [x + Math.cos((k / 16) * 6.2832) * r, y + Math.sin((k / 16) * 6.2832) * r]), x, y });
-const ang = Math.atan2(geo.RUNWAY.y2 - geo.RUNWAY.y1, geo.RUNWAY.x2 - geo.RUNWAY.x1);
+// Landmark models drawn by buildLandmarks() (footprints.ts) and the motor parks (shelter roof + parked danfos).
 const landmarks = [
-  circ('national museum', 500, 500, 10.5),
-  { id: 'landmark oba palace compound', poly: geo.PALACE, x: 405, y: 503 },
-  R('palace hall', 405, 503, 20, 13),
-  R('uniben senate block', 497, 118, 7, 5.5),
-  R('ubth', 421, 170, 19, 15),
-  R('bronze tech hub', geo.TECH_HUB.x, geo.TECH_HUB.y, 22, 19, 0.1),
-  R('police hq', 497, 610, 15, 9),
-  R('airport terminal', geo.TERMINAL.x, geo.TERMINAL.y, 22, 14, -ang),
-  circ('baba shrine', geo.GROVE.x + 3, geo.GROVE.y + 2, 5),
-  ...geo.MARKETS.map(([x, y, r, id]) => R('market ' + id, x, y, (id === 'oba_market' ? 2.0 : 1.2) * (r / 22) * 12, 7, 0.15)),
+  ...FP.MODEL_FOOTPRINTS.map((m) => ({ ...m, x: m.poly[0][0], y: m.poly[0][1] })),
+  ...L.pads.flatMap((q, i) => FP.padLayout(q.x, q.y, q.r).parts.map((poly) => ({ id: 'landmark motor park ' + i, poly, x: q.x, y: q.y }))),
 ];
 const landIndex = new G.PolyIndex(24);
 landmarks.forEach((m, i) => landIndex.add(m.poly, i));
@@ -149,7 +140,7 @@ console.log(`City layout: ${L.buildings.length} houses, ${L.osmBuildings.length}
 }
 
 /* ------------------------------------------------------------------ 3. props: trees, lamps, parked cars */
-const SIZE = { car: [3.6, 2.0], bus: [5.2, 2.4], keke: [2.0, 1.5] }; // length, width in map units (build.ts SIZE x 10)
+const SIZE = layoutMod.VEHICLE_SIZE; // length, width in map units (what build.ts draws)
 {
   const treeRoad = [];
   const treeHouse = [];
@@ -193,65 +184,43 @@ const SIZE = { car: [3.6, 2.0], bus: [5.2, 2.4], keke: [2.0, 1.5] }; // length, 
 
 /* ------------------------------------------------------------------ 4. traffic */
 {
-  // same formula as build.ts placeVehicle / animate (layout.vehiclePose when the layout exports it)
-  const poseOf = layoutMod.vehiclePose ?? ((roads, v, s) => {
-    const rd = roads[v.road];
-    const S = rd.sp.samples;
-    let lo = 0;
-    let hi = S.length - 1;
-    while (hi - lo > 1) {
-      const mid = (lo + hi) >> 1;
-      if (S[mid].s < s) lo = mid;
-      else hi = mid;
-    }
-    const a = S[lo];
-    const b = S[hi];
-    const t = (s - a.s) / Math.max(1e-6, b.s - a.s);
-    const px = a.x + (b.x - a.x) * t;
-    const py = a.y + (b.y - a.y) * t;
-    const off = rd.hw * 0.48 * v.lane;
-    return { x: px - Math.sin(a.a) * off, y: py + Math.cos(a.a) * off, a: a.a + (v.lane < 0 ? Math.PI : 0) };
-  });
   const moving = L.vehicles.map((v, i) => ({ v, i })).filter(({ v }) => v.px === undefined);
-  const hitHouse = new Map(); // vehicle index -> {b, at}
+  const hitHouse = new Map(); // vehicle index -> first hit
   const offRoad = new Map();
   let samples = 0;
-  const posAt = (v, i, t) => {
-    const len = v.s1 - v.s0;
-    if (v.jam) {
-      const creep = t * v.speed * (0.5 + 0.5 * Math.sin(t * 0.7 + i));
-      return v.s0 + ((((v.s - v.s0 + creep * v.lane) % len) + len) % len);
-    }
-    return (((v.s + t * v.speed * v.lane) % len) + len) % len;
-  };
   for (const { v, i } of moving) {
-    // sweep the full lane (every 1.5 units of the road it drives on)
+    // sweep the whole stretch the vehicle drives on (every 1.5 units), full-size box
     const rd = L.roads[v.road];
     for (let s = v.s0; s <= v.s1; s += 1.5) {
-      const p = poseOf(L.roads, v, s);
+      const p = layoutMod.vehicleAt(L.roads, { ...v, s, speed: 0 }, 0);
       const [vl, vw] = SIZE[v.kind];
       const poly = G.rectCorners(p.x, p.y, vl, vw, p.a);
       samples++;
-      for (const j of index.query(...G.polyBox(poly))) if (G.polysOverlap(poly, all[j].poly) && !hitHouse.has(i)) hitHouse.set(i, { b: all[j], at: [p.x, p.y], s, road: rd.id });
-      if (!offRoad.has(i)) {
-        let worst = Infinity;
-        for (const [x, y] of poly) worst = Math.min(worst, -net.clear(x, y, false, 6)); // want every corner on tarmac: clear <= 0
-        // a corner more than 0.3 units off the tarmac of every road
-        let bad = false;
-        for (const [x, y] of poly) if (net.clear(x, y, false, 6) > 0.3) bad = true;
-        if (bad) offRoad.set(i, { at: [p.x, p.y], s, road: rd.id });
-      }
+      if (!hitHouse.has(i))
+        for (const j of index.query(...G.polyBox(poly)))
+          if (G.polysOverlap(poly, all[j].poly)) {
+            hitHouse.set(i, { b: all[j], at: [p.x, p.y], s, road: rd.id });
+            break;
+          }
+      if (!hitHouse.has(i))
+        for (const j of landIndex.query(...G.polyBox(poly)))
+          if (G.polysOverlap(poly, landmarks[j].poly)) {
+            hitHouse.set(i, { b: landmarks[j], at: [p.x, p.y], s, road: rd.id });
+            break;
+          }
+      // every corner of the box must be on tarmac (some road's carriageway, 0.3 units of slack on curves)
+      if (!offRoad.has(i)) for (const [x, y] of poly) if (net.clear(x, y, false, 6) > 0.3) offRoad.set(i, { at: [p.x, p.y], s, road: rd.id });
     }
   }
-  section(`traffic vehicles driving through a building (${moving.length} moving, ${samples} lane samples)`, [...hitHouse], ([i, o]) => `${L.vehicles[i].kind} on ${o.road} s=${f1(o.s)} at ${pos(...o.at)} hits ${o.b.id}`);
-  section('traffic vehicles with a corner off the road surface', [...offRoad], ([i, o]) => `${L.vehicles[i].kind} on ${o.road} s=${f1(o.s)} at ${pos(...o.at)}`);
+  section(`traffic driving through a building or landmark (${moving.length} moving vehicles, ${samples} lane samples)`, [...hitHouse], ([i, o]) => `${L.vehicles[i].kind} on ${o.road} s=${f1(o.s)} at ${pos(...o.at)} hits ${o.b.id}`);
+  section('traffic with a corner off the road surface', [...offRoad], ([i, o]) => `${L.vehicles[i].kind} on ${o.road} s=${f1(o.s)} at ${pos(...o.at)}`);
 
-  // vehicles driving through each other (simulated over two minutes)
+  // vehicles driving through each other (simulated over four minutes, 0.25 s steps; the layout keeps lanes at one speed)
   const clash = new Map();
-  for (let t = 0; t <= 120; t += 4) {
+  for (let t = 0; t <= 240; t += 0.25) {
     const poses = moving.map(({ v, i }) => {
-      const p = poseOf(L.roads, v, posAt(v, i, t));
-      return { i, p, poly: G.rectCorners(p.x, p.y, SIZE[v.kind][0] * 0.9, SIZE[v.kind][1] * 0.9, p.a) };
+      const p = layoutMod.vehicleAt(L.roads, v, t);
+      return { i, p, poly: G.rectCorners(p.x, p.y, SIZE[v.kind][0] * p.k, SIZE[v.kind][1] * p.k, p.a) };
     });
     const idx = new G.PolyIndex(12);
     poses.forEach((o, k) => idx.add(o.poly, k));
@@ -262,7 +231,7 @@ const SIZE = { car: [3.6, 2.0], bus: [5.2, 2.4], keke: [2.0, 1.5] }; // length, 
         if (!clash.has(key) && G.polysOverlap(poses[k].poly, poses[m].poly)) clash.set(key, { a: poses[k].i, b: poses[m].i, t, at: [poses[k].p.x, poses[k].p.y] });
       }
   }
-  section('traffic vehicles driving through each other (120 s simulated)', [...clash.values()], (o) => `${L.vehicles[o.a].kind} x ${L.vehicles[o.b].kind} at t=${o.t}s near ${pos(...o.at)} on ${L.roads[L.vehicles[o.a].road].id}`);
+  section('traffic driving through each other (240 s simulated)', [...clash.values()], (o) => `${L.vehicles[o.a].kind} x ${L.vehicles[o.b].kind} at t=${o.t}s near ${pos(...o.at)} on ${L.roads[L.vehicles[o.a].road].id} / ${L.roads[L.vehicles[o.b].road].id}`);
 }
 
 /* ------------------------------------------------------------------ 5. place markers */
@@ -271,15 +240,22 @@ const SIZE = { car: [3.6, 2.0], bus: [5.2, 2.4], keke: [2.0, 1.5] }; // length, 
   const ON_STREET = new Set(['street', 'pos', 'motorpark']);
   const inHouse = [];
   const inRoad = [];
+  const unknown = [];
+  const anchors = new Map(PLACE_ANCHORS.map((a) => [a[0], a]));
   const pins = [...DEV_LOCATIONS.map((l) => ({ id: l.id, scene: l.scene, x: l.x, y: l.y })), ...COMING_SOON.map((c) => ({ id: c.id, scene: 'soon', x: c.x, y: c.y }))];
   for (const l of pins) {
-    const h = hitsAt(l.x, l.y);
-    if (h.length) inHouse.push({ l, b: all[h[0]] });
-    const c = net.clear(l.x, l.y, false, 4);
-    if (c < -0.05 && !ON_STREET.has(l.scene)) inRoad.push({ l, depth: -c });
+    const a = anchors.get(l.id);
+    if (!a || a[2] !== l.x || a[3] !== l.y) unknown.push(l);
+    // the game draws the marker where snapPlace puts it
+    const q = layoutMod.snapPlace(L, l.x, l.y, ON_STREET.has(l.scene));
+    const h = hitsAt(q.x, q.y);
+    if (h.length) inHouse.push({ l, b: all[h[0]], q });
+    const c = net.clear(q.x, q.y, false, 4);
+    if (c < -0.05 && !ON_STREET.has(l.scene)) inRoad.push({ l, depth: -c, q });
   }
-  section('place markers inside a building', inHouse, (o) => `${o.l.id} at ${pos(o.l.x, o.l.y)} inside ${o.b.id}`);
-  section('place markers in the carriageway (non-street places)', inRoad, (o) => `${o.l.id} (${o.l.scene}) at ${pos(o.l.x, o.l.y)} ${f1(o.depth)} units into the road`, (o) => o.depth);
+  section('place markers missing from data/anchors.ts or moved', unknown, (l) => `${l.id} at ${pos(l.x, l.y)}: update src/art/city3d/data/anchors.ts`);
+  section('place markers inside a house', inHouse, (o) => `${o.l.id} at ${pos(o.q.x, o.q.y)} inside ${o.b.id}`);
+  section('place markers in the carriageway (non-street places)', inRoad, (o) => `${o.l.id} (${o.l.scene}) at ${pos(o.q.x, o.q.y)} ${f1(o.depth)} units into the road`, (o) => o.depth);
 }
 
 const total = results.reduce((n, r) => n + r.count, 0);
