@@ -44,7 +44,7 @@ const pos = (x, y) => `(${f1(x)}, ${f1(y)})`;
 /* ------------------------------------------------------------------ footprints */
 // Rendered footprint = the roof (build.ts scales hip / gable roofs by 1.08 x 1.1, flat ones by 1.03).
 const gen = L.buildings.map((b, i) => {
-  const k = b.roofType === 'flat' ? [1.03, 1.03] : [1.08, 1.1];
+  const k = b.roofType === 'flat' ? FP.ROOF_SCALE.flat : FP.ROOF_SCALE.pitched;
   return { id: `house#${i} ${b.st}`, poly: G.rectCorners(b.x, b.y, b.w * k[0], b.d * k[1], b.a), x: b.x, y: b.y, osm: false };
 });
 const osm = L.osmBuildings.map((b) => {

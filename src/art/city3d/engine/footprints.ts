@@ -4,6 +4,11 @@
 import { GROVE, MARKETS, PALACE, RUNWAY, STADIUM, TECH_HUB, TERMINAL, type Pt } from '../../map/mapGeo';
 import { rectCorners } from './geom';
 
+/** Roof overhang: build.ts scales a house's walls (w x d) by these for the roof, and the audit uses the same numbers. */
+export const ROOF_SCALE = { pitched: [1.08, 1.1], flat: [1.03, 1.03] } as const;
+/** Conservative footprint scale the layout reserves for a generated house (covers both roof kinds). */
+export const FOOT_PAD = 1.1;
+
 export interface Footprint {
   id: string;
   poly: Pt[];

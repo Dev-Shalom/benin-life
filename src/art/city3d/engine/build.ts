@@ -32,8 +32,9 @@ import {
   RAMAT, RING, RUNWAY, STADIUM, TECH_HUB, TERMINAL, UBTH, at, inPoly, type Pt,
 } from '../../map/mapGeo';
 import { WS } from '../model';
-import { FARM_HUTS } from './footprints';
-import { getCityLayout, VEHICLE_SIZE, vehicleAt, type CityLayout, type Style, type Vehicle } from './layout';
+import { FARM_HUTS, ROOF_SCALE } from './footprints';
+import { KERB } from './roadnet';
+import { getCityLayout, VEHICLE_SIZE, vehicleAt, type CityLayout, type VehiclePose, type Style, type Vehicle } from './layout';
 
 const W = (mx: number) => (mx - 500) * WS;
 
@@ -405,9 +406,9 @@ export function buildCity(L: CityLayout): CityMeshes {
   {
     const f = new Flat();
     const ROAD_COL: Record<string, string> = { express: '#41454d', main: '#484c54', ring: '#41454d', minor: '#64656a', spur: '#8e8a84', dirt: '#b47e52' };
-    const KERB: Record<string, [number, string] | undefined> = {
-      express: [1.4, '#e9e1d2'], main: [1.3, '#e9e1d2'], ring: [1.5, '#ece4d6'], minor: [0.9, '#ddd3c2'], spur: [0.7, '#d9cfbd'],
-    };
+    // kerb colours; the widths are KERB in roadnet.ts (the layout keeps everything off that band)
+    const KERB_COL: Record<string, string | undefined> = { express: '#e9e1d2', main: '#e9e1d2', ring: '#ece4d6', minor: '#ddd3c2', spur: '#d9cfbd' };
+    const kerbOf = (kind: string): [number, string] | undefined => (KERB_COL[kind] ? [KERB[kind], KERB_COL[kind]!] : undefined);
     const Y: Record<string, number> = { spur: 0.034, dirt: 0.034, minor: 0.04, main: 0.046, express: 0.048, ring: 0.05 };
     const big = (k: string) => k === 'express' || k === 'main' || k === 'ring';
     // samples of every non-spur road, to find junctions
@@ -471,12 +472,12 @@ export function buildCity(L: CityLayout): CityMeshes {
           if (!q || (p.x > 0 && p.x < 1000 && p.y > 0 && p.y < 1000)) continue;
           const a = Math.atan2(p.y - q.y, p.x - q.x);
           const ext = [p, { x: p.x + Math.cos(a) * 600, y: p.y + Math.sin(a) * 600, a }].map((e) => ({ ...e, a }));
-          const kb = KERB[r.kind];
+          const kb = kerbOf(r.kind);
           if (kb) f.strip(ext, r.hw + kb[0], Y[r.kind] - 0.012, kb[1]);
           f.strip(ext, r.hw, Y[r.kind], ROAD_COL[r.kind]);
         }
       }
-      const kb = KERB[r.kind];
+      const kb = kerbOf(r.kind);
       if (kb) f.strip(pts, r.hw + kb[0], r.kind === 'spur' ? 0.026 : 0.03, kb[1], r.closed);
       f.strip(pts, r.hw, Y[r.kind], ROAD_COL[r.kind], r.closed);
       if (big(r.kind)) {
@@ -529,7 +530,7 @@ export function buildCity(L: CityLayout): CityMeshes {
     for (const b of flats) {
       _o.position.set(W(b.x), b.h, W(b.y));
       _o.rotation.set(0, -b.a, 0);
-      _o.scale.set(b.w * WS * 1.03, 0.05, b.d * WS * 1.03);
+      _o.scale.set(b.w * WS * ROOF_SCALE.flat[0], 0.05, b.d * WS * ROOF_SCALE.flat[1]);
       _o.updateMatrix();
       walls.setMatrixAt(k, _o.matrix);
       walls.setColorAt(k++, _c.set(b.roof).lerp(_b.set('#d9d4c8'), 0.55));
@@ -551,7 +552,7 @@ export function buildCity(L: CityLayout): CityMeshes {
         _o.position.set(W(b.x), b.h, W(b.y));
         _o.rotation.set(0, -b.a, 0);
         const rh = type === 'hip' ? Math.min(0.32, 0.12 + Math.min(b.w, b.d) * WS * 0.28) : Math.min(0.3, 0.1 + b.d * WS * 0.3);
-        _o.scale.set(b.w * WS * 1.08, rh, b.d * WS * 1.1);
+        _o.scale.set(b.w * WS * ROOF_SCALE.pitched[0], rh, b.d * WS * ROOF_SCALE.pitched[1]);
         _o.updateMatrix();
         im.setMatrixAt(i, _o.matrix);
         im.setColorAt(i, _c.set(b.roof));
@@ -770,8 +771,9 @@ export function buildCity(L: CityLayout): CityMeshes {
   bands.count = nBus;
   group.add(bands);
   countTris(bandGeo, nBus);
+  const _pose: VehiclePose = { x: 0, y: 0, a: 0, k: 1 };
   const placeVehicle = (i: number, v: Vehicle, t: number) => {
-    const p = vehicleAt(L.roads, v, t);
+    const p = vehicleAt(L.roads, v, t, _pose);
     const [l, w] = VEHICLE_SIZE[v.kind];
     // heights as before (car 2.6, bus 3.6, keke 2.6 map units); k fades a vehicle out / in where its lane ends
     _o.position.set(W(p.x), 0.05, W(p.y));

@@ -188,7 +188,7 @@ export function spline(pts: readonly Pt[], closed = false): Spline {
 }
 
 /** Point at a given arc length along a spline. */
-export function at(sp: Spline, s: number): Sample {
+export function at(sp: Spline, s: number, out?: Sample): Sample {
   const S = sp.samples;
   if (s <= 0) return S[0];
   if (s >= sp.length) return S[S.length - 1];
@@ -202,6 +202,13 @@ export function at(sp: Spline, s: number): Sample {
   const a = S[lo];
   const b = S[hi];
   const t = (s - a.s) / Math.max(1e-6, b.s - a.s);
+  if (out) {
+    out.x = a.x + (b.x - a.x) * t;
+    out.y = a.y + (b.y - a.y) * t;
+    out.a = a.a;
+    out.s = s;
+    return out;
+  }
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, a: a.a, s };
 }
 
@@ -407,10 +414,10 @@ export const GROVE = { x: 766, y: 734, r: 18 };
 export const MARKETS: [number, number, number, string][] = [
   [445, 420, 22, 'oba_market'],
   [612, 368, 15, 'new_benin_market'],
-  [500, 235, 16, 'uselu_market'],
+  [494, 236, 16, 'uselu_market'],
   [600, 598, 13, 'ekiosa_market'],
   [580, 705, 14, 'santana_market'],
-  [740, 490, 13, 'oregbeni_market'],
+  [700, 468, 13, 'oregbeni_market'],
 ];
 
 /** Warm night glows: [x, y, radius, opacity] (markets, Ramat, nightlife). */

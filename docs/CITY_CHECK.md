@@ -20,7 +20,7 @@ Billboards come from the database at run time, so they are not in this audit (`/
 - Motor parks (`PAD_SEEDS`) sit on junctions in the seed; each is moved to the nearest clear ground (the pad disc, shelter and parked danfos follow; `layout.pads`).
 - Traffic: one speed and equal spacing per lane, so nothing overtakes or drives through the car in front. A road carries traffic only on the stretch where it is clear of every wider road, so two streams never cross; vehicles fade out and in at the ends of a stretch (`vehicleAt`, scale `k`). The Ramat Park queues stop 18 units from the roundabout island and free traffic stays out of them.
 - Place markers seeded on a carriageway or inside a house are nudged to clear ground (`snapPlace`, a few map units) when `CityScene` draws them. Street, PoS and motor-park places may stay on their road.
-- Oregbeni Market moved 18 units east (`MARKETS` in `mapGeo.ts`) because the Oregbeni road ran through it; the farm huts moved off the dirt road (`FARM_HUTS`).
+- The Oregbeni and Uselu market grounds moved next to their place markers (`MARKETS` in `mapGeo.ts`), on clear ground; the farm huts moved off the dirt road (`FARM_HUTS`).
 
 ## Before / after (seed 20261005)
 | Check | Before | After |
@@ -38,7 +38,7 @@ Billboards come from the database at run time, so they are not in this audit (`/
 | Vehicles driving through each other | 585 | 0 |
 | Place markers inside a house / on a carriageway | 3 / 5 | 0 / 0 |
 
-Counts now: 776 houses (960 before), 842 OSM footprints (1,016), 190 vehicles (203), layout ~150 ms cold in Node (~120 before).
+Counts now: ~930 houses (960 before; a failed spot is retried nudged and 20% smaller), 1,022 OSM footprints (1,016; footprints next to a street are nudged up to 3 units off the pavement before being dropped), 190 vehicles (203). Dropped OSM footprints (`layout.osmDrops`): inside King's Square, palace or other landmark zones 3,331; centre on the carriageway 584; too small 178; corner in a landmark zone 82; still on the road after nudging 74; overlapping a landmark or marker 10. No named landmark footprint is dropped (the audit checks them).
 
 ## Adding things
 - New landmark model: add its footprint to `MODEL_FOOTPRINTS` (`engine/footprints.ts`), then run the check.

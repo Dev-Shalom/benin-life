@@ -8,6 +8,7 @@ import {
 import osmCore from '../data/benin-core-buildings.json';
 import { PLACE_ANCHORS } from '../data/anchors';
 import { BUS, MODEL_FOOTPRINTS, PAD_SEEDS, padLayout } from './footprints';
+import { FOOT_PAD } from './footprints';
 import { outline, PolyIndex, pointInPoly, polyBox as polyBoxOf, polysOverlap, rectCorners, segDist } from './geom';
 import { RoadNet } from './roadnet';
 
@@ -98,6 +99,8 @@ export interface CityLayout {
   pads: Pad[];
   /** exact road clearance queries (carriageway / pavement), see roadnet.ts */
   net: RoadNet;
+  /** why OSM footprints were left out (reason -> count) */
+  osmDrops: Record<string, number>;
   /** every footprint (data: 0 landmark / motor park, 1 OSM, 2 generated house) */
   fp: PolyIndex<number>;
   /** map-space density lookup (0..1) for ground colour */
@@ -371,31 +374,58 @@ function build(): CityLayout {
   const occ = new Grid(14);
   const osmBounds = OSM_CORE.bounds;
   const inOsmCoverage = (x: number, y: number) => x >= osmBounds[0] && x <= osmBounds[2] && y >= osmBounds[1] && y <= osmBounds[3];
+  // Real OSM outlines next to a street are nudged (up to 3 units) off the pavement before they are given up on.
+  const osmDrops: Record<string, number> = {};
+  const drop = (why: string) => {
+    osmDrops[why] = (osmDrops[why] ?? 0) + 1;
+  };
+  const NUDGE_DIRS = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => [Math.cos((k * Math.PI) / 4), Math.sin((k * Math.PI) / 4)] as const);
   for (const f of OSM_CORE.features) {
-    const x = f.ring.reduce((sum, p) => sum + p[0], 0) / f.ring.length;
-    const y = f.ring.reduce((sum, p) => sum + p[1], 0) / f.ring.length;
+    let ring = f.ring as Pt[];
+    let x = ring.reduce((sum, p) => sum + p[0], 0) / ring.length;
+    let y = ring.reduce((sum, p) => sum + p[1], 0) / ring.length;
     // Keep the modeled landmark pads, King's Square and named roads clean.
-    if (special(x, y) || onPad(x, y) || roadClear(x, y, 3) < 1.6) continue;
+    if (special(x, y)) { drop('inside King\'s Square, palace or another landmark zone'); continue; }
+    if (onPad(x, y)) { drop('motor park'); continue; }
+    if (roadClear(x, y, 3) < 0) { drop('centre on the carriageway'); continue; }
     let radius = 0;
-    for (const p of f.ring) radius = Math.max(radius, dist(x, y, p[0], p[1]));
-    if (radius < 0.45) continue;
+    for (const p of ring) radius = Math.max(radius, dist(x, y, p[0], p[1]));
+    if (radius < 0.45) { drop('too small'); continue; }
     // exact footprint tests: not on the road or pavement, not on a landmark model, motor park or marker, not over
     // another footprint, and no corner inside a special zone (palace compound, campus, airport ...)
     {
-      const [bx0, by0, bx1, by1] = polyBoxOf(f.ring);
-      if (special(bx0, by0) || special(bx1, by0) || special(bx0, by1) || special(bx1, by1)) continue;
+      const [bx0, by0, bx1, by1] = polyBoxOf(ring);
+      if (special(bx0, by0) || special(bx1, by0) || special(bx0, by1) || special(bx1, by1)) { drop('corner in a landmark zone'); continue; }
     }
-    if (roadClear(x, y, 20) < radius + 4 && onTarmac(f.ring)) continue;
-    if (fp.query(...polyBoxOf(f.ring)).some((id) => polysOverlap(f.ring, fp.items[id].poly))) continue;
-    if (anchorIn(f.ring, x, y, radius + 1)) continue;
-    fp.add(f.ring, 1);
+    const ok = (r: readonly Pt[], cx: number, cy: number) =>
+      !(roadClear(cx, cy, 20) < radius + 4 && onTarmac(r)) &&
+      !fp.query(...polyBoxOf(r)).some((id) => polysOverlap(r, fp.items[id].poly)) &&
+      !anchorIn(r, cx, cy, radius + 1);
+    if (!ok(ring, x, y)) {
+      let fixed = false;
+      for (const dd of [0.6, 1.2, 2, 3]) {
+        for (const [ux, uy] of NUDGE_DIRS) {
+          const moved = ring.map((q) => [q[0] + ux * dd, q[1] + uy * dd] as Pt);
+          if (ok(moved, x + ux * dd, y + uy * dd)) {
+            ring = moved;
+            x += ux * dd;
+            y += uy * dd;
+            fixed = true;
+            break;
+          }
+        }
+        if (fixed) break;
+      }
+      if (!fixed) { drop(onTarmac(f.ring as Pt[]) ? 'on the road or pavement (nudging did not help)' : 'overlaps a landmark, marker or another footprint'); continue; }
+    }
+    fp.add(ring, 1);
     const st = styleAt(x, y, urban(x, y));
     const h = f.heightM > 0
       ? Math.max(0.22, Math.min(1.8, f.heightM * 0.075))
       : f.levels > 0
         ? Math.max(0.22, Math.min(1.8, f.levels * 0.22))
         : st === 'core' ? 0.46 : 0.38;
-    osmBuildings.push({ id: f.id, ring: f.ring, h, wall: pick(WALLS[st]), roof: pick(ROOFS[st]) });
+    osmBuildings.push({ id: f.id, ring, h, wall: pick(WALLS[st]), roof: pick(ROOFS[st]) });
     occ.add(x, y, radius + 0.6);
   }
   const tryPlace = (x: number, y: number, a: number, st: Style, wMul = 1): boolean => {
@@ -440,23 +470,49 @@ function build(): CityLayout {
         roofType = h > 0.68 && rand() < 0.4 ? 'flat' : rand() < 0.55 ? 'hip' : 'gable';
     }
     w *= wMul;
-    const rad = Math.max(w, d) * 0.5;
-    // S3: test the footprint corners too, so no house pokes into the palace, square or markets
-    if (st !== 'campus' && st !== 'market' && (special(x, y) || special(x + rad, y + rad) || special(x - rad, y - rad) || special(x + rad, y - rad) || special(x - rad, y + rad))) return false;
-    if (onPad(x, y)) return false;
-    const rc = roadClear(x, y, 30);
-    if (rc < rad * 0.8) return false;
-    if (riverDist(x, y, 40) < rad + 9) return false;
-    if (occ.edge(x, y, 30) < rad * 0.92) return false;
-    // exact footprint (roof overhang included): off the road and pavement, clear of every other footprint and of the markers
-    const k = 1.1;
-    const poly = rectCorners(x, y, w * k, d * k, a);
-    if (rc < rad * 1.5 + 3 && onTarmac(poly)) return false;
-    const grown = rectCorners(x, y, w * k + 0.8, d * k + 0.8, a);
-    if (fp.query(...polyBoxOf(grown)).some((id) => polysOverlap(grown, fp.items[id].poly))) return false;
-    if (anchorIn(grown, x, y, rad * 1.5 + 2)) return false;
-    fp.add(poly, 2);
-    occ.add(x, y, rad * 0.92);
+    // Try the spot, then nearby spots (along / across the frontage) and slightly smaller footprints before giving up.
+    const ca = Math.cos(a);
+    const sa = Math.sin(a);
+    const fits = (x: number, y: number, w: number, d: number): 0 | 1 | 2 => {
+      // 0 fits, 1 hopeless here (zone, pad, river, a close neighbour), 2 blocked by the pavement / a footprint (worth a nudge)
+      const rad = Math.max(w, d) * 0.5;
+      // S3: test the footprint corners too, so no house pokes into the palace, square or markets
+      if (st !== 'campus' && st !== 'market' && (special(x, y) || special(x + rad, y + rad) || special(x - rad, y - rad) || special(x + rad, y - rad) || special(x - rad, y + rad))) return 1;
+      if (onPad(x, y)) return 1;
+      const rc = roadClear(x, y, 30);
+      if (rc < rad * 0.8) return 1;
+      if (riverDist(x, y, 40) < rad + 9) return 1;
+      if (occ.edge(x, y, 30) < rad * 0.92) return 1;
+      // exact footprint (roof overhang included): off the road and pavement, clear of every other footprint and of the markers
+      const poly = rectCorners(x, y, w * FOOT_PAD, d * FOOT_PAD, a);
+      if (rc < rad * 1.5 + 3 && onTarmac(poly)) return 2;
+      const grown = rectCorners(x, y, w * FOOT_PAD + 0.8, d * FOOT_PAD + 0.8, a);
+      if (fp.query(...polyBoxOf(grown)).some((id) => polysOverlap(grown, fp.items[id].poly))) return 2;
+      if (anchorIn(grown, x, y, rad * 1.5 + 2)) return 2;
+      fp.add(poly, 2);
+      occ.add(x, y, rad * 0.92);
+      return 0;
+    };
+    const NUDGE: [number, number][] = [[0, 0], [0, 2], [0, -2], [2.5, 0], [-2.5, 0]];
+    let placed = false;
+    for (const m of [1, 0.8]) {
+      for (const [u, v] of m === 1 ? NUDGE : NUDGE.slice(0, 3)) {
+        const nx = x + u * ca - v * sa;
+        const ny = y + u * sa + v * ca;
+        const r = fits(nx, ny, w * m, d * m);
+        if (r === 1 && u === 0 && v === 0 && m === 1) return false;
+        if (r === 0) {
+          x = nx;
+          y = ny;
+          w *= m;
+          d *= m;
+          placed = true;
+          break;
+        }
+      }
+      if (placed) break;
+    }
+    if (!placed) return false;
     buildings.push({
       x,
       y,
@@ -713,7 +769,7 @@ function build(): CityLayout {
     }
   }
 
-  return { roads, river, buildings, osmBuildings, trees, vehicles, lamps, pads, net, fp, urban, riverDist, ms: Math.round(performance.now() - t0) };
+  return { roads, river, buildings, osmBuildings, trees, vehicles, lamps, pads, net, fp, osmDrops, urban, riverDist, ms: Math.round(performance.now() - t0) };
 }
 
 /** Size (length, width) of each vehicle kind in map units: build.ts scales its unit mesh by the same numbers x 10. */
@@ -727,17 +783,35 @@ const jamPhase = (t: number) => 0.5 * t + (0.5 / 0.7) * (1 - Math.cos(0.7 * t));
  * Where a vehicle is at time `t` (seconds): map position, heading and a 0..1 scale that fades traffic out and in where a
  * lane's stretch ends (so cars never pop). Used by the 3D city and by scripts/city-check.mjs.
  */
-export function vehicleAt(roads: readonly RoadLine[], v: Vehicle, t: number): { x: number; y: number; a: number; k: number } {
-  if (v.px !== undefined) return { x: v.px, y: v.py!, a: v.pa!, k: 1 };
+export interface VehiclePose {
+  x: number;
+  y: number;
+  a: number;
+  k: number;
+}
+const _sample = { x: 0, y: 0, a: 0, s: 0 };
+/** Pass `out` to reuse one object per frame (no allocation in the traffic loop). */
+export function vehicleAt(roads: readonly RoadLine[], v: Vehicle, t: number, out: VehiclePose = { x: 0, y: 0, a: 0, k: 1 }): VehiclePose {
+  if (v.px !== undefined) {
+    out.x = v.px;
+    out.y = v.py!;
+    out.a = v.pa!;
+    out.k = 1;
+    return out;
+  }
   const rd = roads[v.road];
   const len = v.s1 - v.s0;
   const run = v.jam ? v.speed * jamPhase(t) : v.speed * t;
   const s = v.s0 + wrap(v.s - v.s0 + run * v.lane, len);
-  const p = at(rd.sp, s);
+  const p = at(rd.sp, s, _sample);
   const off = rd.hw * 0.48 * v.lane;
   const closed = rd.closed && !v.jam;
   const edge = Math.min(s - v.s0, v.s1 - s);
-  return { x: p.x - Math.sin(p.a) * off, y: p.y + Math.cos(p.a) * off, a: p.a + (v.lane < 0 ? Math.PI : 0), k: closed ? 1 : Math.max(0.001, Math.min(1, edge / 4)) };
+  out.x = p.x - Math.sin(p.a) * off;
+  out.y = p.y + Math.cos(p.a) * off;
+  out.a = p.a + (v.lane < 0 ? Math.PI : 0);
+  out.k = closed ? 1 : Math.max(0.001, Math.min(1, edge / 4));
+  return out;
 }
 
 /** Scenes whose marker is meant to sit on a road (street corners, PoS stands, motor parks). */
