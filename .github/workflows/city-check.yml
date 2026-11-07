@@ -1,0 +1,21 @@
+# Audits the 3D city layout (docs/CITY_CHECK.md): nothing on the road, nothing inside anything else, traffic stays on
+# the tarmac. The script is plain Node (type stripping) and imports only repo files, so no npm install is needed.
+name: City check
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/art/city3d/**', 'src/art/map/**', 'scripts/city-check.mjs', '.github/workflows/city-check.yml']
+  pull_request:
+    paths: ['src/art/city3d/**', 'src/art/map/**', 'scripts/city-check.mjs']
+
+jobs:
+  city-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/city-check.mjs

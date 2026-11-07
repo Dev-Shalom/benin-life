@@ -1,0 +1,286 @@
+City layout: 960 houses, 1016 OSM footprints, 1743 trees, 153 lamps, 203 vehicles, 93 roads (128 ms)
+
+FAIL buildings standing on a carriageway: 12
+       house#514 res at (419.5, 318.2) is 1.7 units into the road ((423.4, 316.1))
+       osm#1460402224 at (537.5, 412.7) is 1.1 units into the road ((537.0, 412.6))
+       house#734 core at (542.8, 619.3) is 1.0 units into the road ((545.2, 613.5))
+       house#72 core at (536.3, 369.5) is 0.7 units into the road ((534.9, 362.2))
+       osm#1460123182 at (498.7, 419.1) is 0.7 units into the road ((498.0, 417.9))
+       house#79 core at (557.0, 358.4) is 0.6 units into the road ((549.8, 359.2))
+       osm#44649532 at (575.5, 563.6) is 0.6 units into the road ((576.5, 563.5))
+       house#881 res at (692.0, 543.5) is 0.5 units into the road ((688.2, 548.3))
+       house#2 core at (498.7, 386.3) is 0.4 units into the road ((501.9, 381.7))
+       osm#1458547240 at (589.5, 503.9) is 0.3 units into the road ((589.9, 505.0))
+       house#1 core at (511.2, 396.2) is 0.2 units into the road ((515.8, 390.9))
+       osm#1460123164 at (509.5, 417.9) is 0.1 units into the road ((509.1, 417.4))
+
+FAIL buildings on the pavement / kerb band: 74
+       house#207 core at (638.0, 566.7) is 1.0 units into the pavement
+       osm#1460123217 at (496.9, 410.3) is 0.9 units into the pavement
+       osm#1460121128 at (478.8, 426.5) is 0.8 units into the pavement
+       osm#1457864548 at (580.9, 515.9) is 0.7 units into the pavement
+       osm#1460121147 at (478.2, 417.9) is 0.7 units into the pavement
+       house#689 cramped at (850.8, 313.0) is 0.7 units into the pavement
+       osm#1460121149 at (478.7, 421.1) is 0.7 units into the pavement
+       house#205 core at (609.1, 533.2) is 0.7 units into the pavement
+       osm#1460121129 at (479.0, 424.9) is 0.7 units into the pavement
+       osm#1460123201 at (498.1, 412.8) is 0.7 units into the pavement
+       osm#1458551464 at (582.5, 452.6) is 0.7 units into the pavement
+       osm#44529867 at (424.6, 547.0) is 0.7 units into the pavement
+       osm#1460427990 at (552.1, 427.0) is 0.6 units into the pavement
+       osm#1458551454 at (579.5, 453.6) is 0.6 units into the pavement
+       osm#1460427988 at (554.3, 423.7) is 0.6 units into the pavement
+       house#126 core at (644.0, 434.8) is 0.5 units into the pavement
+       osm#1057721452 at (417.6, 431.9) is 0.5 units into the pavement
+       osm#1460123165 at (511.1, 418.7) is 0.5 units into the pavement
+       osm#44529846 at (433.1, 543.3) is 0.5 units into the pavement
+       house#712 res at (705.8, 582.4) is 0.5 units into the pavement
+       osm#1057721454 at (417.1, 430.5) is 0.5 units into the pavement
+       house#193 cramped at (827.9, 463.3) is 0.5 units into the pavement
+       osm#1057710230 at (436.6, 455.5) is 0.4 units into the pavement
+       osm#1057710197 at (423.7, 441.1) is 0.4 units into the pavement
+       osm#1460484523 at (544.7, 440.9) is 0.4 units into the pavement
+       house#23 res at (456.0, 304.5) is 0.4 units into the pavement
+       osm#84169502 at (438.7, 568.6) is 0.4 units into the pavement
+       osm#1458553111 at (575.8, 436.7) is 0.4 units into the pavement
+       house#274 res at (560.6, 742.8) is 0.4 units into the pavement
+       house#24 res at (445.1, 306.0) is 0.4 units into the pavement
+       osm#1460123187 at (498.2, 422.8) is 0.4 units into the pavement
+       osm#44529889 at (422.2, 557.2) is 0.3 units into the pavement
+       osm#85516681 at (410.5, 552.3) is 0.3 units into the pavement
+       osm#1460395724 at (522.7, 409.9) is 0.3 units into the pavement
+       house#773 res at (203.1, 303.8) is 0.3 units into the pavement
+       house#231 cramped at (678.7, 669.1) is 0.3 units into the pavement
+       osm#44659593 at (435.7, 454.2) is 0.3 units into the pavement
+       house#791 cramped at (849.6, 366.5) is 0.3 units into the pavement
+       osm#1458547206 at (587.9, 504.9) is 0.3 units into the pavement
+       osm#1059953823 at (410.8, 420.1) is 0.3 units into the pavement
+       ... and 34 more
+
+FAIL house overlaps another house or OSM footprint: 151
+       house#520 res x house#764 res near (421.0, 343.0) depth 2.6
+       house#29 res x house#631 res near (491.5, 259.7) depth 2.4
+       house#219 res x house#789 res near (692.2, 596.7) depth 2.4
+       house#26 res x house#631 res near (492.5, 270.1) depth 2.4
+       house#362 core x house#763 core near (417.6, 379.9) depth 2.3
+       house#70 core x house#889 core near (539.2, 385.6) depth 2.2
+       house#486 core x house#787 core near (661.9, 535.5) depth 2.1
+       house#489 core x house#504 core near (637.1, 548.7) depth 2.0
+       house#180 res x house#576 res near (758.4, 448.6) depth 2.0
+       house#178 res x house#867 res near (709.7, 378.6) depth 2.0
+       house#180 res x house#579 res near (758.4, 448.6) depth 2.0
+       house#72 core x house#889 core near (536.3, 369.5) depth 1.9
+       house#9 core x house#626 core near (504.4, 353.4) depth 1.9
+       house#715 res x house#823 cramped near (649.7, 649.2) depth 1.9
+       house#327 core x house#601 gra near (420.8, 608.6) depth 1.7
+       house#368 core x house#372 cramped near (370.2, 395.9) depth 1.6
+       house#18 core x house#516 res near (439.5, 340.9) depth 1.6
+       house#13 core x house#627 core near (443.2, 363.5) depth 1.5
+       house#30 res x house#632 res near (479.5, 249.8) depth 1.5
+       house#370 core x house#803 res near (352.6, 409.1) depth 1.5
+       house#468 core x house#470 core near (651.4, 470.8) depth 1.5
+       house#151 cramped x house#686 cramped near (788.7, 384.5) depth 1.4
+       house#176 res x house#674 res near (688.9, 438.2) depth 1.4
+       house#29 res x house#632 res near (491.5, 259.7) depth 1.4
+       house#48 res x house#645 res near (483.1, 176.3) depth 1.3
+       house#282 res x house#746 res near (571.0, 765.2) depth 1.3
+       house#935 market x house#937 market near (603.9, 595.7) depth 1.3
+       house#55 res x house#817 res near (451.7, 72.6) depth 1.3
+       house#150 cramped x house#686 cramped near (782.9, 375.2) depth 1.2
+       house#487 core x house#787 core near (672.9, 534.4) depth 1.2
+       house#283 res x house#746 res near (582.0, 765.7) depth 1.2
+       house#10 core x house#626 core near (515.2, 351.6) depth 1.1
+       house#131 res x house#176 res near (681.8, 438.1) depth 1.1
+       house#205 core x house#503 core near (609.1, 533.2) depth 1.1
+       house#137 res x house#178 res near (705.9, 386.5) depth 1.1
+       house#225 cramped x house#823 cramped near (664.7, 653.4) depth 1.1
+       house#302 res x house#748 res near (560.7, 818.6) depth 1.1
+       house#475 core x house#502 core near (610.2, 511.9) depth 1.1
+       house#103 res x house#819 res near (642.1, 291.6) depth 1.0
+       house#516 res x house#764 res near (430.2, 337.5) depth 1.0
+       ... and 111 more
+
+FAIL OSM footprints overlapping each other: 9
+       osm#1460484504 x osm#1460484505 near (554.9, 434.7) depth 0.3
+       osm#1460484552 x osm#1460484557 near (559.1, 438.2) depth 0.2
+       osm#1460428021 x osm#1460428022 near (567.5, 418.3) depth 0.2
+       osm#1460484499 x osm#1460484501 near (555.1, 438.0) depth 0.1
+       osm#1460428020 x osm#1460428030 near (565.9, 418.7) depth 0.0
+       osm#1460428018 x osm#1460428023 near (564.6, 418.7) depth 0.0
+       osm#1460348921 x osm#1460428022 near (569.5, 418.2) depth 0.0
+       osm#1458547206 x osm#1458547246 near (587.9, 504.9) depth 0.0
+       osm#1458551451 x osm#1458551465 near (574.2, 460.7) depth 0.0
+
+FAIL buildings overlapping a landmark model: 28
+       osm#1460049592 at (411.0, 479.2) inside landmark oba palace compound
+       osm#84169417 at (427.4, 504.0) inside landmark oba palace compound
+       osm#1458765424 at (426.3, 491.7) inside landmark oba palace compound
+       osm#1458765427 at (423.8, 488.2) inside landmark oba palace compound
+       osm#1458765475 at (427.7, 501.5) inside landmark oba palace compound
+       osm#1460044779 at (417.7, 483.9) inside landmark oba palace compound
+       osm#47396575 at (426.1, 517.8) inside landmark oba palace compound
+       osm#47419682 at (415.4, 523.8) inside landmark oba palace compound
+       osm#84169972 at (413.5, 523.9) inside landmark oba palace compound
+       osm#84172404 at (426.9, 510.7) inside landmark oba palace compound
+       osm#84172430 at (426.4, 515.0) inside landmark oba palace compound
+       osm#1458694239 at (421.2, 520.5) inside landmark oba palace compound
+       house#899 market at (614.6, 372.6) inside landmark market new_benin_market
+       house#900 market at (608.5, 371.9) inside landmark market new_benin_market
+       house#901 market at (607.2, 365.9) inside landmark market new_benin_market
+       house#902 market at (612.6, 362.8) inside landmark market new_benin_market
+       house#903 market at (617.1, 366.9) inside landmark market new_benin_market
+       house#915 market at (502.8, 239.9) inside landmark market uselu_market
+       house#916 market at (496.2, 239.2) inside landmark market uselu_market
+       house#917 market at (494.9, 232.7) inside landmark market uselu_market
+       house#919 market at (505.5, 233.9) inside landmark market uselu_market
+       house#933 market at (602.3, 601.9) inside landmark market ekiosa_market
+       house#934 market at (596.1, 600.3) inside landmark market ekiosa_market
+       house#935 market at (603.9, 595.7) inside landmark market ekiosa_market
+       house#943 market at (575.7, 707.4) inside landmark market santana_market
+       house#944 market at (577.6, 700.7) inside landmark market santana_market
+       house#942 market at (582.4, 709.3) inside landmark market santana_market
+       house#945 market at (584.3, 702.6) inside landmark market santana_market
+
+FAIL landmark models on a road / pavement: 2
+       landmark market oregbeni_market at (722.0, 492.0) is 4.1 units into the road ((725.3, 489.0))
+       landmark oba palace compound at (405.0, 503.0) is 0.6 units into the road ((388.0, 520.0))
+
+FAIL trees / palms planted on a carriageway: 9
+       tree at (1053.9, 510.4) 7.5 units into the road
+       tree at (632.7, -45.1) 6.4 units into the road
+       tree at (-45.0, 260.9) 6.4 units into the road
+       tree at (754.3, -74.8) 5.1 units into the road
+       tree at (795.0, -85.6) 4.6 units into the road
+       tree at (631.1, -72.0) 4.3 units into the road
+       tree at (336.2, -64.0) 3.0 units into the road
+       tree at (750.9, 726.9) 1.9 units into the road
+       tree at (473.4, -21.4) 1.3 units into the road
+
+FAIL trees / palms planted inside a building: 11
+       tree at (501.0, 610.2) inside landmark police hq
+       tree at (493.9, 609.8) inside landmark police hq
+       tree at (499.5, 115.8) inside landmark uniben senate block
+       tree at (495.4, 120.2) inside landmark uniben senate block
+       tree at (769.7, 737.6) inside landmark baba shrine
+       tree at (772.2, 737.4) inside landmark baba shrine
+       palm at (392.0, 492.0) inside landmark oba palace compound
+       palm at (390.0, 515.0) inside landmark oba palace compound
+       palm at (421.0, 520.0) inside osm#1458694239
+       palm at (539.7, 181.9) inside landmark bronze tech hub
+       tree at (543.5, 199.0) inside landmark bronze tech hub
+
+FAIL street lamps standing on a carriageway: 23
+       lamp at (453.3, 540.4) 7.3 units into a road
+       lamp at (396.1, 46.6) 7.2 units into a road
+       lamp at (690.1, 413.7) 6.9 units into a road
+       lamp at (689.3, 409.0) 6.7 units into a road
+       lamp at (448.2, 465.3) 6.6 units into a road
+       lamp at (554.5, 467.8) 5.6 units into a road
+       lamp at (681.4, 412.3) 5.5 units into a road
+       lamp at (499.1, 436.2) 5.1 units into a road
+       lamp at (547.7, 542.9) 4.9 units into a road
+       lamp at (507.4, 563.7) 4.8 units into a road
+       lamp at (398.9, 35.4) 4.6 units into a road
+       lamp at (539.9, 449.3) 4.4 units into a road
+       lamp at (688.6, 422.0) 4.4 units into a road
+       lamp at (693.7, 418.8) 4.3 units into a road
+       lamp at (438.4, 520.3) 4.1 units into a road
+       lamp at (484.7, 431.2) 3.6 units into a road
+       lamp at (622.8, 430.3) 2.9 units into a road
+       lamp at (438.5, 534.4) 2.6 units into a road
+       lamp at (461.8, 309.8) 2.2 units into a road
+       lamp at (435.7, 471.2) 2.0 units into a road
+       lamp at (523.9, 566.3) 1.8 units into a road
+       lamp at (739.9, 429.6) 1.7 units into a road
+       lamp at (840.6, 450.2) 1.7 units into a road
+
+FAIL street lamps inside a building: 3
+       lamp at (595.2, 331.5) inside house#84 core
+       lamp at (646.7, 429.4) inside house#126 core
+       lamp at (423.5, 547.3) inside osm#44529867
+
+FAIL parked vehicles on a carriageway: 20
+       parked bus at (708.3, 403.5) 8.0 units into the road
+       parked bus at (400.2, 49.0) 8.0 units into the road
+       parked bus at (404.6, 49.0) 8.0 units into the road
+       parked bus at (712.7, 397.0) 8.0 units into the road
+       parked bus at (404.6, 55.5) 8.0 units into the road
+       parked bus at (395.8, 49.0) 7.9 units into the road
+       parked bus at (699.5, 403.5) 7.9 units into the road
+       parked bus at (703.9, 403.5) 7.9 units into the road
+       parked bus at (708.3, 397.0) 6.8 units into the road
+       parked bus at (400.2, 55.5) 5.7 units into the road
+       parked bus at (391.4, 49.0) 5.1 units into the road
+       parked bus at (703.9, 397.0) 4.9 units into the road
+       parked bus at (462.5, 279.0) 4.2 units into the road
+       parked bus at (699.5, 397.0) 3.1 units into the road
+       parked bus at (395.8, 55.5) 2.9 units into the road
+       parked bus at (834.6, 349.0) 2.4 units into the road
+       parked bus at (834.6, 355.5) 2.2 units into the road
+       parked bus at (830.2, 349.0) 0.3 units into the road
+       parked bus at (821.4, 349.0) 0.2 units into the road
+       parked bus at (391.4, 55.5) 0.1 units into the road
+
+FAIL parked vehicles inside a building: 1
+       parked bus at (444.9, 285.5) overlaps house#505 res
+
+ok   traffic vehicles driving through a building (171 moving, 32783 lane samples): 0
+
+ok   traffic vehicles with a corner off the road surface: 0
+
+FAIL traffic vehicles driving through each other (120 s simulated): 585
+       car x car at t=0s near (618.3, 424.8) on akpakpava
+       car x car at t=0s near (713.1, 403.4) on auchi
+       bus x car at t=0s near (705.4, 407.1) on auchi
+       bus x car at t=0s near (705.4, 407.1) on auchi
+       car x car at t=0s near (695.3, 403.4) on auchi
+       bus x car at t=0s near (747.2, 376.3) on auchi
+       car x bus at t=0s near (687.9, 408.4) on agbor
+       car x bus at t=0s near (687.9, 408.4) on agbor
+       bus x bus at t=0s near (693.6, 409.2) on agbor
+       bus x bus at t=0s near (693.6, 409.2) on agbor
+       keke x car at t=0s near (528.2, 2.3) on oluku-bypass
+       car x car at t=0s near (689.4, 414.6) on auchi
+       keke x bus at t=0s near (696.6, 411.2) on auchi
+       car x car at t=0s near (702.6, 408.4) on auchi
+       bus x bus at t=0s near (686.2, 407.6) on auchi
+       car x keke at t=4s near (401.4, 54.9) on ugbowo
+       car x keke at t=4s near (632.0, 114.4) on mission
+       car x car at t=4s near (672.1, 412.6) on akpakpava
+       car x bus at t=4s near (665.5, 414.4) on akpakpava
+       car x bus at t=4s near (746.1, 386.0) on auchi
+       car x keke at t=4s near (776.5, 357.6) on auchi
+       bus x bus at t=4s near (750.5, 383.3) on auchi
+       bus x bus at t=4s near (698.7, 401.7) on auchi
+       bus x keke at t=4s near (698.7, 401.7) on auchi
+       car x keke at t=4s near (702.2, 418.2) on agbor
+       car x car at t=4s near (563.3, 953.3) on sapele
+       car x keke at t=4s near (544.7, 845.5) on sapele
+       car x car at t=4s near (454.5, 545.4) on airport
+       car x car at t=4s near (237.7, 304.5) on siluko
+       car x bus at t=4s near (322.3, 563.9) on ekenwan
+       car x car at t=4s near (680.9, 410.2) on akpakpava
+       keke x car at t=4s near (697.9, 410.6) on auchi
+       car x bus at t=4s near (719.1, 400.5) on auchi
+       bus x bus at t=4s near (754.7, 380.6) on auchi
+       bus x bus at t=4s near (686.2, 407.6) on auchi
+       keke x car at t=8s near (428.4, 76.1) on ugbowo
+       car x keke at t=8s near (632.6, 82.2) on mission
+       car x car at t=8s near (628.3, 421.8) on akpakpava
+       car x car at t=8s near (628.3, 421.8) on akpakpava
+       car x bus at t=8s near (736.2, 382.9) on auchi
+       ... and 545 more
+
+FAIL place markers inside a building: 3
+       back_gate_joint at (455.0, 75.0) inside house#55 res
+       gra_duplex at (450.0, 690.0) inside house#607 gra
+       ekenwan_room at (298.0, 562.0) inside house#421 cramped
+
+FAIL place markers in the carriageway (non-street places): 5
+       new_benin_market (market) at (595.0, 350.0) 4.3 units into the road
+       uselu_selfcon (home_flat) at (420.0, 228.0) 1.8 units into the road
+       babas_shrine (shrine) at (760.0, 730.0) 1.4 units into the road
+       mama_osas_buka (buka) at (480.0, 565.0) 1.0 units into the road
+       benin_airport (airport) at (330.0, 615.0) 0.7 units into the road
+
+FAIL: 936 violation(s) in 17 checks

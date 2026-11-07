@@ -116,3 +116,6 @@ The user said the map "looks weird". What was wrong and what changed:
 | Danger glow a harsh red blob at night | Softer opacity (0.42 + pulse 0.2). |
 
 Perf (SwiftShader, 390×844, dev page): day 18 calls / 98.7k → 106.8k triangles; night 21 calls / 107.6k → 115.3k; `bench(10)` ~186–200 ms per frame both before and after (software rendering, noise ±10%). No new draw calls; nothing new is allocated in the render loop beyond the small box lists the label placement already used (road labels reuse one scratch box; `roadSeen` is a module map cleared each frame). Layout still ~60–75 ms once per session.
+
+## City check (Phase 0)
+`npm run city-check` audits the layout (nothing on the road, nothing overlapping, traffic on tarmac only). See `docs/CITY_CHECK.md`.
