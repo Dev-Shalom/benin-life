@@ -105,6 +105,8 @@ export interface Street {
   k0: number;
   fill(spec: StreetSpec, k0: number): void;
   setDark(dark: number): void;
+  /** Rain: 0 dry .. 1 wet. The asphalt and pavement darken and take a faint sky-coloured sheen. */
+  setWet(wet: number): void;
   dispose(): void;
 }
 
@@ -142,7 +144,8 @@ export function buildStreet(density: number): Street {
 
   const C = COPIES;
   const unit = () => new BoxGeometry(1, 1, 1);
-  const slab = instanced(unit(), lambert(), 30 * C);
+  const slabMat = lambert();
+  const slab = instanced(unit(), slabMat, 30 * C);
   const wire = instanced(unit(), basic('#2a2d33'), 6 * C);
   const body = instanced(unit(), lambert(), 22 * C);
   const roof = instanced(unit(), lambert(), 44 * C);
@@ -380,6 +383,10 @@ export function buildStreet(density: number): Street {
       dark = d;
       bulbMat.color.copy(lampOff).lerp(lampOn, d);
       if (bucket !== prev) recolourWindows();
+    },
+    setWet(w) {
+      slabMat.color.setScalar(1 - 0.3 * w);
+      slabMat.emissive.set('#6d8aa6').multiplyScalar(0.13 * w);
     },
     dispose() {
       disposables.forEach((d) => d.dispose());

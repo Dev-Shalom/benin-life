@@ -1,6 +1,7 @@
 import { LoungeMapStrip } from './Lounge';
 import { BusinessStrip, OwnerChip } from './BusinessStrip';
 import { FuelStrip, YardStrip } from './Fuel';
+import { VehicleStrip } from './VehicleCare';
 import { useLounge } from '../../state/lounge';
 import { useEffect, useMemo, useState } from 'react';
 import { AvatarPortrait, migrateAvatar } from '../../art/avatar3d';
@@ -104,6 +105,7 @@ function LocationBody({ loc, state, status, close }: { loc: Location; state: Gam
         <BusinessStrip locId={loc.id} compact />
         <FuelStrip locId={loc.id} compact />
         <YardStrip locId={loc.id} />
+        <VehicleStrip locId={loc.id} />
         <PlaceFacts loc={loc} meId={state.profile.id} />
         <WhatToDo loc={loc} fallback={tabs.filter((a) => a !== 'chat').map((a) => PANEL_LABELS[a] ?? a)} />
         <OnToday locId={loc.id} />

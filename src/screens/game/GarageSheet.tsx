@@ -11,6 +11,7 @@ import { Button, Sheet, toast } from '../../ui';
 import { Thumb } from '../../art/thumbs/Thumb';
 import { SellCarButton } from './SellCar';
 import { DriveButton } from './DriveButton';
+import { VehicleCarePanel } from './VehicleCare';
 
 const KIND_LABEL: Record<string, string> = {
   hostel: 'hostel room', face_me: 'face-me-I-face-you room', self_contain: 'self-contain', mini_flat: 'mini flat', duplex: 'GRA duplex',
@@ -122,6 +123,7 @@ export function GarageSheet() {
               ))}
             </div>
           )}
+          {!afterCar && data.cars.length > 0 && <VehicleCarePanel />}
           <p className="garage-note">
             Your home: {KIND_LABEL[data.kind] ?? data.kind}. Bank first, then cash. A garage stays with this home: if you move, you build again.
           </p>

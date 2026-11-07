@@ -3,7 +3,7 @@
 // Layout rule: nothing covers the road. Top-left: the route chip. Top-right: camera, horn, map. Bottom: only the event
 // card (when something happens), the outcome line, the arrival card, and two small links (Turn back, Skip).
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { driveEventChoose, driveEventRoll, driveTurnBack, type DriveEvent, type DriveOutcome } from '../../api/drive';
+import { driveEventChoose, driveEventRoll, driveReport, driveTurnBack, driveWeather, vehicleStatus, type DriveEvent, type DriveOutcome, type VehicleInfo, type VehicleStatus } from '../../api/drive';
 import { errorMessage } from '../../lib/api';
 import { serverNow } from '../../lib/clock';
 import { useConfig } from '../../lib/config';
@@ -15,6 +15,8 @@ import { useTier } from '../feel/quality';
 import { honk } from './horn';
 import { CAMS, CAM_LABEL, clock, roadAt, roadKey, vehicleFor, type CamMode } from './model';
 import { MiniMap } from './MiniMap';
+import { DriveCluster, DriveHud, SteerPad, Wipers } from './DriveDash';
+import { anyCounts, fuelAt, newCounts, newStats, newSteer, type SteerInput, type SteerStats } from './steer';
 import type { Track } from './track';
 import type { DriveApi, DriveLive } from './engine/DriveScene';
 import { useDriveOthers } from './useOthers';
@@ -49,11 +51,22 @@ export interface DriveViewProps {
   onMap: () => void;
   onLost?: () => void;
   /** Dev lab / screenshots: no RPCs; show this event after a moment and answer it locally. */
-  demo?: { event?: DriveEvent; startS?: number; stopped?: boolean; cam?: CamMode; others?: boolean };
+  demo?: {
+    event?: DriveEvent;
+    startS?: number;
+    stopped?: boolean;
+    cam?: CamMode;
+    others?: boolean;
+    /** Steering controls on (own vehicle) in the lab. */
+    steer?: boolean;
+    rain?: boolean;
+    /** Tank and condition shown in the lab: litres, tank size, condition; before / need = the burn over the trip. */
+    vehicle?: { fuel: number; tank: number; cond: number; before?: number; need?: number };
+  };
 }
 
-const KIND_ICON: Record<string, string> = { ambush: 'warning', police: 'shield', goslow: 'road', beggar: 'people' };
-const KIND_TAG: Record<string, string> = { ambush: 'Road trouble', police: 'Checkpoint', goslow: 'Traffic', beggar: 'Roadside' };
+const KIND_ICON: Record<string, string> = { ambush: 'warning', police: 'shield', goslow: 'road', beggar: 'people', dry: 'warning' };
+const KIND_TAG: Record<string, string> = { ambush: 'Road trouble', police: 'Checkpoint', goslow: 'Traffic', beggar: 'Roadside', dry: 'Stranded' };
 
 function loadCam(): CamMode {
   try {
@@ -88,9 +101,25 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
   const [resolved, setResolved] = useState<{ id: number; ok: boolean } | null>(null);
   const [outcome, setOutcome] = useState<DriveOutcome | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dryAnswered, setDryAnswered] = useState(false);
   const [entering, setEntering] = useState(false);
   const [confirmBack, setConfirmBack] = useState(false);
   const seq = useRef(0);
+
+  // drive 3: own vehicle (steering, fuel, condition), weather
+  const own = trip.mode === 'car';
+  const steerOn = own && Boolean(cfg('drive.steer.enabled', true));
+  const steer = useRef<SteerInput>(newSteer());
+  const sentStats = useRef<SteerStats>(newStats());
+  const lastSend = useRef(0);
+  const [veh, setVeh] = useState<VehicleStatus | null>(null);
+  const [weather, setWeather] = useState<boolean>(Boolean(demo?.rain));
+  const [cond, setCond] = useState<number | null>(demo?.vehicle?.cond ?? null);
+  const [manual, setManual] = useState(false);
+  const [signal, setSignal] = useState<-1 | 0 | 1>(0);
+  const [feed, setFeed] = useState<{ id: number; text: string; tone: 'good' | 'bad' } | null>(null);
+  const hitSeen = useRef(0);
+  const rollNow = useRef<(() => void) | null>(null);
   const setHold = useDrive((s) => s.setHold);
   const refresh = useGame((s) => s.refresh);
 
@@ -126,6 +155,12 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
       setCarS(lv.s ?? 0);
       setCarV(lv.v ?? 0);
       setStopName(lv.stop ?? null);
+      setManual(Boolean(lv.manual));
+      setSignal(lv.signal ?? 0);
+      if ((lv.hitSeq ?? 0) > hitSeen.current) {
+        hitSeen.current = lv.hitSeq ?? 0;
+        setFeed({ id: hitSeen.current, text: 'Bump! Watch the traffic', tone: 'bad' });
+      }
     };
     tick();
     const id = window.setInterval(tick, 250);
@@ -177,10 +212,12 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
         rolling.current = false;
       }
     };
+    rollNow.current = roll;
     const first = window.setTimeout(roll, 3500);
     const id = window.setInterval(roll, 8000);
     return () => {
       alive = false;
+      rollNow.current = null;
       window.clearTimeout(first);
       window.clearInterval(id);
     };
@@ -196,6 +233,98 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
     [],
   );
 
+  // ---- drive 3: tank, condition, weather, the report of a steered trip
+  const loadVeh = useCallback(async () => {
+    if (demo || !own) return;
+    try {
+      setVeh(await vehicleStatus());
+    } catch {
+      /* an old server: the drive works without it */
+    }
+  }, [demo, own]);
+  useEffect(() => {
+    void loadVeh();
+  }, [loadVeh]);
+  useEffect(() => {
+    if (demo) return;
+    driveWeather()
+      .then((w) => setWeather(w.rain))
+      .catch(() => undefined);
+  }, [demo]);
+  const carInfo: VehicleInfo | null = useMemo(() => {
+    if (demo?.vehicle) {
+      const d = demo.vehicle;
+      return { id: 'demo', name: 'Car', class: 'car', driving: true, fuel_l: d.fuel, tank_l: d.tank, cond: d.cond, lpk: 0.5, repair_cost: 0, callout_cost: 0 };
+    }
+    if (!veh) return null;
+    return veh.cars.find((c) => c.id === (trip.vehicleId ?? veh.driving)) ?? veh.cars.find((c) => c.driving) ?? null;
+  }, [demo?.vehicle, veh, trip.vehicleId]);
+  useEffect(() => {
+    if (carInfo) setCond(carInfo.cond);
+  }, [carInfo]);
+  const tank = carInfo?.tank_l ?? 0;
+  const burn =
+    demo?.vehicle?.before != null
+      ? { fuel_before: demo.vehicle.before, need_l: demo.vehicle.need ?? 0, dry_done: false }
+      : veh?.trip && veh.trip.item === carInfo?.id
+        ? { fuel_before: veh.trip.fuel_before, need_l: veh.trip.need_l, dry_done: veh.trip.dry_done || dryAnswered }
+        : null;
+  const fuelOn = demo ? Boolean(demo.vehicle) : veh ? veh.fuel_on : false;
+  const fuelFrac = own && fuelOn && carInfo && tank > 0 ? Math.max(0, Math.min(1, fuelAt(burn, progress, carInfo.fuel_l) / tank)) : null;
+  const lowFuel = fuelFrac != null && fuelFrac < 0.15;
+  const lowAt = Number(cfg('drive.damage.low_warning', 35));
+  const damageOn = demo ? Boolean(demo.vehicle) : veh ? veh.damage_on : false;
+  const condShown = own && damageOn ? cond : null;
+  const lowCond = condShown != null && condShown < lowAt;
+  // the tank ran dry: ask the server for the stranded card right away (it also checks about every 8 s)
+  const dryReached = Boolean(veh?.trip && veh.trip.dry_prog != null && !veh.trip.dry_done && !dryAnswered && progress >= veh.trip.dry_prog);
+  useEffect(() => {
+    if (!dryReached) return;
+    rollNow.current?.();
+    const id = window.setInterval(() => rollNow.current?.(), 2500);
+    return () => window.clearInterval(id);
+  }, [dryReached]);
+
+  // the steering report: counts only, every few seconds; the server clamps them and answers with what it granted
+  useEffect(() => {
+    if (!steerOn || arrived) return;
+    const send = async () => {
+      const st = live.current.stats;
+      if (!st || arrivedRef.current || document.hidden) return;
+      const delta = newCounts(st, sentStats.current);
+      if (!anyCounts(delta)) return;
+      const now = Date.now();
+      const urgent = live.current.left < 9;
+      if (now - lastSend.current < (urgent ? 5200 : 7500)) return;
+      lastSend.current = now;
+      const snap = { ...st };
+      if (demo) {
+        sentStats.current = snap;
+        if (delta.passes > 0) setFeed({ id: now, text: `Nice driving: ${(delta.passes * 1.2).toFixed(1)} s saved`, tone: 'good' });
+        return;
+      }
+      try {
+        const r = await driveReport(new Date(tripRef.current.startedAt).toISOString(), delta);
+        if (!r.ok && (r.reason === 'too_soon' || r.reason === 'max_reports')) return;
+        sentStats.current = snap;
+        if (!r.ok) return;
+        if (typeof r.cond === 'number') setCond(r.cond);
+        if ((r.saved_s ?? 0) > (r.lost_s ?? 0) || r.skid)
+          setFeed({ id: now, text: r.skid ? 'The wet road made you skid' : (r.message ?? 'Nice driving'), tone: r.skid ? 'bad' : 'good' });
+        if ((r.saved_s ?? 0) !== 0 || (r.lost_s ?? 0) !== 0) void refresh();
+      } catch {
+        /* offline or an old server: keep driving */
+      }
+    };
+    const id = window.setInterval(() => void send(), 2000);
+    return () => window.clearInterval(id);
+  }, [steerOn, arrived, demo, refresh]);
+  useEffect(() => {
+    if (!feed) return;
+    const id = window.setTimeout(() => setFeed(null), 2400);
+    return () => window.clearTimeout(id);
+  }, [feed]);
+
   const choose = async (choiceId: string) => {
     if (!event || busy) return;
     setBusy(true);
@@ -207,6 +336,8 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
         o = await driveEventChoose(choiceId);
       }
       setOutcome(o);
+      if (o.kind === 'dry') setDryAnswered(true);
+      void loadVeh();
       setResolved({ id: event.id, ok: o.tone !== 'bad' });
       setCard(null);
       setHold(false);
@@ -267,6 +398,7 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
   const camLabel = cam === 'inside' && vehicle.kind === 'bus' ? 'Seat' : CAM_LABEL[cam];
   const showBottomLinks = !card && !outcome && !arrived && !event;
   const camIcon = cam === 'inside' ? 'eye' : 'camera';
+  const night = hour >= 19 || hour < 6;
 
   return (
     <div className="drive" role="dialog" aria-label="Driving">
@@ -285,6 +417,10 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
             entering={entering}
             others={tier === 'low' ? shownOthers.slice(0, 4) : shownOthers}
             startAt={demo ? { s: demo.startS, stopped: demo.stopped } : undefined}
+            steer={steerOn && (!demo || demo.steer) ? steer : null}
+            rain={weather}
+            cond={condShown ?? undefined}
+            smokeBelow={lowAt}
             onStopped={onStopped}
             onReady={(api: DriveApi) => {
               setReady(true);
@@ -301,6 +437,9 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
         </div>
       )}
 
+      {steerOn && (!demo || demo.steer) && <SteerPad input={steer} hidden={Boolean(card || event || outcome || arrived)} />}
+      {night && cam === 'inside' && vehicle.kind !== 'bus' && <div className="drive-nightglow" aria-hidden="true" />}
+      {weather && cam === 'inside' && vehicle.kind !== 'bus' && <Wipers />}
       <div className="drive-speed" style={{ ['--sp' as string]: String(Math.max(0, Math.min(0.5, (carV - 10) / 14))) }} aria-hidden="true" />
       <div className="drive__top">
         <div className="drive__left">
@@ -331,8 +470,29 @@ export function DriveView({ trip, arrived, hour, me, onGoIn, onSkip, onTurnBack,
           <button type="button" className="drive-btn drive-btn--round" onClick={onMap} aria-label="Open the map">
             <Icon name="map" size={20} />
           </button>
+          {own && (fuelFrac != null || condShown != null || steerOn) && (
+            <DriveHud
+              fuel={fuelFrac}
+              cond={condShown}
+              manual={manual}
+              showMode={steerOn && (!demo || Boolean(demo.steer))}
+              showFuel
+              showCond={condShown != null}
+              lowFuel={lowFuel}
+              lowCond={lowCond}
+            />
+          )}
         </div>
       </div>
+
+      {cam === 'inside' && vehicle.kind !== 'bus' && !arrived && !card && (
+        <DriveCluster v={carV} fuel={fuelFrac} lowFuel={lowFuel} lowCond={lowCond} signal={signal} rain={weather} night={night} wipers={weather} />
+      )}
+      {feed && (
+        <div className={`drive-feed is-${feed.tone}`} key={feed.id} role="status">
+          {feed.text}
+        </div>
+      )}
 
       {showBottomLinks && (
         <div className="drive__links">

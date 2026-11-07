@@ -36,3 +36,7 @@ update public.game_config set value = 'false'::jsonb
 -- Power cuts (docs/POWER.md): the no-light effects (TV refused, smaller bonuses, poorer sleep) depend on the real clock and the player's area, so they are
 -- switched off for every suite. power_test.sql switches them back on.
 update public.game_config set value = 'false'::jsonb where key = 'power.effects_enabled';
+
+-- Drive scene 3 (docs/DRIVE.md): the daily rain window depends on the date, and rain slows every road trip, so rain is switched off for every
+-- suite. drive3_test.sql switches it back on where it tests it.
+update public.game_config set value = 'false'::jsonb where key = 'drive.weather.enabled';

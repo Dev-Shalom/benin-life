@@ -7,6 +7,7 @@ import type { Location, TravelOption, TravelQuote } from '../../lib/types';
 import { useGame } from '../../state/game';
 import { toast } from '../../ui';
 import { canPoll } from '../../lib/activity';
+import { checkFuelBeforeTrip } from './VehicleCare';
 
 export function riskTone(pct: number): 'good' | 'warn' | 'bad' {
   if (pct < 3) return 'good';
@@ -54,8 +55,30 @@ export function useTravel(dest: Location, cash: number, onStarted: () => void) {
     return () => window.clearInterval(id);
   }, [quote?.dest]);
 
+  const start = async (m: string) => {
+    setGoing(true);
+    try {
+      const res = await rpc<{ message?: string }>('travel_start', { p_dest: dest.id, p_mode: m });
+      toast(res?.message ?? `You're on your way to ${dest.name}.`, 'good');
+      await refresh();
+      onStarted();
+    } catch (e) {
+      toast(errorMessage(e), 'bad');
+    } finally {
+      setGoing(false);
+    }
+  };
+
   const go = async () => {
     if (!mode) return;
+    // own vehicle: does the tank cover the trip? If not, a card offers refuel / continue / another way (docs/DRIVE.md)
+    if (mode === 'car') {
+      setGoing(true);
+      const ok = await checkFuelBeforeTrip(dest.id, dest.name, () => start('car'));
+      setGoing(false);
+      if (!ok) return;
+      return start('car');
+    }
     setGoing(true);
     try {
       const res = await rpc<{ message?: string }>('travel_start', { p_dest: dest.id, p_mode: mode });

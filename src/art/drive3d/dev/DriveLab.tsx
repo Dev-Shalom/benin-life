@@ -1,5 +1,6 @@
 // Dev page for the drive scene (dev server only, no session):
 //   /dev/drive?cam=chase|side|inside&h=14&mode=car|bus|keke|drop&veh=camry_new&event=ambush|police|goslow|beggar&arrived=1&others=1&gfx=low&theme=dark
+//   steer=1 (steering pad on) rain=1 fuel=<litres>&tank=<litres>&cond=<0..100>&before=<litres at start>&need=<litres the trip burns>
 //   from=ekenwan_room&to=oba_market&total=90&p=0.4 (route between two places, trip seconds, progress) &s=<track metres> (start there)
 import { useMemo } from 'react';
 import { DriveView } from '../DriveView';
@@ -36,6 +37,16 @@ const EVENTS: Record<string, DriveEvent> = {
     choices: [
       { id: 'wait', label: 'Wait', hint: 'A little longer, no risk.' },
       { id: 'shortcut', label: 'Take a shortcut', hint: 'Could save time, could go wrong.' },
+    ],
+  },
+  dry: {
+    kind: 'dry',
+    title: 'Out of fuel',
+    body: 'The engine coughs and dies. The needle sits on empty and you roll to a stop by the roadside.',
+    choices: [
+      { id: 'push', label: 'Push the car', hint: 'Free, but it costs time and sweat.' },
+      { id: 'mechanic', label: 'Call a mechanic ₦12,000', hint: 'He brings a can. You wait for him.' },
+      { id: 'keke', label: 'Hitch a keke ₦3,000', hint: 'Cheaper, but you arrive later.' },
     ],
   },
   beggar: {
@@ -134,6 +145,18 @@ export default function DriveLab() {
           stopped: q.has('stopped'),
           cam: (q.get('cam') as CamMode | null) ?? 'chase',
           others: q.has('others'),
+          steer: q.has('steer'),
+          rain: q.has('rain'),
+          vehicle:
+            mode === 'car' && (q.has('cond') || q.has('fuel') || q.has('before'))
+              ? {
+                  fuel: Number(q.get('fuel') ?? 30),
+                  tank: Number(q.get('tank') ?? 45),
+                  cond: Number(q.get('cond') ?? 100),
+                  before: q.has('before') ? Number(q.get('before')) : undefined,
+                  need: q.has('need') ? Number(q.get('need')) : undefined,
+                }
+              : undefined,
         }}
       />
     </div>

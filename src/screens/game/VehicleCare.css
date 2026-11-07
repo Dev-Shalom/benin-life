@@ -1,0 +1,109 @@
+/* Drive 3: fuel and repairs of own vehicles (docs/DRIVE.md). Tokens only, so Light and Dark both work. */
+.vc {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.vc__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+}
+.vc-car {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.vc-car__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.vc-car__head b {
+  display: block;
+  font-size: var(--fs-md);
+}
+.vc-car__head small {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.vc-bar {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+}
+.vc-bar__icon {
+  display: grid;
+}
+.vc-bar__track {
+  height: 8px;
+  border-radius: 8px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.vc-bar__track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--good);
+}
+.vc-bar__track i.is-warn {
+  background: var(--warn);
+}
+.vc-bar__track i.is-bad {
+  background: var(--bad);
+}
+.vc-bar__label {
+  min-width: 64px;
+  text-align: right;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.vc-car__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.vc-car__acts:empty {
+  display: none;
+}
+.vc-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.vc-warn__gauge {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  color: var(--warn);
+}
+.vc-warn__gauge .vc-bar__track {
+  height: 10px;
+}
+.vc-warn__gauge b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.vc-warn__body {
+  margin: 12px 0 14px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.vc-warn__acts {
+  display: grid;
+  gap: var(--s2);
+}

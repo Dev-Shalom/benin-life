@@ -78,6 +78,7 @@ import { LoungeHost } from './game/Lounge';
 import { ChallengeSync } from './game/Challenges';
 import { useShownAvatar, useWardrobe } from '../state/wardrobe';
 import { GarageSheet } from './game/GarageSheet';
+import { FuelWarnHost } from './game/VehicleCare';
 import { MoveHouseSheet } from './game/MoveHouseSheet';
 import { SpraySheet } from './game/SpraySheet';
 import { ReceiptSheet } from './game/ReceiptSheet';
@@ -1044,6 +1045,7 @@ export default function Game() {
         onArrange={(key) => { setOverlay(null); useArrange.getState().open(key); }}
       />
       <GarageSheet />
+      <FuelWarnHost />
       <MoveHouseSheet />
       <SpraySheet state={state} />
       <ReceiptSheet />

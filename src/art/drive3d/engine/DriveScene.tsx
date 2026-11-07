@@ -9,15 +9,19 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef, type MutableRefObject } from 'react';
 import {
   AdditiveBlending,
+  BufferAttribute,
   BufferGeometry,
   CanvasTexture,
   Color,
   DirectionalLight,
+  DoubleSide,
   Float32BufferAttribute,
   Fog,
   Group,
   HemisphereLight,
   InstancedMesh,
+  LineBasicMaterial,
+  LineSegments,
   Mesh,
   MeshBasicMaterial,
   MeshLambertMaterial,
@@ -34,6 +38,7 @@ import { cityLight } from '../../city3d/engine/light';
 import { districtAt } from '../district';
 import { roadAt, type CamMode, type VehicleKind, type VehicleLook } from '../model';
 import { LANE_OFFSET, type Track } from '../track';
+import { MANUAL_MS, newStats, type SteerInput, type SteerStats } from '../steer';
 import { buildBusRig, buildStop, destBoard, type BusRig, type StopRig } from './bus';
 import { buildPlaceModel, type PlaceModel } from './place';
 import { buildCockpit, buildEventProps, buildGate, buildSign, gateAccent, type Cockpit, type EventProps, type Gate } from './props';
@@ -60,6 +65,14 @@ export interface DriveLive {
   s?: number;
   v?: number;
   stop?: string | null;
+  /** Steering (own vehicle): lane index 0..3, whether the player is driving (not the autopilot), the counts to report, turn signal, braking. */
+  lane?: number;
+  manual?: boolean;
+  stats?: SteerStats;
+  hitSeq?: number;
+  offSeq?: number;
+  signal?: -1 | 0 | 1;
+  braking?: boolean;
 }
 
 export interface DriveApi {
@@ -94,6 +107,14 @@ export interface DriveSceneProps {
   /** "Go in": push in on the destination. */
   entering: boolean;
   others: OtherCar[];
+  /** Own vehicle only: the on-screen controls write into this (lane steps, brake, speed up). Absent = auto-drive only. */
+  steer?: MutableRefObject<SteerInput> | null;
+  /** It is raining (wet road, streaks, greyer light). */
+  rain?: boolean;
+  /** Vehicle condition 0..100 (smoke, dent decal, tilt, lower top speed). Absent = 100. */
+  cond?: number;
+  /** Below this condition the vehicle smokes. */
+  smokeBelow?: number;
   seed?: number;
   paused?: boolean;
   /** Dev (screenshots): start at this track distance. */
@@ -110,7 +131,24 @@ interface Npc {
   v: number;
   z: number;
   color: Color;
+  hitT?: number;
 }
+/** Slow same-direction traffic in the player's two lanes: the vehicles you overtake. */
+interface SlowNpc {
+  kind: NpcKind;
+  half: number;
+  lane: number;
+  v: number;
+  s: number;
+  hit: boolean;
+  passed: boolean;
+  vis: boolean;
+  color: Color;
+}
+const HALF_LEN: Record<string, number> = { sedan: 2.3, suv: 2.4, pickup: 2.6, keke: 1.3, moto: 1.0, okada2: 1.0, bus: 5.4, bike: 0.8 };
+const HALF_WID: Record<string, number> = { sedan: 0.78, suv: 0.85, pickup: 0.85, keke: 0.55, moto: 0.18, okada2: 0.18, bus: 1.1, bike: 0.12 };
+/** Lateral positions of the lane steps: oncoming lane, inner lane, outer lane (default), the shoulder (off the road). */
+const LANE_LAT = [-LANE_IN, LANE_IN, LANE_OFFSET, 8.9];
 
 const NPC_KINDS: NpcKind[] = ['sedan', 'sedan', 'suv', 'keke', 'okada2', 'moto', 'bus', 'pickup', 'sedan', 'keke', 'moto', 'bus'];
 const NPC_COLORS = ['#c3c7cd', '#4a5d7a', '#a23c36', '#efebe0', '#5a8068', '#6c7480', '#aab3bd', '#7d8ca0', '#9a7650', '#d6d1c2'];
@@ -175,6 +213,48 @@ function beamTexture(): CanvasTexture {
   g.globalCompositeOperation = 'destination-out';
   g.fillStyle = gx;
   g.fillRect(0, 0, 32, 128);
+  return new CanvasTexture(cv);
+}
+
+function crackTexture(): CanvasTexture {
+  const cv = document.createElement('canvas');
+  cv.width = 128;
+  cv.height = 64;
+  const g = cv.getContext('2d')!;
+  const r = g.createRadialGradient(64, 32, 2, 64, 32, 44);
+  r.addColorStop(0, 'rgba(20,20,22,0.7)');
+  r.addColorStop(0.55, 'rgba(30,30,32,0.35)');
+  r.addColorStop(1, 'rgba(30,30,32,0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 128, 64);
+  g.strokeStyle = 'rgba(235,235,230,0.8)';
+  g.lineWidth = 1.4;
+  const cracks: [number, number][][] = [
+    [[64, 32], [40, 20], [24, 22]],
+    [[64, 32], [88, 14], [104, 18]],
+    [[64, 32], [92, 46], [108, 44]],
+    [[64, 32], [46, 50], [30, 56]],
+    [[64, 32], [70, 10]],
+  ];
+  for (const c of cracks) {
+    g.beginPath();
+    g.moveTo(c[0][0], c[0][1]);
+    for (let i = 1; i < c.length; i++) g.lineTo(c[i][0], c[i][1]);
+    g.stroke();
+  }
+  return new CanvasTexture(cv);
+}
+
+function puffTexture(): CanvasTexture {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 64;
+  const g = cv.getContext('2d')!;
+  const r = g.createRadialGradient(32, 32, 1, 32, 32, 31);
+  r.addColorStop(0, 'rgba(255,255,255,0.95)');
+  r.addColorStop(0.5, 'rgba(255,255,255,0.5)');
+  r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 64, 64);
   return new CanvasTexture(cv);
 }
 
@@ -310,6 +390,65 @@ function Rig(p: DriveSceneProps) {
     if (wide) beams.forEach((b, i) => (b.visible = i === 0));
     root.add(car);
 
+    // ---- own-vehicle extras (drive 3): brake / tail lights, turn signal lamps, a dent decal, smoke
+    kit.body.computeBoundingBox();
+    const bb = kit.body.boundingBox!;
+    const bw = Math.max(0.3, (bb.max.x - bb.min.x) / 2);
+    const bh = bb.max.y - bb.min.y;
+    const lampGeo = own(new PlaneGeometry(0.34, 0.15));
+    const tailMat = own(new MeshBasicMaterial({ color: '#e0352b', transparent: true, opacity: 0, depthWrite: false, side: DoubleSide }));
+    const sigMat = own(new MeshBasicMaterial({ color: '#f0a533', transparent: true, opacity: 0.95, depthWrite: false, side: DoubleSide }));
+    const lampY = bb.min.y + bh * 0.52;
+    const tails: Mesh[] = [];
+    const sigs: { m: Mesh; side: -1 | 1 }[] = [];
+    for (const sx of wide ? [0] : [-1, 1]) {
+      const tl = new Mesh(lampGeo, tailMat);
+      tl.position.set(sx * bw * 0.72, lampY, bb.max.z + 0.02);
+      rig.add(tl);
+      tails.push(tl);
+    }
+    for (const side of [-1, 1] as const) {
+      const sr = new Mesh(lampGeo, sigMat);
+      sr.position.set(side * bw * (wide ? 0.5 : 0.92), lampY - 0.12, bb.max.z + 0.025);
+      sr.scale.set(0.55, 1, 1);
+      sr.visible = false;
+      rig.add(sr);
+      const sf = new Mesh(lampGeo, sigMat);
+      sf.position.set(side * bw * (wide ? 0.5 : 0.92), lampY - 0.12, bb.min.z - 0.025);
+      sf.scale.set(0.55, 1, 1);
+      sf.visible = false;
+      rig.add(sf);
+      sigs.push({ m: sr, side }, { m: sf, side });
+    }
+    // a cracked dent decal on the door sides (shown at low condition)
+    const dentTex = own(crackTexture());
+    const dentMat = own(new MeshBasicMaterial({ map: dentTex, transparent: true, depthWrite: false, opacity: 0.85, polygonOffset: true, polygonOffsetFactor: -2 }));
+    const dentGeo = own(new PlaneGeometry(Math.min(1.1, (bb.max.z - bb.min.z) * 0.28), bh * 0.3));
+    const dents = [1, -1].map((sx) => {
+      const d = new Mesh(dentGeo, dentMat);
+      d.position.set(sx * (bb.max.x + 0.012), bb.min.y + bh * 0.46, (bb.min.z + bb.max.z) / 2 + 0.2);
+      d.rotation.y = (sx * Math.PI) / 2;
+      d.visible = false;
+      rig.add(d);
+      return d;
+    });
+    // smoke from under the bonnet (preallocated points, updated in place)
+    const smokeN = low ? 10 : 22;
+    const smokePos = new Float32Array(smokeN * 3);
+    const smokeAge = new Float32Array(smokeN);
+    for (let i = 0; i < smokeN; i++) {
+      smokeAge[i] = (i / smokeN) * 1.4;
+      smokePos[i * 3 + 1] = -50;
+    }
+    const smokeGeo = own(new BufferGeometry());
+    const smokeAttr = new BufferAttribute(smokePos, 3); // keeps the array: updated in place each frame
+    smokeGeo.setAttribute('position', smokeAttr);
+    const smokeMat = own(new PointsMaterial({ color: '#6f757d', map: own(puffTexture()), size: 1.3, sizeAttenuation: true, transparent: true, opacity: 0.75, depthWrite: false }));
+    const smoke = new Points(smokeGeo, smokeMat);
+    smoke.frustumCulled = false;
+    smoke.visible = false;
+    rig.add(smoke);
+
     // bus extras: destination board, door leaves, the inside
     let busRig: BusRig | null = null;
     let board: { mesh: Mesh; dispose(): void } | null = null;
@@ -361,6 +500,110 @@ function Rig(p: DriveSceneProps) {
       npcMesh.set(k, im);
     }
     const dummy = new Object3D();
+    const steerStats: SteerStats = newStats();
+
+    // ---- slow traffic in the player's own two lanes: the vehicles you overtake (the autopilot steers round them)
+    const slowDefs: { kind: NpcKind; col: string }[] = [
+      { kind: 'keke', col: '#e3b53c' },
+      { kind: 'sedan', col: '#9a7650' },
+      { kind: 'pickup', col: '#5a8068' },
+      { kind: 'keke', col: '#e3b53c' },
+      { kind: 'sedan', col: '#7d8ca0' },
+    ];
+    const nSlow = isBus ? 0 : low ? 3 : 5;
+    let rs = (hash(P.current.dest.id) | 1) >>> 0;
+    const rnd = () => {
+      rs = (Math.imul(rs, 1664525) + 1013904223) >>> 0;
+      return rs / 4294967296;
+    };
+    const slow: SlowNpc[] = slowDefs.slice(0, nSlow).map((d, i) => ({
+      kind: d.kind,
+      half: HALF_LEN[d.kind],
+      lane: i % 2 === 0 ? LANE_OFFSET : LANE_IN,
+      v: 5 + rnd() * 3.5,
+      s: 0,
+      hit: false,
+      passed: false,
+      vis: false,
+      color: new Color(d.col),
+    }));
+    const slowMesh = new Map<NpcKind, InstancedMesh>();
+    for (const k of new Set(slow.map((n) => n.kind))) {
+      const im = new InstancedMesh(vehicleGeometry(k), npcMats, slow.filter((n) => n.kind === k).length);
+      im.frustumCulled = false;
+      im.count = 0;
+      root.add(im);
+      slowMesh.set(k, im);
+    }
+    const slowMeshes = [...slowMesh.values()];
+    const respawnSlow = (n: SlowNpc, from: number, ahead: number) => {
+      n.s = from + ahead;
+      n.lane = rnd() < 0.55 ? LANE_OFFSET : LANE_IN;
+      n.v = 5 + rnd() * 3.5;
+      n.hit = false;
+      n.passed = false;
+    };
+    const inSlowWindow = (sx: number) => track.slows.some((sl) => sx > sl.sa - 50 && sx < sl.sb + 70);
+
+    // ---- night glow of other vehicles: tail lights (same direction) and headlights (oncoming), one instanced mesh, none by day
+    const glowMax = (nCars + nSlow) * 2 + 4;
+    const glow = new InstancedMesh(
+      own(new PlaneGeometry(0.46, 0.2)),
+      own(new MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9, depthWrite: false, blending: AdditiveBlending, side: DoubleSide })),
+      glowMax,
+    );
+    glow.frustumCulled = false;
+    glow.count = 0;
+    root.add(glow);
+    const tailCol = new Color('#ff3a2a');
+    const headCol = new Color('#ffe9b0');
+    const pushGlow = (x: number, z: number, ry: number, kindName: string, front: boolean) => {
+      const hl = HALF_LEN[kindName] ?? 2.3;
+      const hw = HALF_WID[kindName] ?? 0.7;
+      const narrow = hw < 0.3;
+      const cs = Math.cos(ry);
+      const sn = Math.sin(ry);
+      for (let k = 0; k < (narrow ? 1 : 2); k++) {
+        if (glow.count >= glowMax) return;
+        const lx = narrow ? 0 : (k === 0 ? -1 : 1) * hw * 0.78;
+        const lz = front ? -hl : hl;
+        dummy.position.set(x + lx * cs + lz * sn, 0.72, z - lx * sn + lz * cs);
+        dummy.rotation.set(0, ry, 0);
+        dummy.scale.setScalar(1);
+        dummy.updateMatrix();
+        glow.setMatrixAt(glow.count, dummy.matrix);
+        glow.setColorAt(glow.count, front ? headCol : tailCol);
+        glow.count++;
+      }
+    };
+
+    // ---- rain: streaks on the camera (two periodic copies scrolled by moving the object: no per-vertex work), off by default
+    const rainSegs = low ? 46 : 96;
+    const rainPos = new Float32Array(rainSegs * 2 * 6);
+    for (let i = 0; i < rainSegs; i++) {
+      const x = (rnd() - 0.5) * 17;
+      const y = rnd() * 9;
+      const z = -(1.5 + rnd() * 20);
+      const len = 0.8 + rnd() * 0.5;
+      for (let c = 0; c < 2; c++) {
+        const o = (c * rainSegs + i) * 6;
+        rainPos[o] = x;
+        rainPos[o + 1] = y + c * 9;
+        rainPos[o + 2] = z;
+        rainPos[o + 3] = x - 0.06;
+        rainPos[o + 4] = y + c * 9 - len;
+        rainPos[o + 5] = z;
+      }
+    }
+    const rainGeo = own(new BufferGeometry());
+    rainGeo.setAttribute('position', new Float32BufferAttribute(rainPos, 3));
+    const rainStreaks = new LineSegments(rainGeo, own(new LineBasicMaterial({ color: '#d4e3f2', transparent: true, opacity: 0.4, depthWrite: false })));
+    rainStreaks.frustumCulled = false;
+    rainStreaks.visible = false;
+    rainStreaks.rotation.x = 0.14;
+    cam.add(rainStreaks);
+    const juncMat = junc ? (((junc.group.children[0] as Mesh | undefined)?.material as MeshLambertMaterial | undefined) ?? null) : null;
+    let wetNow = 0;
 
     // a slow vehicle ahead in our lane during the traffic slow-downs
     const lead = new Mesh(vehicleGeometry('suv'), own(new MeshLambertMaterial({ vertexColors: true, color: '#8d96a3' })));
@@ -452,6 +695,18 @@ function Rig(p: DriveSceneProps) {
     let holdV: number | null = null;
     let topH: number | null = null;
     let latCar = 0;
+    let latBase = LANE_OFFSET;
+    let laneIdx = 2;
+    let manualAt = -1e9;
+    let nowManual = false;
+    let hitSeq = 0;
+    let offSeq = 0;
+    let offT = 0;
+    let offNext = 0.35;
+    let shake = 0;
+    let tiltSm = 0;
+    let brakeLit = 0;
+    let sig: -1 | 0 | 1 = 0;
     let t = 0;
     let skyTex: CanvasTexture | null = null;
     let lastLightKey = '';
@@ -477,26 +732,39 @@ function Rig(p: DriveSceneProps) {
     let othersResetAt = -1;
     const slotOf = new Map<string, number>();
     const wheelO = new Object3D();
+    slow.forEach((n, i) => respawnSlow(n, sCar, 70 + i * 46 + rnd() * 20));
 
     const applyLight = (hour: number) => {
       const c = cityLight(hour);
       dark = c.dark;
-      const key = `${Math.round(c.dark * 20)}|${c.sky}`;
+      const wet = P.current.rain ? 1 : 0;
+      const key = `${Math.round(c.dark * 20)}|${c.sky}|${wet}`;
       if (key === lastLightKey) return;
       lastLightKey = key;
+      // rain: a greyer, flatter light, shorter fog, a wet road
+      const sky = wet ? `#${new Color(c.sky).lerp(new Color(c.dark > 0.5 ? '#141a26' : '#929ca7'), 0.6).getHexString()}` : c.sky;
+      wetNow = wet;
+      fog.near = (low ? 24 : 32) * (1 - 0.25 * wet);
+      fog.far = (low ? 105 : 150) * (1 - 0.32 * wet);
+      for (const e of pool) e.street?.setWet(wet);
+      if (juncMat) {
+        juncMat.color.setScalar(1 - 0.3 * wet);
+        juncMat.emissive.set('#6d8aa6').multiplyScalar(0.13 * wet);
+      }
+      rainStreaks.visible = wet > 0;
       hemi.color.set(c.hemiSky);
       hemi.groundColor.set(c.hemiGround).lerp(new Color(c.hemiSky), 0.3);
-      hemi.intensity = c.hemi * 1.3;
+      hemi.intensity = c.hemi * 1.3 * (1 - 0.12 * wet);
       fill.intensity = 0.2 + (1 - c.dark) * 0.55;
       sun.color.set(c.sun);
-      sun.intensity = c.sunI * 0.6;
+      sun.intensity = c.sunI * 0.6 * (1 - 0.55 * wet);
       sun.position.set(c.sunDir[0] * 60, Math.max(20, c.sunDir[1] * 60), c.sunDir[2] * 60 + 10);
-      fog.color.set(c.sky);
+      fog.color.set(sky);
       skyTex?.dispose();
-      skyTex = skyTexture(c);
+      skyTex = skyTexture(wet ? { ...c, sky } : c);
       scene.background = skyTex;
       for (const e of pool) e.street?.setDark(c.dark);
-      beamMat.opacity = Math.max(0, (c.dark - 0.25) / 0.75) * 0.55;
+      beamMat.opacity = Math.max(0, (c.dark - 0.25) / 0.75) * 0.72;
       if (stars) (stars.material as PointsMaterial).opacity = Math.max(0, (c.dark - 0.55) / 0.45) * 0.9;
       cockpit.setLook(P.current.vehicle.color, c.dark);
       gate?.g.setDark(c.dark);
@@ -542,6 +810,7 @@ function Rig(p: DriveSceneProps) {
           if (!slot.street) {
             slot.street = buildStreet(density);
             slot.street.setDark(dark);
+            slot.street.setWet(wetNow);
             root.add(slot.street.group);
           }
           const s = track.straights[i];
@@ -583,6 +852,14 @@ function Rig(p: DriveSceneProps) {
         carVisible: carMesh.visible,
         hold: holdV ?? -1,
         stop: stopRigs.map((r) => r.state + ':' + r.s).join(','),
+        lane: laneIdx,
+        latBase,
+        manual: nowManual,
+        passes: steerStats.passes,
+        gaps: steerStats.gaps,
+        hits: steerStats.hits,
+        offroad: steerStats.offroad,
+        slow: slow.filter((n) => n.vis).map((n) => `${Math.round(n.s - sCar)}@${n.lane}`).join(','),
       }),
       dev(patch) {
         const target = patch.s ?? patch.dist;
@@ -599,6 +876,20 @@ function Rig(p: DriveSceneProps) {
     };
 
     const inJunction = (s: number, pad: number) => track.junctions.some((j) => s > j.sa - pad && s < j.sb + pad);
+    const nearLane = (lat: number, from: number, to: number) => {
+      for (const n of slow) if (n.vis && Math.abs(n.lane - lat) < 0.5 && n.s - sCar > from && n.s - sCar < to) return true;
+      return false;
+    };
+    const squeezed = (n: SlowNpc) => {
+      for (const m of slow) if (m !== n && m.vis && Math.abs(m.s - sCar) < 12 && Math.abs(m.lane - n.lane) > 1) return true;
+      return false;
+    };
+    const hitNow = (counts: boolean) => {
+      if (counts) steerStats.hits++;
+      hitSeq++;
+      speed *= 0.5;
+      shake = 0.45;
+    };
     const tmpV = new Vector3();
 
     const tick = (dtRaw: number) => {
@@ -607,6 +898,41 @@ function Rig(p: DriveSceneProps) {
       const props = P.current;
       const live = props.live.current;
       applyLight(props.hour);
+
+      // ---- steering input, the autopilot and the slow traffic (drive 3)
+      const inp = props.steer?.current;
+      const evHold = Boolean(ev && !ev.released);
+      const steerOn = Boolean(inp) && !live.arrived && !props.entering && !evHold;
+      const nowMs = performance.now();
+      if (inp && steerOn) {
+        if (inp.lane !== 0) {
+          laneIdx = clamp(laneIdx + Math.sign(inp.lane), 0, 3);
+          inp.lane = 0;
+          manualAt = nowMs;
+        }
+        if (inp.brake || inp.boost) manualAt = nowMs;
+      } else if (inp) inp.lane = 0;
+      const manual = steerOn && nowMs - manualAt < MANUAL_MS;
+      nowManual = manual;
+      const cnd = props.cond ?? 100;
+      const topMult = 1 - 0.22 * clamp((50 - cnd) / 50, 0, 1);
+      for (const n of slow) {
+        n.s += n.v * dt;
+        if (n.s < sCar - 45 || n.s > sCar + 330) respawnSlow(n, sCar, 150 + rnd() * 90);
+        n.vis = !evHold && !live.arrived && !props.entering && !hideOthers && n.s > 14 && n.s < track.L - 28 && !inJunction(n.s, 24) && !inSlowWindow(n.s);
+      }
+      if (!manual) {
+        // the autopilot: round slower vehicles through the free lane, back to the outer lane when it is clear
+        if (laneIdx === 0) laneIdx = 1;
+        else if (laneIdx === 3) laneIdx = 2;
+        else if (laneIdx === 2) {
+          if (nearLane(LANE_OFFSET, -2, 34 + speed) && !nearLane(LANE_IN, -8, 24)) laneIdx = 1;
+        } else if (!nearLane(LANE_OFFSET, -7, 22) && !(nearLane(LANE_IN, -2, 30) && nearLane(LANE_OFFSET, -7, 44))) laneIdx = 2;
+      }
+      latBase += (LANE_LAT[laneIdx] - latBase) * Math.min(1, dt * 3.4);
+      const myLat = latBase + latCar;
+      const offroad = myLat > ROAD_HALF + 0.35;
+      shake = Math.max(0, shake - dt * 1.9);
 
       // ---- events: a new request waits for a straight stretch, then puts the props ahead
       if (props.event && props.event.id !== evSeen) {
@@ -618,7 +944,7 @@ function Rig(p: DriveSceneProps) {
         if (ev) root.remove(ev.props.group);
         const ep = buildEventProps(pendingEv.kind, pendingEv.id);
         root.add(ep.group);
-        ev = { id: pendingEv.id, kind: pendingEv.kind, props: ep, S: Math.min(sCar + 62, track.L - 26), t0: t, stopped: false, released: false, fwd: 0, ok: true, seed: pendingEv.id };
+        ev = { id: pendingEv.id, kind: pendingEv.kind, props: ep, S: Math.min(sCar + (pendingEv.kind === 'dry' ? 19 : 62), track.L - (pendingEv.kind === 'dry' ? 12 : 26)), t0: t, stopped: false, released: false, fwd: 0, ok: true, seed: pendingEv.id };
         pendingEv = null;
         hideOthers = true;
       }
@@ -645,6 +971,24 @@ function Rig(p: DriveSceneProps) {
       let vcmd = track.vRef(sStar) + 0.55 * gap;
       vcmd = clamp(vcmd, 0, Math.max(vl * boost, 0));
       if (gap < -1) vcmd = Math.min(vcmd, vl * 0.5);
+      let braking = false;
+      if (steerOn && inp) {
+        if (inp.brake) {
+          vcmd *= 0.3;
+          braking = true;
+        } else if (inp.boost) vcmd = Math.min(Math.max(vcmd, vl * 0.95), vl * 1.35 * topMult);
+      }
+      if (!(steerOn && inp?.boost)) {
+        // keep behind a slower vehicle in our own lane (emergency braking: no bump unless you drive into it)
+        let lim = 99;
+        for (const n of slow) {
+          if (!n.vis || n.hit) continue;
+          const d = n.s - sCar - n.half - 2.3;
+          if (d > -1 && d < 16 && Math.abs(n.lane - myLat) < 1.8) lim = Math.min(lim, n.v + Math.max(0, d - 4) * 0.35);
+        }
+        vcmd = Math.min(vcmd, lim);
+      }
+      if (offroad) vcmd = Math.min(vcmd, 7);
       if (ev && !ev.released) {
         const stopD = ev.S - ev.props.gap - 2.4;
         const rem = stopD - sCar;
@@ -670,6 +1014,66 @@ function Rig(p: DriveSceneProps) {
       accSm += (acc - accSm) * Math.min(1, dt * 5);
       live.s = sCar;
       live.v = speed;
+
+      // ---- collisions, overtakes and off-road moments: only COUNTED here, the server decides what they are worth
+      if (steerOn) {
+        for (const n of slow) {
+          if (!n.vis) continue;
+          const ds = n.s - sCar;
+          const reach = n.half + 2.3;
+          if (!n.hit && Math.abs(ds) < reach && Math.abs(n.lane - myLat) < 1.75 && speed > 1.2) {
+            n.hit = true;
+            hitNow(manual);
+          }
+          if (!n.passed && !n.hit && ds < -(reach + 1.5)) {
+            n.passed = true;
+            if (manual) {
+              steerStats.passes++;
+              if (squeezed(n)) steerStats.gaps++;
+            }
+          }
+        }
+        for (const n of npcs) {
+          if (n.v >= 0) continue;
+          if (Math.abs(n.z) < 4.4 && Math.abs(n.lane - myLat) < 1.75 && t > (n.hitT ?? 0) && speed > 1.2) {
+            n.hitT = t + 5;
+            hitNow(manual);
+          }
+        }
+        if (offroad) {
+          offT += dt;
+          if (offT > offNext) {
+            if (manual) {
+              steerStats.offroad++;
+              offSeq++;
+            }
+            offNext = offT + 2.4;
+          }
+        } else {
+          offT = 0;
+          offNext = 0.35;
+        }
+      } else {
+        offT = 0;
+        offNext = 0.35;
+      }
+      // turn signal: at junctions (the turn itself, or the exit of a roundabout)
+      sig = 0;
+      {
+        const nj = track.nextJunction(sCar);
+        if (nj) {
+          if (nj.kind === 'turn' && sCar > nj.sa - 42) sig = nj.dir;
+          else if (nj.kind === 'round' && sCar > nj.sb - 30) sig = 1;
+        }
+      }
+      brakeLit += ((braking || accSm < -2.2 ? 1 : 0) - brakeLit) * Math.min(1, dt * 12);
+      live.lane = laneIdx;
+      live.manual = manual;
+      live.stats = steerStats;
+      live.hitSeq = hitSeq;
+      live.offSeq = offSeq;
+      live.signal = sig;
+      live.braking = brakeLit > 0.5;
 
       // ---- bus stops: pull in to the kerb, doors, the people
       let dwellName: string | null = null;
@@ -712,7 +1116,7 @@ function Rig(p: DriveSceneProps) {
       }
 
       // ---- player pose: on the lane path, leaning into the turn, nose dipping under braking, a little bob
-      const here = track.at(sCar, LANE_OFFSET + latCar);
+      const here = track.at(sCar, latBase + latCar);
       const kap = track.kap[Math.min(track.kap.length - 1, Math.round(sCar))] ?? 0;
       const wb = WHEELBASE[kind] ?? 2.7;
       const steerTarget = clamp(Math.atan(wb * kap) * 1.4, -0.6, 0.6);
@@ -720,7 +1124,8 @@ function Rig(p: DriveSceneProps) {
       const sway = speed > 1 && Math.abs(kap) < 0.002 ? Math.sin(t * 0.55) * 0.1 + Math.sin(t * 1.3) * 0.035 : 0;
       const yawJit = sway * 0.05;
       car.position.set(here.x + Math.cos(here.psi) * sway, 0, here.z + Math.sin(here.psi) * sway);
-      car.rotation.y = -here.psi - yawJit;
+      const yawLane = clamp((LANE_LAT[laneIdx] - latBase) * 0.045, -0.12, 0.12);
+      car.rotation.y = -here.psi - yawJit - yawLane;
       const roll = clamp(speed * speed * kap * (isBus ? 0.013 : 0.02), -0.1, 0.1);
       const pitch = clamp(accSm * 0.0055, -0.05, 0.05);
       rollSm += (roll - rollSm) * Math.min(1, dt * 5);
@@ -728,7 +1133,8 @@ function Rig(p: DriveSceneProps) {
       const vf = Math.min(1, speed / 8);
       const bob = (Math.sin(t * 11) * 0.5 + Math.sin(t * 17.3 + 1) * 0.5) * 0.007 * vf + (Math.sin(t * 2.1) * 0.004 + 0.004) * vf;
       rig.position.y = bob;
-      rig.rotation.z = rollSm;
+      tiltSm += ((cnd < 30 ? 0.028 : 0) - tiltSm) * Math.min(1, dt * 2);
+      rig.rotation.z = rollSm + tiltSm;
       rig.rotation.x = pitchSm;
       // wheels
       spin += speed * dt;
@@ -741,6 +1147,38 @@ function Rig(p: DriveSceneProps) {
       });
       wheels.instanceMatrix.needsUpdate = true;
       cockpit.steer(clamp(steerSm / 0.45, -1, 1));
+
+      // ---- drive 3: brake and tail lights, turn signal, smoke and rain streaks
+      {
+        const nightK = clamp((dark - 0.25) / 0.75, 0, 1);
+        tailMat.opacity = Math.max(nightK * 0.6, brakeLit * 0.95);
+        const blink = Math.floor(t * 2.7) % 2 === 0;
+        for (const sg of sigs) sg.m.visible = sig !== 0 && sg.side === sig && blink;
+        const smokeBelow = props.smokeBelow ?? 40;
+        const amt = cnd < smokeBelow ? clamp(((smokeBelow - cnd) / smokeBelow) * 1.2 + 0.35, 0.35, 1) : 0;
+        smoke.visible = amt > 0;
+        if (smoke.visible) {
+          for (let i = 0; i < smokeN; i++) {
+            smokeAge[i] += dt;
+            const o = i * 3;
+            if (smokeAge[i] > 1.5) {
+              smokeAge[i] = 0;
+              if (i < smokeN * amt) {
+                smokePos[o] = (Math.random() - 0.5) * 0.5;
+                smokePos[o + 1] = bb.min.y + bh * 0.62;
+                smokePos[o + 2] = bb.min.z + 0.9;
+              } else smokePos[o + 1] = -50;
+            } else if (smokePos[o + 1] > -40) {
+              smokePos[o] += Math.sin(t * 3 + i) * 0.18 * dt;
+              smokePos[o + 1] += 0.85 * dt;
+              smokePos[o + 2] += (0.9 + speed * 0.12) * dt;
+            }
+          }
+          smokeAttr.needsUpdate = true;
+        }
+        if (rainStreaks.visible) rainStreaks.position.y = -4 - ((t * 14) % 9);
+        groundMat.color.multiplyScalar(1 - 0.16 * wetNow);
+      }
 
       // ---- event props
       if (ev) {
@@ -768,6 +1206,8 @@ function Rig(p: DriveSceneProps) {
         else if (n.z < RING_FAR) n.z += RING_LEN;
       }
       for (const k of kinds) npcMesh.get(k)!.count = 0;
+      glow.count = 0;
+      const night = dark > 0.3;
       for (const n of npcs) {
         const s = sCar - n.z;
         if (s < 0 || s > track.L - 8 || inJunction(s, 22)) continue;
@@ -780,12 +1220,34 @@ function Rig(p: DriveSceneProps) {
         const i = im.count++;
         im.setMatrixAt(i, dummy.matrix);
         im.setColorAt(i, n.color);
+        if (night) pushGlow(pn.x, pn.z, -pn.psi + (n.v < 0 ? Math.PI : 0), n.kind, n.v < 0);
       }
       for (const k of kinds) {
         const im = npcMesh.get(k)!;
         im.instanceMatrix.needsUpdate = true;
         if (im.instanceColor) im.instanceColor.needsUpdate = true;
       }
+      // slow vehicles in our two lanes
+      for (const im of slowMeshes) im.count = 0;
+      for (const n of slow) {
+        if (!n.vis) continue;
+        const pn = track.at(n.s, n.lane);
+        const im = slowMesh.get(n.kind)!;
+        dummy.position.set(pn.x, 0, pn.z);
+        dummy.rotation.set(0, -pn.psi, 0);
+        dummy.scale.setScalar(1);
+        dummy.updateMatrix();
+        const i = im.count++;
+        im.setMatrixAt(i, dummy.matrix);
+        im.setColorAt(i, n.color);
+        if (night) pushGlow(pn.x, pn.z, -pn.psi, n.kind, false);
+      }
+      for (const im of slowMeshes) {
+        im.instanceMatrix.needsUpdate = true;
+        if (im.instanceColor) im.instanceColor.needsUpdate = true;
+      }
+      glow.instanceMatrix.needsUpdate = true;
+      if (glow.instanceColor) glow.instanceColor.needsUpdate = true;
 
       // ---- slow-downs: a vehicle ahead in our lane closes in, we sit behind it, then it pulls away
       {
@@ -928,10 +1390,11 @@ function Rig(p: DriveSceneProps) {
         }
       } else if (mode === 'chase') {
         const back = isBus ? 15.5 : small ? 7.8 : 10;
-        const pb = track.at(sCar - back, LANE_OFFSET + latCar - 0.35);
+        const camLat = LANE_OFFSET + (latBase - LANE_OFFSET) * 0.7;
+        const pb = track.at(sCar - back, camLat + latCar - 0.35);
         wantPos.set(pb.x, (isBus ? 5.2 : small ? 2.6 : 3.4) + Math.abs(rollSm) * 3, pb.z);
         // look between the car and the road ahead, so a turn swings the view without losing the car
-        const pl = track.at(sCar + 12, LANE_OFFSET - 1.0);
+        const pl = track.at(sCar + 12, LANE_OFFSET - 1.0 + (latBase - LANE_OFFSET) * 0.6);
         const w = 0.42;
         wantLook.set(car.position.x + (pl.x - car.position.x) * w, isBus ? 1.6 : 1.0, car.position.z + (pl.z - car.position.z) * w);
         fov = vfov(small ? 50 : isBus ? 62 : 56) + sp * 3;
@@ -955,7 +1418,7 @@ function Rig(p: DriveSceneProps) {
         tmpV.set(small ? 0 : -0.38, small ? 1.45 : 1.24, small ? 0.15 : 0.35);
         rig.localToWorld(tmpV);
         wantPos.copy(tmpV);
-        const pl = track.at(sCar + 24, LANE_OFFSET - (small ? 0 : 0.38) + steerSm * 1.2);
+        const pl = track.at(sCar + 24, LANE_OFFSET - (small ? 0 : 0.38) + steerSm * 1.2 + (latBase - LANE_OFFSET));
         wantLook.set(pl.x, small ? 1.2 : 1.1, pl.z);
         fov = vfov(small ? 62 : 66) + sp * 2;
         snapInside = true;
@@ -973,6 +1436,10 @@ function Rig(p: DriveSceneProps) {
       camLook.lerp(wantLook, 1 - Math.exp(-dt * (camSnap > 0 ? 14 : snapInside ? 10 : 6)));
       cam.position.copy(camPos);
       if (snapInside && !arrivedShot) cam.position.y += Math.sin(t * 13) * 0.003 * Math.min(1, speed / 6);
+      if (shake > 0) {
+        cam.position.x += Math.sin(t * 61) * shake * 0.16;
+        cam.position.y += Math.cos(t * 53) * shake * 0.1;
+      }
       cam.lookAt(camLook);
       if (Math.abs(cam.fov - fov) > 0.05) {
         cam.fov += (fov - cam.fov) * kk;
@@ -988,7 +1455,10 @@ function Rig(p: DriveSceneProps) {
         if (board) board.mesh.visible = !inside;
       }
       shadow.visible = !inside;
-      beams.forEach((b, i) => (b.visible = (wide ? i === 0 : true) && !inside));
+      beams.forEach((b, i) => (b.visible = wide ? i === 0 : true));
+      tails.forEach((m) => (m.visible = !inside));
+      dents.forEach((d) => (d.visible = !inside && cnd < 60));
+      smokeMat.opacity = inside ? 0.35 : 0.75;
       if (stars) stars.position.copy(cam.position);
       ground.position.x = cam.position.x;
       ground.position.z = cam.position.z;
@@ -1015,6 +1485,9 @@ function Rig(p: DriveSceneProps) {
         stopRigs.forEach((s) => s.rig.dispose());
         owned.forEach((o) => o.dispose());
         npcMesh.forEach((m) => m.dispose());
+        slowMeshes.forEach((m) => m.dispose());
+        glow.dispose();
+        cam.remove(rainStreaks);
         wheels.dispose();
         signs.forEach((sg) => sg.s.board.geometry.dispose());
       },

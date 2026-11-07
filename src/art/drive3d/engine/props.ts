@@ -224,6 +224,16 @@ export function buildEventProps(kind: DriveKind, seed: number): EventProps {
       group.add(im);
       geos.push({ dispose: () => im.dispose() });
     }
+  } else if (kind === 'dry') {
+    // out of fuel: the car coasts to a stop where it is; two cones mark the spot
+    gap = 3;
+    lane = LANE_OUT;
+    const coneM = lam('#d9682f');
+    const baseM = lam('#e9e5db');
+    for (const z of [-1.2, -3.6]) {
+      group.add(mesh(track(new CylinderGeometry(0.05, 0.3, 0.7, 8)), coneM, LANE_OUT + 0.9, 0.35, z));
+      group.add(mesh(track(new BoxGeometry(0.7, 0.05, 0.7)), baseM, LANE_OUT + 0.9, 0.03, z));
+    }
   } else {
     gap = 0.4;
     lane = LANE_OUT;
