@@ -589,7 +589,7 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
             <div className="roam-pill" aria-live="polite">
               <span className="roam-pill__name">{title}</span>
               <span className="roam-pill__sub">
-                <span>{timeText(hour)}</span>
+                {!(destId && hud.left !== null) && <span>{timeText(hour)}</span>}
                 {destId && hud.left !== null && (
                   <span className="roam-pill__go">
                     To {labelOf(destId)} · {hud.left >= 1000 ? `${(hud.left / 1000).toFixed(1)} km` : `${hud.left} m`}

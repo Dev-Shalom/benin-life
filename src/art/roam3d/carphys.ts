@@ -105,14 +105,14 @@ export function discsFor(spec: CarSpec): Disc[] {
   const cr = R * 0.55;
   for (const su of [-1, 1]) for (const sv of [-1, 1]) d.push({ u: su * (spec.len / 2 - cr), v: sv * (R - cr), r: cr });
   // and a row of small ones along the nose and the tail (and in the exact corners), so the real corners of the box cannot poke into a wall
-  const tr = Math.min(0.14, R * 0.35);
-  const nEnd = Math.max(2, Math.ceil((2 * (R - tr)) / 0.2) + 1);
+  const tr = Math.min(0.09, R * 0.3);
+  const nEnd = Math.max(2, Math.ceil((2 * (R - tr)) / 0.15) + 1);
   for (const su of [-1, 1]) for (let k = 0; k < nEnd; k++) d.push({ u: su * (spec.len / 2 - tr), v: -(R - tr) + ((2 * (R - tr)) * k) / (nEnd - 1), r: tr });
   discCache.set(key, d);
   return d;
 }
 
-const STEP_M = 0.06;
+const STEP_M = 0.05;
 const SOFT = 0.7;
 const HIT_COOLDOWN = 0.8;
 

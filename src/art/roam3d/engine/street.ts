@@ -674,8 +674,20 @@ export function* buildChunkGen(kit: Kit, ck: ChunkData): Generator<void, ChunkMe
       glassDark.box(x - Math.cos(a) * 0.15, 0.95, z - Math.sin(a) * 0.15, 2.14, 0.4, 1.62, a, '#33444f', 1);
       for (const [u, v] of [[1.25, 0.9], [-1.25, 0.9], [1.25, -0.9], [-1.25, -0.9]]) solid.cyl(x + Math.cos(a) * u - Math.sin(a) * v, 0, z + Math.sin(a) * u + Math.cos(a) * v, 0.32, 0.32, 0.22, '#1d1f24', 6);
     } else {
-      solid.box(x, 0.35, z, 5.2, 2.0, 2.3, a, c, 0.85);
-      glassDark.box(x, 1.5, z, 5.24, 0.7, 2.34, a, '#33444f', 1);
+      // a danfo / minibus: a deep lower body, a black (or red) waist band, a glazed cabin with a roof rack, a raked windscreen, wheels
+      const ch = Math.cos(a), sh = Math.sin(a);
+      const at2 = (u: number) => [x + ch * u, z + sh * u];
+      const band = hex.toLowerCase().startsWith('#f') && c.g > 0.5 && c.b < 0.4 ? '#1c1c1f' : '#c8372d';
+      solid.box(x, 0.38, z, 5.3, 0.95, 2.1, a, c, 0.85);
+      solid.box(x, 0.88, z, 5.34, 0.2, 2.14, a, band, 1);
+      glassDark.box(x - ch * 0.15, 1.33, z - sh * 0.15, 4.6, 0.75, 2.04, a, '#33444f', 1);
+      solid.box(x - ch * 0.15, 2.07, z - sh * 0.15, 4.7, 0.09, 2.0, a, shade(hex, 1.08), 1);
+      // windscreen pillars and a roof rack
+      const [fx2, fz2] = at2(2.3);
+      solid.box(fx2, 1.2, fz2, 0.2, 0.9, 2.0, a, c, 0.9);
+      const [rx2, rz2] = at2(-0.4);
+      solid.box(rx2, 2.16, rz2, 3.4, 0.06, 1.7, a, '#2a2d33', 1);
+      for (const [u, v] of [[1.7, 1.02], [-1.7, 1.02], [1.7, -1.02], [-1.7, -1.02]]) solid.cyl(x + ch * u - sh * v, 0, z + sh * u + ch * v, 0.4, 0.4, 0.26, '#1d1f24', 7);
     }
   };
 

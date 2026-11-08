@@ -148,6 +148,10 @@ export interface RoamApi {
   car: CarApi;
   /** Dev: make sure the chunks round the player are built now (screenshots, scripted walks). */
   settle(maxMs?: number): void;
+  /** Dev / tests: run the physics for this many simulated seconds right now (no rendering in between). */
+  advance(sec: number): void;
+  /** Dev / tests: set the stick (x right, y forward) and the hand brake. */
+  setInput(sx: number, sy: number, brake?: boolean): void;
   /** Dev / tests: a scripted walker or driver that follows a route to random places (walk: the GPS route, drive: the road network), forever. null = off. */
   auto(o: { mode: 'walk' | 'drive'; run?: boolean; speed?: number; dest?: { x: number; y: number } } | null): void;
   world: RoamWorld;
@@ -1257,6 +1261,18 @@ function Rig(props: RoamSceneProps) {
         autoS.dest = o.dest ?? null;
         autoS.pts = [];
         autoS.plan = 0;
+      },
+      setInput: (sx, sy, brake = false) => {
+        const I = P.current.input.current;
+        I.sx = sx; I.sy = sy; I.brake = brake;
+      },
+      advance: (sec) => {
+        const n = Math.round(sec * 60);
+        for (let i = 0; i < n; i++) {
+          if (autoS.on) autoStep(FIXED);
+          stepSim(FIXED);
+          if (i % 30 === 29) streamer.update(drv.driving ? car.x : player.x, drv.driving ? car.y : player.y, headDirX, headDirY, 25);
+        }
       },
       settle: (maxMs = 60000) => {
         const t0 = performance.now();
