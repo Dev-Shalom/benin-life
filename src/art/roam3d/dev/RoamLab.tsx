@@ -1,6 +1,7 @@
 // Dev page for free roam (dev server only, no session):
 //   /dev/roam?start=oba_market&hour=14&theme=dark&gfx=low&fp=1&dest=police_hq&open=1&debug=1&fps=1
 //   x=500&y=545&h=1.57 (position + heading, map space) yaw= pitch= dist= (camera) run=1 say=... note=... warm=6
+//   phase 3: live=1 (needs a Supabase session in this browser: sign in at the game first, or seed the session in localStorage; see docs/ROAM.md)
 //   phase 2: car=<item id, e.g. kia_rio_used | gwagon_g63 | bajaj_boxer | bicycle> puts your car at the kerb (here=1 right beside you),
 //   drive=1 starts in the seat, rain=1, cam2=chase|inside (driving camera), sheet=search|keke, dry=1 (out of fuel card), fuel=0..1, cond=0..100
 import { useMemo } from 'react';
@@ -54,6 +55,7 @@ export default function RoamLab() {
         onLeave={() => undefined}
         car={carCtl}
         keke={keke}
+        liveOn={q.get('live') === '1'}
         demo={{
           dest: q.get('dest') ?? undefined,
           fp: q.get('fp') === '1',

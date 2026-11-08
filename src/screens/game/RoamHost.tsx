@@ -179,6 +179,7 @@ export function RoamHost({ state, hour, avatar }: { state: GameState; hour: numb
         car={carCtl}
         keke={kekeCtl}
         stream={{ chunkM: Number(cfg('roam.chunk.m', 120)), loadM: Number(cfg('roam.chunk.load_m', 200)) }}
+        liveOn={Boolean(cfg('roam.live.enabled', true))}
         onLost={() => {
           closeRoam();
           void roamLeave().catch(() => undefined);

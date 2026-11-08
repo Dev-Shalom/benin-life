@@ -100,3 +100,7 @@ export const roamDriveReport = (s: { dist_m: number; light: number; hard: number
   });
 export const roamDryChoose = (choice: 'push' | 'mechanic') => rpc<RoamDryResult>('roam_dry_choose', { p_choice: choice });
 export const roamHailKeke = (dest: string) => rpc<unknown>('roam_hail_keke', { p_dest: dest });
+
+// ---- live players (server: 20261120000100_roam3.sql, docs/ROAM.md "Live players") ----
+export const roamSetShow = (show: boolean) => rpc<{ ok: boolean; show_me: boolean; message: string }>('roam_set_show', { p_show: show });
+export const roamReport = (user: string, reason: string) => rpc<{ ok: boolean; message: string }>('roam_report', { p_user: user, p_reason: reason });
