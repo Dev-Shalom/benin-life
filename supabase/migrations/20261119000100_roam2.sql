@@ -23,7 +23,7 @@ insert into public.game_config (key, value, category, label, description, kind, 
 ('roam.drive.fuel_scale', '8', 'roam', 'Fuel: street kilometres burn this many real kilometres', 'Free roam streets are compact. The litres per kilometre of the vehicle (Drive settings, drive.fuel.lpk_*) are multiplied by this, so a tank lasts a believable number of crossings of the city.', 'number', 0.1, 100),
 ('roam.drive.report_gap_s', '3', 'roam', 'Driving: shortest gap between fuel/damage checkpoints (seconds)', 'A checkpoint sooner than this after the last one is ignored (the client sends it again later).', 'number', 0.5, 120),
 ('roam.drive.max_reports_min', '24', 'roam', 'Driving: checkpoints a minute', 'Rate limit on roam_drive_report per player.', 'number', 1, 600),
-('roam.drive.slack_m', '40', 'roam', 'Driving: free metres a checkpoint may claim', 'On top of max speed x elapsed time, to cover jitter between the phone and the server clock.', 'number', 0, 500),
+('roam.drive.slack_m', '40', 'roam', 'Driving: free metres a checkpoint may claim (per 10 s)', 'On top of max speed x elapsed time, to cover jitter between the phone and the server clock. Scaled by the time since the last checkpoint (10 s or more = the full amount).', 'number', 0, 500),
 ('roam.drive.max_hits_report', '6', 'roam', 'Damage: most hits one checkpoint may carry', 'Light and hard hits together. More is cut off.', 'number', 1, 100),
 ('roam.drive.min_s_per_hit', '1.2', 'roam', 'Damage: shortest time between two hits (seconds)', 'Hits are also capped by the time since the last checkpoint divided by this.', 'number', 0.1, 60),
 ('roam.drive.damage_light', '1.2', 'roam', 'Damage: a light bump (condition points)', 'A scrape or a slow knock against a wall, pole or parked car.', 'number', 0, 50),
@@ -33,6 +33,9 @@ insert into public.game_config (key, value, category, label, description, kind, 
 ('roam.drive.min_report_pct', '60', 'roam', 'Pulling up at a place: share of the distance that must have been driven', 'Free roam positions are cosmetic, so to enter a place by car the server wants about this much of the straight-line distance to have been reported through fuel checkpoints. 0 = no check.', 'percent', 0, 100),
 ('roam.car.ready_s', '4', 'roam', 'Get my car: seconds before it is at the kerb', 'The client shows a short walk to the car; the server refuses the car before this has passed after a mechanic call-out.', 'number', 0, 120),
 ('roam.keke.enabled', 'true', 'roam', 'Hail a keke in free roam', 'Off = the Hail keke button disappears and roam_hail_keke is refused. The normal travel and the map are unaffected.', 'bool', null, null),
+('roam.drive.max_speed_bicycle', '7', 'roam', 'Driving: fastest bicycle (metres a second)', 'Pace cap for a bicycle (the car cap above is the upper limit for everything).', 'number', 1, 30),
+('roam.drive.max_speed_motorcycle', '22', 'roam', 'Driving: fastest motorcycle (metres a second)', 'Pace cap for a motorcycle.', 'number', 1, 60),
+('roam.dry.push_litres', '1.5', 'roam', 'Out of fuel: litres a push gets you', 'After pushing a dry car to the kerb a stranger spares this much petrol, so the car can always move again.', 'number', 0, 20),
 ('roam.chunk.m', '120', 'roam', 'Streaming: chunk size (metres) - hint for clients', 'The 3D street is built in square chunks of about this size (clients clamp it to 80-200).', 'number', 80, 200),
 ('roam.chunk.load_m', '200', 'roam', 'Streaming: load radius (metres) - hint for clients', 'Chunks closer than this to the player are built; farther ones are removed. Low graphics shrinks it. Must be larger than the fastest speed times the build time of a chunk.', 'number', 100, 400)
 on conflict (key) do nothing;
@@ -77,6 +80,11 @@ select pg_temp.roam2_patch('public.bl_roam_in_area(text)', 'roam.area.all) or l.
 $m$and l.y between bl_cfg('roam.area.y0') and bl_cfg('roam.area.y1'));$m$,
 $m$and (bl_cfg_bool('roam.area.all') or l.y between bl_cfg('roam.area.y0') and bl_cfg('roam.area.y1')));$m$);
 
+-- remote places (travel only: km away, keke banned) are not roam places
+select pg_temp.roam2_patch('public.bl_roam_in_area(text)', 'remote_km',
+$m$where l.id = p_place$m$,
+$m$where l.id = p_place and (not bl_cfg_bool('roam.area.all') or coalesce(l.remote_km, 0) = 0)$m$);
+
 -- roam_start: a fresh walk is on foot; the answer carries the client hints
 select pg_temp.roam2_patch('public.roam_start(text)', 'set mode = ''walk''',
 $m$  update profiles set last_seen = v_now where id = v_me.id;$m$,
@@ -89,9 +97,9 @@ $m$'ttl_s', bl_cfg('roam.session_ttl_s'),
     'max_drive_mps', bl_cfg('roam.drive.max_speed_mps'), 'chunk_m', bl_cfg('roam.chunk.m'), 'load_m', bl_cfg('roam.chunk.load_m'))$m$);
 
 -- roam_enter: pace by mode, the distance a car must have reported, street risk by mode, the car is left at the place
-select pg_temp.roam2_patch('public.roam_enter(text)', 'roam.drive.max_speed_mps',
+select pg_temp.roam2_patch('public.roam_enter(text)', 'bl_roam_speed_cap',
 $m$/ bl_cfg('roam.max_speed_mps'));$m$,
-$m$/ case when s.mode = 'car' then bl_cfg('roam.drive.max_speed_mps') else bl_cfg('roam.max_speed_mps') end);$m$);
+$m$/ case when s.mode = 'car' then bl_roam_speed_cap(s.vehicle) else bl_cfg('roam.max_speed_mps') end);$m$);
 select pg_temp.roam2_patch('public.roam_enter(text)', 'roam.drive.min_report_pct',
 $m$    if v_el < v_need then$m$,
 $m$    if s.mode = 'car' and s.drive_m < greatest(0, v_dist - bl_cfg('roam.door_slack_m')) * bl_cfg('roam.drive.min_report_pct') / 100.0 then
@@ -133,6 +141,15 @@ begin
   end if;
   return s;
 end $$;
+
+-- the fastest pace of a vehicle (m/s): its class cap, never above roam.drive.max_speed_mps
+create or replace function public.bl_roam_speed_cap(p_item text) returns numeric
+language sql stable set search_path = public as $$
+  select least(bl_cfg('roam.drive.max_speed_mps'),
+    case bl_vehicle_class(p_item) when 'bicycle' then bl_cfg('roam.drive.max_speed_bicycle')
+                                  when 'motorcycle' then bl_cfg('roam.drive.max_speed_motorcycle')
+                                  else bl_cfg('roam.drive.max_speed_mps') end)
+$$;
 
 -- one call counted against the per-minute window of roam_start / roam_enter; raises 'rate' when over
 create or replace function public.bl_roam_count_call(p_uid uuid) returns void
@@ -193,11 +210,20 @@ declare
   v_cls  text;
   r      vehicle_state;
 begin
-  perform bl_roam_gate();
-  perform bl_assert_free(v_me);
   if p_mode is null or p_mode not in ('walk', 'car') then
     raise exception 'Unknown way to get around.' using errcode = 'P0001', hint = 'bad_mode';
   end if;
+  if p_mode = 'walk' then
+    -- getting out must always work (switches off, busy, no session): nobody is ever stuck in the car
+    update roam_sessions set mode = 'walk', vehicle = null, mode_at = v_now, last_report_at = null, car_place = null,
+           car_x = case when p_x is null then car_x else greatest(0, least(1000, p_x)) end,
+           car_y = case when p_y is null then car_y else greatest(0, least(1000, p_y)) end,
+           car_a = case when p_a is null then car_a else p_a end
+     where user_id = v_me.id;
+    return jsonb_build_object('ok', true, 'mode', 'walk');
+  end if;
+  perform bl_roam_gate();
+  perform bl_assert_free(v_me);
   s := bl_roam_session(v_me);
   perform bl_roam_count_call(v_me.id);
   if p_mode = 'walk' then
@@ -216,6 +242,9 @@ begin
   if v_item is null or not exists (select 1 from inventory i join items it on it.id = i.item_id
                                     where i.user_id = v_me.id and i.item_id = v_item and i.qty > 0 and it.category = 'vehicle') then
     raise exception 'You do not own a vehicle to drive.' using errcode = 'P0001', hint = 'not_owned';
+  end if;
+  if bl_sink_blocked(v_me.id, 'car', v_item) then
+    raise exception 'Your vehicle papers are overdue. Settle the bill first, or hail a keke.' using errcode = 'P0001', hint = 'blocked';
   end if;
   v_cls := bl_vehicle_class(v_item);
   r := bl_vehicle_row(v_me.id, v_item);
@@ -254,7 +283,7 @@ declare
   v_rn    int;
   v_fuel  numeric;
   v_cond  numeric;
-  v_x numeric; v_y numeric;
+  v_x numeric; v_y numeric; v_lpm numeric;
 begin
   perform bl_roam_gate();
   if not bl_cfg_bool('roam.drive.enabled') then return jsonb_build_object('ok', false, 'reason', 'off'); end if;
@@ -276,12 +305,20 @@ begin
   r := bl_vehicle_row(v_me.id, s.vehicle);
   v_el := greatest(0, extract(epoch from v_now - coalesce(s.last_report_at, s.mode_at, v_now)));
   -- distance: a JSON number, capped by max speed x elapsed (+ slack); a dead engine rolls a few metres at most
-  v_max := bl_cfg('roam.drive.max_speed_mps') * v_el + bl_cfg('roam.drive.slack_m');
+  v_max := bl_roam_speed_cap(s.vehicle) * v_el + bl_cfg('roam.drive.slack_m') * least(1, v_el / 10.0);
   v_dist := case when jsonb_typeof(p_stats -> 'dist_m') = 'number' then greatest(0, least((p_stats ->> 'dist_m')::numeric, v_max)) else 0 end;
+  v_lpm := case when v_cls <> 'bicycle' and bl_cfg_bool('drive.fuel.enabled')
+                then bl_cfg('roam.drive.fuel_scale') * bl_cfg('drive.fuel.lpk_' || v_cls) / 1000.0
+                     * (1 + bl_drive_wear(r.cond) * bl_cfg('drive.damage.fuel_pct') / 100.0) else 0 end;
+  -- no petrol, no distance: the tank buys that many metres, and a dead engine (empty tank, wrecked car) rolls a few metres at most
+  if (v_lpm > 0 and r.fuel_l <= 0.01) or (bl_cfg_bool('drive.damage.enabled') and r.cond <= 0) then
+    v_dist := least(v_dist, 2);
+  elsif v_lpm > 0 then
+    v_dist := least(v_dist, r.fuel_l / v_lpm + 2);
+  end if;
   -- fuel follows the capped distance
-  if v_cls <> 'bicycle' and bl_cfg_bool('drive.fuel.enabled') and v_dist > 0 then
-    v_l := round(v_dist / 1000.0 * bl_cfg('roam.drive.fuel_scale') * bl_cfg('drive.fuel.lpk_' || v_cls)
-                 * (1 + bl_drive_wear(r.cond) * bl_cfg('drive.damage.fuel_pct') / 100.0), 3);
+  if v_lpm > 0 and v_dist > 0 then
+    v_l := round(v_dist * v_lpm, 3);
   end if;
   v_fuel := greatest(0, r.fuel_l - v_l);
   -- hits: counts, cut by the time that passed and the per-report cap, then by the per-minute damage cap
@@ -336,13 +373,20 @@ begin
     raise exception 'You do not own a vehicle.' using errcode = 'P0001', hint = 'not_owned';
   end if;
   r := bl_vehicle_row(v_me.id, v_item);
-  if bl_vehicle_class(v_item) = 'bicycle' or r.fuel_l > 0.01 then
+  if bl_vehicle_class(v_item) = 'bicycle' or not bl_cfg_bool('drive.fuel.enabled') or r.fuel_l > 0.01 then
     raise exception 'The tank is not empty.' using errcode = 'P0001', hint = 'not_dry';
   end if;
   if p_choice = 'push' then
     perform bl_adjust_needs(v_me.id, jsonb_build_object('stress', bl_cfg('drive.dry.push_stress')));
     v_wait := bl_cfg('drive.dry.push_s')::int;
-    v_msg := 'You and two strangers push the car to the kerb. Tiring, but it is out of the way.';
+    v_msg := 'You and two strangers push the car to the kerb. Tiring, and one of them spares a little petrol.';
+    if bl_rand() * 100 < bl_cfg('drive.dry.push_fail_pct') then
+      v_wait := v_wait + bl_cfg('drive.dry.push_fail_s')::int;
+      v_msg := 'You push and push. A tyre drags and your back aches. It takes a long time, but a stranger spares a little petrol.';
+    end if;
+    v_l := least(bl_vehicle_tank(bl_vehicle_class(v_item)), bl_cfg('roam.dry.push_litres'));
+    update vehicle_state set fuel_l = v_l, updated_at = v_now where user_id = v_me.id and item_id = v_item;
+    update roam_sessions set car_ready_at = v_now + make_interval(secs => v_wait::double precision) where user_id = v_me.id;
   elsif p_choice = 'mechanic' then
     v_cost := bl_cfg('drive.dry.mechanic_cost')::bigint;
     if v_cost > v_me.cash then
@@ -378,6 +422,9 @@ begin
   s := bl_roam_session(v_me);
   if s.mode = 'car' then
     raise exception 'Get out of your car first.' using errcode = 'P0001', hint = 'in_car';
+  end if;
+  if not bl_roam_in_area(p_dest) then
+    raise exception 'That is too far for a keke from the street. Use Quick travel on the map.' using errcode = 'P0001', hint = 'outside';
   end if;
   perform bl_roam_count_call(v_me.id);
   v_res := travel_start(p_dest, 'keke');

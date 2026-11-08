@@ -67,7 +67,7 @@ end $$;
 do $$
 declare n int;
 begin
-  perform pg_temp.assert((select count(*) from game_config where key like 'roam.%') = 30, 'thirty roam settings (12 + 18)');
+  perform pg_temp.assert((select count(*) from game_config where key like 'roam.%') = 33, 'thirty-three roam settings (12 + 18 + 3)');
   select count(*) into n from game_config where key like 'roam.%'
      and (category <> 'roam' or coalesce(label, '') = '' or coalesce(description, '') = '' or (kind in ('number', 'naira', 'percent') and (min is null or max is null)));
   perform pg_temp.assert(n = 0, 'every roam setting is in category roam with a label, a description and a range (' || n || ' without)');
@@ -211,7 +211,7 @@ begin
   perform pg_temp.adv(5);
   f0 := (select fuel_l from vehicle_state where user_id = a);
   r := roam_drive_report(jsonb_build_object('dist_m', 50000));
-  perform pg_temp.assert((r ->> 'dist_m')::numeric <= 24 * 5 + 40 + 0.1 and (r ->> 'dist_m')::numeric >= 24 * 5 + 40 - 0.1, 'a huge claim is cut to max speed x elapsed + slack (got ' || (r ->> 'dist_m') || ')');
+  perform pg_temp.assert((r ->> 'dist_m')::numeric <= 24 * 5 + 20 + 0.1 and (r ->> 'dist_m')::numeric >= 24 * 5 + 20 - 0.1, 'a huge claim is cut to max speed x elapsed + slack scaled by elapsed time (got ' || (r ->> 'dist_m') || ')');
   perform pg_temp.assert(f0 - (select fuel_l from vehicle_state where user_id = a) < 0.5, 'and the burn follows the capped distance');
   -- junk: negative, text, missing
   perform pg_temp.adv(5);
@@ -225,9 +225,9 @@ begin
   perform pg_temp.assert((r ->> 'ok')::boolean and (r ->> 'dist_m')::numeric = 0, 'an empty report is 0');
   -- wear burns more
   perform pg_temp.adv(10);
-  update vehicle_state set cond = 0, fuel_l = 40 where user_id = a;
+  update vehicle_state set cond = 10, fuel_l = 40 where user_id = a;
   r := roam_drive_report(jsonb_build_object('dist_m', 100));
-  perform pg_temp.assert((r ->> 'burned_l')::numeric > 100 / 1000.0 * bl_cfg('roam.drive.fuel_scale') * lpk * 1.2, 'a worn car burns more');
+  perform pg_temp.assert((r ->> 'burned_l')::numeric > 100 / 1000.0 * bl_cfg('roam.drive.fuel_scale') * lpk * 1.05, 'a worn car burns more');
   update vehicle_state set cond = 100 where user_id = a;
   -- the tank cannot go below 0, and says so
   perform pg_temp.adv(10);
@@ -341,10 +341,14 @@ begin
   perform pg_temp.adv(100);
   r := roam_start('national_museum');                      -- 1
   r := roam_set_mode('car');                               -- 2
-  r := roam_set_mode('walk');                              -- 3
+  r := roam_set_mode('walk');                              -- getting out is free (never counted, never refused)
+  r := roam_set_mode('car');                               -- 3
+  r := roam_set_mode('walk');
   r := roam_set_mode('car');                               -- 4
-  r := roam_set_mode('walk');                              -- 5
-  perform pg_temp.assert(pg_temp.hint_of($q$select roam_set_mode('car')$q$) = 'rate', 'the sixth call in the window: rate');
+  r := roam_set_mode('walk');
+  r := roam_set_mode('car');                               -- 5
+  r := roam_set_mode('walk');
+  perform pg_temp.assert(pg_temp.hint_of($q$select roam_set_mode('car')$q$) = 'rate', 'the sixth counted call in the window: rate');
   perform pg_temp.setc('roam.rate.max_calls', '20');
   perform pg_temp.adv(100);
 end $$;
@@ -406,8 +410,10 @@ begin
   r := roam_start('national_museum');
   perform pg_temp.assert(pg_temp.hint_of($q$select roam_dry_choose('push')$q$) = 'not_dry', 'a tank with fuel: not dry');
   update vehicle_state set fuel_l = 0, cond = 90 where user_id = a and item_id = 'kia_rio_used';
+  perform pg_temp.setc('drive.dry.push_fail_pct', '0');
   r := roam_dry_choose('push');
   perform pg_temp.assert((r ->> 'ok')::boolean and (r ->> 'wait_s')::int = bl_cfg('drive.dry.push_s')::int and (r ->> 'cash_delta')::bigint = 0, 'push: free, takes the push time');
+  update vehicle_state set fuel_l = 0 where user_id = a and item_id = 'kia_rio_used';
   perform pg_temp.assert(pg_temp.hint_of($q$select roam_dry_choose('swim')$q$) = 'bad_choice', 'only the choices on the card');
   cash0 := (select cash from profiles where id = a);
   r := roam_dry_choose('mechanic');
@@ -452,6 +458,112 @@ begin
   update profiles set travel_to = null, travel_mode = null, travel_started_at = null, travel_arrives_at = null, location_id = k1 where id = a;
   r := roam_start(k1);
   perform pg_temp.assert(pg_temp.hint_of($q$select roam_hail_keke('benin_airport')$q$) <> 'ok', 'the closed airport cannot be hailed to');
+end $$;
+
+-- ---------- 12. review fixes ----------
+do $$
+declare a uuid := (select id from r2_u where name = 'a'); r jsonb; d0 numeric; d1 numeric; need numeric; dd numeric; n0 int; v_l numeric;
+begin
+  perform pg_temp.login(a);
+  perform pg_temp.setc('roam.rate.max_calls', '200');
+  perform pg_temp.setc('roam.drive.max_reports_min', '200');
+  update profiles set cash = 500000 where id = a;
+  insert into inventory (user_id, item_id, qty) values (a, 'bicycle', 1), (a, 'bajaj_boxer', 1) on conflict (user_id, item_id) do update set qty = 1;
+  update vehicle_state set fuel_l = 40, cond = 100 where user_id = a and item_id = 'kia_rio_used';
+  perform pg_temp.at(a, 'national_museum');
+  perform pg_temp.adv(5000);
+  r := roam_start('national_museum');
+  r := roam_set_mode('car');
+  -- 12.1 an empty tank credits (almost) no distance, however many reports
+  update vehicle_state set fuel_l = 0.05 where user_id = a and item_id = 'kia_rio_used';
+  d0 := (select drive_m from roam_sessions where user_id = a);
+  for n0 in 1..3 loop
+    perform pg_temp.adv(10);
+    r := roam_drive_report(jsonb_build_object('dist_m', 760));
+  end loop;
+  d1 := (select drive_m from roam_sessions where user_id = a);
+  perform pg_temp.assert(d1 - d0 <= 0.05 / (bl_cfg('drive.fuel.lpk_car') * bl_cfg('roam.drive.fuel_scale') / 1000.0) + 6, '0.05 L of petrol is worth about 57 m, not 3 x 760 (credited ' || round(d1 - d0, 1) || ')');
+  perform pg_temp.adv(10);
+  d0 := (select drive_m from roam_sessions where user_id = a);
+  r := roam_drive_report(jsonb_build_object('dist_m', 500));
+  perform pg_temp.assert((select drive_m from roam_sessions where user_id = a) - d0 <= 3.01, 'with the tank at 0 a checkpoint credits only a few metres of roll');
+  -- condition 0
+  update vehicle_state set fuel_l = 40, cond = 0 where user_id = a and item_id = 'kia_rio_used';
+  perform pg_temp.adv(10);
+  d0 := (select drive_m from roam_sessions where user_id = a);
+  r := roam_drive_report(jsonb_build_object('dist_m', 500));
+  perform pg_temp.assert((select drive_m from roam_sessions where user_id = a) - d0 <= 3.01, 'condition 0 credits only a few metres');
+  update vehicle_state set cond = 100 where user_id = a and item_id = 'kia_rio_used';
+  -- 12.6 slack scales with the elapsed time
+  perform pg_temp.adv(3.1);
+  r := roam_drive_report(jsonb_build_object('dist_m', 5000));
+  perform pg_temp.assert((r ->> 'dist_m')::numeric <= 24 * 3.1 + 40 * 0.31 + 0.2, 'after 3 s the slack is a third of the 10 s slack, not the flat 40 m (got ' || (r ->> 'dist_m') || ')');
+  -- 12.2 per-class pace
+  perform pg_temp.assert(bl_roam_speed_cap('bicycle') <= 8 and bl_roam_speed_cap('bajaj_boxer') <= 23 and bl_roam_speed_cap('kia_rio_used') = 24, 'class speed caps: bicycle, motorcycle, car');
+  r := roam_set_mode('walk');
+  r := roam_set_mode('car', 'bicycle');
+  perform pg_temp.adv(10);
+  r := roam_drive_report(jsonb_build_object('dist_m', 500));
+  perform pg_temp.assert((r ->> 'dist_m')::numeric <= bl_cfg('roam.drive.max_speed_bicycle') * 10 + 40 + 0.2, 'a bicycle cannot claim car pace (got ' || (r ->> 'dist_m') || ')');
+  r := roam_set_mode('walk');
+  r := roam_set_mode('car', 'bajaj_boxer');
+  perform pg_temp.adv(10);
+  r := roam_drive_report(jsonb_build_object('dist_m', 500));
+  perform pg_temp.assert((r ->> 'dist_m')::numeric <= bl_cfg('roam.drive.max_speed_motorcycle') * 10 + 40 + 0.2, 'a motorcycle is capped at its own pace (got ' || (r ->> 'dist_m') || ')');
+  -- pulling up by bicycle uses the bicycle pace
+  r := roam_set_mode('walk');
+  r := roam_start('national_museum');
+  r := roam_set_mode('car', 'bicycle');
+  update roam_sessions set drive_m = 100000 where user_id = a;
+  need := greatest(0, (select sqrt((l1.x - l2.x) ^ 2 + (l1.y - l2.y) ^ 2) from locations l1, locations l2 where l1.id = 'national_museum' and l2.id = 'police_hq') - bl_cfg('roam.door_slack_m'));
+  perform pg_temp.adv(need / 24 + 1);
+  r := roam_enter('police_hq');
+  perform pg_temp.assert(not (r ->> 'ok')::boolean and r ->> 'hint' = 'far', 'a bicycle has not had time to ride that far at car pace + 1 s');
+  perform pg_temp.adv(need / bl_cfg('roam.drive.max_speed_bicycle') + 1);
+  r := roam_enter('police_hq');
+  perform pg_temp.assert((r ->> 'ok')::boolean, 'after distance / bicycle pace it pulls up');
+  -- 12.3 remote places are quick-travel only
+  perform pg_temp.assert((select remote_km from locations where id = 'iguobazuwa_farm') > 0, 'test data: the farm is remote');
+  perform pg_temp.assert(not bl_roam_in_area('iguobazuwa_farm') and bl_roam_in_area('uniben'), 'remote places are not roam places');
+  r := roam_start('police_hq');
+  perform pg_temp.adv(3000);
+  r := roam_enter('iguobazuwa_farm');
+  perform pg_temp.assert(not (r ->> 'ok')::boolean and r ->> 'hint' = 'outside', 'walking into a remote place is refused (outside)');
+  perform pg_temp.assert(pg_temp.hint_of($q$select roam_hail_keke('iguobazuwa_farm')$q$) = 'outside', 'and so is hailing a keke there');
+  -- 12.4 an overdue insurance bill blocks the car
+  insert into player_bills (user_id, kind, ref, title, amount, period, status, due_at)
+  values (a, 'car', 'kia_rio_used', 'Insurance', 1000, current_date, 'open', bl_now() - interval '400 days');
+  perform pg_temp.assert(bl_sink_blocked(a, 'car', 'kia_rio_used'), 'test data: the car is blocked');
+  r := roam_set_mode('walk');
+  perform pg_temp.assert(pg_temp.hint_of($q$select roam_set_mode('car', 'kia_rio_used')$q$) = 'blocked', 'a blocked car cannot be driven in the street');
+  delete from player_bills where user_id = a;
+  -- 12.5 push gets you going; mechanic respects the fuel switch; walk is always possible
+  update vehicle_state set fuel_l = 0, cond = 90 where user_id = a and item_id = 'kia_rio_used';
+  r := roam_set_mode('walk');
+  r := roam_dry_choose('push');
+  perform pg_temp.assert((r ->> 'fuel_l')::numeric > 0 and (select fuel_l from vehicle_state where user_id = a and item_id = 'kia_rio_used') > 0, 'push leaves a little petrol (a stranger helps) so the car can move again');
+  perform pg_temp.assert((r ->> 'wait_s')::int >= bl_cfg('drive.dry.push_s')::int, 'and takes the push time');
+  perform pg_temp.setc('drive.dry.push_fail_pct', '100');
+  update vehicle_state set fuel_l = 0 where user_id = a and item_id = 'kia_rio_used';
+  r := roam_dry_choose('push');
+  perform pg_temp.assert((r ->> 'wait_s')::int = bl_cfg('drive.dry.push_s')::int + bl_cfg('drive.dry.push_fail_s')::int, 'a failed push takes the extra time (server side)');
+  perform pg_temp.setc('drive.dry.push_fail_pct', '0');
+  perform pg_temp.assert(pg_temp.hint_of($q$select roam_set_mode('car')$q$) = 'busy', 'the car is not ready until the push is done');
+  perform pg_temp.adv(600);
+  r := roam_set_mode('car');
+  perform pg_temp.assert((r ->> 'ok')::boolean, 'after the push the car starts');
+  r := roam_set_mode('walk');
+  update vehicle_state set fuel_l = 0 where user_id = a and item_id = 'kia_rio_used';
+  perform pg_temp.setc('drive.fuel.enabled', 'false');
+  perform pg_temp.assert(pg_temp.hint_of($q$select roam_dry_choose('mechanic')$q$) = 'not_dry', 'fuel switched off: nobody is dry, the mechanic is not called');
+  perform pg_temp.setc('drive.fuel.enabled', 'true');
+  r := roam_set_mode('car', 'bicycle');
+  perform pg_temp.setc('roam.enabled', 'false');
+  perform pg_temp.assert(pg_temp.hint_of($q$select roam_set_mode('walk')$q$) = 'ok', 'getting out always works, even with free roam switched off');
+  perform pg_temp.assert((select mode from roam_sessions where user_id = a) = 'walk', 'and the session is on foot');
+  perform pg_temp.setc('roam.enabled', 'true');
+  perform pg_temp.setc('roam.rate.max_calls', '20');
+  perform pg_temp.setc('roam.drive.max_reports_min', '24');
 end $$;
 
 -- ---------- 11. structure and grants ----------
