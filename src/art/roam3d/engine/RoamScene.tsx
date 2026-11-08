@@ -469,7 +469,7 @@ function Rig(props: RoamSceneProps) {
       const night = clamp((c.dark - 0.3) / 0.4, 0, 1);
       kit.mats.glassLit.color.copy(mixC('#78a0b6', '#ffd27a', night));
       kit.mats.glow.color.copy(mixC('#cfc9bb', '#fff1c2', night));
-      kit.mats.glowLand.color.copy(mixC('#9db4c4', '#ffd27a', night));
+      kit.mats.glowLand.color.copy(mixC('#869fb1', '#ffd27a', night));
       kit.mats.sign.color.copy(mixC('#ffffff', '#e9e3d4', night));
       kit.mats.solid.color.set(wet ? '#d3d8dc' : '#ffffff');
       streamer.poolMat.opacity = clamp((c.dark - 0.25) / 0.5, 0, 1) * 0.85;
@@ -796,7 +796,10 @@ function Rig(props: RoamSceneProps) {
       focus.x = driving ? car.x : player.x;
       focus.y = driving ? car.y : player.y;
       if (driving && Math.abs(car.v) > 2) { headDirX = Math.cos(car.h) * Math.sign(car.v); headDirY = Math.sin(car.h) * Math.sign(car.v); }
-      else if (!driving && player.speed > 0.6) { headDirX = Math.cos(player.h); headDirY = Math.sin(player.h); }
+      else if (!driving) {
+        // on foot: where you move, else where the camera looks
+        if (player.speed > 0.6) { headDirX = Math.cos(player.h); headDirY = Math.sin(player.h); } else { headDirX = Math.cos(camSt.yaw); headDirY = Math.sin(camSt.yaw); }
+      }
       // stream the city: a small slice of the frame (more until the first chunks are in)
       const speedNow = driving ? Math.abs(car.v) : player.speed;
       streamer.update(focus.x, focus.y, headDirX, headDirY, ready ? (low ? 3 : 4) + (speedNow > 12 ? 2 : 0) : 14);

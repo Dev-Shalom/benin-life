@@ -96,6 +96,7 @@ export function RoamHost({ state, hour, avatar }: { state: GameState; hour: numb
       info: carInfo,
       fuelPerM: (Number(cfg(`drive.fuel.lpk_${cls}`, 0.11)) * Number(cfg('roam.drive.fuel_scale', 8))) / 1000,
       mechanicCost: Number(cfg('drive.dry.mechanic_cost', 3500)),
+      readyS: Number(cfg('roam.car.ready_s', 4)),
       setMode: async (mode, pose) => {
         const r = await roamSetMode(mode, pose);
         if (mode === 'car') setCarInfo((i) => (i ? { ...i, fuel_l: r.fuel_l ?? i.fuel_l, cond: r.cond ?? i.cond, mode: 'car', car_x: null, car_y: null } : i));

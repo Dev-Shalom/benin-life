@@ -35,6 +35,7 @@ export default function RoamLab() {
         },
         fuelPerM: (0.11 * 8) / 1000,
         mechanicCost: 3500,
+        readyS: 0,
         setMode: async (mode) => ({ ok: true, mode, fuel_l: (fuel ?? 0.7) * 45, cond: cond ?? 100 }),
         report: async (r) => ({ ok: true, dist_m: r.dist_m, fuel_l: Math.max(0, (fuel ?? 0.7) * 45 - r.dist_m * 0.00088), cond: cond ?? 100, damage: 0 }),
         dry: async (c) => ({ ok: true, choice: c, message: c === 'push' ? 'You and two strangers push the car to the kerb.' : 'The mechanic is on his way.', cash_delta: 0, wait_s: 5, fuel_l: c === 'mechanic' ? 8 : 0 }),

@@ -109,7 +109,7 @@ export function makeKit(W: RoamWorld, o: { tier: 'low' | 'high'; signs: { tex: C
   const solid = new MeshLambertMaterial({ vertexColors: true });
   const glassLit = new MeshBasicMaterial({ vertexColors: true, color: '#6f93a8' });
   const glow = new MeshBasicMaterial({ vertexColors: true, color: '#d8d2c4' });
-  const glowLand = new MeshBasicMaterial({ vertexColors: true, color: '#9db4c4' });
+  const glowLand = new MeshBasicMaterial({ vertexColors: true, color: '#869fb1' });
   const sign = new MeshBasicMaterial({ vertexColors: true, map: o.signs?.tex ?? null });
   return {
     W, tier: o.tier, signs: o.signs, uncIdx: o.uncIdx,

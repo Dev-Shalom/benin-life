@@ -672,3 +672,13 @@
   font-size: var(--fs-xs);
   opacity: 0.8;
 }
+
+.rm-car {
+  fill: var(--primary);
+  stroke: var(--glass-strong);
+  stroke-width: 0.6;
+}
+.rm-pin.is-closed {
+  opacity: 0.5;
+  stroke-dasharray: 2 2;
+}

@@ -26,6 +26,8 @@ export interface RoamCarCtl {
   fuelPerM: number;
   /** Cash for the mechanic (shown on the stranded card). */
   mechanicCost: number;
+  /** Seconds the car takes to arrive at the kerb after Get my car (roam.car.ready_s). */
+  readyS: number;
   setMode(mode: 'walk' | 'car', pose?: { x: number; y: number; a: number } | null): Promise<RoamModeResult>;
   report(r: { dist_m: number; light: number; hard: number; x: number; y: number; a: number }): Promise<RoamDriveReport>;
   dry(choice: 'push' | 'mechanic'): Promise<RoamDryResult>;
@@ -275,10 +277,18 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
     if ((info?.ready_in_s ?? 0) > 0) { showNote('The mechanic is still working on it.'); return; }
     if (info?.wont_start || cond <= 0) { showNote('Your vehicle is too damaged to start. Repair it at the Mechanic Village, or hail a keke.'); return; }
     if (!noFuelNeeded && fuelL <= 0.02) { showNote('The tank is empty. Call a mechanic, push it to a pump, or hail a keke.'); return; }
-    const r = api.car.summon();
-    if (r === 'ok') showNote(`Your ${info?.name ?? 'car'} is at the kerb, a short walk away.`, 3600);
-    else if (r === 'no_spot') showNote('No free kerb close by. Walk to a main road and try again.');
-  }, [has, info?.ready_in_s, info?.wont_start, info?.name, cond, fuelL, noFuelNeeded, showNote]);
+    const ask = () => {
+      const r = api.car.summon();
+      if (r === 'ok') showNote(`Your ${info?.name ?? 'car'} is at the kerb, a short walk away.`, 3600);
+      else if (r === 'no_spot') showNote('No free kerb close by. Walk to a main road and try again.');
+    };
+    const wait = carCtl?.readyS ?? 0;
+    if (wait > 0.4) {
+      // the car is on its way: it takes a moment to reach the nearest kerb
+      showNote(`Your ${info?.name ?? 'car'} is on its way…`, wait * 1000 + 200);
+      window.setTimeout(() => { if (!drivingRef.current) ask(); }, wait * 1000);
+    } else ask();
+  }, [has, info?.ready_in_s, info?.wont_start, info?.name, cond, fuelL, noFuelNeeded, showNote, carCtl?.readyS]);
 
   const getIn = useCallback(async () => {
     const api = apiRef.current;
