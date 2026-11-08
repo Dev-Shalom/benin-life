@@ -37,6 +37,8 @@ export interface DynBox {
   id: number;
   /** Speed along the heading (m/s), used only to give a gentle sideways shove. */
   v: number;
+  /** Another real player's car (free roam live players): solid, but contact never counts as a hit (no damage from network lag). */
+  remote?: boolean;
 }
 
 const EPS = 1e-9;

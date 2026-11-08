@@ -12,6 +12,8 @@ import { vehicleFor, type VehicleKind } from '../drive3d/model';
 import '../drive3d/drive3d.css';
 import { AREA, type PlaceIn } from './area';
 import type { RoamApi, RoamInput, RoamLive } from './engine/RoamScene';
+import { makeBridge } from './live/bridge';
+import { LiveChip, LiveControls, LiveSheet, LiveTags, PlayerCard, useLive } from './live/LiveUi';
 import { RoamMap } from './RoamMap';
 import { MagnifierIcon, RoamSheet, type SheetItem } from './RoamSheet';
 import { getRoamWorld, type RoamWorld } from './world';
@@ -56,6 +58,8 @@ export interface RoamViewProps {
   keke?: RoamKekeCtl | null;
   /** Streaming hints from the server (roam.chunk.m / roam.chunk.load_m). */
   stream?: { chunkM: number; loadM: number };
+  /** Live players (docs/ROAM.md): see and wave to other real players. Off = free roam alone, nothing is sent or joined. */
+  liveOn?: boolean;
   /** Dev page / screenshots. */
   demo?: {
     dest?: string;
@@ -150,7 +154,7 @@ export function RoamView(props: RoamViewProps) {
   return <RoamViewInner {...props} world={world} />;
 }
 
-function RoamViewInner({ world, startId, avatar, hour, onGoIn, onLeave, onLost, car: carCtl, keke, stream, demo, onApi }: RoamViewProps & { world: RoamWorld }) {
+function RoamViewInner({ world, startId, avatar, hour, onGoIn, onLeave, onLost, car: carCtl, keke, stream, liveOn, demo, onApi }: RoamViewProps & { world: RoamWorld }) {
   const hookTier = useTier();
   const tier = demo?.tier ?? hookTier;
   const input = useRef<RoamInput>({ sx: 0, sy: 0, run: Boolean(demo?.run), lookX: 0, lookY: 0, brake: false });
@@ -171,6 +175,17 @@ function RoamViewInner({ world, startId, avatar, hour, onGoIn, onLeave, onLost, 
   const [hud, setHud] = useState({ near: null as string | null, street: '', left: null as number | null, talk: false, loaded: 0, kerb: false, here: false, driving: false, nearDoor: false, kmh: 0, canPark: false, dry: false });
   const [fps, setFps] = useState('');
   const apiRef = useRef<RoamApi | null>(null);
+
+  /* ---------------- live players ---------------- */
+  const bridge = useMemo(() => makeBridge(), []);
+  const liveClient = useLive(Boolean(liveOn), tier === 'low', () => ({ x: live.current.x, y: live.current.y }), bridge);
+  const [cardId, setCardId] = useState<string | null>(null);
+  const [liveSheet, setLiveSheet] = useState(false);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return; // the dev handle (tests, screenshots) never ships
+    (window as unknown as { __live?: unknown }).__live = liveClient;
+    return () => { delete (window as unknown as { __live?: unknown }).__live; };
+  }, [liveClient]);
 
   /* ---------------- the player's own vehicle ---------------- */
   const info = carCtl?.info ?? null;
@@ -623,6 +638,7 @@ function RoamViewInner({ world, startId, avatar, hour, onGoIn, onLeave, onLost, 
           cond={cond}
           startDriving={demo?.drive}
           loadM={stream?.loadM}
+          bridge={bridge}
           onReady={(api) => {
             apiRef.current = api;
             onApi?.(api);
@@ -631,6 +647,7 @@ function RoamViewInner({ world, startId, avatar, hour, onGoIn, onLeave, onLost, 
         />
       </Suspense>
       <div className="roam__look" onPointerDown={onLookDown} onPointerMove={onLookMove} onPointerUp={onLookUp} onPointerCancel={onLookUp} />
+      <LiveTags bridge={bridge} client={liveClient} onPick={setCardId} />
       {!ready && (
         <div className="roam__loading" role="status">
           <span>Stepping out…</span>
@@ -675,6 +692,8 @@ function RoamViewInner({ world, startId, avatar, hour, onGoIn, onLeave, onLost, 
         </div>
       </div>
 
+      {liveClient && !miniOpen && <LiveChip client={liveClient} onOpen={() => setLiveSheet(true)} />}
+
       {driving && (
         <div className="roam-carhud">
           <DriveHud fuel={fuelFrac} cond={cond} manual={false} showMode={false} showFuel={fuelFrac !== null} showCond lowFuel={fuelFrac !== null && fuelFrac < 0.15} lowCond={cond < 35} />
@@ -709,6 +728,7 @@ function RoamViewInner({ world, startId, avatar, hour, onGoIn, onLeave, onLost, 
       </div>
 
       <div className="roam__right">
+        <LiveControls client={liveClient} driving={driving} />
         {driving ? (
           <button type="button" className="roam-btn roam-btn--round roam-run roam-brake" aria-label="Hold to brake"
             onPointerDown={(e) => { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); input.current.brake = true; }}
@@ -743,6 +763,8 @@ function RoamViewInner({ world, startId, avatar, hour, onGoIn, onLeave, onLost, 
           onClose={() => setSheet(null)}
         />
       )}
+      {liveClient && cardId && <PlayerCard client={liveClient} id={cardId} onClose={() => setCardId(null)} />}
+      {liveClient && liveSheet && <LiveSheet client={liveClient} onClose={() => setLiveSheet(false)} onPick={(id) => { setLiveSheet(false); setCardId(id); }} />}
       {fps && <div className="roam-fps">{fps}</div>}
     </div>
   );

@@ -167,7 +167,7 @@ function probeDisc(col: CollisionWorld, x: number, y: number, r: number, env: Ca
       _depth = d;
       _px = (ux * c - uy * s) * (d + 0.002);
       _py = (ux * s + uy * c) * (d + 0.002);
-      _kind = 2;
+      _kind = b.remote ? 3 : 2;
     }
   }
   return _depth;
@@ -282,14 +282,15 @@ export function stepCar(c: CarState, spec: CarSpec, col: CollisionWorld, dt: num
         c.v *= 0.2;
         c.softStop = true;
       } else {
-        const e = hitKind === 2 ? 0.1 : 0.22;
+        const e = hitKind === 2 || hitKind === 3 ? 0.1 : 0.22;
         const nvx = vx - (1 + e) * vn * hitX, nvy = vy - (1 + e) * vn * hitY;
         // keep sliding a little along the wall, scrub the speed
         c.v = (nvx * hx + nvy * hy) * 0.88;
         // the nose swings away from the wall a touch
         const side = hx * hitY - hy * hitX;
         c.h += Math.max(-0.06, Math.min(0.06, side * imp * 0.01)) * (c.v >= 0 ? 1 : -1);
-        if (imp >= 1.6) {
+        // another real player's car: solid, but the knock is never counted (network lag must not hurt anyone)
+        if (imp >= 1.6 && hitKind !== 3) {
           c.impact = imp;
           c.impactAt = c.t;
           if (imp >= 6.5) {

@@ -682,3 +682,404 @@
   opacity: 0.5;
   stroke-dasharray: 2 2;
 }
+
+/* ======================= Live players (docs/ROAM.md "Live players") ======================= */
+.roam-tags {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+.roam-tag-wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+.roam-tag {
+  pointer-events: auto;
+  position: relative;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 150px;
+  min-height: 26px;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  color: var(--glass-text);
+  box-shadow: var(--e1);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.roam-tag::before {
+  /* a bigger touch target than the pill */
+  content: '';
+  position: absolute;
+  inset: -10px -6px;
+}
+.roam-tag__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roam-bubble {
+  position: relative;
+  max-width: 190px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  background: var(--glass-strong);
+  color: var(--glass-text);
+  box-shadow: var(--e2);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+  animation: roam-bubble-in 180ms var(--ease-out) both;
+}
+.roam-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: inherit;
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+.roam-bubble--me {
+  background: var(--primary);
+  color: var(--on-primary);
+  margin-bottom: 4px;
+}
+@keyframes roam-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.roam-livechip {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--sal) + 112px);
+  top: calc(var(--sat) + 62px);
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 11px 0 9px;
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  color: var(--glass-text);
+  box-shadow: var(--e1);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  -webkit-tap-highlight-color: transparent;
+}
+.roam-livechip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--good);
+}
+.roam-livechip.is-off,
+.roam-livechip.is-wait,
+.roam-livechip.is-hide {
+  color: var(--glass-muted);
+}
+.roam-livechip.is-off i {
+  background: var(--muted);
+}
+.roam-livechip.is-wait i,
+.roam-livechip.is-hide i {
+  background: var(--warn);
+}
+.roam-livebtns {
+  display: flex;
+  gap: var(--s2);
+  justify-content: flex-end;
+}
+.roam-emoji {
+  font-family: var(--font-emoji);
+  font-size: 20px;
+  line-height: 1;
+}
+.roam-tray {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: grid;
+  grid-template-columns: repeat(3, 68px);
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--r-lg);
+  background: var(--glass-strong);
+  box-shadow: var(--e3);
+  pointer-events: auto;
+}
+.roam-tray__item {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 58px;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--glass-text);
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.roam-tray__item:active {
+  transform: scale(0.94);
+  background: var(--line);
+}
+.roam-tray__item small {
+  font-size: 10.5px;
+  font-weight: 750;
+  color: var(--glass-muted);
+}
+.roam-say-bar {
+  position: fixed;
+  z-index: 6;
+  left: calc(var(--sal) + 12px);
+  right: calc(var(--sar) + 12px);
+  top: calc(var(--sat) + 112px);
+  margin: 0 auto;
+  max-width: 420px;
+  padding: 10px;
+  border-radius: var(--r-lg);
+  background: var(--glass-strong);
+  box-shadow: var(--e3);
+  pointer-events: auto;
+}
+.roam-say-bar__row {
+  display: flex;
+  gap: 8px;
+}
+.roam-say-bar input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.roam-say-bar__send {
+  appearance: none;
+  border: 0;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: var(--r-md);
+  background: var(--primary);
+  color: var(--on-primary);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.roam-say-bar__send:disabled {
+  opacity: 0.5;
+}
+.roam-say-bar__quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.roam-say-bar__quick button {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  height: 32px;
+  padding: 0 11px;
+  border-radius: var(--r-pill);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.roam-say-bar__quick small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+.roam-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 12px calc(var(--sab) + 12px);
+}
+.roam-modal__scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: var(--scrim);
+}
+.roam-modal__card {
+  position: relative;
+  width: min(420px, 100%);
+  padding: 14px;
+  border-radius: var(--r-xl);
+  background: var(--glass-strong);
+  color: var(--glass-text);
+  box-shadow: var(--e3);
+  animation: roam-bubble-in 200ms var(--ease-out) both;
+}
+.roam-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.roam-card__who {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.roam-card__who b {
+  font-size: 17px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.roam-card__who small {
+  color: var(--glass-muted);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+.roam-card__acts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.roam-card__acts button,
+.roam-card__confirm button {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  min-height: 46px;
+  padding: 0 12px;
+  border-radius: var(--r-md);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+}
+.roam-card__acts button:first-child {
+  background: var(--primary);
+  border-color: transparent;
+  color: var(--on-primary);
+}
+.roam-card__acts button.is-warn {
+  color: var(--bad);
+}
+.roam-card__acts button:disabled,
+.roam-card__confirm button:disabled {
+  opacity: 0.55;
+}
+.roam-card__confirm p {
+  margin: 0 0 10px;
+  color: var(--glass-muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.35;
+}
+.roam-card__confirm > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.roam-card__confirm .is-danger {
+  background: var(--bad);
+  border-color: transparent;
+  color: var(--on-fill);
+}
+.roam-card__reasons {
+  margin-bottom: 8px;
+}
+.roam-card__note {
+  margin: 0 0 10px;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  background: var(--line);
+  color: var(--glass-muted);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  line-height: 1.35;
+}
+.roam-card__near {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--line);
+  max-height: 168px;
+  overflow: auto;
+}
+.roam-card__near button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text);
+  font: inherit;
+  font-weight: 750;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.roam-card__near small {
+  color: var(--glass-muted);
+  font-weight: 650;
+}
+@media (prefers-reduced-motion: reduce) {
+  .roam-bubble,
+  .roam-modal__card {
+    animation: none;
+  }
+}

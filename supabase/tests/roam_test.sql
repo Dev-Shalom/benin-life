@@ -65,7 +65,7 @@ end $$;
 do $$
 declare n int;
 begin
-  perform pg_temp.assert((select count(*) from game_config where key like 'roam.%') = 33, 'thirty-three roam settings seeded (12 phase 1 + 21 phase 2)');
+  perform pg_temp.assert((select count(*) from game_config where key like 'roam.%') = 53, 'fifty-three roam settings seeded (12 phase 1 + 21 phase 2 + 20 live players)');
   select count(*) into n from game_config where key like 'roam.%'
      and (category <> 'roam' or coalesce(label, '') = '' or coalesce(description, '') = '' or (kind in ('number', 'naira', 'percent') and (min is null or max is null)));
   perform pg_temp.assert(n = 0, 'every roam setting is in category roam with a label, a description and a range (' || n || ' without)');
@@ -260,7 +260,7 @@ begin
   perform pg_temp.at(b, 'national_museum');
   perform pg_temp.assert(pg_temp.hint_of($q$select roam_enter('national_museum')$q$) = 'no_session', 'player b has no session of his own');
   perform pg_temp.login(a);
-  perform pg_temp.assert((select count(*) from roam_sessions) = 1, 'sessions are per player');
+  perform pg_temp.assert((select count(*) from roam_sessions where user_id in (a, b)) = 1, 'sessions are per player');
 end $$;
 
 -- ---------- 6b. closed places, hidden places, polling units, home exemption (like travel) ----------

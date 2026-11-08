@@ -48,6 +48,9 @@ import { SPAWN_SAFE, Traffic } from '../traffic';
 import { SHOP_NAMES, type RoamWorld } from '../world';
 import { busGeometry, carGeometry, kekeGeometry, okadaGeometry } from './cars';
 import { CarRig, KIND_OF } from './carview';
+import { OthersLayer } from './others';
+import { poseEmote } from '../live/emotes';
+import type { LiveBridge } from '../live/bridge';
 import { Soup } from './soup';
 import { Streamer, type StreamStats } from './stream';
 import { makeKit, makeSignAtlas } from './street';
@@ -163,6 +166,8 @@ export interface RoamApi {
   /** Dev / tests: a scripted walker or driver that follows a route to random places (walk: the GPS route, drive: the road network), forever. null = off. */
   auto(o: { mode: 'walk' | 'drive'; run?: boolean; speed?: number; dest?: { x: number; y: number } } | null): void;
   world: RoamWorld;
+  /** Dev / tests: the other players layer (drawn, slots, passable). */
+  others(): { slots: number; drawn: number; passable: boolean; armRz: number | null; gait: number | null; vis: boolean | null };
 }
 
 export interface RoamSceneProps {
@@ -198,6 +203,8 @@ export interface RoamSceneProps {
   startDriving?: boolean;
   /** Streaming radius for the detailed chunks (m, the server's roam.chunk.load_m). */
   loadM?: number;
+  /** Live players (docs/ROAM.md): the network client, the name tags the scene writes. Absent = free roam alone. */
+  bridge?: LiveBridge;
   onReady?: (api: RoamApi) => void;
   onLost?: () => void;
 }
@@ -314,6 +321,11 @@ function Rig(props: RoamSceneProps) {
       slots.push(slot);
       return slot;
     };
+    const others = new OthersLayer({
+      root, low, cam,
+      bridge: () => P.current.bridge ?? null,
+      size: () => ({ w: gl.domElement.clientWidth || 390, h: gl.domElement.clientHeight || 844 }),
+    });
     const playerSlot = makeSlot('player', -1, P.current.avatar ?? defaultAvatar('male'), low ? 0.4 : 0.65);
     const pending: number[] = [];
     peds.list.forEach((_, i) => pending.push(i));
@@ -535,6 +547,8 @@ function Rig(props: RoamSceneProps) {
     const stepSim = (dt: number) => {
       const I = P.current.input.current;
       peds.people(people);
+      others.simT = simT;
+      if (!others.passable) others.addPeople(people, drv.driving ? car : player);
       if (drv.driving) {
         // ---- in the car
         input0.steer = I.sx;
@@ -546,11 +560,13 @@ function Rig(props: RoamSceneProps) {
         syncTrafficPeople();
         traffic.step(dt, trafficPeople, focus);
         traffic.publish(W.col, car.x, car.y, 70);
+        others.addColliders(W.col, car, false);
         carObs.x = car.x; carObs.y = car.y; carObs.a = car.h; carObs.speed = Math.abs(car.v);
         peds.step(dt, W.col, car, carObs);
         const hardBefore = car.hard + car.light;
         stepCar(car, spec, W.col, dt, input0, carEnv);
         if (car.hard + car.light > hardBefore) drv.sinceHit = 0;
+        others.stuck(dt, car, input0.throttle > 0.3 ? 4 : 0, Math.abs(car.v));
         player.x = car.x; player.y = car.y; player.h = car.h; player.speed = Math.abs(car.v);
         // out of fuel: it rolls to a stop
         drv.dry = !carEnv.engine && Math.abs(car.v) < 0.3;
@@ -565,9 +581,11 @@ function Rig(props: RoamSceneProps) {
           W.col.dynBoxes.push(drv.parkedBox);
         }
         peds.step(dt, W.col, player);
+        others.addColliders(W.col, player, true);
         const wx = Math.cos(camSt.yaw) * I.sy + -Math.sin(camSt.yaw) * I.sx;
         const wy = Math.sin(camSt.yaw) * I.sy + Math.cos(camSt.yaw) * I.sx;
         stepPlayer(player, W.col, dt, wx, wy, I.run);
+        others.stuck(dt, player, Math.hypot(wx, wy) > 0.25 ? 1.4 : 0, player.speed);
         // a parked car rolls on its own if somebody left it moving: settle it
         if (drv.here && Math.abs(car.v) > 0.01) car.v = 0;
       }
@@ -869,6 +887,18 @@ function Rig(props: RoamSceneProps) {
       const ps = playerSlot;
       ps.g.visible = !driving && !fp && !camSt.hideBody && Boolean(ps.rig);
       pose(ps, t, player.x, player.y, player.h, speed, player.moved * (acc >= 0 ? n : 1), player.gait, playerPhase, gaitRun, false);
+      {
+        // live players: my own emote on my body, my position to the others
+        const lc = p.bridge?.client ?? null;
+        if (lc) {
+          const em = lc.activeEmote();
+          if (em && !driving && ps.rig) {
+            if (player.speed > 0.9) lc.cancelEmote();
+            else if (!poseEmote(ps.rig.ch, em.id, (performance.now() - em.at) / 1000)) lc.cancelEmote();
+          }
+          lc.update({ x: driving ? car.x : player.x, y: driving ? car.y : player.y, h: driving ? car.h : player.h, v: driving ? Math.abs(car.v) : speed, car: driving, run: !driving && speed > 3.2, brake: driving && car.braking, reverse: driving && car.v < -0.3 });
+        }
+      }
 
       if (driving && carRig) {
         // ---- driving cameras: chase (behind, above, swings with the turn) or the driver's seat with the dashboard
@@ -1005,6 +1035,10 @@ function Rig(props: RoamSceneProps) {
       plain.position.z = cam.position.z;
       glowLight.position.set(focus.x, 3.2, focus.y);
 
+      /* the other real players (live roam): poses, tags, colliders */
+      cam.updateMatrixWorld();
+      others.frame(dt, performance.now(), driving ? car : player, driving ? { x: car.x, y: 2.3, z: car.y } : fp ? null : { x: player.x, y: 2.15, z: player.y }, dark);
+
       /* pedestrians: build rigs in the background, pose by distance */
       if (pending.length && performance.now() - lastBuild > 40) {
         const i = pending.shift()!;
@@ -1063,6 +1097,7 @@ function Rig(props: RoamSceneProps) {
         };
         if (!fp && !driving) put(player.x, player.y, 1.1, 1.1, 0);
         for (const sl of slots) if (sl.kind === 'ped' && sl.g.visible) put(peds.list[sl.ped].x, peds.list[sl.ped].y, 1.0, 1.0, 0);
+        others.eachBlob(put);
         for (const c of traffic.cars) {
           if (Math.abs(c.x - focus.x) > 60 || Math.abs(c.y - focus.y) > 60 || c.k < 0.5) continue;
           put(c.x, c.y, c.len * 1.15, c.wid * 1.5, c.a);
@@ -1222,6 +1257,7 @@ function Rig(props: RoamSceneProps) {
         scene.background = null;
         streamer.dispose();
         for (const sl of slots) sl.rig?.dispose();
+        others.dispose();
         for (const o of owned) o.dispose();
         routeMesh.geometry.dispose();
         for (const k of kinds) inst[k].dispose();
@@ -1240,6 +1276,7 @@ function Rig(props: RoamSceneProps) {
     };
     const api: RoamApi = {
       world: W,
+      others: () => others.debug(),
       stats: () => ({
         calls: gl.info.render.calls,
         triangles: gl.info.render.triangles,
