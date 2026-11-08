@@ -53,6 +53,10 @@ export class CollisionWorld {
   private SH = new Float32Array(0);
   private CH = new Float32Array(0);
   private segPoly: number[] = [];
+  /** How far the polygon reaches behind each edge (its thickness there): a thin wall must never be treated as 'deep inside' from its far side. */
+  private segThick: number[] = [];
+  private SK = new Float32Array(0);
+  private pendThick: number[] = [];
   private S = new Float64Array(0);
   private ST = new Uint8Array(0);
   private C = new Float64Array(0);
@@ -101,6 +105,11 @@ export class CollisionWorld {
       const row = [a[0], a[1], b[0], b[1], (sgn * dy) / l, (-sgn * dx) / l];
       this.seg.push(...row);
       if (this.built) this.pendSeg.push(...row);
+      // inward extent of the polygon behind this edge (distance to its farthest vertex along -normal)
+      let thick = 0;
+      for (const q of pts) thick = Math.max(thick, (a[0] - q[0]) * row[4] + (a[1] - q[1]) * row[5]);
+      this.segThick.push(thick);
+      if (this.built) this.pendThick.push(thick);
       this.segTall.push(opt.tall !== false ? 1 : 0);
       this.segH.push(opt.h ?? 6);
       this.segPoly.push(pi);
@@ -123,6 +132,7 @@ export class CollisionWorld {
     this.S = Float64Array.from(this.seg);
     this.ST = Uint8Array.from(this.segTall);
     this.SH = Float32Array.from(this.segH);
+    this.SK = Float32Array.from(this.segThick);
     const m = this.circs.length;
     this.C = new Float64Array(m * 3);
     this.CT = new Uint8Array(m);
@@ -182,6 +192,7 @@ export class CollisionWorld {
     this.stampS = new Int32Array(n);
     this.stampC = new Int32Array(m);
     this.pendSeg = [];
+    this.pendThick = [];
     this.circCountBuilt = m;
     this.built = true;
   }
@@ -247,7 +258,7 @@ export class CollisionWorld {
             const s = this.sItems[k];
             if (this.stampS[s] === gen) continue;
             this.stampS[s] = gen;
-            testSeg(S, s * 6, x, y, r);
+            testSeg(S, s * 6, x, y, r, this.SK[s]);
           }
           for (let k = this.cStart[ci], e = this.cStart[ci + 1]; k < e; k++) {
             const c = this.cItems[k];
@@ -261,7 +272,8 @@ export class CollisionWorld {
     // colliders added after build() (door posts, stalls while the world is being made): scanned linearly
     {
       const P = this.built ? this.pendSeg : this.seg;
-      for (let o = 0; o < P.length; o += 6) testSeg(P, o, x, y, r);
+      const PT = this.built ? this.pendThick : this.segThick;
+      for (let o = 0; o < P.length; o += 6) testSeg(P, o, x, y, r, PT[o / 6]);
     }
     for (let c = this.built ? this.circCountBuilt : 0; c < this.circs.length; c++) {
       const q = this.circs[c];
@@ -442,7 +454,7 @@ export class CollisionWorld {
 const _out = { x: 0, y: 0 };
 
 let _best = 0;
-function testSeg(S: ArrayLike<number>, o: number, x: number, y: number, r: number) {
+function testSeg(S: ArrayLike<number>, o: number, x: number, y: number, r: number, thick: number) {
   const ax = S[o], ay = S[o + 1];
   const dx = S[o + 2] - ax, dy = S[o + 3] - ay;
   const l2 = dx * dx + dy * dy;
@@ -453,7 +465,7 @@ function testSeg(S: ArrayLike<number>, o: number, x: number, y: number, r: numbe
   if (t > 0 && t < 1) {
     // beside the edge: signed distance along the outward normal (negative = inside the polygon)
     const sd = (x - ax) * nx + (y - ay) * ny;
-    if (sd >= r || sd < -(r + 0.6)) return;
+    if (sd >= r || sd < -Math.min(r + 0.6, thick * 0.5 + 0.02)) return;
     d = r - sd;
     ux = nx;
     uy = ny;

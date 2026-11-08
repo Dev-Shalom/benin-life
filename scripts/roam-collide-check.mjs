@@ -249,7 +249,9 @@ if (run(2)) {
   {
     // start 8 m ahead of that car, not inside it (a start inside a car would be a test artefact, not a shove)
     const c0 = traffic.cars.find((c) => Math.hypot(c.x - target.x, c.y - target.y) < 0.5);
-    placePlayer(P, col, c0 ? c0.x + Math.cos(c0.a) * 8 : target.x, c0 ? c0.y + Math.sin(c0.a) * 8 : target.y);
+    let sx = c0 ? c0.x + Math.cos(c0.a) * 8 : target.x, sy = c0 ? c0.y + Math.sin(c0.a) * 8 : target.y;
+    for (let k = 0; k < 8 && traffic.cars.some((c) => Math.hypot(c.x - sx, c.y - sy) < 5); k++) { sx += Math.cos(c0 ? c0.a : 0) * 6; sy += Math.sin(c0 ? c0.a : 0) * 6; }
+    placePlayer(P, col, sx, sy);
   }
   let retarget = 0;
   const obbHit = (x, y, r, c) => {
@@ -308,7 +310,7 @@ if (run(2)) {
       shoves++;
       if (shoves < 6) {
         const near = traffic.cars.filter((c) => Math.hypot(c.x - P.x, c.y - P.y) < 6).map((c) => `${c.kind} k${c.k.toFixed(2)} v${c.v.toFixed(1)} d${Math.hypot(c.x - P.x, c.y - P.y).toFixed(1)} held${c.held}`).join('; ');
-        fail(`t=${(f * dt).toFixed(2)} s: the player was shoved ${(pushV * dt).toFixed(2)} m in one step (${pushV.toFixed(0)} m/s); cars within 6 m: ${near || 'none'}; inside a wall? ${exactClearance(before.x, before.y).min.toFixed(2)}`);
+        fail(`t=${(f * dt).toFixed(2)} s: the player was shoved ${(pushV * dt).toFixed(2)} m in one step (${pushV.toFixed(0)} m/s); cars within 6 m: ${near || 'none'}; clearance before ${exactClearance(before.x, before.y).min.toFixed(2)} from "${exactClearance(before.x, before.y).who}" at (${before.x.toFixed(2)}, ${before.y.toFixed(2)}), after ${exactClearance(P.x, P.y).min.toFixed(2)} from "${exactClearance(P.x, P.y).who}" at (${P.x.toFixed(2)}, ${P.y.toFixed(2)}), moving (${wx.toFixed(2)}, ${wy.toFixed(2)})`);
       }
     }
     steps++;
@@ -461,6 +463,7 @@ if (run(4)) {
       for (let k = 0; k < 3; k++) { const u = (k - 1) * (spec.len / 2 - spec.wid / 2); people.push({ x: c.x + Math.cos(c.h) * u, y: c.y + Math.sin(c.h) * u, r: spec.wid / 2 * 1.08 }); }
       if (run % 3 === 0) { traffic.step(dt, people, c); traffic.publish(col, c.x, c.y, 60); } else col.dynBoxes = [];
       const hl0 = c.light, hh0 = c.hard;
+      const pre = { x: c.x, y: c.y, h: c.h, v: c.v, yaw: c.yaw, steer: c.steer };
       stepCar(c, spec, col, dt, { steer, throttle: thr, brake: brk }, env);
       hitsL += c.light - hl0;
       hitsH += c.hard - hh0;
@@ -469,7 +472,7 @@ if (run(4)) {
       const mv = Math.hypot(c.x - prev.x, c.y - prev.y);
       dist += mv;
       // no tunnelling / teleporting: one step never moves further than the speed allows (plus the push-out)
-      if (mv > Math.max(0.6, Math.abs(c.v) * dt * 2 + 0.5)) { jumps++; if (jumps < 6) fail(`${kind} step jumped ${mv.toFixed(2)} m at speed ${c.v.toFixed(1)} (run ${run}, step ${s}, dt ${dt.toFixed(3)}, ${col.dynBoxes.filter((q) => Math.hypot(q.x - c.x, q.y - c.y) < 7).length} traffic boxes within 7 m, soft ${c.softStop}) at (${c.x.toFixed(1)}, ${c.y.toFixed(1)})`); }
+      if (mv > Math.max(0.6, Math.abs(c.v) * dt * 2 + 0.5)) { jumps++; if (jumps < 6) fail(`${kind} step jumped ${mv.toFixed(2)} m at speed ${c.v.toFixed(1)} (run ${run}, step ${s}, pre ${JSON.stringify(pre, (k, v) => (typeof v === 'number' ? Math.round(v * 1000) / 1000 : v))} inputs steer ${steer.toFixed(2)} thr ${thr} brk ${brk}, dt ${dt.toFixed(3)}, ${col.dynBoxes.filter((q) => Math.hypot(q.x - c.x, q.y - c.y) < 7).length} traffic boxes within 7 m, soft ${c.softStop}) at (${c.x.toFixed(1)}, ${c.y.toFixed(1)})`); }
       prev = { x: c.x, y: c.y };
       // exact checks on the box
       const ch = Math.cos(c.h), sh = Math.sin(c.h);

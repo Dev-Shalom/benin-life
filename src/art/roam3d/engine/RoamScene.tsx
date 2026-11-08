@@ -35,6 +35,7 @@ import { defaultAvatar, randomAvatar } from '../../avatar3d/catalog';
 import { applyPose, capturePose, gaitFor, mixPose, poseGait, poseIdle, POSE_SIZE, resetRig, stepLength } from '../../avatar3d/engine/anim';
 import { buildCrowdRig, type CrowdRig } from '../../avatar3d/engine/crowd';
 import { cityLight } from '../../city3d/engine/light';
+import { roadRoute } from '../../city3d/route';
 import { ROAD_NAME, type VehicleKind } from '../../drive3d/model';
 import { AREA, PLAYER_R, SPEED } from '../area';
 import { bodyClear, CAR_SPECS, makeCarState, parkLegal, stepCar, takeReport, type CarInput, type CarKind, type CarState } from '../carphys';
@@ -138,7 +139,8 @@ export interface CarApi {
 
 export interface RoamApi {
   stats(): { calls: number; triangles: number; geometries: number; textures: number; staticTris: number; rigs: number; cars: number; programs: number };
-  stream(): StreamStats & { geometries: number; textures: number; heapMB: number };
+  stream(): StreamStats & { geometries: number; textures: number; heapMB: number; tickAvgMs: number; tickMaxMs: number; tickOver8: number; ticks: number };
+  resetPerf(): void;
   teleport(x: number, y: number, h?: number): void;
   cam(p: { yaw?: number; pitch?: number; dist?: number }): void;
   state(): Record<string, number | string | boolean>;
@@ -146,6 +148,8 @@ export interface RoamApi {
   car: CarApi;
   /** Dev: make sure the chunks round the player are built now (screenshots, scripted walks). */
   settle(maxMs?: number): void;
+  /** Dev / tests: a scripted walker or driver that follows a route to random places (walk: the GPS route, drive: the road network), forever. null = off. */
+  auto(o: { mode: 'walk' | 'drive'; run?: boolean; speed?: number; dest?: { x: number; y: number } } | null): void;
   world: RoamWorld;
 }
 
@@ -186,6 +190,8 @@ export interface RoamSceneProps {
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const FIXED = 1 / 60;
+/** JS time of the scene's own frame work (physics, streaming slice, poses), not the GPU: read through api.stream(). */
+const perfStat = { n: 0, sum: 0, max: 0, over8: 0 };
 
 interface RigSlot {
   rig: CrowdRig | null;
@@ -708,6 +714,72 @@ function Rig(props: RoamSceneProps) {
       drv.driving = true;
     }
 
+    /* ---------- scripted walker / driver (dev and tests) ---------- */
+    const autoS = { on: false, mode: 'walk' as 'walk' | 'drive', run: false, speed: 13, pts: [] as [number, number][], i: 0, stuck: 0, rev: 0, dest: null as { x: number; y: number } | null, picks: 0, plan: 0 };
+    const autoPick = () => {
+      const pl = W.places[(autoS.picks++ * 7 + 3) % W.places.length];
+      autoS.dest = { x: pl.door.sx, y: pl.door.sy };
+    };
+    const autoPlan = () => {
+      const fx = drv.driving ? car.x : player.x, fy = drv.driving ? car.y : player.y;
+      if (!autoS.dest) autoPick();
+      const d = autoS.dest!;
+      if (autoS.mode === 'walk') {
+        autoS.pts = planRoute(W, [fx, fy], [d.x, d.y]).pts.map((q2) => [q2[0], q2[1]] as [number, number]);
+      } else {
+        // along the road network, shifted into the right-hand lane
+        const r = roadRoute({ x: fx, y: fy }, { x: d.x, y: d.y });
+        const out: [number, number][] = [];
+        for (let k = 0; k < r.length; k++) {
+          const a = r[Math.max(0, k - 1)], b = r[Math.min(r.length - 1, k + 1)];
+          const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+          out.push([r[k][0] - ((b[1] - a[1]) / l) * 2.4, r[k][1] + ((b[0] - a[0]) / l) * 2.4]);
+        }
+        autoS.pts = out;
+      }
+      autoS.i = 0;
+    };
+    const autoStep = (dt: number) => {
+      const I = P.current.input.current;
+      const driving = drv.driving;
+      const px = driving ? car.x : player.x, py = driving ? car.y : player.y;
+      if (!autoS.pts.length || autoS.plan <= 0) { autoPlan(); autoS.plan = 12; }
+      autoS.plan -= dt;
+      const pts = autoS.pts;
+      // closest point ahead, then a look-ahead target
+      let best = autoS.i, bd = Infinity;
+      for (let k = Math.max(0, autoS.i - 2); k < Math.min(pts.length, autoS.i + 12); k++) {
+        const dd = Math.hypot(pts[k][0] - px, pts[k][1] - py);
+        if (dd < bd) { bd = dd; best = k; }
+      }
+      autoS.i = best;
+      const look = driving ? 10 + Math.abs(car.v) * 0.5 : 5;
+      let ti = best;
+      while (ti < pts.length - 1 && Math.hypot(pts[ti][0] - px, pts[ti][1] - py) < look) ti++;
+      const tx = pts[ti][0], ty = pts[ti][1];
+      const left = Math.hypot(pts[pts.length - 1][0] - px, pts[pts.length - 1][1] - py);
+      if (left < (driving ? 14 : 3) || (ti >= pts.length - 1 && left < look)) { autoPick(); autoPlan(); return; }
+      const want = Math.atan2(ty - py, tx - px);
+      if (!driving) {
+        camSt.yaw = want;
+        I.sx = 0; I.sy = 1; I.run = autoS.run; I.brake = false;
+        return;
+      }
+      let d = want - car.h;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      const vt = autoS.speed * (1 - Math.min(0.65, Math.abs(d) * 0.8));
+      if (autoS.rev > 0) {
+        autoS.rev -= dt;
+        I.sx = -Math.sign(d || 1) * 0.8; I.sy = -1; I.brake = false;
+        return;
+      }
+      I.sx = Math.max(-1, Math.min(1, d * 1.8));
+      I.sy = car.v < vt ? 1 : 0;
+      I.brake = car.v > vt + 2;
+      if (Math.abs(car.v) < 0.4 && I.sy > 0) autoS.stuck += dt; else autoS.stuck = 0;
+      if (autoS.stuck > 1.5) { autoS.stuck = 0; autoS.rev = 1.1; }
+    };
+
     const tick = (delta: number) => {
       const p = P.current;
       if (p.paused) return;
@@ -733,6 +805,7 @@ function Rig(props: RoamSceneProps) {
         sky.position.copy(cam.position);
         return;
       }
+      if (autoS.on) autoStep(dt);
       // physics: fixed steps
       acc += dt;
       let n = 0;
@@ -1160,7 +1233,8 @@ function Rig(props: RoamSceneProps) {
         cars: inst.car.count + inst.bus.count + inst.keke.count + inst.okada.count,
         programs: gl.info.programs?.length ?? 0,
       }),
-      stream: () => ({ ...streamer.stats(), geometries: gl.info.memory.geometries, textures: gl.info.memory.textures, heapMB: heapMB() }),
+      stream: () => ({ ...streamer.stats(), geometries: gl.info.memory.geometries, textures: gl.info.memory.textures, heapMB: heapMB(), tickAvgMs: perfStat.n ? perfStat.sum / perfStat.n : 0, tickMaxMs: perfStat.max, tickOver8: perfStat.over8, ticks: perfStat.n }),
+      resetPerf: () => { perfStat.n = 0; perfStat.sum = 0; perfStat.max = 0; perfStat.over8 = 0; streamer.resetSliceStats(); },
       teleport: (x, y, h) => {
         placePlayer(player, W.col, x, y, h);
         camSt.init = false;
@@ -1174,6 +1248,16 @@ function Rig(props: RoamSceneProps) {
       state: () => ({ x: player.x, y: player.y, h: player.h, speed: player.speed, yaw: camSt.yaw, pitch: camSt.pitch, camDist: camSt.d, ready, driving: drv.driving, carX: car.x, carY: car.y, carH: car.h, carV: car.v, fogFar: fog.far, ...Object.fromEntries(Object.entries(streamer.stats()).map(([k, v]) => ['s_' + k, typeof v === 'number' ? Math.round(v * 100) / 100 : v])) }),
       setDebug,
       car: carApi,
+      auto: (o) => {
+        if (!o) { autoS.on = false; const I = P.current.input.current; I.sx = 0; I.sy = 0; I.brake = false; return; }
+        autoS.on = true;
+        autoS.mode = o.mode;
+        autoS.run = Boolean(o.run);
+        autoS.speed = o.speed ?? 13;
+        autoS.dest = o.dest ?? null;
+        autoS.pts = [];
+        autoS.plan = 0;
+      },
       settle: (maxMs = 60000) => {
         const t0 = performance.now();
         while (performance.now() - t0 < maxMs) {
@@ -1203,7 +1287,13 @@ function Rig(props: RoamSceneProps) {
   }, [props.world, props.tier, props.vehicle?.kind, props.vehicle?.color]);
 
   useFrame((_, delta) => {
+    const t0 = performance.now();
     ref.current?.tick(delta);
+    const dt = performance.now() - t0;
+    perfStat.n++;
+    perfStat.sum += dt;
+    if (dt > perfStat.max) perfStat.max = dt;
+    if (dt > 8) perfStat.over8++;
   });
   return null;
 }

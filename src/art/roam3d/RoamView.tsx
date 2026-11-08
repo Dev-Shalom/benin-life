@@ -621,13 +621,12 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
       {driving && (
         <div className="roam-carhud">
           <DriveHud fuel={fuelFrac} cond={cond} manual={false} showMode={false} showFuel={fuelFrac !== null} showCond lowFuel={fuelFrac !== null && fuelFrac < 0.15} lowCond={cond < 35} />
-          {camMode === 'inside' ? (
-            <DriveCluster v={hud.kmh / 4.86} fuel={fuelFrac} lowFuel={fuelFrac !== null && fuelFrac < 0.15} lowCond={cond < 35} signal={0} rain={rain} night={night} wipers={rain} />
-          ) : (
-            <div className="roam-speed" aria-label="Speed"><b>{hud.kmh}</b><small>km/h</small></div>
-          )}
         </div>
       )}
+      {driving && camMode === 'inside' && (
+        <DriveCluster v={hud.kmh / 4.86} fuel={fuelFrac} lowFuel={fuelFrac !== null && fuelFrac < 0.15} lowCond={cond < 35} signal={0} rain={rain} night={night} wipers={rain} />
+      )}
+      {driving && camMode !== 'inside' && <div className="roam-speed" aria-label="Speed"><b>{hud.kmh}</b><small>km/h</small></div>}
 
       {note && <div className="roam-note" role="status">{note}</div>}
       {say && <div className="roam-say" role="status">{say}</div>}
