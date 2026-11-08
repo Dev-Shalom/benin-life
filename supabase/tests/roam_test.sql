@@ -260,7 +260,7 @@ begin
   perform pg_temp.at(b, 'national_museum');
   perform pg_temp.assert(pg_temp.hint_of($q$select roam_enter('national_museum')$q$) = 'no_session', 'player b has no session of his own');
   perform pg_temp.login(a);
-  perform pg_temp.assert((select count(*) from roam_sessions) = 1, 'sessions are per player');
+  perform pg_temp.assert((select count(*) from roam_sessions where user_id in (a, b)) = 1, 'sessions are per player');
 end $$;
 
 -- ---------- 6b. closed places, hidden places, polling units, home exemption (like travel) ----------
