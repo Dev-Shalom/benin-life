@@ -50,6 +50,8 @@ export interface RoamViewProps {
   onLost?: () => void;
   car?: RoamCarCtl | null;
   keke?: RoamKekeCtl | null;
+  /** Streaming hints from the server (roam.chunk.m / roam.chunk.load_m). */
+  stream?: { chunkM: number; loadM: number };
   /** Dev page / screenshots. */
   demo?: {
     dest?: string;
@@ -114,10 +116,10 @@ const EXIT_MSG: Record<string, string> = {
   blocked: 'No room to open the door here. Move the car a little.',
 };
 
-export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLost, car: carCtl, keke, demo, onApi }: RoamViewProps) {
+export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLost, car: carCtl, keke, stream, demo, onApi }: RoamViewProps) {
   const hookTier = useTier();
   const tier = demo?.tier ?? hookTier;
-  const world = useMemo(() => getRoamWorld(places), [places]);
+  const world = useMemo(() => getRoamWorld(places, Math.max(80, Math.min(200, Math.round(stream?.chunkM ?? 120)))), [places, stream?.chunkM]);
   const input = useRef<RoamInput>({ sx: 0, sy: 0, run: Boolean(demo?.run), lookX: 0, lookY: 0, brake: false });
   const live = useRef<RoamLive>({
     x: 0, y: 0, h: 0, speed: 0, nearId: null, nearDist: 99, street: '', left: null, route: null, nearTalk: false, camYaw: 0, running: false, t: 0, ready: false, loaded: 0, atKerb: false,
@@ -566,6 +568,7 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
           camMode={camMode}
           cond={cond}
           startDriving={demo?.drive}
+          loadM={stream?.loadM}
           onReady={(api) => {
             apiRef.current = api;
             onApi?.(api);

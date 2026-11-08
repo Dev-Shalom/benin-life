@@ -63,11 +63,12 @@ export class Streamer {
   private stat = { maxSlice: 0, lastChunk: 0, chunkSum: 0, built: 0, disposed: 0 };
   private lamps = new Map<number, Float32Array>();
 
-  constructor(W: RoamWorld, kit: Kit, low: boolean) {
+  constructor(W: RoamWorld, kit: Kit, low: boolean, loadM = 200) {
     this.W = W;
     this.kit = kit;
-    this.detailR = low ? STREAM.detail.low : STREAM.detail.high;
-    this.farR = low ? STREAM.far.low : STREAM.far.high;
+    // the server's roam.chunk.load_m is the High radius; Low builds a little less (the fog is nearer on Low)
+    this.detailR = Math.max(100, Math.min(400, loadM * (low ? STREAM.detail.low / STREAM.detail.high : 1)));
+    this.farR = Math.max(this.detailR + 60, Math.min(520, this.detailR * (STREAM.far.high / STREAM.detail.high)));
     const nTrees = Math.max(1, W.trees.length);
     const canopyGeo = new IcosahedronGeometry(1, 0);
     const canopyMat = new MeshLambertMaterial({ flatShading: true });

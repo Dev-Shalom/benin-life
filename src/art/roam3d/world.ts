@@ -139,15 +139,15 @@ const ACCENT: Record<string, string> = {
 
 let cache: { key: string; w: RoamWorld } | null = null;
 
-export function getRoamWorld(places: PlaceIn[]): RoamWorld {
-  const key = places.map((p) => `${p.id}:${p.x}:${p.y}:${p.active === false ? 0 : 1}`).join('|');
+export function getRoamWorld(places: PlaceIn[], chunkM = CHUNK_M): RoamWorld {
+  const key = chunkM + '#' + places.map((p) => `${p.id}:${p.x}:${p.y}:${p.active === false ? 0 : 1}`).join('|');
   if (cache && cache.key === key) return cache.w;
-  const w = buildRoamWorld(places);
+  const w = buildRoamWorld(places, chunkM);
   cache = { key, w };
   return w;
 }
 
-export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
+export function buildRoamWorld(placesIn: PlaceIn[], chunkM = CHUNK_M): RoamWorld {
   const L = getCityLayout();
   const box: [number, number, number, number] = [AREA.x0, AREA.y0, AREA.x1, AREA.y1];
   const inBox = (x: number, y: number, pad = 0) => x >= box[0] - pad && x <= box[2] + pad && y >= box[1] - pad && y <= box[3] + pad;
@@ -813,7 +813,7 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
     }
 
   const W: RoamWorld = { L, col, places, buildings, landmarks, trees, lamps, parked, stalls, displays, kiosks, edge, walk, gps, roadIdx, box, walls, lmAnchors, zones, chunks: null as unknown as ChunkIndex };
-  W.chunks = indexChunks(W, CHUNK_M);
+  W.chunks = indexChunks(W, chunkM);
   return W;
 }
 

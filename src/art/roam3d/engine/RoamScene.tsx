@@ -188,6 +188,8 @@ export interface RoamSceneProps {
   cond?: number;
   /** Dev: start in the driver's seat. */
   startDriving?: boolean;
+  /** Streaming radius for the detailed chunks (m, the server's roam.chunk.load_m). */
+  loadM?: number;
   onReady?: (api: RoamApi) => void;
   onLost?: () => void;
 }
@@ -257,7 +259,7 @@ function Rig(props: RoamSceneProps) {
     /* ---------- the city, streamed ---------- */
     const signs = typeof document !== 'undefined' ? makeSignAtlas([...W.places.map((p) => ({ label: p.label, accent: p.accent })), ...SHOP_NAMES.map((n, i) => ({ label: n, accent: i >= 8 ? '#8d5a2b' : ['#c0643f', '#2e9d58', '#5c7fb5', '#d9822b', '#7a4ac8', '#3f7f9c', '#c0643f', '#2e9d58'][i] })), { label: 'Under construction', accent: '#c9882b' }]) : null;
     const kit = makeKit(W, { tier: props.tier, signs, uncIdx: W.places.length + SHOP_NAMES.length });
-    const streamer = new Streamer(W, kit, low);
+    const streamer = new Streamer(W, kit, low, P.current.loadM ?? 200);
     root.add(streamer.root);
 
     /* ---------- traffic ---------- */

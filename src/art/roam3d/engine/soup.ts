@@ -152,6 +152,20 @@ export class Soup {
     this.quad([ax + nx, y, az + nz], [bx + nx, y, bz + nz], [bx - nx, y, bz - nz], [ax - nx, y, az - nz], hex, [0, 1, 0]);
   }
 
+  /** The same geometry, built in small steps (one attribute copy per step) so a streaming chunk never spends a long slice here. */
+  *geometryGen(): Generator<void, BufferGeometry> {
+    const g = new BufferGeometry();
+    g.setAttribute('position', new Float32BufferAttribute(this.p.a.slice(0, this.p.n), 3));
+    yield;
+    g.setAttribute('color', new Float32BufferAttribute(this.c.a.slice(0, this.c.n), 3));
+    yield;
+    g.setAttribute('normal', new Float32BufferAttribute(this.nr.a.slice(0, this.nr.n), 3));
+    if (this.withUv) g.setAttribute('uv', new Float32BufferAttribute(this.t.a.slice(0, this.t.n), 2));
+    yield;
+    g.computeBoundingSphere();
+    return g;
+  }
+
   geometry(): BufferGeometry {
     const g = new BufferGeometry();
     g.setAttribute('position', new Float32BufferAttribute(this.p.a.slice(0, this.p.n), 3));
