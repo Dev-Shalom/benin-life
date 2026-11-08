@@ -1,17 +1,41 @@
-// Free roam (phase 1): walk the streets around King's Square in 3D. The scene is lazy (three.js); this file is the HUD:
-// joystick bottom-left, Run + the contextual Action bottom-right, a small top bar, the mini-map with the GPS line top-left.
-// Positions are cosmetic: the server decides where the player is (roam_enter). See docs/ROAM.md.
+// Free roam (phase 2): walk and drive the whole city in 3D. The scene is lazy (three.js); this file is the HUD:
+// joystick bottom-left, Run / Brake + the contextual Action + the car button bottom-right, a small top bar, the mini-map with the GPS line
+// top-left, a place search and Hail keke. Positions are cosmetic: the server decides where the player is (roam_enter) and validates the
+// car's fuel and damage (roam_drive_report). See docs/ROAM.md.
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { RoamCarInfo, RoamDriveReport, RoamDryResult, RoamModeResult } from '../../api/roam';
 import type { AvatarConfig } from '../../lib/types';
 import { Icon } from '../../ui/Icon';
 import { useTier } from '../feel/quality';
+import { DriveCluster, DriveHud, Wipers } from '../drive3d/DriveDash';
+import { vehicleFor, type VehicleKind } from '../drive3d/model';
+import '../drive3d/drive3d.css';
 import { AREA, type PlaceIn } from './area';
 import type { RoamApi, RoamInput, RoamLive } from './engine/RoamScene';
 import { RoamMap } from './RoamMap';
+import { MagnifierIcon, RoamSheet, type SheetItem } from './RoamSheet';
 import { getRoamWorld } from './world';
 import './roam3d.css';
 
 const RoamScene = lazy(() => import('./engine/RoamScene'));
+
+/** What the host gives the view for the player's own vehicle (all server calls live in the host). */
+export interface RoamCarCtl {
+  info: RoamCarInfo | null;
+  /** Litres burned per metre driven (litres per km x the free roam fuel scale / 1000), for the gauge between checkpoints. */
+  fuelPerM: number;
+  /** Cash for the mechanic (shown on the stranded card). */
+  mechanicCost: number;
+  setMode(mode: 'walk' | 'car', pose?: { x: number; y: number; a: number } | null): Promise<RoamModeResult>;
+  report(r: { dist_m: number; light: number; hard: number; x: number; y: number; a: number }): Promise<RoamDriveReport>;
+  dry(choice: 'push' | 'mechanic'): Promise<RoamDryResult>;
+}
+
+export interface RoamKekeCtl {
+  enabled: boolean;
+  /** Hail a keke to this place: returns a message when refused, nothing when the trip started. */
+  hail(dest: string): Promise<string | void>;
+}
 
 export interface RoamViewProps {
   places: PlaceIn[];
@@ -24,6 +48,8 @@ export interface RoamViewProps {
   onGoIn: (placeId: string) => Promise<string | void> | string | void;
   onLeave: () => void;
   onLost?: () => void;
+  car?: RoamCarCtl | null;
+  keke?: RoamKekeCtl | null;
   /** Dev page / screenshots. */
   demo?: {
     dest?: string;
@@ -40,6 +66,14 @@ export interface RoamViewProps {
     say?: string;
     note?: string;
     run?: boolean;
+    /** Own vehicle in the dev page: item id; car=1 puts it at the kerb next to you, drive=1 starts in the seat. */
+    vehicle?: string;
+    carHere?: boolean;
+    drive?: boolean;
+    rain?: boolean;
+    cam2?: 'chase' | 'inside';
+    sheet?: 'search' | 'keke';
+    dry?: boolean;
   };
   onApi?: (api: RoamApi) => void;
 }
@@ -59,21 +93,38 @@ const timeText = (hour: number) => {
   return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${ap}`;
 };
 
-function loadFp(): boolean {
+function loadPref(k: string, d: string): string {
   try {
-    return localStorage.getItem('bl.roam.fp') === '1';
+    return localStorage.getItem(k) ?? d;
   } catch {
-    return false;
+    return d;
+  }
+}
+function savePref(k: string, v: string) {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* storage blocked */
   }
 }
 
-export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLost, demo, onApi }: RoamViewProps) {
+const EXIT_MSG: Record<string, string> = {
+  moving: 'Stop the car first.',
+  illegal: 'You cannot leave it in the middle of the road. Pull over to the kerb.',
+  blocked: 'No room to open the door here. Move the car a little.',
+};
+
+export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLost, car: carCtl, keke, demo, onApi }: RoamViewProps) {
   const hookTier = useTier();
   const tier = demo?.tier ?? hookTier;
   const world = useMemo(() => getRoamWorld(places), [places]);
-  const input = useRef<RoamInput>({ sx: 0, sy: 0, run: Boolean(demo?.run), lookX: 0, lookY: 0 });
-  const live = useRef<RoamLive>({ x: 0, y: 0, h: 0, speed: 0, nearId: null, nearDist: 99, street: '', left: null, route: null, nearTalk: false, camYaw: 0, running: false, t: 0, ready: false });
-  const [fp, setFp] = useState<boolean>(demo?.fp ?? loadFp());
+  const input = useRef<RoamInput>({ sx: 0, sy: 0, run: Boolean(demo?.run), lookX: 0, lookY: 0, brake: false });
+  const live = useRef<RoamLive>({
+    x: 0, y: 0, h: 0, speed: 0, nearId: null, nearDist: 99, street: '', left: null, route: null, nearTalk: false, camYaw: 0, running: false, t: 0, ready: false, loaded: 0, atKerb: false,
+    car: { here: false, driving: false, nearDoor: false, doorDist: 99, v: 0, pendingDist: 0, pendingHits: 0, canPark: false, sinceHit: 9, braking: false, x: 0, y: 0, h: 0, dry: false },
+  });
+  const [fp, setFp] = useState<boolean>(demo?.fp ?? loadPref('bl.roam.fp', '0') === '1');
+  const [camMode, setCamMode] = useState<'chase' | 'inside'>(demo?.cam2 ?? (loadPref('bl.roam.cam', 'chase') === 'inside' ? 'inside' : 'chase'));
   const [run, setRun] = useState(Boolean(demo?.run));
   const [miniOpen, setMiniOpen] = useState(Boolean(demo?.miniOpen));
   const [destId, setDestId] = useState<string | null>(demo?.dest ?? null);
@@ -81,9 +132,31 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(demo?.note ?? null);
   const [say, setSay] = useState<string | null>(demo?.say ?? null);
-  const [hud, setHud] = useState({ near: null as string | null, street: '', left: null as number | null, talk: false });
+  const [sheet, setSheet] = useState<null | 'search' | 'keke'>(demo?.sheet ?? null);
+  const [hud, setHud] = useState({ near: null as string | null, street: '', left: null as number | null, talk: false, loaded: 0, kerb: false, here: false, driving: false, nearDoor: false, kmh: 0, canPark: false, dry: false });
   const [fps, setFps] = useState('');
   const apiRef = useRef<RoamApi | null>(null);
+
+  /* ---------------- the player's own vehicle ---------------- */
+  const info = carCtl?.info ?? null;
+  const demoItem = demo?.vehicle;
+  const has = Boolean(info?.has_car) || Boolean(demoItem);
+  const itemId = info?.item ?? demoItem ?? null;
+  const look = useMemo(() => (has ? vehicleFor('car', itemId) : null), [has, itemId]);
+  const [fuelL, setFuelL] = useState<number>(info?.fuel_l ?? (demoItem ? 30 : 0));
+  const [cond, setCond] = useState<number>(info?.cond ?? 100);
+  const tank = info?.tank_l ?? (info?.class === 'bicycle' ? 0 : 45);
+  const noFuelNeeded = info?.class === 'bicycle' || info?.fuel_on === false || (demoItem === 'bicycle');
+  const engine = (noFuelNeeded || fuelL > 0.02) && cond > 0;
+  const fuelFrac = noFuelNeeded ? null : tank > 0 ? Math.max(0, Math.min(1, fuelL / tank)) : 0;
+  const rain = Boolean(info?.rain) || Boolean(demo?.rain);
+  const pend = useRef({ dist: 0, light: 0, hard: 0 });
+  const fuelRef = useRef(fuelL);
+  fuelRef.current = fuelL;
+  useEffect(() => {
+    if (info?.fuel_l !== undefined) setFuelL(info.fuel_l);
+    if (info?.cond !== undefined) setCond(info.cond);
+  }, [info?.fuel_l, info?.cond]);
 
   // where we start: standing at the door of the place we came from, facing the street
   const start = useMemo(() => {
@@ -93,6 +166,19 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
     const m = world.places.find((p) => p.id === 'national_museum');
     return m ? { x: m.door.sx, y: m.door.sy, h: Math.atan2(m.door.ny, m.door.nx), camYaw: Math.atan2(m.door.ny, m.door.nx) + Math.PI } : { x: 500, y: 540, h: Math.PI / 2 };
   }, [world, startId, demo?.x, demo?.y, demo?.h]);
+  // the car stands where it was left: a map spot, or the kerb at the door of the place it pulled up at
+  const carStart = useMemo(() => {
+    if (!has) return null;
+    if (demo?.carHere || demo?.drive) {
+      return { x: start.x + Math.sin(start.h) * 3.2 + Math.cos(start.h) * 3, y: start.y - Math.cos(start.h) * 3.2 + Math.sin(start.h) * 3, h: start.h + Math.PI / 2 };
+    }
+    if (info?.car_x != null && info?.car_y != null) return { x: info.car_x, y: info.car_y, h: info.car_a ?? 0 };
+    if (info?.car_place && info.car_place === startId) {
+      const pl = world.places.find((p) => p.id === startId);
+      if (pl) return { x: pl.door.sx + pl.door.nx * 4.5, y: pl.door.sy + pl.door.ny * 4.5, h: Math.atan2(pl.door.ny, pl.door.nx) + Math.PI / 2 };
+    }
+    return null;
+  }, [has, info?.car_x, info?.car_y, info?.car_a, info?.car_place, startId, world, demo?.carHere, demo?.drive, start.x, start.y, start.h]);
   const dest = useMemo(() => {
     const pl = destId ? world.places.find((p) => p.id === destId) : null;
     return pl ? { x: pl.door.sx, y: pl.door.sy } : null;
@@ -111,16 +197,17 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
       setHud((h) => {
         const near = L.nearId;
         const left = L.left === null ? null : Math.round(L.left / 5) * 5;
-        if (h.near === near && h.street === L.street && h.left === left && h.talk === L.nearTalk) return h;
-        return { near, street: L.street, left, talk: L.nearTalk };
+        const kmh = Math.round(Math.abs(L.car.v) * 3.6 * 1.35);
+        if (h.near === near && h.street === L.street && h.left === left && h.talk === L.nearTalk && h.loaded === L.loaded && h.kerb === L.atKerb && h.here === L.car.here && h.driving === L.car.driving
+          && h.nearDoor === L.car.nearDoor && h.kmh === kmh && h.canPark === L.car.canPark && h.dry === L.car.dry) return h;
+        return { near, street: L.street, left, talk: L.nearTalk, loaded: L.loaded, kerb: L.atKerb, here: L.car.here, driving: L.car.driving, nearDoor: L.car.nearDoor, kmh, canPark: L.car.canPark, dry: L.car.dry };
       });
       if (L.ready) setReady(true);
-      if (demo?.fps || import.meta.env.DEV) {
-        const api = apiRef.current;
-        if (api && demo?.fps) {
-          const s = api.stats();
-          setFps(`${s.calls} calls · ${(s.triangles / 1000).toFixed(0)}k tris · ${s.rigs} rigs · ${s.cars} cars`);
-        }
+      const api = apiRef.current;
+      if (api && demo?.fps) {
+        const s = api.stats();
+        const st = api.stream();
+        setFps(`${s.calls} calls · ${(s.triangles / 1000).toFixed(0)}k tris · ${st.detail}+${st.far} chunks · ${st.lastChunkMs.toFixed(0)} ms/chunk · ${s.rigs} rigs · ${s.cars} cars`);
       }
     }, 250);
     return () => window.clearInterval(id);
@@ -134,8 +221,102 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
     }
   }, [hud.near, destId, labelOf, showNote]);
 
+  /* ---------------- driving: checkpoints to the server ---------------- */
+  const sending = useRef(false);
+  const flush = useCallback(async (force = false) => {
+    const api = apiRef.current;
+    if (!api || !carCtl) return;
+    const r = api.car.takeReport();
+    pend.current.dist += r.dist;
+    pend.current.light += r.light;
+    pend.current.hard += r.hard;
+    // the gauge falls between checkpoints
+    if (r.dist > 0 && carCtl.fuelPerM > 0) setFuelL((f) => Math.max(0, f - r.dist * carCtl.fuelPerM));
+    if (sending.current) return;
+    const p = pend.current;
+    if (!force && p.dist < 20 && p.light + p.hard === 0) return;
+    if (p.dist < 0.5 && p.light + p.hard === 0) return;
+    sending.current = true;
+    const sent = { ...p };
+    try {
+      const res = await carCtl.report({ dist_m: sent.dist, light: sent.light, hard: sent.hard, x: r.x, y: r.y, a: r.a });
+      if (res.ok) {
+        pend.current.dist -= sent.dist;
+        pend.current.light -= sent.light;
+        pend.current.hard -= sent.hard;
+        if (res.fuel_l !== undefined) setFuelL(res.fuel_l);
+        if (res.cond !== undefined) {
+          setCond(res.cond);
+          if (res.damage && res.damage > 0) showNote(res.wont_start ? 'The car is wrecked. It will not start again until it is repaired.' : `Damage: condition ${Math.round(res.cond)}%`, 3000);
+        }
+      } else if (res.reason === 'off' || res.reason === 'not_driving') {
+        pend.current = { dist: 0, light: 0, hard: 0 };
+      }
+    } catch {
+      /* the next checkpoint sends it again */
+    } finally {
+      sending.current = false;
+    }
+  }, [carCtl, showNote]);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => {
+    if (!hud.driving) return;
+    const id = window.setInterval(() => void flushRef.current(false), 4200);
+    return () => window.clearInterval(id);
+  }, [hud.driving]);
+
+  /* ---------------- the car button ---------------- */
+  const getMyCar = useCallback(() => {
+    const api = apiRef.current;
+    if (!api || !has) return;
+    if ((info?.ready_in_s ?? 0) > 0) { showNote('The mechanic is still working on it.'); return; }
+    if (info?.wont_start || cond <= 0) { showNote('Your vehicle is too damaged to start. Repair it at the Mechanic Village, or hail a keke.'); return; }
+    if (!noFuelNeeded && fuelL <= 0.02) { showNote('The tank is empty. Call a mechanic, push it to a pump, or hail a keke.'); return; }
+    const r = api.car.summon();
+    if (r === 'ok') showNote(`Your ${info?.name ?? 'car'} is at the kerb, a short walk away.`, 3600);
+    else if (r === 'no_spot') showNote('No free kerb close by. Walk to a main road and try again.');
+  }, [has, info?.ready_in_s, info?.wont_start, info?.name, cond, fuelL, noFuelNeeded, showNote]);
+
+  const getIn = useCallback(async () => {
+    const api = apiRef.current;
+    if (!api || !carCtl || busy) return;
+    setBusy(true);
+    try {
+      const r = await carCtl.setMode('car');
+      if (r.fuel_l !== undefined) setFuelL(r.fuel_l);
+      if (r.cond !== undefined) setCond(r.cond);
+      pend.current = { dist: 0, light: 0, hard: 0 };
+      api.car.takeReport();
+      if (!api.car.enter()) showNote('Walk up to the driver\'s door first.');
+    } catch (e) {
+      showNote(e instanceof Error ? e.message : 'Could not start the car.', 5000);
+    } finally {
+      setBusy(false);
+    }
+  }, [carCtl, busy, showNote]);
+
+  const getOut = useCallback(async () => {
+    const api = apiRef.current;
+    if (!api || !carCtl || busy) return;
+    const r = api.car.exit();
+    if (r !== 'ok') {
+      showNote(EXIT_MSG[r] ?? 'Cannot get out here.');
+      return;
+    }
+    input.current.sx = 0;
+    input.current.sy = 0;
+    const st = api.car.state();
+    await flushRef.current(true);
+    try {
+      await carCtl.setMode('walk', { x: st.x, y: st.y, a: st.h });
+    } catch {
+      /* the server still thinks you drive until the walk ends; harmless */
+    }
+  }, [carCtl, busy, showNote]);
+
   /* ---------------- controls ---------------- */
-  const keys = useRef({ up: false, down: false, left: false, right: false, shift: false });
+  const keys = useRef({ up: false, down: false, left: false, right: false, shift: false, space: false });
   const stick = useRef({ x: 0, y: 0 });
   const knob = useRef<HTMLDivElement>(null);
   const pushInput = useCallback(() => {
@@ -148,6 +329,7 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
     input.current.sx = sx;
     input.current.sy = sy;
     input.current.run = run || k.shift;
+    input.current.brake = k.space;
   }, [run]);
   useEffect(pushInput, [pushInput]);
 
@@ -157,6 +339,7 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
     if (L.nearId) {
       setBusy(true);
       try {
+        if (L.car.driving) await flushRef.current(true);
         const msg = await onGoIn(L.nearId);
         if (typeof msg === 'string' && msg) showNote(msg, 5200);
       } catch (e) {
@@ -172,16 +355,25 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
   }, [busy, onGoIn, showNote]);
   const actionRef = useRef(action);
   actionRef.current = action;
+  const carBtn = useCallback(() => {
+    const L = live.current.car;
+    if (L.driving) void getOut();
+    else if (L.nearDoor) void getIn();
+    else getMyCar();
+  }, [getOut, getIn, getMyCar]);
+  const carBtnRef = useRef(carBtn);
+  carBtnRef.current = carBtn;
 
   useEffect(() => {
-    const map: Record<string, keyof typeof keys.current> = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right' };
+    const map: Record<string, keyof typeof keys.current> = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', ' ': 'space' };
     const down = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement | null)?.closest?.('input,textarea')) return;
       const k = e.key.toLowerCase();
       if (map[k]) { keys.current[map[k]] = true; pushInput(); e.preventDefault(); }
       else if (k === 'shift') { keys.current.shift = true; pushInput(); }
       else if ((k === 'e' || k === 'enter') && !e.repeat) { void actionRef.current(); e.preventDefault(); }
-      else if (k === 'v' && !e.repeat) toggleFp();
+      else if (k === 'g' && !e.repeat) carBtnRef.current();
+      else if (k === 'v' && !e.repeat) toggleView();
       else if (k === 'm' && !e.repeat) setMiniOpen((o) => !o);
       else if (k === 'r' && !e.repeat) setRun((r) => !r);
       else if (k === 'escape') { if (miniOpenRef.current) setMiniOpen(false); }
@@ -192,7 +384,7 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
       else if (k === 'shift') { keys.current.shift = false; pushInput(); }
     };
     const blur = () => {
-      keys.current = { up: false, down: false, left: false, right: false, shift: false };
+      keys.current = { up: false, down: false, left: false, right: false, shift: false, space: false };
       pushInput();
     };
     window.addEventListener('keydown', down);
@@ -207,13 +399,19 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
   }, [pushInput]);
   const miniOpenRef = useRef(miniOpen);
   miniOpenRef.current = miniOpen;
-  const toggleFp = () => {
+  const drivingRef = useRef(false);
+  drivingRef.current = hud.driving;
+  const toggleView = () => {
+    if (drivingRef.current) {
+      setCamMode((m) => {
+        const n = m === 'chase' ? 'inside' : 'chase';
+        savePref('bl.roam.cam', n);
+        return n;
+      });
+      return;
+    }
     setFp((v) => {
-      try {
-        localStorage.setItem('bl.roam.fp', v ? '0' : '1');
-      } catch {
-        /* storage blocked */
-      }
+      savePref('bl.roam.fp', v ? '0' : '1');
       return !v;
     });
   };
@@ -247,7 +445,7 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
     pushInput();
   };
 
-  // drag anywhere else to look round
+  // drag anywhere else to look round (on foot)
   const lookPtr = useRef<{ id: number; x: number; y: number } | null>(null);
   const onLookDown = (e: React.PointerEvent) => {
     if (lookPtr.current) return;
@@ -268,9 +466,81 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
     if (lookPtr.current?.id === e.pointerId) lookPtr.current = null;
   };
 
+  /* ---------------- stranded: out of fuel ---------------- */
+  const [dryBusy, setDryBusy] = useState(false);
+  const stranded = hud.driving && hud.dry && !engine && (fuelL <= 0.02 || demo?.dry);
+  const dryChoice = async (choice: 'push' | 'mechanic' | 'keke') => {
+    const api = apiRef.current;
+    if (!api || !carCtl || dryBusy) return;
+    setDryBusy(true);
+    try {
+      if (choice === 'keke') {
+        // leave the car by the roadside, then pick where the keke takes you
+        api.car.pushToKerb();
+        const r = api.car.exit();
+        if (r === 'ok') {
+          const st = api.car.state();
+          await carCtl.setMode('walk', { x: st.x, y: st.y, a: st.h }).catch(() => undefined);
+          setSheet('keke');
+        } else showNote(EXIT_MSG[r] ?? 'Cannot get out here.');
+        return;
+      }
+      const res = await carCtl.dry(choice);
+      showNote(res.message, 5200);
+      if (choice === 'push') api.car.pushToKerb();
+      if (choice === 'mechanic') setFuelL(res.fuel_l);
+      const r = api.car.exit();
+      void r;
+      pend.current = { dist: 0, light: 0, hard: 0 };
+    } catch (e) {
+      showNote(e instanceof Error ? e.message : 'That did not work.', 5200);
+    } finally {
+      setDryBusy(false);
+    }
+  };
+
+  /* ---------------- sheets: GPS search and hail a keke ---------------- */
+  const me = live.current;
+  const sheetItems: SheetItem[] = useMemo(() => {
+    if (!sheet) return [];
+    const here = apiRef.current ? { x: live.current.x, y: live.current.y } : { x: start.x, y: start.y };
+    return world.places
+      .filter((p) => (sheet === 'search' ? true : p.keke_ok !== false && !p.closed))
+      .map((p) => ({
+        id: p.id,
+        label: p.label,
+        sub: p.closed ? 'Under construction' : (SCENE_LABEL[p.scene] ?? p.scene.replace(/_/g, ' ')),
+        dist: Math.hypot(p.door.sx - here.x, p.door.sy - here.y),
+        disabled: p.closed && sheet === 'keke',
+      }));
+  }, [sheet, world, start.x, start.y]);
+  void me;
+  const pickSheet = async (id: string) => {
+    if (sheet === 'search') {
+      setDestId(id);
+      setSheet(null);
+      setMiniOpen(false);
+      showNote(`GPS: ${labelOf(id)}`, 2200);
+      return;
+    }
+    if (!keke) return;
+    setBusy(true);
+    try {
+      const msg = await keke.hail(id);
+      if (typeof msg === 'string' && msg) { showNote(msg, 5200); setSheet(null); }
+    } catch (e) {
+      showNote(e instanceof Error ? e.message : 'The keke did not stop.', 5200);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const ready2 = hud.near !== null || hud.talk;
   const nearLabel = hud.near ? labelOf(hud.near) : '';
   const title = nearLabel || hud.street || 'Free roam';
+  const driving = hud.driving;
+  const carLabel = driving ? 'Get out' : hud.nearDoor ? 'Get in' : 'Get my car';
+  const night = hour >= 19 || hour < 6;
 
   return (
     <div className="roam" data-testid="roam">
@@ -289,6 +559,13 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
           warm={demo?.warm}
           cam={demo?.cam}
           paused={false}
+          vehicle={look ? { kind: look.kind as VehicleKind, color: look.color } : null}
+          carStart={carStart}
+          engine={engine}
+          wet={rain}
+          camMode={camMode}
+          cond={cond}
+          startDriving={demo?.drive}
           onReady={(api) => {
             apiRef.current = api;
             onApi?.(api);
@@ -300,8 +577,10 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
       {!ready && (
         <div className="roam__loading" role="status">
           <span>Stepping out…</span>
+          <small>{hud.loaded > 0 ? `${hud.loaded} streets ready` : 'Building the streets round you'}</small>
         </div>
       )}
+      {driving && camMode === 'inside' && rain && <Wipers />}
 
       <div className="roam__top">
         <div className="roam__left">
@@ -313,7 +592,7 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
                 <span>{timeText(hour)}</span>
                 {destId && hud.left !== null && (
                   <span className="roam-pill__go">
-                    To {labelOf(destId)} · {hud.left} m
+                    To {labelOf(destId)} · {hud.left >= 1000 ? `${(hud.left / 1000).toFixed(1)} km` : `${hud.left} m`}
                     <button type="button" className="roam-pill__x" aria-label="Clear the route" onClick={() => setDestId(null)}>✕</button>
                   </span>
                 )}
@@ -322,40 +601,102 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
           )}
         </div>
         <div className="roam__ctrls">
-          <button type="button" className="roam-btn roam-btn--pill" onClick={onLeave} aria-label="Leave free roam">
+          <button type="button" className="roam-btn roam-btn--pill" onClick={() => { if (driving) void getOut().then(onLeave); else onLeave(); }} aria-label="Leave free roam">
             <Icon name="close" size={16} /> Leave
           </button>
-          <button type="button" className={`roam-btn roam-btn--round${fp ? ' is-on' : ''}`} onClick={toggleFp} aria-label={fp ? 'Third person view' : 'First person view'} aria-pressed={fp}>
+          <button type="button" className={`roam-btn roam-btn--round${(driving ? camMode === 'inside' : fp) ? ' is-on' : ''}`} onClick={toggleView} aria-label={driving ? (camMode === 'chase' ? 'Driver view' : 'Chase view') : fp ? 'Third person view' : 'First person view'} aria-pressed={driving ? camMode === 'inside' : fp}>
             <Icon name="eye" size={18} />
           </button>
+          <button type="button" className={`roam-btn roam-btn--round${destId ? ' is-on' : ''}`} onClick={() => setSheet('search')} aria-label="Search for a place" data-testid="roam-search">
+            <MagnifierIcon size={18} />
+          </button>
+          {keke?.enabled && !driving && (hud.kerb || demo?.sheet === 'keke') && (
+            <button type="button" className="roam-btn roam-btn--pill roam-hail" onClick={() => setSheet('keke')} data-testid="roam-hail">
+              <Icon name="keke" size={16} /> Hail keke
+            </button>
+          )}
         </div>
       </div>
+
+      {driving && (
+        <div className="roam-carhud">
+          <DriveHud fuel={fuelFrac} cond={cond} manual={false} showMode={false} showFuel={fuelFrac !== null} showCond lowFuel={fuelFrac !== null && fuelFrac < 0.15} lowCond={cond < 35} />
+          {camMode === 'inside' ? (
+            <DriveCluster v={hud.kmh / 4.86} fuel={fuelFrac} lowFuel={fuelFrac !== null && fuelFrac < 0.15} lowCond={cond < 35} signal={0} rain={rain} night={night} wipers={rain} />
+          ) : (
+            <div className="roam-speed" aria-label="Speed"><b>{hud.kmh}</b><small>km/h</small></div>
+          )}
+        </div>
+      )}
 
       {note && <div className="roam-note" role="status">{note}</div>}
       {say && <div className="roam-say" role="status">{say}</div>}
 
-      <div className="roam-stick" ref={stickBase} aria-label="Move" role="presentation"
+      {stranded && (
+        <div className="roam-dry" role="alertdialog" aria-label="Out of fuel" data-testid="roam-dry">
+          <b>Out of fuel</b>
+          <p>The engine coughs and dies. The needle sits on empty and you roll to a stop.</p>
+          <button type="button" disabled={dryBusy} onClick={() => void dryChoice('push')}>Push the car to the kerb<small>Free, tiring</small></button>
+          <button type="button" disabled={dryBusy} onClick={() => void dryChoice('mechanic')}>Call a mechanic<small>₦{(carCtl?.mechanicCost ?? 3500).toLocaleString('en-NG')} and a short wait</small></button>
+          {keke?.enabled && <button type="button" disabled={dryBusy} onClick={() => void dryChoice('keke')}>Hitch a keke<small>Normal keke fare</small></button>}
+        </div>
+      )}
+
+      <div className="roam-stick" ref={stickBase} aria-label={driving ? 'Steer and speed' : 'Move'} role="presentation"
         onPointerDown={(e) => { if (stickPtr.current !== null) return; stickPtr.current = e.pointerId; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); moveStick(e); }}
         onPointerMove={(e) => { if (stickPtr.current === e.pointerId) moveStick(e); }}
         onPointerUp={(e) => { if (stickPtr.current === e.pointerId) endStick(); }}
         onPointerCancel={(e) => { if (stickPtr.current === e.pointerId) endStick(); }}>
         <div className="roam-stick__knob" ref={knob} />
+        {driving && <span className="roam-stick__tag roam-stick__tag--u">Go</span>}
+        {driving && <span className="roam-stick__tag roam-stick__tag--d">Brake</span>}
       </div>
 
       <div className="roam__right">
-        <button type="button" className={`roam-btn roam-btn--round roam-run${run ? ' is-on' : ''}`} onClick={() => setRun((r) => !r)} aria-pressed={run} aria-label="Run">
-          <Icon name="walk" size={18} />
-          <span>{run ? 'Run' : 'Walk'}</span>
-        </button>
+        {driving ? (
+          <button type="button" className="roam-btn roam-btn--round roam-run roam-brake" aria-label="Hold to brake"
+            onPointerDown={(e) => { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); input.current.brake = true; }}
+            onPointerUp={() => { input.current.brake = keys.current.space; }} onPointerCancel={() => { input.current.brake = keys.current.space; }}>
+            <span>Brake</span>
+          </button>
+        ) : (
+          <button type="button" className={`roam-btn roam-btn--round roam-run${run ? ' is-on' : ''}`} onClick={() => setRun((r) => !r)} aria-pressed={run} aria-label="Run">
+            <Icon name="walk" size={18} />
+            <span>{run ? 'Run' : 'Walk'}</span>
+          </button>
+        )}
+        {has && (
+          <button type="button" className={`roam-carbtn${hud.nearDoor || (driving && hud.canPark) ? ' is-ready' : ''}`} disabled={busy} onClick={carBtn} data-testid="roam-car-btn">
+            <Icon name="car" size={18} />
+            <span>{carLabel}</span>
+          </button>
+        )}
         <button type="button" className={`roam-act${ready2 ? ' is-ready' : ''}`} disabled={busy || !ready2} onClick={() => void action()} data-testid="roam-action">
           <span>{busy ? 'Opening…' : hud.near ? 'Go in' : hud.talk ? 'Talk' : 'Go in'}</span>
-          <small>{hud.near ? nearLabel : hud.talk ? 'Say hello' : 'Walk up to a door'}</small>
+          <small>{hud.near ? nearLabel : hud.talk ? 'Say hello' : driving ? 'Pull up at a door' : 'Walk up to a door'}</small>
         </button>
       </div>
+
+      {sheet && (
+        <RoamSheet
+          title={sheet === 'search' ? 'Where to?' : 'Hail a keke'}
+          hint={sheet === 'search' ? 'Pick a place for the green GPS line. It works on foot and in the car.' : 'A keke takes you at the normal fare, then the street opens again at the door.'}
+          items={sheetItems}
+          busy={busy}
+          onPick={(id) => void pickSheet(id)}
+          onClose={() => setSheet(null)}
+        />
+      )}
       {fps && <div className="roam-fps">{fps}</div>}
     </div>
   );
 }
+
+const SCENE_LABEL: Record<string, string> = {
+  buka: 'Restaurant', salon: 'Salon', cyber: 'Cyber cafe', pos: 'PoS stand', club: 'Lounge', lounge: 'Lounge', bank: 'Bank', hospital: 'Hospital', police: 'Police', market: 'Market',
+  museum: 'Museum', palace: 'Palace', workshop: 'Workshop', office: 'Office', street: 'Street', motorpark: 'Motor park', campus: 'Campus', shrine: 'Shrine', farm: 'Farm', airport: 'Airport',
+  home_flat: 'Home', home_duplex: 'Home', home_face_me: 'Home',
+};
 
 export default RoamView;
 export { AREA };

@@ -12,6 +12,8 @@ export class Soup {
   uv: number[] = [];
   withUv = false;
   tris = 0;
+  /** Keep only the triangles whose centre lies in [x0, z0, x1, z1) (a streaming chunk). */
+  clip: [number, number, number, number] | null = null;
 
   private color(hex: string | number | Color, k = 1): [number, number, number] {
     _c.set(hex as string);
@@ -20,6 +22,11 @@ export class Soup {
 
   /** One triangle; the winding is flipped if it disagrees with the hint normal (nx, ny, nz). */
   tri(ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number, hex: string | number | Color, nx: number, ny: number, nz: number, ka = 1, kb = ka, kc = ka) {
+    if (this.clip) {
+      const mx = (ax + bx + cx) / 3, mz = (az + bz + cz) / 3;
+      const k = this.clip;
+      if (mx < k[0] || mx >= k[2] || mz < k[1] || mz >= k[3]) return;
+    }
     const ux = bx - ax, uy = by - ay, uz = bz - az;
     const vx = cx - ax, vy = cy - ay, vz = cz - az;
     const dx = uy * vz - uz * vy, dy = uz * vx - ux * vz, dz = ux * vy - uy * vx;
@@ -44,24 +51,22 @@ export class Soup {
 
   /** Quad with UVs (u0,v0 at a, u1,v1 at c); a-b is the bottom edge, c-d the top. */
   quadUv(a: number[], b: number[], c: number[], d: number[], n: number[], u0: number, v0: number, u1: number, v1: number, hex: string | number | Color = '#ffffff') {
-    const before = this.uv.length;
+    const n0 = this.pos.length;
     const wasUv = this.withUv;
     this.withUv = false;
     this.quad(a, b, c, d, hex, n);
     this.withUv = wasUv;
-    // six vertices: (a b c) (a c d) in the winding that was used, so look the corner up by position
+    // the vertices that survived the clip: look each corner up by position
     const cs: Record<string, [number, number]> = {};
     const key = (p: number[]) => `${p[0].toFixed(4)},${p[1].toFixed(4)},${p[2].toFixed(4)}`;
     cs[key(a)] = [u0, v0];
     cs[key(b)] = [u1, v0];
     cs[key(c)] = [u1, v1];
     cs[key(d)] = [u0, v1];
-    const base = this.pos.length - 18;
-    for (let i = 0; i < 6; i++) {
-      const k = `${this.pos[base + i * 3].toFixed(4)},${this.pos[base + i * 3 + 1].toFixed(4)},${this.pos[base + i * 3 + 2].toFixed(4)}`;
-      const uv = cs[k] ?? [0, 0];
-      this.uv[before + i * 2] = uv[0];
-      this.uv[before + i * 2 + 1] = uv[1];
+    if (!wasUv) return;
+    for (let i = n0; i < this.pos.length; i += 3) {
+      const uv = cs[`${this.pos[i].toFixed(4)},${this.pos[i + 1].toFixed(4)},${this.pos[i + 2].toFixed(4)}`] ?? [0, 0];
+      this.uv.push(uv[0], uv[1]);
     }
   }
 

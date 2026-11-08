@@ -211,6 +211,15 @@ export class CollisionWorld {
     return this.deepest(p.x, p.y, r, self, dyn) <= SKIN * 0.5 + 1e-6;
   }
 
+  /** Overlap of a circle with the STATIC colliders and the city edge: the depth (0 = clear); the push-out vector is left in `push`. */
+  readonly push = { x: 0, y: 0 };
+  probe(x: number, y: number, r: number): number {
+    const d = this.deepest(x, y, r, -1, false);
+    this.push.x = _out.x;
+    this.push.y = _out.y;
+    return d;
+  }
+
   /** Is the circle clear of every collider? */
   clear(x: number, y: number, r: number, self = -1, dyn = true): boolean {
     return this.deepest(x, y, r, self, dyn) <= SKIN * 0.5;

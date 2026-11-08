@@ -1,14 +1,11 @@
-// Free roam: turns the RoamWorld data into a handful of merged meshes. Style: the same calm flat-shaded low-poly look as the
-// drive scene (vertex colours, no textures except the sign atlas), at human scale: kerbs, pavements, doors, windows,
-// awnings, stalls, lamps. Roads, houses, footprints, landmarks, trees come from the SAME layout as the 3D city map.
+// Free roam: turns the RoamWorld data into merged meshes, one CHUNK at a time (phase 2 streaming). Style: the same calm flat-shaded
+// low-poly look as the drive scene (vertex colours, no textures except the sign atlas), at human scale: kerbs, pavements, doors,
+// windows, awnings, stalls, lamps. Roads, houses, footprints, landmarks, trees come from the SAME layout as the 3D city map.
+// buildChunkGen is a generator: it yields between small batches so the streamer can spend a few milliseconds a frame on it.
 import {
   CanvasTexture,
   Color,
-  CylinderGeometry,
-  DynamicDrawUsage,
   Group,
-  IcosahedronGeometry,
-  InstancedMesh,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -20,13 +17,13 @@ import {
   Vector2,
   Vector3,
   type BufferGeometry,
-  type Material,
 } from 'three';
 import { HomeBuilder } from '../../home3d/engine/build';
 import { buildLandmarks, vnoise } from '../../city3d/engine/build';
 import { KERB } from '../../city3d/engine/roadnet';
+import type { ChunkData } from '../chunks';
 import type { RoamBuilding, RoamWorld } from '../world';
-import { ChunkedSoup, Soup } from './soup';
+import { Soup } from './soup';
 
 const shade = (hex: string, k: number) => {
   const c = new Color(hex);
@@ -44,29 +41,6 @@ export interface SignCell {
   v0: number;
   u1: number;
   v1: number;
-}
-
-export interface Street {
-  group: Group;
-  /** Materials the scene tunes with the time of day. */
-  mats: {
-    solid: MeshLambertMaterial;
-    glassLit: MeshBasicMaterial;
-    glow: MeshBasicMaterial;
-    glowLand: MeshBasicMaterial;
-    sign: MeshBasicMaterial;
-    pool: MeshBasicMaterial;
-  };
-  pools: InstancedMesh;
-  blobs: InstancedMesh;
-  /** Hide / show one tree canopy (the camera fades trees that would fill the screen). */
-  treeFade(i: number, hide: boolean): void;
-  treeInfo: { x: number; y: number; r: number }[];
-  /** Instances 0..staticBlobs-1 are tree shadows (static); the rest are for people and cars. */
-  staticBlobs: number;
-  tris: number;
-  meshTris: Record<string, number>;
-  dispose(): void;
 }
 
 export const SIGN_W = 512;
@@ -110,42 +84,90 @@ export function makeSignAtlas(labels: { label: string; accent: string }[]): { te
   return { tex, cells };
 }
 
+
 const ROAD_COL: Record<string, string> = { express: '#454850', main: '#464951', ring: '#454850', minor: '#4d5056', spur: '#53565b', dirt: '#a9906b' };
 /** Bigger roads sit a hair higher so a junction is one clean surface (no z-fighting between road colours). */
 const ROAD_Y: Record<string, number> = { ring: 0.066, express: 0.064, main: 0.06, minor: 0.054, spur: 0.05, dirt: 0.046 };
 
-interface Opts {
+export interface Kit {
+  W: RoamWorld;
   tier: 'low' | 'high';
   signs: { tex: CanvasTexture; cells: SignCell[] } | null;
+  /** Index of the "Under construction" board in the atlas (after the places and the shop names). */
+  uncIdx: number;
+  mats: {
+    solid: MeshLambertMaterial;
+    glassLit: MeshBasicMaterial;
+    glow: MeshBasicMaterial;
+    glowLand: MeshBasicMaterial;
+    sign: MeshBasicMaterial;
+  };
+  dispose(): void;
 }
 
-export function buildStreet(W: RoamWorld, o: Opts): Street {
+export function makeKit(W: RoamWorld, o: { tier: 'low' | 'high'; signs: { tex: CanvasTexture; cells: SignCell[] } | null; uncIdx: number }): Kit {
+  const solid = new MeshLambertMaterial({ vertexColors: true });
+  const glassLit = new MeshBasicMaterial({ vertexColors: true, color: '#6f93a8' });
+  const glow = new MeshBasicMaterial({ vertexColors: true, color: '#d8d2c4' });
+  const glowLand = new MeshBasicMaterial({ vertexColors: true, color: '#9db4c4' });
+  const sign = new MeshBasicMaterial({ vertexColors: true, map: o.signs?.tex ?? null });
+  return {
+    W, tier: o.tier, signs: o.signs, uncIdx: o.uncIdx,
+    mats: { solid, glassLit, glow, glowLand, sign },
+    dispose() {
+      solid.dispose(); glassLit.dispose(); glow.dispose(); glowLand.dispose(); sign.dispose();
+      o.signs?.tex.dispose();
+    },
+  };
+}
+
+/** What one built chunk hands back to the streamer. */
+export interface ChunkMesh {
+  group: Group;
+  tris: number;
+  calls: number;
+  /** Trees standing in the chunk (the streamer instances them): global index, 32 matrix floats (canopy, trunk), 3 colour floats, x / y / canopy radius. */
+  treeIdx: Int32Array;
+  treeMat: Float32Array;
+  treeCol: Float32Array;
+  treeInfo: Float32Array;
+  /** Lamp pool spots (x, y). */
+  lamps: Float32Array;
+  dispose(): void;
+}
+
+const SLICE_BUILDINGS = 12;
+const SLICE_ROADS = 90;
+
+/**
+ * Build one chunk. Yields between batches; the return value is the finished chunk. Everything is generated by the same code as
+ * the phase 1 street, but only items listed in the chunk are visited and only triangles centred in the chunk are kept.
+ */
+export function* buildChunkGen(kit: Kit, ck: ChunkData): Generator<void, ChunkMesh> {
+  const W = kit.W;
+  const o = { tier: kit.tier, signs: kit.signs };
   const L = W.L;
   const group = new Group();
-  const owned: { dispose(): void }[] = [];
-  const own = <T extends { dispose(): void }>(x: T) => (owned.push(x), x);
-  const [fx0, fy0, fx1, fy1] = W.far;
-  const [bx0, by0, bx1, by1] = W.box;
-  const inFar = (x: number, y: number, p = 0) => x > fx0 - p && x < fx1 + p && y > fy0 - p && y < fy1 + p;
-  const inBox = (x: number, y: number, p = 0) => x > bx0 - p && x < bx1 + p && y > by0 - p && y < by1 + p;
+  const geos: BufferGeometry[] = [];
   let tris = 0;
-  const meshTris: Record<string, number> = {};
-
-  const solidMat = own(new MeshLambertMaterial({ vertexColors: true }));
-  // ground + paving + roads (layers separated by small y offsets), buildings and props: one soup in chunks, so what is off screen is skipped
-  const solid = new ChunkedSoup(105);
+  let calls = 0;
+  const clip: [number, number, number, number] = [ck.x0, ck.y0, ck.x1, ck.y1];
+  const mk = () => { const s = new Soup(); s.clip = clip; return s; };
+  const solid = mk();
   const groundSoup = solid;
-  const glassDark = new Soup();
-  const glassLit = new Soup();
-  const glow = new Soup(); // lamp bulbs, landmark glass
-  const signSoup = new Soup();
+  const glassDark = solid;
+  const glassLit = mk();
+  const glow = mk();
+  const signSoup = mk();
   signSoup.withUv = true;
+  const inChunk = (x: number, y: number, p = 0) => x >= ck.x0 - p && x < ck.x1 + p && y >= ck.y0 - p && y < ck.y1 + p;
 
   /* ================= ground ================= */
   {
-    const cell = 14;
-    for (let z = fy0; z < fy1; z += cell)
-      for (let x = fx0; x < fx1; x += cell) {
+    const cell = 15;
+    const fx0 = Math.floor(ck.x0 / cell) * cell, fy0 = Math.floor(ck.y0 / cell) * cell;
+    for (let z = fy0; z < ck.y1; z += cell)
+      for (let x = fx0; x < ck.x1; x += cell) {
         const n = vnoise(x * 0.02, z * 0.02) * 0.5 + vnoise(x * 0.07, z * 0.07) * 0.5;
         const urban = L.urban(x + cell / 2, z + cell / 2);
         // sandy paving in town, drier grass out in the suburbs
@@ -154,7 +176,7 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
       }
   }
   // King's Square: lawn, paths, a plaza round the museum
-  {
+  if (inChunk(500, 500, 60)) {
     const cx = 500, cz = 500;
     const fan = (r: number, y: number, hex: string) => {
       const N = 40;
@@ -179,8 +201,10 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
     }
     groundSoup.strip(cx, cz + 20, cx, cz + 49.4, 3.6, 0.034, '#d9cfb8');
   }
+  yield;
   // yards under the houses
-  for (const b of W.buildings) {
+  for (const bi of ck.buildings) {
+    const b = W.buildings[bi];
     if (b.detail !== 1 || b.osm || !b.rect) continue;
     const r = b.rect;
     const gra = b.roofType !== 'flat' && hash(b.poly[0][0]) < 0.4;
@@ -191,31 +215,28 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
   }
 
   /* ================= roads ================= */
-  for (const ri of W.roadIdx) {
+  let dashPhase = 0;
+  for (let q = 0; q < ck.roadSegs.length; q++) {
+    if (q > 0 && q % SLICE_ROADS === 0) yield;
+    const ri = Math.floor(ck.roadSegs[q] / 100000), i = ck.roadSegs[q] % 100000;
     const rd = L.roads[ri];
     const S = rd.sp.samples;
     const kerbW = KERB[rd.kind] ?? 0.8;
     const asph = ROAD_COL[rd.kind] ?? '#4a4d53';
     const n = S.length;
-    const segs = rd.closed ? n : n - 1;
-    let dashPhase = 0;
-    for (let i = 0; i < segs; i++) {
-      const a = S[i], b = S[(i + 1) % n];
-      if (!inFar(a.x, a.y, 6) && !inFar(b.x, b.y, 6)) continue;
-      const detail = inBox(a.x, a.y, 20) || inBox(b.x, b.y, 20);
-      const nax = -Math.sin(a.a), nay = Math.cos(a.a), nbx = -Math.sin(b.a), nby = Math.cos(b.a);
-      const P = (p: typeof a, nx: number, ny: number, off: number, y: number) => [p.x + nx * off, y, p.y + ny * off];
-      const quadOff = (o0: number, o1: number, y: number, hex: string | Color) =>
-        groundSoup.quad(P(a, nax, nay, o0, y), P(b, nbx, nby, o0, y), P(b, nbx, nby, o1, y), P(a, nax, nay, o1, y), hex, [0, 1, 0]);
-      if (kerbW > 0) {
-        quadOff(rd.hw, rd.hw + kerbW, 0.03, '#d4cbbb');
-        quadOff(-rd.hw - kerbW, -rd.hw, 0.03, '#d4cbbb');
-      }
-      quadOff(-rd.hw, rd.hw, ROAD_Y[rd.kind] ?? 0.06, asph);
-      if (!detail) continue;
-      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-      const junction = L.net.clear(mx, my, false, 1, ri) < -0.4;
-      if (junction) continue;
+    const a = S[i], b = S[(i + 1) % n];
+    const nax = -Math.sin(a.a), nay = Math.cos(a.a), nbx = -Math.sin(b.a), nby = Math.cos(b.a);
+    const P = (p: typeof a, nx: number, ny: number, off: number, y: number) => [p.x + nx * off, y, p.y + ny * off];
+    const quadOff = (o0: number, o1: number, y: number, hex: string | Color) =>
+      groundSoup.quad(P(a, nax, nay, o0, y), P(b, nbx, nby, o0, y), P(b, nbx, nby, o1, y), P(a, nax, nay, o1, y), hex, [0, 1, 0]);
+    if (kerbW > 0) {
+      quadOff(rd.hw, rd.hw + kerbW, 0.03, '#d4cbbb');
+      quadOff(-rd.hw - kerbW, -rd.hw, 0.03, '#d4cbbb');
+    }
+    quadOff(-rd.hw, rd.hw, ROAD_Y[rd.kind] ?? 0.06, asph);
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const junction = L.net.clear(mx, my, false, 1, ri) < -0.4;
+    if (junction) continue;
       if (kerbW > 0) {
         // gutters, kerb stones (two tones in turn) and, here and there, a strip of red earth beside the pavement
         quadOff(rd.hw - 0.32, rd.hw, 0.072, '#3a3d43');
@@ -240,35 +261,29 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
           quadOff(-0.1, 0.1, 0.08, gold ? '#c9ad50' : '#d3cebe');
         }
       }
-    }
-  }
 
-  // a few potholes and patches on the wider roads
-  {
-    let n = 0;
-    for (const ri of W.roadIdx) {
-      const rd = L.roads[ri];
-      if (rd.kind === 'dirt' || rd.kind === 'spur') continue;
-      for (let k = 0; k < 6 && n < 26; k++) {
-        const sp = rd.sp.samples[Math.floor(hash(ri * 17 + k * 5) * rd.sp.samples.length)];
-        if (!inBox(sp.x, sp.y, 0)) continue;
-        const off = (hash(ri * 3 + k) - 0.5) * rd.hw * 1.5;
-        const x = sp.x - Math.sin(sp.a) * off, z = sp.y + Math.cos(sp.a) * off;
-        if (L.net.clear(x, z, false, 1, ri) < 0) continue;
-        const rr = 0.35 + hash(ri + k * 9) * 0.35;
-        const ph = hash(ri * 7 + k) * 6;
-        for (let q = 0; q < 6; q++) {
-          const a0 = ph + (q / 6) * 6.283, a1 = ph + ((q + 1) / 6) * 6.283;
-          groundSoup.tri(x, 0.085, z, x + Math.cos(a0) * rr, 0.085, z + Math.sin(a0) * rr * 0.8, x + Math.cos(a1) * rr, 0.085, z + Math.sin(a1) * rr * 0.8, k % 2 ? '#34373c' : '#5a5d62', 0, 1, 0);
+    // a pothole or a patch now and then on the wider roads
+    if (rd.kind !== 'dirt' && rd.kind !== 'spur' && hash(ri * 131 + i * 7) < 0.012) {
+      const off = (hash(ri * 3 + i) - 0.5) * rd.hw * 1.5;
+      const px = a.x - Math.sin(a.a) * off, pz = a.y + Math.cos(a.a) * off;
+      if (L.net.clear(px, pz, false, 1, ri) >= 0) {
+        const rr = 0.35 + hash(ri + i * 9) * 0.35;
+        const ph = hash(ri * 7 + i) * 6;
+        for (let k = 0; k < 6; k++) {
+          const a0 = ph + (k / 6) * 6.283, a1 = ph + ((k + 1) / 6) * 6.283;
+          groundSoup.tri(px, 0.085, pz, px + Math.cos(a0) * rr, 0.085, pz + Math.sin(a0) * rr * 0.8, px + Math.cos(a1) * rr, 0.085, pz + Math.sin(a1) * rr * 0.8, i % 2 ? '#34373c' : '#5a5d62', 0, 1, 0);
         }
-        n++;
       }
     }
   }
+  yield;
 
   /* ================= buildings ================= */
-    const tanks: number[] = [];
-  W.buildings.forEach((b, bi) => {
+  const tanks: number[] = [];
+  let nb = 0;
+  for (const bi of ck.buildings) {
+    if (++nb % SLICE_BUILDINGS === 0) yield;
+    const b = W.buildings[bi];
     if (b.lm) {
       // landmark models are drawn by buildLandmarks; they only get their door (palace gate, police entrance) and sign here
       if (b.place >= 0 && b.doorEdge >= 0) {
@@ -283,10 +298,10 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
         const nx0 = sgn * ey, ny0 = -sgn * ex, o2 = 0.68;
         addDoor(b, bi, [a[0] + nx0 * o2, a[1] + ny0 * o2], [c[0] + nx0 * o2, c[1] + ny0 * o2], ex, ey, nx0, ny0, len);
       }
-      return;
+      continue;
     }
     buildBuilding(b, bi);
-  });
+  }
 
   function buildBuilding(b: RoamBuilding, bi: number) {
     const poly = b.poly;
@@ -510,10 +525,22 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
     solid.box(px + nx * (off - 0.05), yTop - hgt - 0.04, pz + ny * (off - 0.05), w + 0.14, hgt + 0.08, 0.06, Math.atan2(-nx, ny), '#2a2d36', 1);
   }
 
-  for (let i = 0; i < tanks.length; i += 3) solid.cyl(tanks[i], tanks[i + 1], tanks[i + 2], 0.6, 0.55, 0.95, '#b9c4c9', 7);
 
-  /* ================= place entrances: arches and kiosks ================= */
-  W.places.forEach((pl, pi) => {
+  for (let i = 0; i < tanks.length; i += 3) solid.cyl(tanks[i], tanks[i + 1], tanks[i + 2], 0.6, 0.55, 0.95, '#b9c4c9', 7);
+  yield;
+
+  /* ================= GRA compound walls ================= */
+  for (const wi of ck.walls) {
+    const w = W.walls[wi];
+    solid.box(w.x, 0, w.y, w.len, 1.8, 0.3, w.a, '#ece3cf', 0.85, '#cfc4aa');
+    solid.box(w.x, 1.8, w.y, w.len + 0.1, 0.12, 0.42, w.a, '#b9ad92', 0.9);
+    const c = Math.cos(w.a), s = Math.sin(w.a);
+    for (const sg of [-1, 1]) solid.box(w.x + c * (w.len / 2) * sg, 0, w.y + s * (w.len / 2) * sg, 0.5, 2.1, 0.5, w.a, '#e4d9c1', 0.85, '#b9ad92');
+  }
+
+  /* ================= place entrances: arches, shut gates and kiosks ================= */
+  for (const pi of ck.places) {
+    const pl = W.places[pi];
     const d = pl.door;
     if (d.kind === 'arch') {
       const lx = -d.ny, ly = d.nx; // along the arch
@@ -531,10 +558,38 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
         solid.box(d.x + lx * u, 2.8, d.y + ly * u, 0.22, 0.28, 0.02, Math.atan2(ly, lx), ['#d63c32', '#f2b632', '#2e9d58', '#2f6fd0', '#e06a1c', '#7a4ac8'][k % 6], 1);
       }
     }
-  });
-  W.kiosks.forEach((k) => {
+  }
+
+  // a closed place (the airport): a shut steel gate, a striped barrier, its name and an "Under construction" board
+  for (const pi of ck.places) {
+    const pl = W.places[pi];
+    const d = pl.door;
+    if (d.kind !== 'gate') continue;
+    const lx = -d.ny, ly = d.nx;
+    const hw = d.w / 2;
+    const ang = Math.atan2(ly, lx);
+    for (const sg of [-1, 1]) {
+      solid.box(d.x + lx * hw * sg, 0, d.y + ly * hw * sg, 0.7, 3.2, 0.7, ang, '#bdb5a4', 0.85, '#8d8575');
+      solid.box(d.x + lx * hw * sg, 3.2, d.y + ly * hw * sg, 0.95, 0.18, 0.95, ang, '#8d8575', 1);
+    }
+    // two steel leaves with vertical bars, a chain and padlock in the middle
+    solid.box(d.x, 0.15, d.y, d.w - 0.7, 2.3, 0.1, ang, '#4b5560', 0.85);
+    for (let k = -6; k <= 6; k++) solid.box(d.x + lx * k * 0.5 + d.nx * 0.07, 0.15, d.y + ly * k * 0.5 + d.ny * 0.07, 0.06, 2.3, 0.06, ang, '#2f363e', 1);
+    solid.box(d.x + d.nx * 0.1, 1.15, d.y + d.ny * 0.1, 0.5, 0.22, 0.12, ang, '#c9ad50', 1);
+    // a red and white barrier pole across the road side, cones either side
+    for (let k = 0; k < 6; k++) {
+      const u0 = -hw + 0.4 + (k * (d.w - 0.8)) / 6;
+      solid.box(d.x + lx * (u0 + (d.w - 0.8) / 12) + d.nx * 1.0, 0.95, d.y + ly * (u0 + (d.w - 0.8) / 12) + d.ny * 1.0, (d.w - 0.8) / 6, 0.12, 0.12, ang, k % 2 ? '#f4efe3' : '#d63c32', 1);
+    }
+    for (const sg of [-1, 1]) solid.cyl(d.x + lx * (hw + 0.5) * sg + d.nx * 1.0, 0, d.y + ly * (hw + 0.5) * sg + d.ny * 1.0, 0.2, 0.04, 0.6, '#e8742c', 6);
+    addSign(pi, d.x + d.nx * 0.2, 4.35, d.y + d.ny * 0.2, lx, ly, d.nx, d.ny, 4.8, 0.85, 0.12, true);
+    addSign(kit.uncIdx, d.x + d.nx * 0.2, 2.15, d.y + d.ny * 0.2, lx, ly, d.nx, d.ny, 3.6, 0.7, 0.16, true);
+    glow.box(d.x + d.nx * 0.3, 3.4, d.y + d.ny * 0.3, 0.3, 0.2, 0.2, ang, '#ffffff', 1);
+  }
+  for (const ki of ck.kiosks) {
+    const k = W.kiosks[ki];
     const pl = W.places[k.placeIdx];
-    if (!pl) return;
+    if (!pl) continue;
     const d = pl.door;
     const acc = new Color(pl.accent);
     const c = Math.cos(k.a), s = Math.sin(k.a);
@@ -557,10 +612,13 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
       const Qs = (u: number, y: number): number[] => [px + right[0] * u + d.nx * 0.05, y, pz + right[2] * u + d.ny * 0.05];
       signSoup.quadUv(Qs(-1.15, 2.5), Qs(1.15, 2.5), Qs(1.15, 3.1), Qs(-1.15, 3.1), nrm, cell.u0, cell.v0, cell.u1, cell.v1);
     }
-  });
+  }
+
+  yield;
 
   /* ================= stalls ================= */
-  for (const st of W.stalls) {
+  for (const si of ck.stalls) {
+    const st = W.stalls[si];
     const c = Math.cos(st.a), s = Math.sin(st.a);
     solid.box(st.x, 0, st.y, st.w, 0.85, st.d, st.a, '#8a5a33', 0.85, '#a97d4d');
     // goods on the counter
@@ -591,8 +649,10 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
     solid.box(st.x + st.fx * 0.9, 0, st.y + st.fy * 0.9 + 0, 0.5, 0.4, 0.5, st.a + 0.3, '#b08850', 0.85);
   }
 
+
   /* ================= Igun Street: bronze pieces on plinths ================= */
-  for (const d of W.displays) {
+  for (const di of ck.displays) {
+    const d = W.displays[di];
     solid.box(d.x, 0, d.y, 0.55, 0.85, 0.55, 0, '#6d655a', 0.85, '#8a8274');
     if (d.kind === 'bust') {
       solid.cyl(d.x, 0.85, d.y, 0.2, 0.15, 0.3, '#b07a3a', 7);
@@ -603,6 +663,7 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
       solid.box(d.x, 1.2, d.y, 0.3, 0.2, 0.09, 0.6, '#d19b52', 1);
     }
   }
+
 
   /* ================= parked cars ================= */
   const carBody = (x: number, z: number, a: number, hex: string, kind: 'car' | 'bus' | 'keke') => {
@@ -617,19 +678,27 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
       glassDark.box(x, 1.5, z, 5.24, 0.7, 2.34, a, '#33444f', 1);
     }
   };
-  for (const v of W.parked) carBody(v.x, v.y, v.a, v.color, v.kind);
+
+  for (const pi of ck.parked) {
+    const v = W.parked[pi];
+    carBody(v.x, v.y, v.a, v.color, v.kind);
+  }
 
   /* ================= lamps ================= */
-  const lampSpots: [number, number][] = [];
+  const lampSpots: number[] = [];
   {
-    // pointing arm towards the nearest road sample
-    const samples: [number, number][] = [];
-    for (const ri of W.roadIdx) for (const sm of L.roads[ri].sp.samples) if (inBox(sm.x, sm.y, 30)) samples.push([sm.x, sm.y]);
-    for (const [lx, ly] of W.lamps) {
+    // the arm points at the nearest road sample
+    const samples: number[] = [];
+    for (const q of ck.roadSegs) {
+      const sm = L.roads[Math.floor(q / 100000)].sp.samples[q % 100000];
+      samples.push(sm.x, sm.y);
+    }
+    for (const li of ck.lamps) {
+      const [lx, ly] = W.lamps[li];
       let best = Infinity, tx = lx, ty = ly;
-      for (const [sx, sy] of samples) {
-        const dd = (sx - lx) ** 2 + (sy - ly) ** 2;
-        if (dd < best) { best = dd; tx = sx; ty = sy; }
+      for (let k = 0; k < samples.length; k += 2) {
+        const dd = (samples[k] - lx) ** 2 + (samples[k + 1] - ly) ** 2;
+        if (dd < best) { best = dd; tx = samples[k]; ty = samples[k + 1]; }
       }
       const d = Math.hypot(tx - lx, ty - ly) || 1;
       const dx = (tx - lx) / d, dy = (ty - ly) / d;
@@ -637,201 +706,178 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
       const ang = Math.atan2(dy, dx);
       solid.box(lx + dx * 0.7, 5.3, ly + dy * 0.7, 1.5, 0.08, 0.1, ang, '#59616b', 1);
       glow.box(lx + dx * 1.35, 5.18, ly + dy * 1.35, 0.55, 0.12, 0.3, ang, '#ffffff', 1);
-      lampSpots.push([lx + dx * 1.35, ly + dy * 1.35]);
+      lampSpots.push(lx + dx * 1.35, ly + dy * 1.35);
     }
   }
 
-  /* ================= the fence round the area, road-closed barriers ================= */
-  for (const e of W.edge) {
+  /* ================= the fence round the city, road-closed barriers ================= */
+  for (const ei of ck.edge) {
+    const e = W.edge[ei];
     if (e.kind === 'barrier') {
       solid.box(e.x, 0.2, e.y, 3.0, 0.14, 0.12, e.a, '#f4efe3', 1);
       solid.box(e.x, 0.55, e.y, 3.0, 0.14, 0.12, e.a, '#d63c32', 1);
       solid.box(e.x, 0.9, e.y, 3.0, 0.14, 0.12, e.a, '#f4efe3', 1);
       solid.cyl(e.x - Math.cos(e.a) * 1.5, 0, e.y - Math.sin(e.a) * 1.5, 0.05, 0.05, 1.1, '#59616b', 4);
       solid.cyl(e.x + Math.cos(e.a) * 1.5, 0, e.y + Math.sin(e.a) * 1.5, 0.05, 0.05, 1.1, '#59616b', 4);
+      if (hash(e.x + e.y) < 0.5) solid.cyl(e.x + 0.4, 0, e.y + 0.4, 0.2, 0.04, 0.55, '#e8742c', 6);
     } else {
       solid.box(e.x, 0.1, e.y, 3.0, 0.07, 0.07, e.a, '#8a7a5c', 1);
       solid.box(e.x, 0.6, e.y, 3.0, 0.07, 0.07, e.a, '#8a7a5c', 1);
       solid.cyl(e.x, 0, e.y, 0.06, 0.06, 0.95, '#6b5a40', 4);
     }
   }
-  // traffic cones beside the barriers
-  for (const e of W.edge) if (e.kind === 'barrier' && hash(e.x + e.y) < 0.5) solid.cyl(e.x + 0.4, 0, e.y + 0.4, 0.2, 0.04, 0.55, '#e8742c', 6);
+  yield;
 
   /* ================= landmarks (the very models the city map draws) ================= */
-  let glowLand: BufferGeometry | null = null;
-  {
+  for (const key of ck.landmarks) {
     const hb = new HomeBuilder();
     hb.ao = false;
-    buildLandmarks(hb, W.landmarks);
+    buildLandmarks(hb, [key]);
     const parts = hb.finish();
-    for (const [layer, mat] of [['solid', solidMat], ['glow', null]] as const) {
+    for (const layer of ['solid', 'glow'] as const) {
       const g = parts[layer];
       if (!g) continue;
       g.scale(10, 10, 10);
       g.translate(500, 0, 500);
       for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'color') g.deleteAttribute(k);
-      if (layer === 'solid') {
-        const m = new Mesh(own(g), mat!);
-        m.name = 'landmarks';
-        group.add(m);
-        tris += (g.index ? g.index.count : g.attributes.position.count) / 3;
-      } else {
-        glowLand = g;
-      }
+      const m = new Mesh(g, layer === 'solid' ? kit.mats.solid : kit.mats.glowLand);
+      m.name = 'landmark-' + key;
+      group.add(m);
+      geos.push(g);
+      calls++;
+      tris += (g.index ? g.index.count : g.attributes.position.count) / 3;
     }
     parts.glass?.dispose();
     parts.screen?.dispose();
     parts.light?.dispose();
+    yield;
   }
 
   /* ================= finish the soups ================= */
-  const meshes: Mesh[] = [];
-  const add = (soup: Soup, mat: Material, name: string) => {
-    if (!soup.pos.length) return null;
+  const add = (soup: Soup, mat: MeshLambertMaterial | MeshBasicMaterial, name: string) => {
+    if (!soup.pos.length) return;
     const g = soup.geometry();
-    const m = new Mesh(own(g), mat);
+    const m = new Mesh(g, mat);
     m.name = name;
-    m.frustumCulled = false;
     group.add(m);
-    meshes.push(m);
+    geos.push(g);
+    calls++;
     tris += g.attributes.position.count / 3;
-    meshTris[name] = g.attributes.position.count / 3;
-    return m;
   };
-  const glassLitMat = own(new MeshBasicMaterial({ vertexColors: true, color: '#6f93a8' }));
-  const glassDarkMat = own(new MeshLambertMaterial({ vertexColors: true }));
-  const glowMat = own(new MeshBasicMaterial({ vertexColors: true, color: '#d8d2c4' }));
-  const glowLandMat = own(new MeshBasicMaterial({ vertexColors: true, color: '#9db4c4' }));
-  const signMat = own(new MeshBasicMaterial({ vertexColors: true, map: o.signs?.tex ?? null }));
-  {
-    let i = 0;
-    for (const [, c] of solid.chunks) {
-      const m = add(c, solidMat, 'chunk');
-      if (m) {
-        m.name = 'chunk-' + i++;
-        m.frustumCulled = true;
-      }
-    }
-    meshTris.chunks = i;
-    meshTris.chunkTris = solid.tris;
-  }
-  add(glassDark, glassDarkMat, 'glass');
-  add(glassLit, glassLitMat, 'glass-lit');
-  add(glow, glowMat, 'glow');
-  if (glowLand) {
-    const m = new Mesh(own(glowLand), glowLandMat);
-    m.name = 'landmark-glow';
-    group.add(m);
-    tris += glowLand.attributes.position.count / 3;
-  }
-  if (signSoup.pos.length) add(signSoup, signMat, 'signs');
+  add(solid, kit.mats.solid, 'solid');
+  yield;
+  add(glassLit, kit.mats.glassLit, 'glass-lit');
+  add(glow, kit.mats.glow, 'glow');
+  add(signSoup, kit.mats.sign, 'signs');
 
-  /* ================= trees: instanced canopy + trunk ================= */
+  /* ================= trees: matrices for the streamer's instanced canopy + trunk ================= */
   const palette = ['#5f9a4b', '#6aa655', '#4f8a43', '#78ad55', '#5a9456', '#6e9f4c'];
-  const trees = W.trees;
-  const canopyGeo = own(new IcosahedronGeometry(1, 0));
-  const canopyMat = own(new MeshLambertMaterial({ flatShading: true }));
-  const canopy = new InstancedMesh(canopyGeo, canopyMat, trees.length);
-  const trunkGeo = own(new CylinderGeometry(0.5, 0.7, 1, 5));
-  trunkGeo.translate(0, 0.5, 0);
-  const trunkMat = own(new MeshLambertMaterial({ color: '#7a5a3c', flatShading: true }));
-  const trunks = new InstancedMesh(trunkGeo, trunkMat, trees.length);
-  const m4 = new Matrix4();
-  const q = new Quaternion();
-  const v3 = new Vector3();
-  const sc = new Vector3();
-  const treeBlobs: number[] = [];
-  const canopyMats: Matrix4[] = [];
-  const treeInfo: { x: number; y: number; r: number }[] = [];
-  trees.forEach((t, i) => {
-    const r = t.palm ? 1.9 : Math.max(1.5, Math.min(3.6, t.r * 0.95));
-    const trunkH = t.palm ? 6.4 : 2.6 + r * 0.35;
-    const top = t.palm ? trunkH : trunkH + r * 0.55;
-    q.setFromAxisAngle(v3.set(0, 1, 0), hash(i) * 6.28);
-    // trunk
-    m4.compose(v3.set(t.x, 0, t.y), q, sc.set(t.palm ? 0.2 : 0.26, trunkH, t.palm ? 0.2 : 0.26));
-    trunks.setMatrixAt(i, m4);
-    // canopy
-    m4.compose(v3.set(t.x, top, t.y), q, sc.set(r, t.palm ? r * 0.38 : r * 0.82, r));
-    canopy.setMatrixAt(i, m4);
-    canopyMats.push(m4.clone());
-    treeInfo.push({ x: t.x, y: t.y, r });
-    canopy.setColorAt(i, new Color(t.palm ? '#4f9a52' : palette[t.c % palette.length]).multiplyScalar(0.92 + hash(i * 3) * 0.14));
-    treeBlobs.push(t.x, t.y, r * 1.5);
-  });
-  canopy.instanceMatrix.needsUpdate = true;
-  if (canopy.instanceColor) canopy.instanceColor.needsUpdate = true;
-  trunks.instanceMatrix.needsUpdate = true;
-  canopy.frustumCulled = false;
-  trunks.frustumCulled = false;
-  group.add(canopy, trunks);
-  tris += trees.length * 20 + trees.length * 10;
-
-  /* ================= lamp pools (night) and blob shadows ================= */
-  const poolTex = own(softDisc('255,214,130', 0.95, 0.4));
-  const poolMat = own(new MeshBasicMaterial({ map: poolTex, transparent: true, depthWrite: false, opacity: 0, blending: 2 /* additive */ }));
-  const flat = flatDisc();
-  own(flat);
-  const pools = new InstancedMesh(flat, poolMat, Math.max(1, lampSpots.length));
-  lampSpots.forEach(([x, y], i) => {
-    m4.compose(v3.set(x, 0.1, y), q.identity(), sc.set(11, 1, 11));
-    pools.setMatrixAt(i, m4);
-  });
-  pools.frustumCulled = false;
-  pools.renderOrder = 3;
-  group.add(pools);
-
-  const blobTex = own(softDisc('18,20,30', 0.5, 0.2));
-  const blobMat = own(new MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false }));
-  const MAX_BLOBS = treeBlobs.length / 3 + 80;
-  const blobs = new InstancedMesh(flat, blobMat, MAX_BLOBS);
-  blobs.instanceMatrix.setUsage(DynamicDrawUsage);
-  for (let i = 0; i < treeBlobs.length / 3; i++) {
-    m4.compose(v3.set(treeBlobs[i * 3], 0.09, treeBlobs[i * 3 + 1]), q.identity(), sc.set(treeBlobs[i * 3 + 2] * 1.5, 1, treeBlobs[i * 3 + 2] * 1.5));
-    blobs.setMatrixAt(i, m4);
+  const nt = ck.trees.length;
+  const treeIdx = new Int32Array(nt);
+  const treeMat = new Float32Array(nt * 32);
+  const treeCol = new Float32Array(nt * 3);
+  const treeInfo = new Float32Array(nt * 3);
+  {
+    const m4 = new Matrix4(), q = new Quaternion(), v3 = new Vector3(), sc = new Vector3(), yA = new Vector3(0, 1, 0);
+    const cc = new Color();
+    ck.trees.forEach((ti, k) => {
+      const t = W.trees[ti];
+      const r = t.palm ? 1.9 : Math.max(1.5, Math.min(3.6, t.r * 0.95));
+      const trunkH = t.palm ? 6.4 : 2.6 + r * 0.35;
+      const top = t.palm ? trunkH : trunkH + r * 0.55;
+      q.setFromAxisAngle(yA, hash(ti) * 6.28);
+      m4.compose(v3.set(t.x, top, t.y), q, sc.set(r, t.palm ? r * 0.38 : r * 0.82, r));
+      m4.toArray(treeMat, k * 32);
+      m4.compose(v3.set(t.x, 0, t.y), q, sc.set(t.palm ? 0.2 : 0.26, trunkH, t.palm ? 0.2 : 0.26));
+      m4.toArray(treeMat, k * 32 + 16);
+      cc.set(t.palm ? '#4f9a52' : palette[t.c % palette.length]).multiplyScalar(0.92 + hash(ti * 3) * 0.14);
+      treeCol[k * 3] = cc.r; treeCol[k * 3 + 1] = cc.g; treeCol[k * 3 + 2] = cc.b;
+      treeInfo[k * 3] = t.x; treeInfo[k * 3 + 1] = t.y; treeInfo[k * 3 + 2] = r;
+      treeIdx[k] = ti;
+      tris += 30;
+    });
   }
-  blobs.frustumCulled = false;
-  blobs.renderOrder = 2;
-  group.add(blobs);
-  blobs.count = treeBlobs.length / 3;
-
-
-  const hidden = new Uint8Array(trees.length);
-  const zero = new Matrix4().makeScale(0, 0, 0);
-  const treeFade = (i: number, hide: boolean) => {
-    if (hidden[i] === (hide ? 1 : 0)) return;
-    hidden[i] = hide ? 1 : 0;
-    canopy.setMatrixAt(i, hide ? zero : canopyMats[i]);
-    canopy.instanceMatrix.needsUpdate = true;
-  };
-
   return {
-    treeFade,
-    treeInfo,
-    group,
-    mats: { solid: solidMat, glassLit: glassLitMat, glow: glowMat, glowLand: glowLandMat, sign: signMat, pool: poolMat },
-    pools,
-    blobs,
-    staticBlobs: treeBlobs.length / 3,
-    tris: tris + 500,
-    meshTris,
+    group, tris, calls, treeIdx, treeMat, treeCol, treeInfo, lamps: Float32Array.from(lampSpots),
     dispose() {
-      for (const x of owned) x.dispose();
-      o.signs?.tex.dispose();
+      for (const g of geos) g.dispose();
+    },
+  };
+}
+
+/**
+ * The low-detail backdrop of a chunk: ground, road ribbons and every building as a plain box with a flat roof, merged into ONE mesh.
+ * Cheap enough to build in one go (a few milliseconds); it is shown only while the detailed chunk is not loaded.
+ */
+export function buildFarChunk(kit: Kit, ck: ChunkData): ChunkMesh {
+  const W = kit.W;
+  const L = W.L;
+  const group = new Group();
+  const s = new Soup();
+  s.clip = [ck.x0, ck.y0, ck.x1, ck.y1];
+  const gx = (ck.x0 + ck.x1) / 2, gz = (ck.y0 + ck.y1) / 2;
+  const urban = L.urban(gx, gz);
+  const ground = new Color('#cbbf9f').lerp(new Color('#a8b378'), Math.max(0, 0.75 - urban) * 0.9).multiplyScalar(0.96);
+  s.quad([ck.x0, -0.02, ck.y0], [ck.x0, -0.02, ck.y1], [ck.x1, -0.02, ck.y1], [ck.x1, -0.02, ck.y0], ground, [0, 1, 0]);
+  for (let q = 0; q < ck.roadSegs.length; q += 2) {
+    const ri = Math.floor(ck.roadSegs[q] / 100000), i = ck.roadSegs[q] % 100000;
+    const rd = L.roads[ri];
+    const S = rd.sp.samples;
+    const a = S[i], b = S[(i + 1) % S.length];
+    const j = (i + 2) % S.length;
+    const c2 = S[j] && !(rd.closed === false && i + 2 >= S.length) ? S[j] : b;
+    const hw = rd.hw + (KERB[rd.kind] ?? 0.6);
+    const col = ROAD_COL[rd.kind] ?? '#4a4d53';
+    s.quad(
+      [a.x - Math.sin(a.a) * hw, 0.03, a.y + Math.cos(a.a) * hw], [c2.x - Math.sin(c2.a) * hw, 0.03, c2.y + Math.cos(c2.a) * hw],
+      [c2.x + Math.sin(c2.a) * hw, 0.03, c2.y - Math.cos(c2.a) * hw], [a.x + Math.sin(a.a) * hw, 0.03, a.y - Math.cos(a.a) * hw], col, [0, 1, 0]);
+    void b;
+  }
+  for (const bi of ck.buildings) {
+    const b = W.buildings[bi];
+    const poly = b.poly;
+    const n = poly.length;
+    let area = 0;
+    for (let i = 0; i < n; i++) area += poly[i][0] * poly[(i + 1) % n][1] - poly[(i + 1) % n][0] * poly[i][1];
+    const sgn = area > 0 ? 1 : -1;
+    const wallCol = new Color(b.wall).multiplyScalar(0.95);
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], c = poly[(i + 1) % n];
+      const len = Math.hypot(c[0] - a[0], c[1] - a[1]);
+      if (len < 0.05) continue;
+      const nx = (sgn * (c[1] - a[1])) / len, ny = (-sgn * (c[0] - a[0])) / len;
+      s.quad([a[0], 0, a[1]], [c[0], 0, c[1]], [c[0], b.h, c[1]], [a[0], b.h, a[1]], wallCol, [nx, 0, ny], 0.9, 1);
+    }
+    const roofCol = new Color(b.roof);
+    const cap = ShapeUtils.triangulateShape(poly.map(([x, y]) => new Vector2(x, y)), []);
+    for (const [i0, i1, i2] of cap) {
+      const p0 = poly[i0], p1 = poly[i1], p2 = poly[i2];
+      s.tri(p0[0], b.h + 0.4, p0[1], p1[0], b.h + 0.4, p1[1], p2[0], b.h + 0.4, p2[1], roofCol, 0, 1, 0);
+    }
+  }
+  // trees as dark green blobs would add little at this distance; the fog does the rest
+  const g = s.geometry();
+  const m = new Mesh(g, kit.mats.solid);
+  m.name = 'far';
+  group.add(m);
+  return {
+    group, tris: g.attributes.position.count / 3, calls: 1,
+    treeIdx: new Int32Array(0), treeMat: new Float32Array(0), treeCol: new Float32Array(0), treeInfo: new Float32Array(0), lamps: new Float32Array(0),
+    dispose() {
+      g.dispose();
     },
   };
 }
 
 /** A unit horizontal quad (side 1 x scale) for pools and blob shadows. */
-function flatDisc(): BufferGeometry {
+export function flatDisc(): BufferGeometry {
   const g = new PlaneGeometry(1, 1);
   g.rotateX(-Math.PI / 2);
   return g;
 }
 
 /** A soft round spot: the colour with alpha 'a0' in the middle, 'a1' halfway out, 0 at the edge (no light fringe). */
-function softDisc(rgb: string, a0: number, a1: number): CanvasTexture {
+export function softDisc(rgb: string, a0: number, a1: number): CanvasTexture {
   const c = document.createElement('canvas');
   c.width = c.height = 64;
   const g = c.getContext('2d')!;
@@ -841,5 +887,5 @@ function softDisc(rgb: string, a0: number, a1: number): CanvasTexture {
   gr.addColorStop(1, `rgba(${rgb},0)`);
   g.fillStyle = gr;
   g.fillRect(0, 0, 64, 64);
-  return new CanvasTexture(c);
+  return new CanvasTexture(g.canvas);
 }

@@ -30,6 +30,12 @@ export interface Car {
   braking: boolean;
   /** Fraction of the cruise speed this car may use (traffic is a little uneven). */
   jam: boolean;
+  /** The other cars of its lane (the car ahead is looked for among these only). */
+  mates: Car[];
+  /** Waiting invisible at the start of its stretch because somebody stands where it would appear. */
+  held: boolean;
+  /** Within the fade-in zone at the start of its stretch. */
+  entering: boolean;
 }
 
 export interface Person {
@@ -39,6 +45,10 @@ export interface Person {
 }
 
 const SPEED_SCALE = 0.8;
+/** A car is not allowed to appear (fade in) with a person or the player's car nearer than this (m): no shoving, no pop-in on somebody. */
+export const SPAWN_SAFE = 8;
+/** Cars farther than this from the focus just cruise (no braking checks): nobody sees them. */
+const SIM_R = 190;
 export const OKADA_SIZE: readonly [number, number] = [2.0, 0.8];
 const EXTRA_COL = ['#d9a441', '#2e7d5b', '#c0392b', '#3d5f80', '#e8e4da', '#5a4a8a'];
 const DECEL = 7.5;
@@ -52,15 +62,15 @@ export class Traffic {
   /** dynamic boxes handed to the collision world (reused objects). */
   private boxes: DynBox[] = [];
 
-  constructor(L: CityLayout, box: [number, number, number, number]) {
+  constructor(L: CityLayout, box?: [number, number, number, number]) {
     this.L = L;
     let id = 0;
     for (const v of L.vehicles) {
       if (v.px !== undefined) continue;
       const rd = L.roads[v.road];
       const len = v.s1 - v.s0;
-      let touch = false;
-      for (let k = 0; k <= 24 && !touch; k++) {
+      let touch = !box;
+      for (let k = 0; box && k <= 24 && !touch; k++) {
         const p = at(rd.sp, v.s0 + (k / 24) * len, _s);
         if (p.x > box[0] - 20 && p.x < box[2] + 20 && p.y > box[1] - 20 && p.y < box[3] + 20) touch = true;
       }
@@ -68,10 +78,18 @@ export class Traffic {
       const [vl, vw] = VEHICLE_SIZE[v.kind];
       this.cars.push({
         id: id++, kind: v.kind, color: v.color, road: v.road, lane: v.lane, s0: v.s0, s1: v.s1, s: v.s, run: 0,
-        v: v.speed * SPEED_SCALE, cruise: v.speed * SPEED_SCALE * (v.jam ? 0.7 : 1), len: vl, wid: vw, x: 0, y: 0, a: 0, k: 1, braking: false, jam: v.jam,
+        v: v.speed * SPEED_SCALE, cruise: v.speed * SPEED_SCALE * (v.jam ? 0.7 : 1), len: vl, wid: vw, x: 0, y: 0, a: 0, k: 1, braking: false, jam: v.jam, mates: [], held: false, entering: false,
       });
     }
     this.densify(id);
+    const lanes = new Map<string, Car[]>();
+    for (const c of this.cars) {
+      const k = c.road + ':' + c.lane;
+      let arr = lanes.get(k);
+      if (!arr) lanes.set(k, (arr = []));
+      arr.push(c);
+      c.mates = arr;
+    }
     for (const c of this.cars) this.pose(c);
   }
 
@@ -99,7 +117,7 @@ export class Traffic {
         this.cars.push({
           id: id++, kind, color: EXTRA_COL[n % EXTRA_COL.length], road: c0.road, lane: c0.lane, s0: c0.s0, s1: c0.s1,
           s: c0.s0 + ((a + gap / 2) % len), run: 0, v: c0.cruise, cruise: c0.cruise * (kind === 'okada' ? 1.1 : 0.95), len: vl, wid: vw,
-          x: 0, y: 0, a: 0, k: 1, braking: false, jam: false,
+          x: 0, y: 0, a: 0, k: 1, braking: false, jam: false, mates: [], held: false, entering: false,
         });
       }
     }
@@ -117,14 +135,40 @@ export class Traffic {
     const closed = rd.closed && !c.jam;
     const edge = Math.min(s - c.s0, c.s1 - s);
     c.k = closed ? 1 : Math.max(0.001, Math.min(1, edge / 4));
+    c.entering = !closed && s - c.s0 < c.s1 - s && edge < 5;
+    if (c.held) c.k = 0.001;
     return s;
   }
 
   /** Advance every car by dt. `people` = the player and pedestrians (circles). */
-  step(dt: number, people: readonly Person[]) {
+  step(dt: number, people: readonly Person[], focus?: { x: number; y: number }) {
     const cars = this.cars;
     for (let i = 0; i < cars.length; i++) {
       const c = cars[i];
+      // far from the player: no braking checks, just keep rolling at the lane's pace
+      if (focus && (Math.abs(c.x - focus.x) > SIM_R || Math.abs(c.y - focus.y) > SIM_R)) {
+        c.held = false;
+        c.braking = false;
+        c.v = c.cruise;
+        c.run += c.v * dt;
+        continue;
+      }
+      // a car about to appear never does so on top of a person or the player's car: it waits, unseen, until they have moved
+      if (c.entering) {
+        let near = false;
+        for (let j = 0; j < people.length && !near; j++) {
+          const p = people[j];
+          const wx = p.x - c.x, wy = p.y - c.y;
+          if (wx > SPAWN_SAFE + p.r || wx < -SPAWN_SAFE - p.r || wy > SPAWN_SAFE + p.r || wy < -SPAWN_SAFE - p.r) continue;
+          near = Math.hypot(wx, wy) < SPAWN_SAFE + p.r;
+        }
+        c.held = near;
+        if (near) {
+          c.v = 0;
+          c.braking = true;
+          continue;
+        }
+      } else c.held = false;
       let vmax = c.cruise;
       let braking = false;
       const ch = Math.cos(c.a), sh = Math.sin(c.a);
@@ -142,9 +186,9 @@ export class Traffic {
         const vs = Math.sqrt(2 * DECEL * Math.max(0, d));
         if (vs < vmax) { vmax = vs; braking = true; }
       }
-      for (let j = 0; j < cars.length; j++) {
-        const o = cars[j];
-        if (o === c || o.road !== c.road || o.lane !== c.lane) continue;
+      for (let j = 0; j < c.mates.length; j++) {
+        const o = c.mates[j];
+        if (o === c) continue;
         const len = c.s1 - c.s0;
         const sc = wrap(c.s - c.s0 + c.run * c.lane, len);
         const so = wrap(o.s - o.s0 + o.run * o.lane, len);
