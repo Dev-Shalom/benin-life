@@ -504,7 +504,7 @@ begin
   perform pg_temp.assert(not v_ok, 'live players off: even the own topic is closed');
   perform pg_temp.setc('roam.live.enabled', 'true');
   -- the helper itself: bad topics
-  perform pg_temp.assert(not bl_roam_topic_ok('roam:u:not-a-uuid', false) and not bl_roam_topic_ok(null, true) and not bl_roam_bubble_topic_ok('roam:b:x:1'), 'malformed topics are refused');
+  perform pg_temp.assert(not roam_topic_ok('roam:u:not-a-uuid', false) and not roam_topic_ok(null, true) and not roam_bubble_topic_ok('roam:b:x:1'), 'malformed topics are refused');
 end $$;
 
 -- ---------- 7. leaving the street ----------
@@ -566,7 +566,7 @@ begin
   foreach f in array array['bl_roam_live_gate()', 'bl_roam_light_me()', 'bl_roam_visible(uuid)', 'bl_roam_nearby(uuid,numeric,numeric,uuid[])'] loop
     perform pg_temp.assert(not has_function_privilege('authenticated', 'public.' || f, 'execute') and not has_function_privilege('anon', 'public.' || f, 'execute'), f || ': internal');
   end loop;
-  perform pg_temp.assert(not has_function_privilege('anon', 'public.bl_roam_topic_ok(text,boolean)', 'execute') and has_function_privilege('authenticated', 'public.bl_roam_topic_ok(text,boolean)', 'execute'), 'the topic checks are for authenticated only');
+  perform pg_temp.assert(not has_function_privilege('anon', 'public.roam_topic_ok(text,boolean)', 'execute') and has_function_privilege('authenticated', 'public.roam_topic_ok(text,boolean)', 'execute'), 'the topic checks are for authenticated only');
   -- the writers are volatile (they write / lock)
   perform pg_temp.assert((select provolatile = 'v' from pg_proc where oid = 'public.roam_say(text)'::regprocedure)
     and (select provolatile = 'v' from pg_proc where oid = 'public.roam_live_tick(numeric,numeric,uuid[])'::regprocedure)

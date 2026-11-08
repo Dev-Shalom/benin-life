@@ -206,7 +206,7 @@ end $$;
 -- Realtime Authorization: may the caller join this position topic? Write = own topic only, while visible with a fresh presence row.
 -- Read = own topic, or the topic of a visible, fresh, not-blocked player while the caller is in the street himself. Joins are checked
 -- once and cached by Realtime, so this is not run per message.
-create or replace function public.bl_roam_topic_ok(p_topic text, p_write boolean) returns boolean
+create or replace function public.roam_topic_ok(p_topic text, p_write boolean) returns boolean
 language plpgsql stable security definer set search_path = public as $$
 declare
   v_me    uuid := auth.uid();
@@ -236,7 +236,7 @@ begin
 end $$;
 
 -- the bubble cell topics are read-only for everybody in the street (there is no insert policy: only roam_say can send)
-create or replace function public.bl_roam_bubble_topic_ok(p_topic text) returns boolean
+create or replace function public.roam_bubble_topic_ok(p_topic text) returns boolean
 language plpgsql stable security definer set search_path = public as $$
 declare v_me uuid := auth.uid();
 begin
@@ -472,13 +472,13 @@ $m$delete from roam_presence where user_id = v_me.id;
 -- ---------------------------------------------------------------------------------------------
 drop policy if exists roam_pos_read on realtime.messages;
 create policy roam_pos_read on realtime.messages for select to authenticated
-  using (realtime.messages.extension = 'broadcast' and realtime.topic() like 'roam:u:%' and public.bl_roam_topic_ok(realtime.topic(), false));
+  using (realtime.messages.extension = 'broadcast' and realtime.topic() like 'roam:u:%' and public.roam_topic_ok(realtime.topic(), false));
 drop policy if exists roam_pos_write on realtime.messages;
 create policy roam_pos_write on realtime.messages for insert to authenticated
-  with check (realtime.messages.extension = 'broadcast' and realtime.topic() like 'roam:u:%' and public.bl_roam_topic_ok(realtime.topic(), true));
+  with check (realtime.messages.extension = 'broadcast' and realtime.topic() like 'roam:u:%' and public.roam_topic_ok(realtime.topic(), true));
 drop policy if exists roam_bubble_read on realtime.messages;
 create policy roam_bubble_read on realtime.messages for select to authenticated
-  using (realtime.messages.extension = 'broadcast' and realtime.topic() like 'roam:b:%' and public.bl_roam_bubble_topic_ok(realtime.topic()));
+  using (realtime.messages.extension = 'broadcast' and realtime.topic() like 'roam:b:%' and public.roam_bubble_topic_ok(realtime.topic()));
 
 -- ---------------------------------------------------------------------------------------------
 -- 7. Grants
@@ -488,10 +488,10 @@ revoke execute on function public.bl_roam_light_me() from public, anon, authenti
 revoke execute on function public.bl_roam_visible(uuid) from public, anon, authenticated;
 revoke execute on function public.bl_roam_presence_write(public.profiles, numeric, numeric) from public, anon, authenticated;
 revoke execute on function public.bl_roam_nearby(uuid, numeric, numeric, uuid[]) from public, anon, authenticated;
-revoke execute on function public.bl_roam_topic_ok(text, boolean) from public, anon;
-revoke execute on function public.bl_roam_bubble_topic_ok(text) from public, anon;
-grant execute on function public.bl_roam_topic_ok(text, boolean) to authenticated;
-grant execute on function public.bl_roam_bubble_topic_ok(text) to authenticated;
+revoke execute on function public.roam_topic_ok(text, boolean) from public, anon;
+revoke execute on function public.roam_bubble_topic_ok(text) from public, anon;
+grant execute on function public.roam_topic_ok(text, boolean) to authenticated;
+grant execute on function public.roam_bubble_topic_ok(text) to authenticated;
 revoke execute on function public.roam_live_info() from public, anon;
 revoke execute on function public.roam_set_show(boolean) from public, anon;
 revoke execute on function public.roam_presence_set(numeric, numeric) from public, anon;
