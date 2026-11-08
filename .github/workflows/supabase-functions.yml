@@ -43,7 +43,7 @@ jobs:
             echo "::notice::PAYSTACK_SECRET_KEY repository secret is empty: skipped. Add it, then re-run this workflow."
           else
             # passed through the environment, never echoed
-            supabase secrets set --project-ref "$PROJECT_REF" PAYSTACK_SECRET_KEY="$PAYSTACK_SECRET_KEY" > /dev/null
+            supabase secrets set --yes --project-ref "$PROJECT_REF" PAYSTACK_SECRET_KEY="$PAYSTACK_SECRET_KEY" > /dev/null
             echo "PAYSTACK_SECRET_KEY set."
           fi
       - name: Set VAPID secrets (admin Web Push)
@@ -52,11 +52,11 @@ jobs:
             echo "::notice::VAPID_PRIVATE_KEY repository secret is empty: skipped. Admin phone notifications stay off until it is added (docs/BILLBOARDS.md)."
           else
             # passed through the environment, never echoed
-            supabase secrets set --project-ref "$PROJECT_REF" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" > /dev/null
+            supabase secrets set --yes --project-ref "$PROJECT_REF" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" > /dev/null
             if [ -n "$VAPID_SUBJECT" ]; then
-              supabase secrets set --project-ref "$PROJECT_REF" VAPID_SUBJECT="$VAPID_SUBJECT" > /dev/null
+              supabase secrets set --yes --project-ref "$PROJECT_REF" VAPID_SUBJECT="$VAPID_SUBJECT" > /dev/null
             fi
             echo "VAPID secrets set."
           fi
       - name: Deploy functions
-        run: supabase functions deploy paystack-verify paystack-webhook admin-push billboard-refund admin-delete-user delete-my-account player-push --project-ref "$PROJECT_REF" --use-api
+        run: supabase functions deploy paystack-verify paystack-webhook admin-push billboard-refund admin-delete-user delete-my-account player-push --project-ref "$PROJECT_REF" --use-api --yes
