@@ -74,13 +74,13 @@ end $$;
 do $$
 declare n int;
 begin
-  perform pg_temp.assert((select count(*) from game_config where key like 'roam.live.%' or key like 'roam.bubble.%' or key = 'roam.report.max_hour') = 19, 'nineteen live-player settings');
+  perform pg_temp.assert((select count(*) from game_config where key like 'roam.live.%' or key like 'roam.bubble.%' or key = 'roam.report.max_hour') = 20, 'twenty live-player settings');
   select count(*) into n from game_config where (key like 'roam.live.%' or key like 'roam.bubble.%' or key = 'roam.report.max_hour')
      and (category <> 'roam' or coalesce(label, '') = '' or coalesce(description, '') = '' or (kind in ('number', 'naira', 'percent') and (min is null or max is null)));
   perform pg_temp.assert(n = 0, 'every live setting is in category roam with a label, a description and a range (' || n || ' without)');
   perform pg_temp.assert((select count(*) from game_config where key like 'roam.%' and (label ilike '%lagos%' or description ilike '%lagos%')) = 0, 'no "Lagos" in the settings text');
   perform pg_temp.assert(bl_cfg_bool('roam.live.enabled') and bl_cfg_bool('roam.bubble.enabled') and bl_cfg_bool('roam.live.emotes'), 'on by default');
-  perform pg_temp.assert(bl_cfg('roam.live.max_shown') = 20 and bl_cfg('roam.live.presence_min_s') = 5 and bl_cfg('roam.live.stale_s') = 30 and bl_cfg('roam.bubble.len') = 80 and bl_cfg('roam.bubble.radius_m') = 25, 'defaults');
+  perform pg_temp.assert(bl_cfg('roam.live.max_shown') = 20 and bl_cfg('roam.live.presence_min_s') = 5 and bl_cfg('roam.live.stale_s') = 30 and bl_cfg('roam.live.idle_s') = 15 and bl_cfg('roam.live.budget_mps') = 6 and bl_cfg('roam.bubble.len') = 80 and bl_cfg('roam.bubble.radius_m') = 25, 'defaults');
 end $$;
 
 -- ---------- 2. presence ----------

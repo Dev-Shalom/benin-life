@@ -79,7 +79,8 @@ export class CarRig {
   /** Half-length / width of the model (m). */
   readonly half: { l: number; w: number };
 
-  constructor(kind: VehicleKind, color: number) {
+  /** `lite` = another player's car: no cockpit / dashboard. */
+  constructor(kind: VehicleKind, color: number, lite = false) {
     this.kind = kind;
     const kit = vehicleKit(kind);
     const own = <T extends { dispose(): void }>(o: T) => (this.owned.push(o), o);
@@ -121,8 +122,8 @@ export class CarRig {
       this.rig.add(t);
       this.tails.push(t);
     }
-    this.cockpit = buildCockpit(kind);
-    this.cockpit.setLook(color, 0);
+    this.cockpit = lite ? (null as unknown as Cockpit) : buildCockpit(kind);
+    this.cockpit?.setLook(color, 0);
   }
 
   /** Put the car at its pose. dark = 0..1 night, headlights = lamps on. */
@@ -144,11 +145,11 @@ export class CarRig {
     this.wheels.instanceMatrix.needsUpdate = true;
     this.beamMat.opacity = headlights ? Math.min(1, dark * 1.3) * 0.7 : 0;
     this.tailMat.opacity = c.braking ? 0.95 : headlights && dark > 0.3 ? 0.55 : 0;
-    this.cockpit.setLook(this.bodyMat.color.getHex(), dark);
+    this.cockpit?.setLook(this.bodyMat.color.getHex(), dark);
   }
 
   dispose() {
-    this.cockpit.dispose();
+    this.cockpit?.dispose();
     for (const o of this.owned) o.dispose();
     this.wheels.dispose();
   }
