@@ -113,3 +113,23 @@ export class Soup {
     return g;
   }
 }
+
+/**
+ * A soup split into square chunks (by triangle centroid) so the GPU can skip the ones that are off screen: one mesh per chunk,
+ * each with its own bounding sphere. Same API as Soup (every shape ends in `tri`).
+ */
+export class ChunkedSoup extends Soup {
+  readonly chunks = new Map<string, Soup>();
+  private size: number;
+  constructor(size = 140) {
+    super();
+    this.size = size;
+  }
+  override tri(ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number, hex: string | number | Color, nx: number, ny: number, nz: number, ka = 1, kb = ka, kc = ka) {
+    const k = `${Math.floor((ax + bx + cx) / 3 / this.size)},${Math.floor((az + bz + cz) / 3 / this.size)}`;
+    let s = this.chunks.get(k);
+    if (!s) this.chunks.set(k, (s = new Soup()));
+    s.tri(ax, ay, az, bx, by, bz, cx, cy, cz, hex, nx, ny, nz, ka, kb, kc);
+    this.tris++;
+  }
+}

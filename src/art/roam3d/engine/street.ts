@@ -26,7 +26,7 @@ import { HomeBuilder } from '../../home3d/engine/build';
 import { buildLandmarks, vnoise } from '../../city3d/engine/build';
 import { KERB } from '../../city3d/engine/roadnet';
 import type { RoamBuilding, RoamWorld } from '../world';
-import { Soup } from './soup';
+import { ChunkedSoup, Soup } from './soup';
 
 const shade = (hex: string, k: number) => {
   const c = new Color(hex);
@@ -129,8 +129,9 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
   const meshTris: Record<string, number> = {};
 
   const solidMat = own(new MeshLambertMaterial({ vertexColors: true }));
-  const groundSoup = new Soup(); // ground + paving + roads (no depth fights: y offsets)
-  const solid = new Soup(); // buildings, props
+  // ground + paving + roads (layers separated by small y offsets), buildings and props: one soup in chunks, so what is off screen is skipped
+  const solid = new ChunkedSoup(140);
+  const groundSoup = solid;
   const glassDark = new Soup();
   const glassLit = new Soup();
   const glow = new Soup(); // lamp bulbs, landmark glass
@@ -259,6 +260,11 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
       const A0 = [a[0], 0, a[1]], C0 = [c[0], 0, c[1]], A1 = [a[0], h, a[1]], C1 = [c[0], h, c[1]];
       const AP = [a[0], plinthH, a[1]], CP = [c[0], plinthH, c[1]];
       const nrm = [nx, 0, ny];
+      if (b.detail !== 1) {
+        // the far backdrop: one wall quad, no trim
+        solid.quad(A0, C0, C1, A1, wallCol, nrm, 0.88, 1);
+        continue;
+      }
       solid.quad(A0, C0, CP, AP, plinth, nrm, 0.8, 1);
       solid.quad(AP, CP, C1, A1, wallCol, nrm, 0.93, 1);
       if (b.detail !== 1 || len < 2.0) continue;
@@ -587,8 +593,18 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
   const glowMat = own(new MeshBasicMaterial({ vertexColors: true, color: '#d8d2c4' }));
   const glowLandMat = own(new MeshBasicMaterial({ vertexColors: true, color: '#9db4c4' }));
   const signMat = own(new MeshBasicMaterial({ vertexColors: true, map: o.signs?.tex ?? null }));
-  add(groundSoup, solidMat, 'ground');
-  add(solid, solidMat, 'street');
+  {
+    let i = 0;
+    for (const [, c] of solid.chunks) {
+      const m = add(c, solidMat, 'chunk');
+      if (m) {
+        m.name = 'chunk-' + i++;
+        m.frustumCulled = true;
+      }
+    }
+    meshTris.chunks = i;
+    meshTris.chunkTris = solid.tris;
+  }
   add(glassDark, glassDarkMat, 'glass');
   add(glassLit, glassLitMat, 'glass-lit');
   add(glow, glowMat, 'glow');
