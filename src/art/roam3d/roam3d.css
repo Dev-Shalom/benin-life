@@ -339,8 +339,8 @@
   max-width: min(420px, calc(100vw - 32px));
   padding: 8px 14px;
   border-radius: var(--r-md);
-  background: var(--ink-solid, #131a24);
-  color: #fff;
+  background: var(--ink-solid);
+  color: var(--on-fill);
   font-size: var(--fs-sm);
   font-weight: 700;
   text-align: center;

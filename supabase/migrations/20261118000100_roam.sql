@@ -39,8 +39,10 @@ create table if not exists public.roam_sessions (
   anchor_at  timestamptz not null,
   enters     int not null default 0,
   win_start  timestamptz not null,
-  win_n      int not null default 0
+  win_n      int not null default 0,
+  ended      boolean not null default false
 );
+alter table public.roam_sessions add column if not exists ended boolean not null default false;
 alter table public.roam_sessions enable row level security;
 revoke all on public.roam_sessions from anon, authenticated;
 
@@ -55,12 +57,12 @@ begin
   end if;
 end $$;
 
--- is this an active place whose map position is inside the phase 1 box?
+-- is this place's map position inside the phase 1 box? (active / open checks are separate, like travel)
 create or replace function public.bl_roam_in_area(p_place text) returns boolean
 language sql stable set search_path = public as $$
   select exists (
     select 1 from locations l
-     where l.id = p_place and l.active
+     where l.id = p_place
        and l.x between bl_cfg('roam.area.x0') and bl_cfg('roam.area.x1')
        and l.y between bl_cfg('roam.area.y0') and bl_cfg('roam.area.y1'));
 $$;
@@ -82,7 +84,7 @@ begin
   if v_me.location_id is distinct from p_place then
     raise exception 'You are not at that place.' using errcode = 'P0001', hint = 'not_here';
   end if;
-  if not bl_roam_in_area(p_place) then
+  if not exists (select 1 from locations l where l.id = p_place and (l.active or l.id = v_me.home_location_id)) or not bl_roam_in_area(p_place) then
     raise exception 'You can only walk the streets round King''s Square for now.' using errcode = 'P0001', hint = 'outside';
   end if;
   select * into s from roam_sessions where user_id = v_me.id for update;
@@ -97,7 +99,7 @@ begin
   insert into roam_sessions (user_id, place, started_at, anchor_at, enters, win_start, win_n)
   values (v_me.id, p_place, v_now, v_now, 0, v_ws, v_n)
   on conflict (user_id) do update
-    set place = excluded.place, started_at = excluded.started_at, anchor_at = excluded.anchor_at, enters = 0,
+    set ended = false, place = excluded.place, started_at = excluded.started_at, anchor_at = excluded.anchor_at, enters = 0,
         win_start = excluded.win_start, win_n = excluded.win_n;
   update profiles set last_seen = v_now where id = v_me.id;
   return jsonb_build_object('ok', true, 'place', p_place, 'max_speed_mps', bl_cfg('roam.max_speed_mps'),
@@ -115,11 +117,14 @@ declare
   v_ax   numeric; v_ay numeric; v_bx numeric; v_by numeric;
   v_dist numeric; v_need numeric; v_el numeric;
   v_name text;
+  v_dst  locations;
+  v_rob  jsonb;
+  v_msg  text;
 begin
   perform bl_roam_gate();
   perform bl_assert_free(v_me);
   select * into s from roam_sessions where user_id = v_me.id for update;
-  if not found then
+  if not found or s.ended then
     raise exception 'Step out into the street first.' using errcode = 'P0001', hint = 'no_session';
   end if;
   if v_now - s.started_at > make_interval(secs => bl_cfg('roam.session_ttl_s')) then
@@ -141,7 +146,24 @@ begin
     update roam_sessions set win_start = v_ws, win_n = v_n where user_id = v_me.id;
     return jsonb_build_object('ok', false, 'hint', 'outside', 'message', 'You can only walk into places round King''s Square for now.');
   end if;
-  select name into v_name from locations where id = p_place;
+  select * into v_dst from locations where id = p_place;
+  v_name := v_dst.name;
+  -- refuse exactly like travel: hidden / closed places, with travel's own words (your own home is always allowed)
+  if not coalesce(v_dst.active, true) and v_dst.id is distinct from v_me.home_location_id then
+    update roam_sessions set win_start = v_ws, win_n = v_n where user_id = v_me.id;
+    return jsonb_build_object('ok', false, 'hint', 'inactive', 'message', v_dst.name || ' ' ||
+      case when v_dst.blurb ilike 'under construction%' then 'is under construction. Check back soon.' else 'is closed for now. Check back soon.' end);
+  end if;
+  if v_dst.id is distinct from v_me.home_location_id and not bl_place_open(v_dst) then
+    update roam_sessions set win_start = v_ws, win_n = v_n where user_id = v_me.id;
+    return jsonb_build_object('ok', false, 'hint', 'closed', 'message', v_dst.name || ' is closed right now. ' ||
+      case when left(v_dst.id, 3) = 'pu_' then 'Polling units open on voting day only.' else 'It opens at ' || bl_hour_label(v_dst.open_hour) || '.' end);
+  end if;
+  perform bl_lounge_assert_entry(v_me.id, v_dst);
+  if p_place = s.place then
+    update roam_sessions set win_start = v_ws, win_n = v_n where user_id = v_me.id;
+    return jsonb_build_object('ok', false, 'hint', 'here', 'location', p_place, 'message', 'You are already at ' || v_dst.name || '.');
+  end if;
   if p_place <> s.place then
     select x, y into v_ax, v_ay from locations where id = s.place;
     select x, y into v_bx, v_by from locations where id = p_place;
@@ -155,20 +177,26 @@ begin
     end if;
     update profiles set location_id = p_place, last_seen = v_now where id = v_me.id;
     perform bl_vip_arrival(v_me.id, p_place);
-  else
-    update profiles set last_seen = v_now where id = v_me.id;
+    -- the same street risk as arriving by travel (no fare): a walk-in is not a way round it
+    v_rob := bl_roll_street_robbery(v_me.id, p_place, 'walk', 1);
   end if;
   update roam_sessions set place = p_place, anchor_at = v_now, enters = enters + 1, win_start = v_ws, win_n = v_n
    where user_id = v_me.id;
-  return jsonb_build_object('ok', true, 'location', p_place, 'name', v_name,
-    'message', case when p_place = s.place then 'You went back in to ' || v_name || '.' else 'You walked into ' || v_name || '.' end);
+  if v_rob is null then
+    v_msg := 'You walked into ' || v_name || '.';
+    return jsonb_build_object('ok', true, 'location', p_place, 'name', v_name, 'message', v_msg);
+  end if;
+  v_msg := 'Omo! You reached ' || v_name || ' but some boys took ' || bl_naira((v_rob->>'amount')::bigint) || ' from you. You can report it to the Police.'
+           || case when (v_rob->>'injured')::boolean then ' Dem wound you small. Go to UBTH or a clinic quick.' else '' end;
+  return jsonb_build_object('ok', true, 'location', p_place, 'name', v_name, 'message', v_msg, 'robbed', v_rob);
 end $$;
 
 create or replace function public.roam_leave() returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v_me profiles := bl_me();
 begin
-  delete from roam_sessions where user_id = v_me.id;
+  -- the row stays (marked ended) so start / leave churn keeps counting against the rate limit
+  update roam_sessions set ended = true where user_id = v_me.id;
   return jsonb_build_object('ok', true);
 end $$;
 

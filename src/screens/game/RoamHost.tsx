@@ -5,7 +5,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
 import { roamEnter, roamLeave, roamStart } from '../../api/roam';
 import { webglAvailable } from '../../art/city3d/model';
 import { placeInRoam, roamCfg } from '../../art/roam3d/access';
-import { errorMessage } from '../../lib/api';
+import { errorMessage, GameError } from '../../lib/api';
 import { useConfig } from '../../lib/config';
 import type { AvatarConfig, GameState } from '../../lib/types';
 import { useGame } from '../../state/game';
@@ -74,7 +74,16 @@ export function RoamHost({ state, hour, avatar }: { state: GameState; hour: numb
   const onGoIn = useCallback(
     async (placeId: string): Promise<string | void> => {
       try {
-        const r = await roamEnter(placeId);
+        let r = await roamEnter(placeId).catch(async (e) => {
+          // the walk timed out or was reset on the server: start it again quietly and retry once
+          if (e instanceof GameError && e.hint === 'no_session') {
+            await roamStart(useGame.getState().state?.profile.location_id ?? roam?.place ?? placeId);
+            return roamEnter(placeId);
+          }
+          throw e;
+        });
+        // "here" = the place you stepped out of: nothing to move, just go back in
+        if (!r.ok && r.hint === 'here') r = { ...r, ok: true };
         if (!r.ok) return r.message;
         startedByUs.current.add(placeId);
         await refresh();
@@ -83,10 +92,16 @@ export function RoamHost({ state, hour, avatar }: { state: GameState; hour: numb
         setMapOpen(false);
         window.setTimeout(() => startedByUs.current.delete(placeId), 4000);
       } catch (e) {
+        if (e instanceof GameError && e.hint === 'no_session') {
+          closeRoam();
+          setMapOpen(true);
+          toast('Your walk timed out. Step out again when you are ready.', 'info');
+          return;
+        }
         return errorMessage(e);
       }
     },
-    [refresh, closeRoam, closeAll, setMapOpen],
+    [refresh, closeRoam, closeAll, setMapOpen, roam?.place],
   );
   const onLeave = useCallback(() => {
     closeRoam();

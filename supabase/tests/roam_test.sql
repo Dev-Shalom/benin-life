@@ -44,6 +44,11 @@ begin
   perform choose_start_home('ekenwan_face_me');
   insert into rm_u values ('b', w);
   perform pg_temp.login(v);
+  -- pin the Benin clock to 12:00 so opening hours do not depend on when the suite runs
+  perform set_config('bl.test_offset_seconds', '0', true);
+  perform set_config('bl.test_offset_seconds',
+    (mod((12 * 3600 - ((bl_game_clock(bl_now()) ->> 'hour')::int * 3600 + (bl_game_clock(bl_now()) ->> 'minute')::int * 60) + 86400)::numeric, 86400))::text, true);
+  perform pg_temp.assert((bl_game_clock(bl_now()) ->> 'hour')::int = 12, 'test setup: the clock is pinned to noon');
 end $$;
 
 -- put the player at a place, free to move, nothing running
@@ -71,7 +76,7 @@ begin
     and bl_roam_in_area('police_hq') and bl_roam_in_area('mama_osas_buka') and bl_roam_in_area('igun_street') and bl_roam_in_area('sapele_pos'),
     'the King''s Square places are in the area');
   perform pg_temp.assert(not bl_roam_in_area('uniben') and not bl_roam_in_area('ramat_park') and not bl_roam_in_area('no_such_place'), 'far places and unknown ids are outside');
-  perform pg_temp.assert(not bl_roam_in_area('mission_rd_flats'), 'an inactive place is never in the area');
+  perform pg_temp.assert(bl_roam_in_area('mission_rd_flats'), 'the area is only the box (hidden places are refused separately, like travel)');
 end $$;
 
 -- ---------- 2. roam_start ----------
@@ -113,7 +118,7 @@ begin
   r := roam_start('national_museum');
   -- the same place is always allowed (no walking)
   r := roam_enter('national_museum');
-  perform pg_temp.assert((r ->> 'ok')::boolean and (select location_id from profiles where id = a) = 'national_museum', 'going back into the place you stepped out of');
+  perform pg_temp.assert(not (r ->> 'ok')::boolean and r ->> 'hint' = 'here' and (select location_id from profiles where id = a) = 'national_museum', 'the place you are at: refused like travel (here), nobody moves');
   -- a far door at once: refused, the player stays put
   r := roam_start('national_museum');
   r := roam_enter('oba_market');
@@ -138,6 +143,7 @@ begin
   perform pg_temp.adv(600);
   r := roam_enter('uniben');
   perform pg_temp.assert(not (r ->> 'ok')::boolean and r ->> 'hint' = 'outside' and (select location_id from profiles where id = a) = 'oba_market', 'a place outside the area is refused');
+  perform pg_temp.setc('crime.npc_max_pct', '0');
   r := roam_enter('no_such_place');
   perform pg_temp.assert(not (r ->> 'ok')::boolean, 'an unknown place is refused');
   -- a neighbour needs at least min_enter_s
@@ -232,7 +238,7 @@ begin
   perform pg_temp.at(a, 'national_museum');
   r := roam_start('national_museum');
   r := roam_leave();
-  perform pg_temp.assert((r ->> 'ok')::boolean and not exists (select 1 from roam_sessions where user_id = a), 'leave removes the session');
+  perform pg_temp.assert((r ->> 'ok')::boolean and (select ended from roam_sessions where user_id = a), 'leave ends the session (the row stays for the rate limit)');
   perform pg_temp.assert(pg_temp.hint_of($q$select roam_enter('oba_market')$q$) = 'no_session', 'enter after leave: no_session');
   perform pg_temp.assert(pg_temp.hint_of($q$select roam_leave()$q$) = 'ok', 'leaving twice is fine');
   -- the session expires
@@ -253,6 +259,101 @@ begin
   perform pg_temp.assert(pg_temp.hint_of($q$select roam_enter('national_museum')$q$) = 'no_session', 'player b has no session of his own');
   perform pg_temp.login(a);
   perform pg_temp.assert((select count(*) from roam_sessions) = 1, 'sessions are per player');
+end $$;
+
+-- ---------- 6b. closed places, hidden places, polling units, home exemption (like travel) ----------
+do $$
+declare a uuid := (select id from rm_u where name = 'a'); r jsonb; hr int; found_closed boolean := false;
+begin
+  perform pg_temp.login(a);
+  perform pg_temp.setc('roam.rate.max_calls', '500');
+  perform pg_temp.setc('roam.door_slack_m', '1000');
+  perform pg_temp.setc('roam.min_enter_s', '0');
+  perform pg_temp.at(a, 'national_museum');
+  perform pg_temp.adv(10000);
+  -- opening hours: find a one-hour window that is shut right now
+  for hr in 0..23 loop
+    update locations set open_hour = hr, close_hour = hr + 1 where id = 'oba_market';
+    if not bl_place_open((select l from locations l where id = 'oba_market')) then found_closed := true; exit; end if;
+  end loop;
+  perform pg_temp.assert(found_closed, 'test setup: a closed window exists');
+  r := roam_start('national_museum');
+  perform pg_temp.adv(1);
+  r := roam_enter('oba_market');
+  perform pg_temp.assert(not (r ->> 'ok')::boolean and r ->> 'hint' = 'closed' and r ->> 'message' like 'Oba Market is closed right now. It opens at %', 'closed hours: refused with travel''s words (' || coalesce(r ->> 'message', '') || ')');
+  perform pg_temp.assert((select location_id from profiles where id = a) = 'national_museum', 'and nobody moves');
+  -- the same words as travel
+  perform pg_temp.assert(pg_temp.hint_of($q$select travel_quote('oba_market')$q$) = 'closed', 'travel refuses the same place');
+  -- polling unit
+  r := roam_enter('pu_ring_road');
+  perform pg_temp.assert(not (r ->> 'ok')::boolean and r ->> 'hint' = 'closed' and r ->> 'message' like '%Polling units open on voting day only.', 'polling unit: voting day only');
+  -- hidden place
+  update locations set active = false where id = 'oba_palace';
+  r := roam_enter('oba_palace');
+  perform pg_temp.assert(not (r ->> 'ok')::boolean and r ->> 'hint' = 'inactive' and r ->> 'message' like 'Oba''s Palace is closed for now.%', 'hidden place: closed for now');
+  update locations set blurb = 'Under construction, soon' where id = 'oba_palace';
+  r := roam_enter('oba_palace');
+  perform pg_temp.assert(r ->> 'message' like '%is under construction. Check back soon.', 'under construction text');
+  update locations set active = true where id = 'oba_palace';
+  -- your own home is exempt from closing hours
+  update profiles set home_location_id = 'oba_market' where id = a;
+  r := roam_enter('oba_market');
+  perform pg_temp.assert((r ->> 'ok')::boolean and (select location_id from profiles where id = a) = 'oba_market', 'home exemption: a closed home still opens');
+  update profiles set home_location_id = (select home_location_id from profiles where id = a) where id = a;
+  update locations set open_hour = null, close_hour = null where id = 'oba_market';
+  perform pg_temp.setc('roam.door_slack_m', '15');
+  perform pg_temp.setc('roam.min_enter_s', '1.5');
+end $$;
+
+-- ---------- 6c. leave does not reset the rate limit ----------
+do $$
+declare a uuid := (select id from rm_u where name = 'a'); r jsonb; i int;
+begin
+  perform pg_temp.login(a);
+  perform pg_temp.at(a, 'national_museum');
+  perform pg_temp.adv(10000);
+  perform pg_temp.setc('roam.rate.max_calls', '3');
+  perform pg_temp.setc('roam.rate.window_s', '60');
+  for i in 1..3 loop
+    r := roam_start('national_museum');
+    r := roam_leave();
+  end loop;
+  perform pg_temp.assert(pg_temp.hint_of($q$select roam_start('national_museum')$q$) = 'rate', 'start / leave churn is still rate limited');
+  perform pg_temp.assert((select win_n from roam_sessions where user_id = a) = 3, 'the counter survived the leaves');
+  perform pg_temp.adv(61);
+  r := roam_start('national_museum');
+  perform pg_temp.assert((r ->> 'ok')::boolean, 'a new window works');
+  perform pg_temp.setc('roam.rate.max_calls', '500');
+end $$;
+
+-- ---------- 6d. walking in carries the street risk of arriving ----------
+do $$
+declare a uuid := (select id from rm_u where name = 'a'); r jsonb; cash0 bigint;
+begin
+  perform pg_temp.login(a);
+  perform pg_temp.setc('roam.door_slack_m', '1000');
+  perform pg_temp.setc('roam.min_enter_s', '0');
+  perform pg_temp.at(a, 'national_museum');
+  perform pg_temp.adv(10000);
+  -- certain robbery
+  perform pg_temp.setc('crime.npc_base_pct', '100000'); perform pg_temp.setc('crime.npc_max_pct', '100');
+  update profiles set cash = 100000, protected_until = null where id = a;
+  r := roam_start('national_museum');
+  perform pg_temp.adv(1);
+  r := roam_enter('oba_market');
+  perform pg_temp.assert((r ->> 'ok')::boolean and r ? 'robbed' and r ->> 'message' like 'Omo!%', 'walking into a risky place can get you robbed, like travel');
+  perform pg_temp.assert((select cash from profiles where id = a) < 100000, 'the cash really left');
+  perform pg_temp.assert((select count(*) from ledger where user_id = a and reason = 'street_robbery') >= 1, 'in the ledger as street_robbery');
+  perform pg_temp.assert(not exists (select 1 from ledger where user_id = a and reason = 'travel'), 'but no fare');
+  -- no risk: nothing lost
+  perform pg_temp.setc('crime.npc_max_pct', '0');
+  update profiles set cash = 100000 where id = a;
+  r := roam_start('oba_market');
+  perform pg_temp.adv(1);
+  r := roam_enter('national_museum');
+  perform pg_temp.assert((r ->> 'ok')::boolean and not (r ? 'robbed') and (select cash from profiles where id = a) = 100000, 'no risk, no loss');
+  perform pg_temp.setc('roam.door_slack_m', '15');
+  perform pg_temp.setc('roam.min_enter_s', '1.5');
 end $$;
 
 -- ---------- 7. structure and grants ----------
