@@ -156,7 +156,11 @@ function startNet(c, info, all) {
   };
   mk(P.posTopic(c.uid));
   const sync = (rows) => {
-    const want = new Set(rows.slice(0, info.max_shown).map((r) => r.id));
+    // like the real client: a player is dropped only after two lists in a row without him (no join / leave flapping at the edge of the cap)
+    c.missing ??= new Map();
+    const listed = new Set(rows.slice(0, info.max_shown).map((r) => r.id));
+    for (const id of c.near.keys()) c.missing.set(id, listed.has(id) ? 0 : (c.missing.get(id) ?? 0) + 1);
+    const want = new Set([...listed, ...[...c.near.keys()].filter((id) => (c.missing.get(id) ?? 0) < 2)]);
     for (const r of rows) { c.near.set(r.id, { ...c.near.get(r.id), ...r }); c.have.add(r.id); }
     for (const id of [...c.near.keys()]) if (!want.has(id)) { c.near.delete(id); const t = P.posTopic(id); const ch = c.chans.get(t); if (ch) { void c.sb.removeChannel(ch); c.chans.delete(t); } }
     for (const id of want) {
@@ -172,7 +176,7 @@ function startNet(c, info, all) {
       });
     }
     // bubbles: the text topic of each player within the bubble radius (+10 m); the server applies the same rules as for positions
-    const wantT = new Set(rows.filter((r) => Math.hypot(r.x - c.pose.x, r.y - c.pose.y) <= info.bubble_m + 10).map((r) => P.textTopic(r.id)));
+    const wantT = new Set(rows.filter((r) => { const d = Math.hypot(r.x - c.pose.x, r.y - c.pose.y); return d <= info.bubble_m + 10 || (d <= info.bubble_m + 25 && c.chans.has(P.textTopic(r.id))); }).map((r) => P.textTopic(r.id)));
     for (const t of [...c.chans.keys()]) if (t.startsWith('roam:t:') && !wantT.has(t)) { void c.sb.removeChannel(c.chans.get(t)); c.chans.delete(t); }
     for (const t of wantT) if (!c.chans.has(t)) mk(t, (m) => {
       const bb = P.parseBubble(m.payload);

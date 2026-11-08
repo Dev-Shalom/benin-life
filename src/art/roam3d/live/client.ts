@@ -352,7 +352,9 @@ export class LiveClient {
       wantTopics.add(posTopic(id));
       // bubbles only from the players close enough to be read (the text topic has the same server rules as the position topic)
       const x = r.track.has ? r.track.x : r.px, y = r.track.has ? r.track.y : r.py;
-      if (info.bubble && !this.muteBubbles && Math.hypot(x - p.x, y - p.y) <= bm) wantTopics.add(textTopic(id));
+      // join within 35 m, leave beyond 50 m (no flapping at the edge: every join carries the access token)
+      const d = Math.hypot(x - p.x, y - p.y);
+      if (info.bubble && !this.muteBubbles && (d <= bm || (d <= bm + 15 && this.chans.has(textTopic(id))))) wantTopics.add(textTopic(id));
     }
     if (this.visible) wantTopics.add(posTopic(info.me));
     for (const [t, ch] of this.chans) {
