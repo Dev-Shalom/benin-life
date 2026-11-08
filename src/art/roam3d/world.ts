@@ -6,7 +6,7 @@
 import { at, MARKETS, PALACE, rng, type Pt } from '../map/mapGeo';
 import { getCityLayout, snapPlace, VEHICLE_SIZE, type CityLayout } from '../city3d/engine/layout';
 import { MODEL_FOOTPRINTS, padLayout } from '../city3d/engine/footprints';
-import { pointInPoly, polysOverlap, rectCorners } from '../city3d/engine/geom';
+import { pointInPoly, polyArea, polysOverlap, rectCorners } from '../city3d/engine/geom';
 import { KERB } from '../city3d/engine/roadnet';
 import { blockRect, makeGrid, type NavGrid } from '../sim/nav';
 import { shortName } from '../map/mapGeo';
@@ -58,6 +58,20 @@ export interface RoamBuilding {
   detail: 0 | 1;
   /** A landmark model drawn by buildLandmarks: only its door and sign are added. */
   lm?: boolean;
+  /** Index into SHOP_NAMES when the door is a small shop front. */
+  shop?: number;
+  /** Roof overhang (m) for pitched roofs. */
+  over?: number;
+}
+
+/** Made-up shop names for the generic shop fronts (no real brands). The last two are the bronze-casting workshops of Igun Street. */
+export const SHOP_NAMES = ['Grace Provisions', 'Osas Pharmacy', 'Ehi Fabrics', 'Divine Tailors', 'Mama Joy Store', 'Peace Phones', 'Aisha Boutique', 'Royal Barbers', 'Igun Bronze Works', 'Ancestors Bronze Studio'];
+const BRONZE_SHOPS = [8, 9];
+
+export interface Display {
+  x: number;
+  y: number;
+  kind: 'bust' | 'plaque';
 }
 
 export interface Stall {
@@ -92,6 +106,7 @@ export interface RoamWorld {
   lamps: [number, number][];
   parked: { x: number; y: number; a: number; kind: 'car' | 'bus' | 'keke'; color: string }[];
   stalls: Stall[];
+  displays: Display[];
   kiosks: { x: number; y: number; a: number; placeIdx: number }[];
   edge: EdgeProp[];
   walk: NavGrid;
@@ -134,6 +149,17 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
 
   /* ---------------- buildings (houses + OSM) ---------------- */
   const buildings: RoamBuilding[] = [];
+  // Benin paint: cream, ochre, pale green, terracotta, peeling white, pale blue
+  const PAINT = ['#f0dfba', '#e8d09a', '#d9a94f', '#b9cfa2', '#c97f55', '#f2ead8', '#9fc0d2', '#e0b98a', '#d7c29a', '#c8d3b0'];
+  const ZINC = ['#a5573a', '#8f979c', '#b5674a', '#7e878c', '#9b5434', '#6f8f7a'];
+  const nearMain = (x: number, y: number) => L.net.clear(x, y, false, 14) < 9;
+  /** 1 to 2 floors mostly, some 3, a few taller on main roads (3.0 m a floor + plinth). */
+  const heightFor = (areaM2: number, x: number, y: number) => {
+    const r1 = R(), r2 = R();
+    let f = areaM2 < 45 ? 1 : areaM2 < 120 ? 1 + (r1 < 0.2 ? 1 : 0) : areaM2 < 300 ? 1 + (r1 < 0.5 ? 1 : 0) + (r2 < 0.1 ? 1 : 0) : 2 + (r1 < 0.35 ? 1 : 0);
+    if (areaM2 > 60 && nearMain(x, y) && r2 < 0.2) f += 1;
+    return Math.min(4, f) * 3 + 0.5;
+  };
   const addBuilding = (b: Omit<RoamBuilding, 'place' | 'doorEdge' | 'doorT'>) => {
     const i = buildings.push({ ...b, place: -1, doorEdge: -1, doorT: 0.5 }) - 1;
     if (b.detail === 1 && !b.lm) col.addPoly(b.poly, { tall: true, id: (b.osm ? 'osm ' : 'house ') + i, h: b.h + 1.5 });
@@ -145,15 +171,38 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
     const poly = rectCorners(b.x, b.y, b.w, b.d, b.a);
     const detail = polyIn(poly, 0, inBox) ? 1 : 0;
     addBuilding({
-      poly, h: Math.min(26, Math.max(3.2, b.h * 10)), wall: b.wall, roof: b.roof, roofType: b.roofType,
-      rect: { x: b.x, y: b.y, w: b.w, d: b.d, a: b.a }, lit: b.lit, osm: false, detail,
+      poly, h: Math.min(b.h * 10 > 3.2 ? heightFor(b.w * b.d, b.x, b.y) : 3.5, 13), wall: R() < 0.5 ? PAINT[Math.floor(R() * PAINT.length)] : b.wall, roof: b.roof, roofType: b.roofType,
+      rect: { x: b.x, y: b.y, w: b.w, d: b.d, a: b.a }, lit: b.lit, osm: false, detail, over: 0.35,
     });
   }
   for (const o of L.osmBuildings) {
     const poly = o.ring as Pt[];
     if (!poly.some((p) => inFar(p[0], p[1]))) continue;
     const detail = polyIn(poly, 0, inBox) ? 1 : 0;
-    addBuilding({ poly, h: Math.min(32, Math.max(3.2, o.h * 10)), wall: o.wall, roof: o.roof, roofType: 'flat', rect: null, lit: true, osm: true, detail });
+    const ar = polyArea(poly);
+    let cx = 0, cy = 0;
+    for (const q of poly) { cx += q[0] / poly.length; cy += q[1] / poly.length; }
+    const h = detail ? heightFor(ar, cx, cy) : 3.5 + R() * 3;
+    // small simple footprints get a pitched zinc roof on their oriented bounding box, the rest a flat roof with a parapet
+    let rect: RoamBuilding['rect'] = null, roofType: RoamBuilding['roofType'] = 'flat';
+    if (poly.length <= 8 && ar < 260 && ar > 16) {
+      let la = 0, ll = 0;
+      for (let i = 0; i < poly.length; i++) {
+        const p0 = poly[i], p1 = poly[(i + 1) % poly.length];
+        const l = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+        if (l > ll) { ll = l; la = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]); }
+      }
+      const c = Math.cos(la), sn = Math.sin(la);
+      let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+      for (const q of poly) { const u = q[0] * c + q[1] * sn, v = -q[0] * sn + q[1] * c; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
+      const w = u1 - u0, d = v1 - v0;
+      if (ar / (w * d) > 0.72 && R() < 0.65) {
+        const mu = (u0 + u1) / 2, mv = (v0 + v1) / 2;
+        rect = { x: mu * c - mv * sn, y: mu * sn + mv * c, w, d, a: la };
+        roofType = R() < 0.6 ? 'gable' : 'hip';
+      }
+    }
+    addBuilding({ poly, h, wall: PAINT[Math.floor(R() * PAINT.length)], roof: ZINC[Math.floor(R() * ZINC.length)], roofType, rect, lit: true, osm: true, detail, over: 0.15 });
   }
 
   /* ---------------- landmark footprints ---------------- */
@@ -186,7 +235,7 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
   const trees = L.trees.filter((t) => inFar(t.x, t.y, 4));
   for (const t of trees) if (inBox(t.x, t.y, 2)) col.addCircle(t.x, t.y, t.palm ? 0.22 : 0.32, { tall: true, id: 'tree', h: t.palm ? 7 : 3.5 });
   const lamps = L.lamps.filter((l) => inBox(l[0], l[1], 2));
-  for (const l of lamps) col.addCircle(l[0], l[1], 0.14, { tall: true, id: 'lamp' });
+  for (const l of lamps) col.addCircle(l[0], l[1], 0.14, { tall: false, id: 'lamp' });
   const parked: RoamWorld['parked'] = [];
   for (const v of L.vehicles) {
     if (v.px === undefined || !inBox(v.px, v.py!, 6)) continue;
@@ -222,6 +271,7 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
 
   /* ---------------- stalls around the markets ---------------- */
   const stalls: Stall[] = [];
+  const displays: Display[] = [];
   const STALL_COL = ['#2f6fd0', '#d63c32', '#f2b632', '#2e9d58', '#e06a1c', '#7a4ac8', '#1aa3a3'];
   for (const [mx, my, mr, id] of MARKETS) {
     if (!inBox(mx, my, 4)) continue;
@@ -343,6 +393,17 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
     if (!door) continue;
     const idx = places.push({ ...p, label, accent, door }) - 1;
     if (door.kind === 'wall') buildings[door.b].place = idx;
+    if (door.kind === 'wall' && p.scene === 'workshop') {
+      // bronze pieces on plinths on both sides of the workshop door
+      for (const sg of [-1, 1]) {
+        const off = door.w / 2 + 1.0;
+        const x = door.x + door.nx * 0.45 - door.ny * off * sg, y = door.y + door.ny * 0.45 + door.nx * off * sg;
+        if (col.clear(x, y, 0.4, -1, false)) {
+          displays.push({ x, y, kind: sg < 0 ? 'bust' : 'plaque' });
+          col.addCircle(x, y, 0.3, { tall: false, id: 'bronze display', h: 1.5 });
+        }
+      }
+    }
   }
 
   function wallDoor(mx: number, my: number, width: number): Door | null {
@@ -392,8 +453,8 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
         const p2 = [px - lx * (width / 2), py - ly * (width / 2)];
         if (!spotFree(sx, sy, 0.5) || !spotFree(px, py, 0.5) || !spotFree(p1[0], p1[1], 0.5) || !spotFree(p2[0], p2[1], 0.5) || !connected(sx, sy)) continue;
         if (onCarriage(px, py, 0.8)) continue;
-        col.addCircle(p1[0], p1[1], 0.16, { tall: true, id: 'arch post' });
-        col.addCircle(p2[0], p2[1], 0.16, { tall: true, id: 'arch post' });
+        col.addCircle(p1[0], p1[1], 0.16, { tall: false, id: 'arch post' });
+        col.addCircle(p2[0], p2[1], 0.16, { tall: false, id: 'arch post' });
         return { kind, x: px, y: py, nx, ny, sx, sy, w: width, b: -1, e: -1 };
       }
     }
@@ -488,18 +549,18 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
     for (const ri of roadIdx) {
       const rd = L.roads[ri];
       if (rd.kind === 'dirt' || rd.kind === 'spur' || rd.hw < 3) continue;
-      for (let sArc = 8 + R() * 10; sArc < rd.sp.length; sArc += 30) {
+      for (let sArc = 8 + R() * 10; sArc < rd.sp.length; sArc += 21) {
         const p = at(rd.sp, sArc);
         if (!inArea(p.x, p.y, 3)) continue;
         side = -side;
         const off = rd.hw + (KERB[rd.kind] ?? 1) + 0.45;
         const x = p.x - Math.sin(p.a) * off * side, y = p.y + Math.cos(p.a) * off * side;
         if (L.net.clear(x, y, false, 3) < 1.2) continue;
-        if (lamps.some((q) => dist(q[0], q[1], x, y) < 14)) continue;
+        if (lamps.some((q) => dist(q[0], q[1], x, y) < 11)) continue;
         if (!col.clear(x, y, 0.6, -1, false) || !inArea(x, y, 1.5)) continue;
         if (places.some((q) => dist(q.door.sx, q.door.sy, x, y) < 2.5)) continue;
         lamps.push([x, y]);
-        col.addCircle(x, y, 0.14, { tall: true, id: 'lamp' });
+        col.addCircle(x, y, 0.14, { tall: false, id: 'lamp' });
       }
     }
   }
@@ -529,6 +590,17 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
     }
     b.doorEdge = bestE;
     b.doorT = 0.35 + R() * 0.3;
+    // some buildings on the roads are small shop fronts with a made-up name
+    if (bestE >= 0 && bestS > 0.55 && b.h <= 7.5) {
+      const a0 = b.poly[bestE], c0 = b.poly[(bestE + 1) % b.poly.length];
+      const len = dist(a0[0], a0[1], c0[0], c0[1]);
+      const mx = a0[0] + (c0[0] - a0[0]) * b.doorT, my = a0[1] + (c0[1] - a0[1]) * b.doorT;
+      if (len >= 4 && L.net.clear(mx, my, false, 12) < 8 && R() < 0.45) {
+        const igun = places.find((q) => q.id === 'igun_street');
+        const nearIgun = igun ? dist(igun.door.x, igun.door.y, mx, my) < 45 : false;
+        b.shop = nearIgun && R() < 0.7 ? BRONZE_SHOPS[Math.floor(R() * 2)] : Math.floor(R() * 8);
+      }
+    }
   });
 
   /* ---------------- the fence along the edge of the area ---------------- */
@@ -583,7 +655,7 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
       if (L.net.clear(px, py, false, 1) < -0.3) gps.blocked[i] = 1;
     }
 
-  return { L, col, places, buildings, landmarks, trees, lamps, parked, stalls, kiosks, edge, walk, gps, roadIdx, box, far };
+  return { L, col, places, buildings, landmarks, trees, lamps, parked, stalls, displays, kiosks, edge, walk, gps, roadIdx, box, far };
 }
 
 function signedArea(poly: readonly Pt[]): number {

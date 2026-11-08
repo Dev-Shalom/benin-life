@@ -59,6 +59,9 @@ export interface Street {
   };
   pools: InstancedMesh;
   blobs: InstancedMesh;
+  /** Hide / show one tree canopy (the camera fades trees that would fill the screen). */
+  treeFade(i: number, hide: boolean): void;
+  treeInfo: { x: number; y: number; r: number }[];
   /** Instances 0..staticBlobs-1 are tree shadows (static); the rest are for people and cars. */
   staticBlobs: number;
   tris: number;
@@ -130,7 +133,7 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
 
   const solidMat = own(new MeshLambertMaterial({ vertexColors: true }));
   // ground + paving + roads (layers separated by small y offsets), buildings and props: one soup in chunks, so what is off screen is skipped
-  const solid = new ChunkedSoup(140);
+  const solid = new ChunkedSoup(105);
   const groundSoup = solid;
   const glassDark = new Soup();
   const glassLit = new Soup();
@@ -214,22 +217,51 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
       const junction = L.net.clear(mx, my, false, 1, ri) < -0.4;
       if (junction) continue;
       if (kerbW > 0) {
-        quadOff(rd.hw - 0.02, rd.hw + 0.22, 0.075, '#bdb6a8');
-        quadOff(-rd.hw - 0.22, -rd.hw + 0.02, 0.075, '#bdb6a8');
+        // gutters, kerb stones (two tones in turn) and, here and there, a strip of red earth beside the pavement
+        quadOff(rd.hw - 0.32, rd.hw, 0.072, '#3a3d43');
+        quadOff(-rd.hw, -rd.hw + 0.32, 0.072, '#3a3d43');
+        const kc = i % 2 ? '#c6bfb1' : '#b0a99b';
+        quadOff(rd.hw, rd.hw + 0.2, 0.078, kc);
+        quadOff(-rd.hw - 0.2, -rd.hw, 0.078, kc);
+        if (hash(i * 3 + ri * 11) < 0.35) quadOff(rd.hw + kerbW, rd.hw + kerbW + 0.9, 0.02, '#b8694a');
+        if (hash(i * 5 + ri * 13) < 0.35) quadOff(-rd.hw - kerbW - 0.9, -rd.hw - kerbW, 0.02, '#b8694a');
       }
-      if (rd.kind !== 'dirt' && rd.kind !== 'spur') {
-        quadOff(rd.hw - 0.55, rd.hw - 0.4, 0.08, '#e9e6dc');
-        quadOff(-rd.hw + 0.4, -rd.hw + 0.55, 0.08, '#e9e6dc');
+      if (rd.kind !== 'dirt' && rd.kind !== 'spur' && hash(i * 7 + ri) < 0.85) {
+        quadOff(rd.hw - 0.6, rd.hw - 0.45, 0.08, '#d3cebe');
+        quadOff(-rd.hw + 0.45, -rd.hw + 0.6, 0.08, '#d3cebe');
       }
       if (rd.kind === 'main' || rd.kind === 'express' || rd.kind === 'ring') {
         const gold = rd.kind !== 'main';
         dashPhase++;
         if (rd.kind === 'ring' || rd.kind === 'express') {
-          quadOff(-0.28, -0.1, 0.08, '#d9b43a');
-          quadOff(0.1, 0.28, 0.08, '#d9b43a');
+          quadOff(-0.28, -0.1, 0.08, '#c9ad50');
+          quadOff(0.1, 0.28, 0.08, '#c9ad50');
         } else if (dashPhase % 2 === 0) {
-          quadOff(-0.1, 0.1, 0.08, gold ? '#d9b43a' : '#e9e6dc');
+          quadOff(-0.1, 0.1, 0.08, gold ? '#c9ad50' : '#d3cebe');
         }
+      }
+    }
+  }
+
+  // a few potholes and patches on the wider roads
+  {
+    let n = 0;
+    for (const ri of W.roadIdx) {
+      const rd = L.roads[ri];
+      if (rd.kind === 'dirt' || rd.kind === 'spur') continue;
+      for (let k = 0; k < 6 && n < 26; k++) {
+        const sp = rd.sp.samples[Math.floor(hash(ri * 17 + k * 5) * rd.sp.samples.length)];
+        if (!inBox(sp.x, sp.y, 0)) continue;
+        const off = (hash(ri * 3 + k) - 0.5) * rd.hw * 1.5;
+        const x = sp.x - Math.sin(sp.a) * off, z = sp.y + Math.cos(sp.a) * off;
+        if (L.net.clear(x, z, false, 1, ri) < 0) continue;
+        const rr = 0.35 + hash(ri + k * 9) * 0.35;
+        const ph = hash(ri * 7 + k) * 6;
+        for (let q = 0; q < 6; q++) {
+          const a0 = ph + (q / 6) * 6.283, a1 = ph + ((q + 1) / 6) * 6.283;
+          groundSoup.tri(x, 0.085, z, x + Math.cos(a0) * rr, 0.085, z + Math.sin(a0) * rr * 0.8, x + Math.cos(a1) * rr, 0.085, z + Math.sin(a1) * rr * 0.8, k % 2 ? '#34373c' : '#5a5d62', 0, 1, 0);
+        }
+        n++;
       }
     }
   }
@@ -237,7 +269,22 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
   /* ================= buildings ================= */
     const tanks: number[] = [];
   W.buildings.forEach((b, bi) => {
-    if (b.lm) return;
+    if (b.lm) {
+      // landmark models are drawn by buildLandmarks; they only get their door (palace gate, police entrance) and sign here
+      if (b.place >= 0 && b.doorEdge >= 0) {
+        const n = b.poly.length;
+        const a = b.poly[b.doorEdge], c = b.poly[(b.doorEdge + 1) % n];
+        let area = 0;
+        for (let i = 0; i < n; i++) area += b.poly[i][0] * b.poly[(i + 1) % n][1] - b.poly[(i + 1) % n][0] * b.poly[i][1];
+        const sgn = area > 0 ? 1 : -1;
+        const len = Math.hypot(c[0] - a[0], c[1] - a[1]);
+        const ex = (c[0] - a[0]) / len, ey = (c[1] - a[1]) / len;
+        // the compound wall is about 1.2 m thick (centred on the polygon edge): put the gate on its outer face
+        const nx0 = sgn * ey, ny0 = -sgn * ex, o2 = 0.68;
+        addDoor(b, bi, [a[0] + nx0 * o2, a[1] + ny0 * o2], [c[0] + nx0 * o2, c[1] + ny0 * o2], ex, ey, nx0, ny0, len);
+      }
+      return;
+    }
     buildBuilding(b, bi);
   });
 
@@ -266,19 +313,27 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
         continue;
       }
       solid.quad(A0, C0, CP, AP, plinth, nrm, 0.8, 1);
-      solid.quad(AP, CP, C1, A1, wallCol, nrm, 0.93, 1);
+      solid.quad(AP, CP, [c[0], h - 0.4, c[1]], [a[0], h - 0.4, a[1]], wallCol, nrm, 0.93, 1);
+      // cornice band at the top, a little proud of the wall
+      solid.quad([a[0] + nx * 0.06, h - 0.4, a[1] + ny * 0.06], [c[0] + nx * 0.06, h - 0.4, c[1] + ny * 0.06], [c[0] + nx * 0.06, h, c[1] + ny * 0.06], [a[0] + nx * 0.06, h, a[1] + ny * 0.06], shade(b.wall, 1.07), nrm);
+      // damp stain / peeling patch on some walls
+      if (len > 2.5 && hash(bi * 7 + i) < 0.3) {
+        const t0 = hash(bi + i * 3) * 0.5, wdt = Math.min(1.6, len * 0.35);
+        const u0 = t0 * len, u1 = u0 + wdt;
+        solid.quad([a[0] + ex * u0 + nx * 0.02, plinthH, a[1] + ey * u0 + ny * 0.02], [a[0] + ex * u1 + nx * 0.02, plinthH, a[1] + ey * u1 + ny * 0.02], [a[0] + ex * u1 + nx * 0.02, plinthH + 1.0 + hash(i) * 0.8, a[1] + ey * u1 + ny * 0.02], [a[0] + ex * u0 + nx * 0.02, plinthH + 1.0 + hash(i) * 0.8, a[1] + ey * u0 + ny * 0.02], shade(b.wall, 0.86), nrm);
+      }
       if (b.detail !== 1 || len < 2.0) continue;
       // windows: only where the wall faces open ground (not into the next building)
       const mx = (a[0] + c[0]) / 2, my = (a[1] + c[1]) / 2;
       const isDoor = i === b.doorEdge;
-      const visible = W.col.clear(mx + nx * 1.1, my + ny * 1.1, 0.35, -1, false) || isDoor;
+      const visible = W.col.clear(mx + nx * 0.7, my + ny * 0.7, 0.2, -1, false) || isDoor;
       if (!visible) continue;
       if (isDoor) addDoor(b, bi, a, c, ex, ey, nx, ny, len);
       const margin = len < 3.4 ? 0.5 : 0.8;
       const cols = Math.max(len < 3.4 ? 1 : 0, Math.floor((len - margin * 2) / 2.7));
-      const floors = Math.max(1, Math.floor((h - 0.5) / 3.1));
+      const floors = Math.max(1, Math.floor((h - 0.2) / 3));
       for (let f = 0; f < floors; f++) {
-        const y0 = 0.45 + f * 3.1 + 0.95;
+        const y0 = 0.45 + f * 3 + 0.95;
         const y1 = y0 + 1.25;
         if (y1 > h - 0.4) continue;
         for (let k = 0; k < cols; k++) {
@@ -287,8 +342,14 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
           const px = a[0] + (c[0] - a[0]) * t + nx * 0.035, pz = a[1] + (c[1] - a[1]) * t + ny * 0.035;
           const hwid = 0.5;
           const q = [[px - ex * hwid, y0, pz - ey * hwid], [px + ex * hwid, y0, pz + ey * hwid], [px + ex * hwid, y1, pz + ey * hwid], [px - ex * hwid, y1, pz - ey * hwid]];
-          const lit = hash(bi * 31 + f * 7 + k) < 0.55 && (b.lit || hash(bi) < 0.6);
+          const lit = hash(bi * 31 + f * 7 + k) < 0.7 && (b.lit || hash(bi) < 0.6);
+          const wq = (u0: number, u1: number, ya: number, yb: number, col: string, off: number) =>
+            solid.quad([px + ex * u0 + nx * off, ya, pz + ey * u0 + ny * off], [px + ex * u1 + nx * off, ya, pz + ey * u1 + ny * off],
+              [px + ex * u1 + nx * off, yb, pz + ey * u1 + ny * off], [px + ex * u0 + nx * off, yb, pz + ey * u0 + ny * off], col, nrm);
+          if (o.tier === 'high' || hash(bi + k) < 0.4) wq(-0.62, 0.62, y0 - 0.1, y1 + 0.1, '#ece5d4', -0.012);
           (lit ? glassLit : glassDark).quad(q[0], q[1], q[2], q[3], lit ? '#ffffff' : '#4d6b7d', nrm);
+          // burglary-proof bars on about half of the windows
+          if (o.tier === 'high' && hash(bi * 17 + f * 3 + k) < 0.45) for (const u of [-0.2, 0.2]) wq(u - 0.022, u + 0.022, y0, y1, '#2f3338', 0.05);
         }
       }
     }
@@ -301,18 +362,18 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
       const cap = ShapeUtils.triangulateShape(ring, []);
       for (const [i0, i1, i2] of cap) {
         const p0 = poly[i0], p1 = poly[i1], p2 = poly[i2];
-        solid.tri(p0[0], h + 0.22, p0[1], p1[0], h + 0.22, p1[1], p2[0], h + 0.22, p2[1], roofCol, 0, 1, 0);
+        solid.tri(p0[0], h + 0.45, p0[1], p1[0], h + 0.45, p1[1], p2[0], h + 0.45, p2[1], roofCol, 0, 1, 0);
       }
       for (let i = 0; i < n; i++) {
         const a = poly[i], c = poly[(i + 1) % n];
         const len = Math.hypot(c[0] - a[0], c[1] - a[1]) || 1;
         const nx = (sgn * (c[1] - a[1])) / len, ny = (-sgn * (c[0] - a[0])) / len;
-        solid.quad([a[0], h, a[1]], [c[0], h, c[1]], [c[0], h + 0.22, c[1]], [a[0], h + 0.22, a[1]], shade(b.wall, 0.7), [nx, 0, ny]);
+        solid.quad([a[0], h, a[1]], [c[0], h, c[1]], [c[0], h + 0.45, c[1]], [a[0], h + 0.45, a[1]], shade(b.wall, 0.7), [nx, 0, ny]);
       }
-      if (b.detail === 1 && h > 4.5 && hash(bi * 13) < 0.1) {
+      if (b.detail === 1 && h > 4.5 && hash(bi * 13) < 0.3) {
         let cx = 0, cy = 0;
         for (const [x, y] of poly) { cx += x / n; cy += y / n; }
-        tanks.push(cx, h + 0.22, cy);
+        tanks.push(cx, h + 0.45, cy);
       }
     }
   }
@@ -320,7 +381,7 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
   function pitchedRoof(b: RoamBuilding, h: number, roof: Color, wall: Color) {
     const r = b.rect!;
     const c = Math.cos(r.a), s = Math.sin(r.a);
-    const ow = 0.4;
+    const ow = b.over ?? 0.4;
     const hw = r.w / 2 + ow, hd = r.d / 2 + ow;
     const rh = Math.max(1.1, Math.min(2.6, Math.min(r.w, r.d) * 0.28));
     const P = (lx: number, y: number, lz: number) => [r.x + lx * c - lz * s, y, r.y + lx * s + lz * c];
@@ -365,12 +426,15 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
 
   function addDoor(b: RoamBuilding, bi: number, a: readonly [number, number], c: readonly [number, number], ex: number, ey: number, nx: number, ny: number, len: number) {
     const place = b.place >= 0 ? W.places[b.place] : null;
-    const wid = place ? place.door.w : 1.0;
-    const t = place ? Math.hypot(place.door.x - a[0], place.door.y - a[1]) / len : b.doorT;
+    const shop = !place && b.shop !== undefined;
+    const accentHex = place ? place.accent : ['#c0643f', '#2e9d58', '#5c7fb5', '#d9822b', '#7a4ac8', '#3f7f9c'][Math.floor(hash(bi * 3) * 6)];
+    const wid = place ? place.door.w : shop ? 2.2 : 1.0;
+    const t = place ? ((place.door.x - a[0]) * ex + (place.door.y - a[1]) * ey) / len : b.doorT;
     const px = a[0] + (c[0] - a[0]) * t, pz = a[1] + (c[1] - a[1]) * t;
     const nrm = [nx, 0, ny];
     const dh = Math.min(2.2, b.h - 0.6);
-    const wood = place ? shade(place.accent, 0.72) : new Color(['#5b3a24', '#3f5f6a', '#6b3b2a', '#4a4f57'][Math.floor(hash(bi) * 4)]);
+    const palace = place?.scene === 'palace';
+    const wood = palace ? new Color('#33201a') : place ? shade(place.accent, 0.72) : new Color(['#5b3a24', '#3f5f6a', '#6b3b2a', '#4a4f57'][Math.floor(hash(bi) * 4)]);
     const off = 0.045;
     const hw = wid / 2;
     const Q = (u: number, y: number, o = off) => [px + ex * u + nx * o, y, pz + ey * u + ny * o];
@@ -380,14 +444,22 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
       // shop front: a wide glass door with a dark inside
       solid.quad(Q(-hw, 0.05), Q(hw, 0.05), Q(hw, dh), Q(-hw, dh), wood, nrm);
       glassLit.quad(Q(-hw + 0.12, 0.55, 0.06), Q(hw - 0.12, 0.55, 0.06), Q(hw - 0.12, dh - 0.15, 0.06), Q(-hw + 0.12, dh - 0.15, 0.06), '#ffffff', nrm);
+    } else if (shop) {
+      // a roller shutter, pulled half up on some
+      const up = hash(bi * 9) < 0.5 ? 0.9 : 0;
+      solid.quad(Q(-hw, 0.05), Q(hw, 0.05), Q(hw, dh), Q(-hw, dh), '#2a2d36', nrm);
+      solid.quad(Q(-hw, 0.05, 0.06), Q(hw, 0.05, 0.06), Q(hw, dh - up, 0.06), Q(-hw, dh - up, 0.06), '#9aa0a6', nrm);
+      for (let r2 = 1; r2 < 6; r2++) solid.quad(Q(-hw, 0.05 + ((dh - up) * r2) / 6, 0.075), Q(hw, 0.05 + ((dh - up) * r2) / 6, 0.075), Q(hw, 0.09 + ((dh - up) * r2) / 6, 0.075), Q(-hw, 0.09 + ((dh - up) * r2) / 6, 0.075), '#6d737a', nrm);
+      if (up) glassLit.quad(Q(-hw + 0.1, dh - up, 0.065), Q(hw - 0.1, dh - up, 0.065), Q(hw - 0.1, dh - 0.05, 0.065), Q(-hw + 0.1, dh - 0.05, 0.065), '#ffffff', nrm);
     } else {
       solid.quad(Q(-hw, 0.05), Q(hw, 0.05), Q(hw, dh), Q(-hw, dh), wood, nrm);
       solid.quad(Q(hw * 0.55, 1.0, 0.08), Q(hw * 0.78, 1.0, 0.08), Q(hw * 0.78, 1.12, 0.08), Q(hw * 0.55, 1.12, 0.08), '#d9a441', nrm);
     }
+    if (place || shop) glow.box(px + nx * 0.3, Math.min(b.h - 0.3, dh + 0.28), pz + ny * 0.3, 0.4, 0.1, 0.18, Math.atan2(ey, ex), '#ffffff', 1);
     // step
     solid.box(px + nx * 0.25, 0, pz + ny * 0.25, wid + 0.9, 0.12, 0.5, Math.atan2(ey, ex), '#c9c2b2', 1);
-    if (place) {
-      const accent = new Color(place.accent);
+    if ((place || shop) && !palace) {
+      const accent = new Color(accentHex);
       // awning over the door
       const aw = Math.max(2.6, wid + 1.2);
       const ya = Math.min(dh + 0.45, b.h - 0.85);
@@ -403,9 +475,22 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
         const S = (u: number, f: number) => [px + ex * u + nx * (0.04 + (proj - 0.04) * f), ya + 0.1 - 0.38 * f + 0.012, pz + ey * u + ny * (0.04 + (proj - 0.04) * f)];
         solid.quad(S(u0, 0), S(u1, 0), S(u1, 1), S(u0, 1), '#f4efe3', [0, 1, 0]);
       }
-      solid.quad(C, D, [D[0], D[1] - 0.18, D[2]], [C[0], C[1] - 0.18, C[2]], shade(place.accent, 0.8), nrm);
+      solid.quad(C, D, [D[0], D[1] - 0.18, D[2]], [C[0], C[1] - 0.18, C[2]], shade(accentHex, 0.8), nrm);
       // sign board above
-      addSign(b.place, px, Math.min(b.h - 0.5, ya + 0.95), pz, ex, ey, nx, ny, Math.min(3.0, Math.max(2.4, aw)), 0.62, 0.07);
+      addSign(place ? b.place : W.places.length + b.shop!, px, ya + 1.35, pz, ex, ey, nx, ny, Math.min(3.0, Math.max(2.4, aw)), 0.62, 0.07);
+    }
+    if (palace) {
+      addSign(b.place, px + nx * 0.3, 4.75, pz + ny * 0.3, ex, ey, nx, ny, 3.6, 0.7, 0.4);
+      // the palace gate: tall red-earth pillars with pyramid caps, a dark double gate with gold studs, a bronze plaque
+      for (const sg of [-1, 1]) {
+        const ux = px + ex * (hw + 0.75) * sg, uz = pz + ey * (hw + 0.75) * sg;
+        solid.box(ux + nx * 0.3, 0, uz + ny * 0.3, 0.9, 4.6, 0.9, Math.atan2(ey, ex), '#a14a30', 0.85);
+        solid.box(ux + nx * 0.3, 4.6, uz + ny * 0.3, 1.1, 0.2, 1.1, Math.atan2(ey, ex), '#6e2f1f', 1);
+        solid.cyl(ux + nx * 0.3, 4.8, uz + ny * 0.3, 0.7, 0.02, 1.2, '#7e4630', 4);
+        solid.box(ux + nx * 0.3, 3.6, uz + ny * 0.3, 0.2, 0.2, 0.2, 0, '#d9a441', 1);
+      }
+      solid.box(px + nx * 0.3, 3.5, pz + ny * 0.3, wid + 2.6, 0.5, 0.7, Math.atan2(ey, ex), '#8d3a24', 0.9);
+      for (let k = -2; k <= 2; k++) solid.box(px + ex * k * 0.35 + nx * 0.1, 1.3, pz + ey * k * 0.35 + ny * 0.1, 0.12, 0.12, 0.08, 0, '#d9a441', 1);
     }
   }
 
@@ -459,7 +544,8 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
     const nrm = [d.nx, 0, d.ny];
     const ex = c, ey = s;
     const Q = (u: number, y: number, o: number) => [d.x + ex * u + d.nx * o, y, d.y + ey * u + d.ny * o];
-    glassDark.quad(Q(-0.8, 1.05, 0.02), Q(0.8, 1.05, 0.02), Q(0.8, 2.0, 0.02), Q(-0.8, 2.0, 0.02), '#2a2d36', nrm);
+    glassLit.quad(Q(-0.8, 1.05, 0.02), Q(0.8, 1.05, 0.02), Q(0.8, 2.0, 0.02), Q(-0.8, 2.0, 0.02), '#ffffff', nrm);
+    glow.box(d.x + d.nx * 0.5, 2.3, d.y + d.ny * 0.5, 0.5, 0.1, 0.2, k.a, '#ffffff', 1);
     solid.box(d.x + d.nx * 0.12, 0.95, d.y + d.ny * 0.12, 1.7, 0.08, 0.34, k.a, '#8a5a33', 1);
     // umbrella
     solid.cyl(k.x + c * 0.7 - s * 0.0, 2.35, k.y + s * 0.7, 0.04, 0.04, 1.0, '#59616b', 5);
@@ -483,6 +569,18 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
       const u = -st.w / 2 + 0.3 + k * 0.4;
       solid.box(st.x + c * u + st.fx * 0.05, 0.85, st.y + s * u + st.fy * 0.05, 0.3, 0.18, 0.3, st.a + k, goods[(k + Math.floor(st.x)) % goods.length], 0.9);
     }
+    if (hash(st.x * 7 + st.y) < 0.55) {
+      // a big striped umbrella
+      const ux = st.x - st.fx * 0.7, uz = st.y - st.fy * 0.7;
+      solid.cyl(ux, 0, uz, 0.04, 0.04, 2.45, '#59616b', 4);
+      const um = [st.color, '#f4efe3'];
+      for (let q2 = 0; q2 < 8; q2++) {
+        const a0 = (q2 / 8) * 6.283, a1 = ((q2 + 1) / 8) * 6.283;
+        solid.tri(ux + Math.cos(a0) * 1.7, 2.3, uz + Math.sin(a0) * 1.7, ux + Math.cos(a1) * 1.7, 2.3, uz + Math.sin(a1) * 1.7, ux, 2.85, uz, um[q2 % 2], Math.cos((a0 + a1) / 2), 0.7, Math.sin((a0 + a1) / 2));
+      }
+      solid.box(st.x + st.fx * 0.9, 0, st.y + st.fy * 0.9, 0.5, 0.4, 0.5, st.a + 0.3, '#b08850', 0.85);
+      continue;
+    }
     // canopy on four poles
     for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
       const px = st.x + c * u * (st.w / 2 + 0.2) - s * v * (st.d / 2 + 0.55) - st.fx * 0.4;
@@ -491,6 +589,19 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
     }
     solid.box(st.x - st.fx * 0.4, 2.3, st.y - st.fy * 0.4, st.w + 0.7, 0.07, st.d + 1.4, st.a, st.color, 1);
     solid.box(st.x + st.fx * 0.9, 0, st.y + st.fy * 0.9 + 0, 0.5, 0.4, 0.5, st.a + 0.3, '#b08850', 0.85);
+  }
+
+  /* ================= Igun Street: bronze pieces on plinths ================= */
+  for (const d of W.displays) {
+    solid.box(d.x, 0, d.y, 0.55, 0.85, 0.55, 0, '#6d655a', 0.85, '#8a8274');
+    if (d.kind === 'bust') {
+      solid.cyl(d.x, 0.85, d.y, 0.2, 0.15, 0.3, '#b07a3a', 7);
+      solid.cyl(d.x, 1.15, d.y, 0.13, 0.12, 0.22, '#c28a44', 7);
+      solid.cyl(d.x, 1.37, d.y, 0.1, 0.02, 0.16, '#9a6a30', 7);
+    } else {
+      solid.box(d.x, 0.85, d.y, 0.45, 0.6, 0.07, 0.6, '#b07a3a', 0.9);
+      solid.box(d.x, 1.2, d.y, 0.3, 0.2, 0.09, 0.6, '#d19b52', 1);
+    }
   }
 
   /* ================= parked cars ================= */
@@ -631,9 +742,11 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
   const v3 = new Vector3();
   const sc = new Vector3();
   const treeBlobs: number[] = [];
+  const canopyMats: Matrix4[] = [];
+  const treeInfo: { x: number; y: number; r: number }[] = [];
   trees.forEach((t, i) => {
     const r = t.palm ? 1.9 : Math.max(1.5, Math.min(3.6, t.r * 0.95));
-    const trunkH = t.palm ? 6.4 : 2.1 + r * 0.35;
+    const trunkH = t.palm ? 6.4 : 2.6 + r * 0.35;
     const top = t.palm ? trunkH : trunkH + r * 0.55;
     q.setFromAxisAngle(v3.set(0, 1, 0), hash(i) * 6.28);
     // trunk
@@ -642,6 +755,8 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
     // canopy
     m4.compose(v3.set(t.x, top, t.y), q, sc.set(r, t.palm ? r * 0.38 : r * 0.82, r));
     canopy.setMatrixAt(i, m4);
+    canopyMats.push(m4.clone());
+    treeInfo.push({ x: t.x, y: t.y, r });
     canopy.setColorAt(i, new Color(t.palm ? '#4f9a52' : palette[t.c % palette.length]).multiplyScalar(0.92 + hash(i * 3) * 0.14));
     treeBlobs.push(t.x, t.y, r * 1.5);
   });
@@ -654,13 +769,13 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
   tris += trees.length * 20 + trees.length * 10;
 
   /* ================= lamp pools (night) and blob shadows ================= */
-  const poolTex = own(softDisc('255,226,150', 0.9, 0.3));
+  const poolTex = own(softDisc('255,214,130', 0.95, 0.4));
   const poolMat = own(new MeshBasicMaterial({ map: poolTex, transparent: true, depthWrite: false, opacity: 0, blending: 2 /* additive */ }));
   const flat = flatDisc();
   own(flat);
   const pools = new InstancedMesh(flat, poolMat, Math.max(1, lampSpots.length));
   lampSpots.forEach(([x, y], i) => {
-    m4.compose(v3.set(x, 0.1, y), q.identity(), sc.set(7, 1, 7));
+    m4.compose(v3.set(x, 0.1, y), q.identity(), sc.set(11, 1, 11));
     pools.setMatrixAt(i, m4);
   });
   pools.frustumCulled = false;
@@ -682,7 +797,18 @@ export function buildStreet(W: RoamWorld, o: Opts): Street {
   blobs.count = treeBlobs.length / 3;
 
 
+  const hidden = new Uint8Array(trees.length);
+  const zero = new Matrix4().makeScale(0, 0, 0);
+  const treeFade = (i: number, hide: boolean) => {
+    if (hidden[i] === (hide ? 1 : 0)) return;
+    hidden[i] = hide ? 1 : 0;
+    canopy.setMatrixAt(i, hide ? zero : canopyMats[i]);
+    canopy.instanceMatrix.needsUpdate = true;
+  };
+
   return {
+    treeFade,
+    treeInfo,
     group,
     mats: { solid: solidMat, glassLit: glassLitMat, glow: glowMat, glowLand: glowLandMat, sign: signMat, pool: poolMat },
     pools,

@@ -89,9 +89,9 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
   const start = useMemo(() => {
     const pl = startId ? world.places.find((p) => p.id === startId) : null;
     if (demo?.x !== undefined && demo?.y !== undefined) return { x: demo.x, y: demo.y, h: demo.h ?? 0 };
-    if (pl) return { x: pl.door.sx + pl.door.nx * 2.0, y: pl.door.sy + pl.door.ny * 2.0, h: Math.atan2(pl.door.ny, pl.door.nx) };
+    if (pl) { const h = Math.atan2(pl.door.ny, pl.door.nx); return { x: pl.door.sx, y: pl.door.sy, h, camYaw: h + Math.PI }; }
     const m = world.places.find((p) => p.id === 'national_museum');
-    return m ? { x: m.door.sx + m.door.nx * 4, y: m.door.sy + m.door.ny * 4, h: Math.atan2(m.door.ny, m.door.nx) } : { x: 500, y: 540, h: Math.PI / 2 };
+    return m ? { x: m.door.sx, y: m.door.sy, h: Math.atan2(m.door.ny, m.door.nx), camYaw: Math.atan2(m.door.ny, m.door.nx) + Math.PI } : { x: 500, y: 540, h: Math.PI / 2 };
   }, [world, startId, demo?.x, demo?.y, demo?.h]);
   const dest = useMemo(() => {
     const pl = destId ? world.places.find((p) => p.id === destId) : null;

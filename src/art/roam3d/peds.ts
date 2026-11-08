@@ -46,10 +46,12 @@ export class Peds {
   private rnd: () => number;
   private W: RoamWorld;
   private t = 0;
+  private around: { x: number; y: number } | null = null;
   private _p = { x: 0, y: 0 };
 
-  constructor(W: RoamWorld, opt: { walkers: number; sellers: number; idlers: number; seed?: number }) {
+  constructor(W: RoamWorld, opt: { walkers: number; sellers: number; idlers: number; seed?: number; around?: { x: number; y: number } }) {
     this.W = W;
+    this.around = opt.around ?? null;
     this.rnd = rng(opt.seed ?? 77);
     const L = W.L;
     // pavements worth walking: roads that run through the box for a good stretch
@@ -74,9 +76,9 @@ export class Peds {
       const p = push('walker');
       this.spawnWalker(p);
     }
-    const sellers = W.stalls.filter((s) => s.seller);
+    const sellers = W.stalls.filter((s) => s.seller).sort((a, b) => this.around ? Math.hypot(a.x - this.around.x, a.y - this.around.y) - Math.hypot(b.x - this.around.x, b.y - this.around.y) : 0);
     for (let i = 0; i < Math.min(opt.sellers, sellers.length); i++) {
-      const st = sellers[Math.floor((i / Math.min(opt.sellers, sellers.length)) * sellers.length)];
+      const st = sellers[i];
       const p = push('seller');
       p.homeX = st.x - st.fx * 0.95;
       p.homeY = st.y - st.fy * 0.95;
@@ -88,10 +90,10 @@ export class Peds {
       const d = doors[(i * 3 + 1) % doors.length].door;
       const p = push('idler');
       // beside the door, not in front of it
-      p.homeX = d.sx + d.ny * 2.0;
-      p.homeY = d.sy - d.nx * 2.0;
+      p.homeX = d.sx + d.ny * 3.6;
+      p.homeY = d.sy - d.nx * 3.6;
       p.homeH = Math.atan2(-d.ny, -d.nx);
-      if (!W.col.clear(p.homeX, p.homeY, 0.4, -1, false)) { p.homeX = d.sx - d.ny * 2.0; p.homeY = d.sy + d.nx * 2.0; }
+      if (!W.col.clear(p.homeX, p.homeY, 0.4, -1, false)) { p.homeX = d.sx - d.ny * 3.6; p.homeY = d.sy + d.nx * 3.6; }
       p.x = p.homeX; p.y = p.homeY; p.h = p.homeH;
     }
     this.syncCircles();
@@ -108,6 +110,11 @@ export class Peds {
       p.dir = this.rnd() < 0.5 ? 1 : -1;
       p.side = this.rnd() < 0.5 ? 1 : -1;
       const q = this.offsetAt(p, s);
+      // the first walkers appear round the player (10 to 55 m), the rest anywhere
+      if (this.around && tries < 30 && this.list.indexOf(p) < 14) {
+        const dd = Math.hypot(q[0] - this.around.x, q[1] - this.around.y);
+        if (dd < 8 || dd > 55) continue;
+      }
       if (!inArea(q[0], q[1], 3) || !this.W.col.clear(q[0], q[1], 0.35, -1, false)) continue;
       p.x = q[0];
       p.y = q[1];

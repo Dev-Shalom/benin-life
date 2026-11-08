@@ -321,7 +321,7 @@ export class CollisionWorld {
           const need = b.hw + r - Math.abs(ly);
           ux = 0;
           uy = sg;
-          d = Math.min(Math.max(need, 0), 0.35);
+          d = Math.min(Math.max(need, 0), 0.1);
         }
         if (d > best) {
           best = d;

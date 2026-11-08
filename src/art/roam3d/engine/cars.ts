@@ -44,3 +44,16 @@ export function kekeGeometry(): BufferGeometry {
   for (const z of [0.68, -0.68]) wheel(s, -0.55, z, 0.26);
   return s.geometry();
 }
+
+/** Okada (motorcycle taxi): 2.0 x 0.8 m. */
+export function okadaGeometry(): BufferGeometry {
+  const s = new Soup();
+  s.box(-0.1, 0.35, 0, 1.3, 0.35, 0.3, 0, '#ffffff', 0.85);
+  s.box(-0.35, 0.7, 0, 0.7, 0.12, 0.34, 0, '#2a2d36', 1);
+  s.box(0.5, 0.7, 0, 0.1, 0.5, 0.5, 0, '#2a2d36', 1);
+  s.box(-0.25, 0.95, 0, 0.3, 0.7, 0.3, 0, '#d9a441', 1);
+  s.box(-0.25, 1.62, 0, 0.26, 0.26, 0.26, 0, '#3a4b57', 1);
+  wheel(s, 0.75, 0, 0.3);
+  wheel(s, -0.75, 0, 0.3);
+  return s.geometry();
+}

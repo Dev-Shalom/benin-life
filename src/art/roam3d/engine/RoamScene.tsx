@@ -40,8 +40,8 @@ import { planRoute, routeProgress, type GpsRoute } from '../gps';
 import { Peds } from '../peds';
 import { makePlayer, placePlayer, stepPlayer, type PlayerState } from '../player';
 import { Traffic } from '../traffic';
-import type { RoamWorld } from '../world';
-import { busGeometry, carGeometry, kekeGeometry } from './cars';
+import { SHOP_NAMES, type RoamWorld } from '../world';
+import { busGeometry, carGeometry, kekeGeometry, okadaGeometry } from './cars';
 import { Soup } from './soup';
 import { buildStreet, makeSignAtlas, type Street } from './street';
 
@@ -93,7 +93,7 @@ export interface RoamSceneProps {
   avatar: AvatarConfig | null;
   hour: number;
   tier: 'low' | 'high';
-  start: { x: number; y: number; h: number };
+  start: { x: number; y: number; h: number; camYaw?: number };
   input: MutableRefObject<RoamInput>;
   live: MutableRefObject<RoamLive>;
   dest: { x: number; y: number } | null;
@@ -163,15 +163,15 @@ function Rig(props: RoamSceneProps) {
     root.add(sky);
 
     /* ---------- static streets ---------- */
-    const signs = typeof document !== 'undefined' ? makeSignAtlas(W.places.map((p) => ({ label: p.label, accent: p.accent }))) : null;
+    const signs = typeof document !== 'undefined' ? makeSignAtlas([...W.places.map((p) => ({ label: p.label, accent: p.accent })), ...SHOP_NAMES.map((n, i) => ({ label: n, accent: i >= 8 ? '#8d5a2b' : ['#c0643f', '#2e9d58', '#5c7fb5', '#d9822b', '#7a4ac8', '#3f7f9c', '#b5407a', '#4a6a3a'][i] }))]) : null;
     const street: Street = buildStreet(W, { tier: props.tier, signs });
     root.add(street.group);
 
     /* ---------- traffic ---------- */
     const traffic = new Traffic(W.L, W.box);
     const vMat = own(new MeshLambertMaterial({ vertexColors: true, flatShading: true }));
-    const kinds = ['car', 'bus', 'keke'] as const;
-    const geos = { car: own(carGeometry()), bus: own(busGeometry()), keke: own(kekeGeometry()) };
+    const kinds = ['car', 'bus', 'keke', 'okada'] as const;
+    const geos = { car: own(carGeometry()), bus: own(busGeometry()), keke: own(kekeGeometry()), okada: own(okadaGeometry()) };
     const inst = {} as Record<(typeof kinds)[number], InstancedMesh>;
     for (const k of kinds) {
       const n = traffic.cars.filter((c) => c.kind === k).length;
@@ -185,7 +185,7 @@ function Rig(props: RoamSceneProps) {
     const carColor = new Color();
 
     /* ---------- people ---------- */
-    const peds = new Peds(W, { walkers: low ? 5 : 10, sellers: low ? 4 : 8, idlers: low ? 1 : 3, seed: (props.seed ?? 1) * 7 + 3 });
+    const peds = new Peds(W, { walkers: low ? 8 : 16, sellers: low ? 4 : 8, idlers: low ? 1 : 3, seed: (props.seed ?? 1) * 7 + 3, around: { x: props.start.x, y: props.start.y } });
     const player: PlayerState = makePlayer(props.start.x, props.start.y, props.start.h);
     placePlayer(player, W.col, props.start.x, props.start.y, props.start.h);
     const slots: RigSlot[] = [];
@@ -214,6 +214,7 @@ function Rig(props: RoamSceneProps) {
     const playerSlot = makeSlot('player', -1, P.current.avatar ?? defaultAvatar('male'), low ? 0.4 : 0.65);
     const pending: number[] = [];
     peds.list.forEach((_, i) => pending.push(i));
+    pending.sort((a, b) => Math.hypot(peds.list[a].x - props.start.x, peds.list[a].y - props.start.y) - Math.hypot(peds.list[b].x - props.start.x, peds.list[b].y - props.start.y));
     let lastBuild = 0;
     const tune = playerSlot.rig ? gaitFor(playerSlot.rig.ch, { speed: SPEED.walk, robeMult: 0.7 }) : { cruise: 1.9, strideScale: 1 };
 
@@ -246,8 +247,8 @@ function Rig(props: RoamSceneProps) {
     };
 
     /* ---------- camera state ---------- */
-    const camSt = { yaw: props.cam?.yaw ?? -Math.PI / 2, pitch: props.cam?.pitch ?? 0.34, dist: props.cam?.dist ?? 4.0, d: 4.0, x: 0, y: 2, z: 0, init: false, hideBody: false };
-    if (props.cam?.yaw === undefined) camSt.yaw = props.start.h;
+    const camSt = { yaw: props.cam?.yaw ?? -Math.PI / 2, pitch: props.cam?.pitch ?? 0.3, dist: props.cam?.dist ?? 5.2, d: 5.2, x: 0, y: 2, z: 0, init: false, hideBody: false };
+    if (props.cam?.yaw === undefined) camSt.yaw = props.start.camYaw ?? props.start.h;
     const live = P.current.live;
     const roadGrid = new Map<number, { id: string; x: number; y: number; hw: number }[]>();
     for (const ri of W.roadIdx) {
@@ -461,6 +462,22 @@ function Rig(props: RoamSceneProps) {
       }
       cam.updateProjectionMatrix();
 
+      // trees between the camera and the player (or round the camera) fade out so foliage never fills the screen
+      {
+        const ti = street.treeInfo;
+        const cx = cam.position.x, cz = cam.position.z, ppx = player.x, ppz = player.y;
+        const sdx = ppx - cx, sdz = ppz - cz;
+        const sl2 = sdx * sdx + sdz * sdz || 1;
+        for (let i = 0; i < ti.length; i++) {
+          const tr = ti[i];
+          if (Math.abs(tr.x - ppx) > 18 || Math.abs(tr.y - ppz) > 18) { street.treeFade(i, false); continue; }
+          const tt = Math.max(0, Math.min(1, ((tr.x - cx) * sdx + (tr.y - cz) * sdz) / sl2));
+          const dseg = Math.hypot(cx + sdx * tt - tr.x, cz + sdz * tt - tr.y);
+          const dcam = Math.hypot(cx - tr.x, cz - tr.y);
+          street.treeFade(i, dseg < tr.r * 0.95 + 0.3 || dcam < tr.r * 1.25 + 1);
+        }
+      }
+
       // sun + sky follow the player
       sun.position.set(player.x + 60 * 0.8, 70, player.y + 40);
       sun.target.position.set(player.x, 0, player.y);
@@ -473,7 +490,7 @@ function Rig(props: RoamSceneProps) {
       glowLight.position.set(player.x, 3.2, player.y);
 
       /* pedestrians: build rigs in the background, pose by distance */
-      if (pending.length && performance.now() - lastBuild > 70) {
+      if (pending.length && performance.now() - lastBuild > 40) {
         const i = pending.shift()!;
         const pd = peds.list[i];
         if (pd) {
@@ -500,7 +517,7 @@ function Rig(props: RoamSceneProps) {
       }
 
       /* traffic instances */
-      const cnt = { car: 0, bus: 0, keke: 0 };
+      const cnt = { car: 0, bus: 0, keke: 0, okada: 0 };
       for (const c of traffic.cars) {
         if (Math.abs(c.x - player.x) > 150 || Math.abs(c.y - player.y) > 150) continue;
         const m = inst[c.kind];
@@ -686,7 +703,7 @@ function Rig(props: RoamSceneProps) {
         textures: gl.info.memory.textures,
         staticTris: Math.round(street.tris),
         rigs: slots.filter((s) => s.g.visible).length,
-        cars: inst.car.count + inst.bus.count + inst.keke.count,
+        cars: inst.car.count + inst.bus.count + inst.keke.count + inst.okada.count,
       }),
       teleport: (x, y, h) => {
         placePlayer(player, W.col, x, y, h);

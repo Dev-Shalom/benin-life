@@ -8,7 +8,7 @@ import type { CollisionWorld, DynBox } from './collide';
 
 export interface Car {
   id: number;
-  kind: Vehicle['kind'];
+  kind: Vehicle['kind'] | 'okada';
   color: string;
   road: number;
   lane: number;
@@ -39,6 +39,8 @@ export interface Person {
 }
 
 const SPEED_SCALE = 0.8;
+export const OKADA_SIZE: readonly [number, number] = [2.0, 0.8];
+const EXTRA_COL = ['#d9a441', '#2e7d5b', '#c0392b', '#3d5f80', '#e8e4da', '#5a4a8a'];
 const DECEL = 7.5;
 const ACCEL = 3.2;
 const wrap = (v: number, len: number) => ((v % len) + len) % len;
@@ -69,7 +71,38 @@ export class Traffic {
         v: v.speed * SPEED_SCALE, cruise: v.speed * SPEED_SCALE * (v.jam ? 0.7 : 1), len: vl, wid: vw, x: 0, y: 0, a: 0, k: 1, braking: false, jam: v.jam,
       });
     }
+    this.densify(id);
     for (const c of this.cars) this.pose(c);
+  }
+
+  /** Busy streets: put extra kekes, okadas and cars into the gaps of each lane (only where the gap is wide enough). */
+  private densify(first: number) {
+    let id = first;
+    const groups = new Map<string, Car[]>();
+    for (const c of this.cars) {
+      if (c.jam) continue;
+      const k = c.road + ':' + c.lane;
+      (groups.get(k) ?? groups.set(k, []).get(k)!).push(c);
+    }
+    const extras = ['keke', 'okada', 'car', 'okada', 'keke'] as const;
+    let n = 0;
+    for (const list of groups.values()) {
+      const c0 = list[0];
+      const len = c0.s1 - c0.s0;
+      const pos = list.map((c) => ((c.s - c.s0) % len + len) % len).sort((a, b) => a - b);
+      for (let i = 0; i < pos.length; i++) {
+        const a = pos[i], b = i + 1 < pos.length ? pos[i + 1] : pos[0] + len;
+        const gap = b - a;
+        if (gap < 34) continue;
+        const kind = extras[n++ % extras.length];
+        const [vl, vw] = kind === 'okada' ? OKADA_SIZE : VEHICLE_SIZE[kind];
+        this.cars.push({
+          id: id++, kind, color: EXTRA_COL[n % EXTRA_COL.length], road: c0.road, lane: c0.lane, s0: c0.s0, s1: c0.s1,
+          s: c0.s0 + ((a + gap / 2) % len), run: 0, v: c0.cruise, cruise: c0.cruise * (kind === 'okada' ? 1.1 : 0.95), len: vl, wid: vw,
+          x: 0, y: 0, a: 0, k: 1, braking: false, jam: false,
+        });
+      }
+    }
   }
 
   private pose(c: Car) {
