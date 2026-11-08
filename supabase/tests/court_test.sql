@@ -1,7 +1,7 @@
 -- The Court (20261111000100_court.sql, 20261111000200_court_rpcs.sql). Rolled back. Run (migrations applied):
 --   bash scripts/sql-test.sh -- supabase/tests/court_test.sql
 -- Weekly rent is clock-dependent and would add a charge to the money checks, so it is off here.
-update public.game_config set value = 'false'::jsonb where key = 'rent.enabled';
+update public.game_config set value = 'false'::jsonb where key in ('rent.enabled', 'economy.bills_enabled');
 -- Time moves with bl.test_offset_seconds. Groups:
 --  1 grants, RLS, anon refused, helpers private · 2 settings and judge offices seeded · 3 filing only from recorded events (every refusal, fee tiers, sink)
 --  4 lawyers: register, requirements, fee, list / search / available / top, rank, update, retire · 5 hiring: escrow, accept, decline, both sides, refusals, expiry
