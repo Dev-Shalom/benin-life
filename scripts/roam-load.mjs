@@ -149,7 +149,7 @@ function startNet(c, info, all) {
   c.joined = false;
   const mk = (topic, onMsg) => {
     const ch = c.sb.channel(topic, { config: { private: true, broadcast: { self: false, ack: false } } });
-    if (onMsg) ch.on('broadcast', { event: topic.startsWith('roam:b:') ? 'b' : 'p' }, onMsg);
+    if (onMsg) ch.on('broadcast', { event: topic.startsWith('roam:t:') ? 'b' : 'p' }, onMsg);
     ch.subscribe((s, err) => { if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') c.errors.push(`${topic}: ${s} ${err?.message ?? ''}`); if (s === 'SUBSCRIBED' && topic === P.posTopic(c.uid)) c.joined = true; });
     c.chans.set(topic, ch);
     return ch;
@@ -171,14 +171,14 @@ function startNet(c, info, all) {
         if (owner && owner.group !== c.group) c.badSource++;
       });
     }
-    // bubble cells
-    const cells = P.bubbleCells(c.pose.x, c.pose.y, info.cell_m, info.bubble_m).map(([a, b]) => P.bubbleTopic(a, b));
-    for (const t of [...c.chans.keys()]) if (t.startsWith('roam:b:') && !cells.includes(t)) { void c.sb.removeChannel(c.chans.get(t)); c.chans.delete(t); }
-    for (const t of cells) if (!c.chans.has(t)) mk(t, (m) => {
-      const b = P.parseBubble(m.payload);
-      if (!b) return;
-      const dist = Math.hypot(b.x - c.pose.x, b.y - c.pose.y);
-      c.bubbles.push({ from: b.u, name: b.n, text: b.t, dist, atMs: Date.now() });
+    // bubbles: the text topic of each player within the bubble radius (+10 m); the server applies the same rules as for positions
+    const wantT = new Set(rows.filter((r) => Math.hypot(r.x - c.pose.x, r.y - c.pose.y) <= info.bubble_m + 10).map((r) => P.textTopic(r.id)));
+    for (const t of [...c.chans.keys()]) if (t.startsWith('roam:t:') && !wantT.has(t)) { void c.sb.removeChannel(c.chans.get(t)); c.chans.delete(t); }
+    for (const t of wantT) if (!c.chans.has(t)) mk(t, (m) => {
+      const bb = P.parseBubble(m.payload);
+      if (!bb || bb.u !== t.slice(7)) return;
+      const dist = Math.hypot(bb.x - c.pose.x, bb.y - c.pose.y);
+      c.bubbles.push({ from: bb.u, name: bb.n, text: bb.t, dist, atMs: Date.now() });
     });
   };
   const tick = async () => {
@@ -188,7 +188,7 @@ function startNet(c, info, all) {
     c.ticks++;
     if (r.error) { c.errors.push('tick: ' + r.error.message); return; }
     c.lastTick = r.data;
-    sync(r.data.players ?? []);
+    if (r.data.players) sync(r.data.players);
   };
   c.tick = tick;
   c.loop = async () => {

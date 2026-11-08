@@ -99,7 +99,8 @@ export const DEFAULT_SEND: SendCfg = { moveHz: 3, idleS: 15, maxGapMs: 1200, bud
 export class PosSender {
   private lastAt = -1e9;
   private last: Pose | null = null;
-  private seq = 0;
+  /** Starts anywhere: a phone that rejoins must not look like a replay of its own old messages. */
+  private seq = Math.floor(Math.random() * 256);
   sent = 0;
   cfg: SendCfg;
   constructor(cfg: SendCfg = DEFAULT_SEND) {
@@ -178,22 +179,8 @@ export function parseBubble(a: unknown): BubbleMsg | null {
 }
 
 export const posTopic = (uid: string) => `roam:u:${uid}`;
-export const bubbleTopic = (cx: number, cy: number) => `roam:b:${cx}:${cy}`;
-
-/** The bubble cells a listener at (x, y) must be subscribed to: his own and any whose rectangle is within `radius` (the server sends to the speaker's cell and his near neighbours). */
-export function bubbleCells(x: number, y: number, cell: number, radius: number): [number, number][] {
-  const cx = Math.floor(x / cell), cy = Math.floor(y / cell);
-  const out: [number, number][] = [];
-  for (let dx = -1; dx <= 1; dx++)
-    for (let dy = -1; dy <= 1; dy++) {
-      const ax = cx + dx, ay = cy + dy;
-      if (ax < 0 || ay < 0) continue;
-      const rx = Math.max(ax * cell - x, 0, x - (ax + 1) * cell);
-      const ry = Math.max(ay * cell - y, 0, y - (ay + 1) * cell);
-      if (rx * rx + ry * ry <= radius * radius) out.push([ax, ay]);
-    }
-  return out;
-}
+/** A player's chat bubbles: written only by the database (roam_say), readable by the same players who may read his positions. */
+export const textTopic = (uid: string) => `roam:t:${uid}`;
 
 /** What `roam_live_tick` returns for each nearby player. Static fields (n, av, sc, t, c) only come the first time. */
 export interface NearbyRow {

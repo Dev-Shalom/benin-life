@@ -44,6 +44,9 @@ interface Slot {
   strideScale: number;
   scale: number;
   failed: boolean;
+  /** Reused per frame: where it is drawn (for the colliders and shadows). */
+  rec: { x: number; y: number; car: boolean; hl: number; hw: number; h: number; v: number };
+  tag: LiveTag;
 }
 
 export interface OthersOpts {
@@ -73,6 +76,9 @@ export class OthersLayer {
   /** Remote positions refreshed this frame (map metres). */
   private pos = new Map<string, { x: number; y: number; car: boolean; hl: number; hw: number; h: number; v: number }>();
   private lastFrame = 0;
+  private listBuf: Remote[] = [];
+  private seenBuf = new Set<string>();
+  private myTag: LiveTag = { id: 'me', x: 0, y: 0, d: 0, a: 1, s: 1 };
 
   constructor(o: OthersOpts) {
     this.o = o;
@@ -96,8 +102,10 @@ export class OthersLayer {
     client.prune(dt);
     const info = client.info;
     const buffer = info?.buffer_ms ?? 200;
-    const cap = o.low ? Math.min(info?.low_max ?? 8, 5) : Math.min(info?.max_shown ?? 20, 12);
-    const list: Remote[] = [];
+    // the client already holds only the players it listens to (one cap for joining and drawing)
+    const cap = client.maxShown();
+    const list = this.listBuf;
+    list.length = 0;
     for (const r of client.remotes.values()) {
       const t = r.track;
       if (t.has) t.sample(nowMs, buffer, dt);
@@ -107,7 +115,8 @@ export class OthersLayer {
     }
     list.sort((a, b) => a.dist - b.dist);
     const { w, h } = o.size();
-    const seen = new Set<string>();
+    const seen = this.seenBuf;
+    seen.clear();
     let drawn = 0;
     for (let i = 0; i < list.length; i++) {
       const r = list[i];
@@ -137,7 +146,9 @@ export class OthersLayer {
       s.g.scale.setScalar(Math.max(0.001, s.scale));
       s.g.position.set(x, 0, y);
       const near = r.dist < 28;
-      this.pos.set(r.id, { x, y, car: wantCar, hl: s.car?.half.l ?? 2.2, hw: s.car?.half.w ?? 0.9, h: hd, v: t.speed * (t.reverse ? -1 : 1) });
+      const rec = s.rec;
+      rec.x = x; rec.y = y; rec.car = wantCar; rec.hl = s.car?.half.l ?? 2.2; rec.hw = s.car?.half.w ?? 0.9; rec.h = hd; rec.v = t.speed * (t.reverse ? -1 : 1);
+      this.pos.set(r.id, rec);
       if (wantCar && s.car) {
         if (s.rig) s.rig.ch.root.visible = false;
         // steering from the turn rate, the wheels roll with the distance drawn
@@ -163,10 +174,9 @@ export class OthersLayer {
       this.v.project(o.cam);
       const d = r.dist;
       if (this.v.z < 1 && this.v.z > -1 && d < 75 && Math.abs(this.v.x) < 1.15 && Math.abs(this.v.y) < 1.15) {
-        const tag: LiveTag = {
-          id: r.id, x: (this.v.x * 0.5 + 0.5) * w, y: (-this.v.y * 0.5 + 0.5) * h, d,
-          a: clamp((75 - d) / 25, 0, 1) * s.scale, s: clamp(1.05 - d / 140, 0.72, 1),
-        };
+        const tag = s.tag;
+        tag.x = (this.v.x * 0.5 + 0.5) * w; tag.y = (-this.v.y * 0.5 + 0.5) * h; tag.d = d;
+        tag.a = clamp((75 - d) / 25, 0, 1) * s.scale; tag.s = clamp(1.05 - d / 140, 0.72, 1);
         bridge.tags.push(tag);
       }
       drawn++;
@@ -185,7 +195,11 @@ export class OthersLayer {
     if (meHead && client.myBubble) {
       this.v.set(meHead.x, meHead.y, meHead.z);
       this.v.project(o.cam);
-      if (this.v.z < 1 && this.v.z > -1) bridge.myTag = { id: 'me', x: (this.v.x * 0.5 + 0.5) * w, y: (-this.v.y * 0.5 + 0.5) * h, d: 0, a: 1, s: 1 };
+      if (this.v.z < 1 && this.v.z > -1) {
+        const m = this.myTag;
+        m.x = (this.v.x * 0.5 + 0.5) * w; m.y = (-this.v.y * 0.5 + 0.5) * h;
+        bridge.myTag = m;
+      }
     }
     this.lastFrame = nowMs;
   }
@@ -212,6 +226,7 @@ export class OthersLayer {
     const s: Slot = {
       id: r.id, g, rig, car: null, carKind: '', carState: makeCarState(0, 0, 0), carItem: null, bufA: new Float32Array(POSE_SIZE), bufB: new Float32Array(POSE_SIZE),
       salt: Math.random() * 10, phase: Math.random(), gait: 0, odo: r.track.odo, hdg: 0, steer: 0, strideScale: tune.strideScale, scale: 0, failed: !rig,
+      rec: { x: 0, y: 0, car: false, hl: 2.2, hw: 0.9, h: 0, v: 0 }, tag: { id: r.id, x: 0, y: 0, a: 0, d: 0, s: 1 },
     };
     this.slots.set(r.id, s);
     return s;

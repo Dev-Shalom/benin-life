@@ -8,7 +8,7 @@
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { isPollMode, reportRealtimeOk, trackSubscribe, useRealtime } from '../../../lib/realtime';
 import {
-  bubbleCells, bubbleTopic, decodePose, EMOTE_MS, EMOTES, EVT_BUBBLE, EVT_POS, parseBubble, PosSender, posTopic,
+  decodePose, EMOTE_MS, EMOTES, EVT_BUBBLE, EVT_POS, parseBubble, PosSender, posTopic, textTopic,
   type EmoteName, type NearbyRow, type Pose,
 } from './protocol';
 import { RemoteTrack } from './track';
@@ -53,6 +53,8 @@ export interface Remote {
   py: number;
   bubble: { text: string; until: number } | null;
   seenAt: number;
+  /** When the server last listed him (ms): a stream position must stay within reach of that. */
+  listedAt: number;
   /** Ticks in a row the server did not list it (a player at the edge of the cap flickers: it is dropped after two). */
   missing: number;
   /** Seconds since it was added (fade in) and since it was dropped (fade out; > 0 means leaving). */
@@ -111,10 +113,16 @@ export class LiveClient {
   private emoteAt = 0;
   private lastRx = new Map<string, number>();
   private unsubRt: (() => void) | null = null;
+  private ticking = false;
+  private visListening = false;
+  /** A hidden tab listens to nothing: channels are left and rejoined when it is shown again. */
   private onVis = () => {
-    if (document.visibilityState === 'visible' && !this.stopped) {
-      window.clearTimeout(this.timer);
+    if (this.stopped || this.status === 'off' || !this.info) return;
+    window.clearTimeout(this.timer);
+    if (document.visibilityState === 'visible') {
       this.timer = window.setTimeout(() => void this.tick(), 200 + Math.random() * 600);
+    } else {
+      this.leaveChannels();
     }
   };
 
@@ -151,7 +159,10 @@ export class LiveClient {
     this.stopped = false;
     if (isPollMode()) return this.setStatus('off', 'poll');
     this.setStatus('connecting');
-    document.addEventListener('visibilitychange', this.onVis);
+    if (!this.visListening) {
+      this.visListening = true;
+      document.addEventListener('visibilitychange', this.onVis);
+    }
     // leaving poll mode again brings the feature back by itself; entering it takes it down
     let prev = useRealtime.getState().mode;
     this.unsubRt = useRealtime.subscribe((s) => {
@@ -177,7 +188,7 @@ export class LiveClient {
     if (this.stopped) return;
     const info = this.info!;
     this.blocked = new Set(info.blocked ?? []);
-    if (!info.enabled) return this.setStatus('off', 'server');
+    if (!info.enabled) return this.goOff('server');
     this.sender.cfg = { moveHz: info.move_hz, idleS: info.idle_s, maxGapMs: 1200, budget: info.budget_mps };
     this.stats.since = Date.now();
     await this.tick();
@@ -187,6 +198,7 @@ export class LiveClient {
     this.stopped = true;
     window.clearTimeout(this.timer);
     document.removeEventListener('visibilitychange', this.onVis);
+    this.visListening = false;
     this.unsubRt?.();
     this.unsubRt = null;
     this.dropAll();
@@ -195,11 +207,17 @@ export class LiveClient {
     this.setStatus('idle');
   }
 
-  private dropAll() {
+  /** Leave every channel but keep the list (a hidden tab). */
+  private leaveChannels() {
     for (const ch of this.chans.values()) void this.sb.removeChannel(ch);
     this.chans.clear();
     this.ownChan = null;
     this.ownJoined = false;
+    this.lastRx.clear();
+  }
+
+  private dropAll() {
+    this.leaveChannels();
     this.remotes.clear();
     this.visible = false;
     this.bump();
@@ -209,6 +227,10 @@ export class LiveClient {
     window.clearTimeout(this.timer);
     this.dropAll();
     this.setStatus('off', why);
+    // the owner's switch may come back on: look again in a minute (poll mode has its own way back)
+    if (why === 'server' && !this.stopped) {
+      this.timer = window.setTimeout(() => { if (!this.stopped && !isPollMode()) void this.begin(); }, 60_000 + Math.random() * 15_000);
+    }
   }
 
   /** A connection problem: back off 10 s, 20 s, 40 s ... up to 5 min, then try the whole thing again. */
@@ -228,23 +250,34 @@ export class LiveClient {
   /* ---------------------------------------------------------------- the presence tick */
   private async tick() {
     window.clearTimeout(this.timer);
-    if (this.stopped || !this.info) return;
+    if (this.stopped || !this.info || this.ticking) return;
     if (isPollMode()) return this.goOff('poll');
-    const hidden = typeof document !== 'undefined' && document.visibilityState !== 'visible';
+    // a hidden tab asks for nothing (its channels were left; the tab asks again when shown)
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    this.ticking = true;
+    try {
+      await this.tickOnce();
+    } finally {
+      this.ticking = false;
+    }
+  }
+
+  private async tickOnce() {
     const p = this.getPose();
     const next = () => {
       if (this.stopped) return;
-      const s = (this.info?.presence_s ?? 9) * (hidden ? 3 : 1);
+      const s = this.info?.presence_s ?? 9;
+      window.clearTimeout(this.timer);
       this.timer = window.setTimeout(() => void this.tick(), (s + (Math.random() * 2 - 1) * Math.min(2, s * 0.2)) * 1000);
     };
-    // a hidden tab asks rarely and sends nothing (its stream stops by itself)
-    const have = [...this.remotes.values()].filter((r) => r.name).map((r) => r.id).slice(0, 60);
-    type Tick = { visible?: boolean; why?: string; players?: NearbyRow[] };
+    type Tick = { visible?: boolean; why?: string; players?: NearbyRow[] | null };
     let data: Tick | null = null as Tick | null;
+    const have = [...this.remotes.values()].filter((r) => r.name).map((r) => r.id).slice(0, 60);
     try {
       const r = await this.sb.rpc('roam_live_tick', { p_x: Math.round(p.x * 10) / 10, p_y: Math.round(p.y * 10) / 10, p_have: have });
       if (r.error) {
-        if (/switched off|off/i.test(r.error.message) && (r.error as { hint?: string }).hint === 'off') return this.setStatus('off', 'server');
+        // the owner switched live players off: everything stops at this tick
+        if ((r.error as { hint?: string }).hint === 'off' || /switched off/i.test(r.error.message)) return this.goOff('server');
         throw r.error;
       }
       data = r.data as Tick;
@@ -260,13 +293,15 @@ export class LiveClient {
     this.stats.ticks++;
     this.visible = Boolean(data.visible);
     this.hiddenWhy = data.visible ? '' : data.why === 'off' ? 'off' : data.why === 'location' ? 'location' : '';
-    this.apply(data.players ?? []);
+    // players = null: the server skipped the query (a call sooner than its rate limit): keep what we have
+    if (data.players) this.apply(data.players);
     this.syncChannels(p);
     if (this.status === 'connecting' && !this.visible) this.setStatus('on');
     next();
   }
 
-  private maxShown(): number {
+  /** One cap for drawing AND listening: the players drawn are the players whose channels are joined. */
+  maxShown(): number {
     const i = this.info!;
     return this.low ? Math.min(i.low_max, i.max_shown) : i.max_shown;
   }
@@ -291,7 +326,7 @@ export class LiveClient {
         r = {
           id, name: row.n, avatar: row.av ?? null, streetCred: Number(row.sc ?? 0), title: row.t ?? null, crew: row.c ?? null,
           mode: row.m === 'car' ? 'car' : 'walk', veh: row.v ?? null, track: new RemoteTrack(), px: row.x, py: row.y, bubble: null,
-          seenAt: now, missing: 0, born: 0, leaving: 0, dist: 99,
+          seenAt: now, listedAt: now, missing: 0, born: 0, leaving: 0, dist: 99,
         };
         this.remotes.set(id, r);
       } else {
@@ -300,7 +335,7 @@ export class LiveClient {
         r.mode = row.m === 'car' ? 'car' : 'walk';
         r.veh = row.v ?? null;
       }
-      r.px = row.x; r.py = row.y; r.seenAt = now;
+      r.px = row.x; r.py = row.y; r.seenAt = now; r.listedAt = now;
       r.track.pushPresence(now, row.x, row.y, row.m === 'car');
     }
     this.bump();
@@ -311,9 +346,15 @@ export class LiveClient {
     const info = this.info!;
     const now = Date.now();
     const wantTopics = new Set<string>();
-    for (const [id, r] of this.remotes) if (r.leaving === 0) wantTopics.add(posTopic(id));
+    const bm = info.bubble_m + 10;
+    for (const [id, r] of this.remotes) {
+      if (r.leaving !== 0) continue;
+      wantTopics.add(posTopic(id));
+      // bubbles only from the players close enough to be read (the text topic has the same server rules as the position topic)
+      const x = r.track.has ? r.track.x : r.px, y = r.track.has ? r.track.y : r.py;
+      if (info.bubble && !this.muteBubbles && Math.hypot(x - p.x, y - p.y) <= bm) wantTopics.add(textTopic(id));
+    }
     if (this.visible) wantTopics.add(posTopic(info.me));
-    if (info.bubble && !this.muteBubbles) for (const [cx, cy] of bubbleCells(p.x, p.y, info.cell_m, info.bubble_m)) wantTopics.add(bubbleTopic(cx, cy));
     for (const [t, ch] of this.chans) {
       if (!wantTopics.has(t)) {
         void this.sb.removeChannel(ch);
@@ -337,10 +378,10 @@ export class LiveClient {
     const own = topic === posTopic(info.me);
     const ch = this.sb.channel(topic, { config: { private: true, broadcast: { self: false, ack: false } } });
     this.chans.set(topic, ch);
-    if (topic.startsWith('roam:b:')) {
-      ch.on('broadcast', { event: EVT_BUBBLE }, ({ payload }) => this.onBubble(payload));
+    const id = topic.slice(7);
+    if (topic.startsWith('roam:t:')) {
+      ch.on('broadcast', { event: EVT_BUBBLE }, ({ payload }) => this.onBubble(id, payload));
     } else if (!own) {
-      const id = topic.slice(7);
       ch.on('broadcast', { event: EVT_POS }, ({ payload }) => this.onPos(id, payload));
     }
     const cb = (status: string) => {
@@ -354,14 +395,18 @@ export class LiveClient {
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
         if (this.chans.get(topic) === ch) this.chans.delete(topic);
         void this.sb.removeChannel(ch);
-        if (own) { this.ownJoined = false; this.ownChan = null; }
         const prev = this.denied.get(topic);
         const n = (prev?.n ?? 0) + 1;
-        // a refused join (blocked, hidden) is not retried for a while; each further failure waits twice as long
+        // a refused join (the player hid, blocked, left or moved off) is expected: wait longer each time, and do NOT count it as a failure
         this.denied.set(topic, { until: Date.now() + Math.min(300_000, 8000 * 2 ** n), n });
-        this.failures.push(Date.now());
-        this.failures = this.failures.filter((t) => Date.now() - t < 60_000);
-        if (this.failures.length >= 6) this.fail('connection');
+        if (own) {
+          this.ownJoined = false;
+          this.ownChan = null;
+          // only trouble with MY OWN channel (or the socket) counts towards switching the layer off
+          this.failures.push(Date.now());
+          this.failures = this.failures.filter((t) => Date.now() - t < 60_000);
+          if (this.failures.length >= 4) this.fail('connection');
+        }
       }
     };
     if (own) trackSubscribe(ch, 'roam', cb);
@@ -379,16 +424,20 @@ export class LiveClient {
     this.lastRx.set(id, now);
     const d = decodePose((payload as { d?: unknown })?.d ?? payload);
     if (!d) return;
+    // a position must stay within reach of where the server last listed him (40 m plus a car's speed): no teleporting avatars, and the
+    // collision and bubble radius stay honest
+    const reach = 40 + 26 * Math.min(60, (now - r.listedAt) / 1000);
+    if (Math.hypot(d.x - r.px, d.y - r.py) > reach) return;
     this.stats.rxMsgs++;
     this.stats.rxBytes += FRAME_OVERHEAD + 28;
     r.track.push(now, d);
     r.seenAt = now;
   }
 
-  private onBubble(payload: unknown) {
+  private onBubble(topicId: string, payload: unknown) {
     if (this.muteBubbles || !this.info) return;
     const b = parseBubble(payload);
-    if (!b) return;
+    if (!b || b.u !== topicId) return;
     this.stats.rxMsgs++;
     this.stats.rxBytes += FRAME_OVERHEAD + 40 + b.t.length;
     if (b.u === this.info.me || this.blocked.has(b.u)) return;
@@ -403,12 +452,19 @@ export class LiveClient {
   }
 
   /* ---------------------------------------------------------------- sending (called every frame by the scene) */
+  /** Players who really listen to me: the ones drawn (the server lists the same players for both sides). */
+  private listenerCount(): number {
+    let n = 0;
+    for (const r of this.remotes.values()) if (r.leaving === 0) n++;
+    return n;
+  }
+
   /** Call each frame with my pose. Sends a message when the rule says so. */
   update(p: Omit<Pose, 'emote'>) {
     if (this.status !== 'on' || !this.visible || !this.ownChan || !this.ownJoined) return;
     const now = nowMs();
     if (this.emoteId && now > this.emoteUntil) this.emoteId = 0;
-    const pkt = this.sender.next(now, { ...p, emote: this.emoteId }, this.remotes.size);
+    const pkt = this.sender.next(now, { ...p, emote: this.emoteId }, this.listenerCount());
     if (!pkt) return;
     if (this.ownChan.state !== 'joined') return;
     void this.ownChan.send({ type: 'broadcast', event: EVT_POS, payload: pkt });
@@ -449,9 +505,11 @@ export class LiveClient {
   /** Block takes effect for me at once (the server filters the next list too). */
   blockLocal(id: string) {
     this.blocked.add(id);
-    const t = posTopic(id);
-    const ch = this.chans.get(t);
-    if (ch) { void this.sb.removeChannel(ch); this.chans.delete(t); }
+    for (const t of [posTopic(id), textTopic(id)]) {
+      const ch = this.chans.get(t);
+      if (ch) { void this.sb.removeChannel(ch); this.chans.delete(t); }
+    }
+    this.lastRx.delete(id);
     this.remotes.delete(id);
     this.bump();
   }
@@ -469,8 +527,11 @@ export class LiveClient {
         r.leaving += dt;
         if (r.leaving > 0.8) {
           this.remotes.delete(id);
-          const ch = this.chans.get(posTopic(id));
-          if (ch) { void this.sb.removeChannel(ch); this.chans.delete(posTopic(id)); }
+          this.lastRx.delete(id);
+          for (const t of [posTopic(id), textTopic(id)]) {
+            const ch = this.chans.get(t);
+            if (ch) { void this.sb.removeChannel(ch); this.chans.delete(t); }
+          }
           changed = true;
         }
       } else {

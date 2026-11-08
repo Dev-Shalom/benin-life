@@ -949,7 +949,7 @@
   inset: 0;
   border: 0;
   padding: 0;
-  background: rgba(8, 14, 28, 0.28);
+  background: var(--scrim);
 }
 .roam-modal__card {
   position: relative;
@@ -1034,7 +1034,7 @@
 .roam-card__confirm .is-danger {
   background: var(--bad);
   border-color: transparent;
-  color: #fff;
+  color: var(--on-fill);
 }
 .roam-card__reasons {
   margin-bottom: 8px;

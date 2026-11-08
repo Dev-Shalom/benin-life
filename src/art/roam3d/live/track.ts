@@ -48,6 +48,8 @@ export class RemoteTrack {
   emoteAt = 0;
   lastSeq = -1;
   lastAt = 0;
+  /** When the last STREAM message arrived (ms): a long silence means the sender may have restarted his counter. */
+  private lastStreamAt = -1e9;
   private snaps: Snap[] = [];
   private px = 0;
   private py = 0;
@@ -55,8 +57,10 @@ export class RemoteTrack {
 
   /** Feed one decoded message. `now` in ms. Returns false for a stale or duplicate one. */
   push(now: number, p: Pose & { seq: number }): boolean {
+    if (now - this.lastStreamAt > 3000) this.lastSeq = -1;
     if (this.lastSeq >= 0 && !seqNewer(p.seq, this.lastSeq)) return false;
     this.lastSeq = p.seq;
+    this.lastStreamAt = now;
     const last = this.snaps[this.snaps.length - 1];
     let snap = !last;
     if (last) {

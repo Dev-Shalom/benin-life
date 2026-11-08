@@ -182,6 +182,7 @@ function RoamViewInner({ world, startId, avatar, hour, onGoIn, onLeave, onLost, 
   const [cardId, setCardId] = useState<string | null>(null);
   const [liveSheet, setLiveSheet] = useState(false);
   useEffect(() => {
+    if (!import.meta.env.DEV) return; // the dev handle (tests, screenshots) never ships
     (window as unknown as { __live?: unknown }).__live = liveClient;
     return () => { delete (window as unknown as { __live?: unknown }).__live; };
   }, [liveClient]);
