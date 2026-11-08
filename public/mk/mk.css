@@ -77,8 +77,8 @@
 .mk { position: relative; min-height: 100dvh; margin: 0; background: var(--bg); color: var(--text); font: 17px/1.55 var(--body); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; overflow-x: clip; }
 .mk *, .mk *::before, .mk *::after { box-sizing: border-box; }
 .mk img { display: block; max-width: 100%; height: auto; }
-.mk a { color: inherit; }
-.mk h1, .mk h2, .mk h3, .mk p, .mk figure { margin: 0; }
+:where(.mk) a { color: inherit; }
+:where(.mk) :is(h1, h2, h3, p, figure) { margin: 0; }
 .mk button { font-family: inherit; }
 .mk-wrap { width: min(1200px, 100% - 40px); margin-inline: auto; }
 .mk-display { font-family: var(--display); letter-spacing: -0.035em; line-height: 1.02; font-weight: 600; }

@@ -1,8 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="mk-page">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0f11">
+<meta name="color-scheme" content="dark light">
+<script>(function(){var d=document.documentElement,t="dark";try{var c=(JSON.parse(localStorage.getItem("bl.prefs.v1")||"{}")||{}).theme;if(c==="light")t="light";else if(c==="dark")t="dark";else if(window.matchMedia("(prefers-color-scheme: light)").matches)t="light"}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#f6f5f2":"#0e0f11")})()</script>
 <title>Benin Life FAQ: who owns it, is it free, how to play</title>
 <meta name="description" content="Answers about Benin Life: who owns and created the game (Shalom Uwagboe), whether it is free, how to play in your browser and who can play.">
 <link rel="canonical" href="https://playbeninlife.app/faq/">
@@ -13,6 +16,9 @@
 <meta property="og:url" content="https://playbeninlife.app/faq/">
 <meta property="og:image" content="https://playbeninlife.app/og-image.png">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/mk/mk.css">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -30,49 +36,111 @@
 }
 </script>
 <style>
-  :root { color-scheme: dark }
-  body { margin: 0; background: #1E1410; color: #F7EBD3; font: 18px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif }
-  main { max-width: 760px; margin: 0 auto; padding: 40px 20px 64px }
-  h1 { font-size: 2.2rem; line-height: 1.15; margin: 0 0 8px; color: #F7EBD3 }
-  h2 { font-size: 1.35rem; margin: 36px 0 8px; color: #C8922E }
-  p, li { color: #E9DCC0 }
-  a { color: #C8922E }
-  .cta { display: inline-block; margin: 16px 0 8px; padding: 14px 24px; background: #C8922E; color: #1E1410; font-weight: 700; border-radius: 12px; text-decoration: none }
-  nav a { margin-right: 16px }
-  footer { margin-top: 48px; font-size: 14px; opacity: .8 }
+.pg { padding: 40px 0 88px; }
+.pg h1 { font-size: clamp(38px, 5.2vw, 64px); max-width: 18ch; }
+.pg .mk-lede { margin-top: 18px; max-width: 56ch; }
+.pg .ctas { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 12px; }
+.pg-grid { margin-top: 56px; display: grid; gap: 56px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 960px) { .pg-grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 72px; align-items: start; } .pg-aside { position: sticky; top: 88px; } }
+.pg section + section { margin-top: 48px; }
+.pg h2 { font: 600 clamp(24px, 2.6vw, 32px) / 1.15 var(--display); letter-spacing: -0.025em; margin-bottom: 14px; }
+.pg p { color: var(--text-2); max-width: 62ch; }
+.pg p + p { margin-top: 14px; }
+.pg a:not(.mk-btn):not(.mk-text):not(.mk-brand) { color: var(--accent); text-underline-offset: 3px; }
+.pg strong { color: var(--text); font-weight: 600; }
+.pg-media { border-radius: var(--r-card); overflow: hidden; box-shadow: var(--shadow); aspect-ratio: 16 / 9; background: var(--bg-2); }
+.pg-media img { width: 100%; height: 100%; object-fit: cover; }
+.pg-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px) { .pg-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pg-list li { padding: 18px 20px; border-radius: var(--r-media); background: var(--surface); border: 1px solid var(--line); color: var(--text-2); font-size: 16px; line-height: 1.45; }
+.pg-contact { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 10px 14px; }
+
+.mk-acc__item h2 { font: inherit; margin: 0; letter-spacing: 0; }
+.faq-wrap { margin-top: 40px; max-width: 820px; }
+.faq-wrap .ctas { margin-top: 32px; }
+.mk-acc__panel p { padding-bottom: 20px; }
 </style>
 </head>
-<body>
-<main>
-<nav><a href="/">Play</a><a href="/about/">About</a><a href="/faq/">FAQ</a></nav>
-<h1>Benin Life: frequently asked questions</h1>
-
-<h2>Who is the owner of Benin Life?</h2>
-<p>Benin Life was created and is owned by <strong>Shalom Uwagboe</strong>, a game creator from Benin City, Nigeria. <a href="/about/">Read more about the creator and the game</a>.</p>
-
-<h2>Is playbeninlife.app the official Benin Life game?</h2>
-<p>Yes. The official Benin Life game is at <a href="/">playbeninlife.app</a>. It was created and is owned by Shalom Uwagboe. Any other website or game with a similar name is not made or run by him.</p>
-
-<h2>What is Benin Life?</h2>
-<p>Benin Life is a free online life game set in Benin City, Edo State, Nigeria. You work, run a business, go to school, raise a family and chat with other players.</p>
-
-<h2>Is Benin Life free?</h2>
-<p>Yes. Benin Life is free to play. There is nothing to download.</p>
-
-<h2>How do I play Benin Life?</h2>
-<p>Open <a href="/">playbeninlife.app</a> in your phone or computer browser, sign up and create your character. It works on any modern browser.</p>
-<a class="cta" href="/">Play Benin Life free</a>
-
-<h2>Do I need to download an app?</h2>
-<p>No. Benin Life runs in your browser. You can add it to your phone home screen from the browser menu.</p>
-
-<h2>Who can play Benin Life?</h2>
-<p>Players must be 18 or older.</p>
-
-<h2>How do I contact Benin Life about sponsorship?</h2>
-<p>Email <a href="mailto:code.devshalom@gmail.com">code.devshalom@gmail.com</a> or message <a href="https://www.tiktok.com/@beninlife_official_" rel="me">@beninlife_official_</a> on TikTok.</p>
-
-<footer><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></footer>
+<body class="mk">
+<a class="mk-skip" href="#main">Skip to content</a>
+<header class="mk-nav">
+  <div class="mk-wrap">
+    <a class="mk-brand" href="/" aria-label="Benin Life home"><img src="/brand/logo-mark.svg" alt="" width="30" height="30" />Benin Life</a>
+    <div class="mk-links">
+      <a class="mk-text" href="/about/">About</a>
+      <a class="mk-text" href="/faq/" aria-current="page">FAQ</a>
+      <a class="mk-text" href="/sponsor/">Partners</a>
+      <button class="mk-theme" type="button" data-theme-toggle aria-label="Switch theme"><span class="mk-theme__thumb" aria-hidden="true"></span><svg class="mk-theme__sun" viewBox="0 0 256 256" aria-hidden="true"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"/></svg><svg class="mk-theme__moon" viewBox="0 0 256 256" aria-hidden="true"><path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23ZM188.9,190.34A88,88,0,0,1,65.66,67.11a89,89,0,0,1,31.4-26A106,106,0,0,0,96,56,104.11,104.11,0,0,0,200,160a106,106,0,0,0,14.92-1.06A89,89,0,0,1,188.9,190.34Z"/></svg></button>
+      <a class="mk-btn mk-btn--primary" href="/">Start playing</a>
+    </div>
+  </div>
+</header>
+<main id="main" class="pg">
+<div class="mk-wrap">
+<div data-hero>
+<h1 class="mk-display mk-rise">Benin Life: frequently asked questions</h1>
+</div>
+<div class="faq-wrap mk-rise" style="--i:1">
+<div class="mk-acc">
+<div class="mk-acc__item" data-acc>
+<h2><button type="button" id="q0" aria-expanded="false" aria-controls="a0">Who is the owner of Benin Life?<svg viewBox="0 0 256 256" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg></button></h2>
+<div id="a0" role="region" aria-labelledby="q0" class="mk-acc__panel" inert><div><p>Benin Life was created and is owned by <strong>Shalom Uwagboe</strong>, a game creator from Benin City, Nigeria. <a href="/about/">Read more about the creator and the game</a>.</p></div></div>
+</div>
+<div class="mk-acc__item" data-acc>
+<h2><button type="button" id="q1" aria-expanded="false" aria-controls="a1">Is playbeninlife.app the official Benin Life game?<svg viewBox="0 0 256 256" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg></button></h2>
+<div id="a1" role="region" aria-labelledby="q1" class="mk-acc__panel" inert><div><p>Yes. The official Benin Life game is at <a href="/">playbeninlife.app</a>. It was created and is owned by Shalom Uwagboe. Any other website or game with a similar name is not made or run by him.</p></div></div>
+</div>
+<div class="mk-acc__item" data-acc>
+<h2><button type="button" id="q2" aria-expanded="false" aria-controls="a2">What is Benin Life?<svg viewBox="0 0 256 256" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg></button></h2>
+<div id="a2" role="region" aria-labelledby="q2" class="mk-acc__panel" inert><div><p>Benin Life is a free online life game set in Benin City, Edo State, Nigeria. You work, run a business, go to school, raise a family and chat with other players.</p></div></div>
+</div>
+<div class="mk-acc__item" data-acc>
+<h2><button type="button" id="q3" aria-expanded="false" aria-controls="a3">Is Benin Life free?<svg viewBox="0 0 256 256" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg></button></h2>
+<div id="a3" role="region" aria-labelledby="q3" class="mk-acc__panel" inert><div><p>Yes. Benin Life is free to play. There is nothing to download.</p></div></div>
+</div>
+<div class="mk-acc__item" data-acc>
+<h2><button type="button" id="q4" aria-expanded="false" aria-controls="a4">How do I play Benin Life?<svg viewBox="0 0 256 256" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg></button></h2>
+<div id="a4" role="region" aria-labelledby="q4" class="mk-acc__panel" inert><div><p>Open <a href="/">playbeninlife.app</a> in your phone or computer browser, sign up and create your character. It works on any modern browser.</p></div></div>
+</div>
+<div class="mk-acc__item" data-acc>
+<h2><button type="button" id="q5" aria-expanded="false" aria-controls="a5">Do I need to download an app?<svg viewBox="0 0 256 256" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg></button></h2>
+<div id="a5" role="region" aria-labelledby="q5" class="mk-acc__panel" inert><div><p>No. Benin Life runs in your browser. You can add it to your phone home screen from the browser menu.</p></div></div>
+</div>
+<div class="mk-acc__item" data-acc>
+<h2><button type="button" id="q6" aria-expanded="false" aria-controls="a6">Who can play Benin Life?<svg viewBox="0 0 256 256" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg></button></h2>
+<div id="a6" role="region" aria-labelledby="q6" class="mk-acc__panel" inert><div><p>Players must be 18 or older.</p></div></div>
+</div>
+<div class="mk-acc__item" data-acc>
+<h2><button type="button" id="q7" aria-expanded="false" aria-controls="a7">How do I contact Benin Life about sponsorship?<svg viewBox="0 0 256 256" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg></button></h2>
+<div id="a7" role="region" aria-labelledby="q7" class="mk-acc__panel" inert><div><p>Email <a href="mailto:code.devshalom@gmail.com">code.devshalom@gmail.com</a> or message <a href="https://www.tiktok.com/@beninlife_official_" rel="me">@beninlife_official_</a> on TikTok.</p></div></div>
+</div>
+</div>
+<div class="ctas"><a class="mk-btn mk-btn--primary" href="/">Play Benin Life free <svg class="arrow" viewBox="0 0 256 256" aria-hidden="true"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></svg></a></div>
+</div>
+<script>
+(function () {
+  document.querySelectorAll('[data-acc]').forEach(function (item) {
+    var b = item.querySelector('button'), p = item.querySelector('.mk-acc__panel');
+    b.addEventListener('click', function () {
+      var open = b.getAttribute('aria-expanded') !== 'true';
+      b.setAttribute('aria-expanded', open ? 'true' : 'false');
+      item.classList.toggle('is-open', open);
+      if (open) p.removeAttribute('inert'); else p.setAttribute('inert', '');
+    });
+  });
+  // A link like /faq/#q3 opens that question.
+  var h = location.hash && document.querySelector(location.hash);
+  if (h && h.closest('[data-acc]')) h.click();
+})();
+</script>
+</div>
 </main>
+<footer class="mk-footer">
+  <div class="mk-wrap">
+    <span>Benin Life is a game. Players must be 18 or older.</span>
+    <nav aria-label="Footer"><a href="/">Play</a><a href="/about/">About</a><a href="/faq/">FAQ</a><a href="/sponsor/">Partners</a><a href="https://www.tiktok.com/@beninlife_official_" rel="noopener">TikTok</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a></nav>
+  </div>
+</footer>
+<script src="/mk/mk.js"></script>
 </body>
 </html>

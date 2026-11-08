@@ -1,28 +1,24 @@
 import { useGame } from '../state/game';
-import { Button, EmptyState } from '../ui';
-import { Logo } from './Brand';
+import { Ph } from './mk/Ph';
+import { MkNav, MkRoot } from './mk/Shell';
 
 export default function ErrorScreen({ message }: { message: string }) {
   const refresh = useGame((s) => s.refresh);
   const signOut = useGame((s) => s.signOut);
   return (
-    <div className="center-screen">
-      <div className="center-screen__brand">
-        <Logo variant="full" size={52} />
-      </div>
-      <div className="auth-card">
-        <EmptyState
-          icon="warning"
-          title="Something went wrong"
-          body={message}
-          action={
-            <div className="error-actions">
-              <Button icon="refresh" onClick={() => void refresh()}>Try again</Button>
-              <Button variant="ghost" onClick={() => void signOut()}>Log out</Button>
-            </div>
-          }
-        />
-      </div>
-    </div>
+    <MkRoot className="er">
+      <MkNav />
+      <main id="main" className="mk-wrap er-main">
+        <div className="er-card" role="alert">
+          <span className="er-icon"><Ph name="warning" /></span>
+          <h1 className="mk-display">Something went wrong</h1>
+          <p>{message}</p>
+          <div className="er-actions">
+            <button type="button" className="mk-btn mk-btn--primary" onClick={() => void refresh()}>Try again</button>
+            <button type="button" className="mk-btn mk-btn--ghost" onClick={() => void signOut()}>Log out</button>
+          </div>
+        </div>
+      </main>
+    </MkRoot>
   );
 }

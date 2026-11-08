@@ -1,10 +1,8 @@
 // Terms of Service (/terms) and Privacy Policy (/privacy) — public pages, plain English, NDPR-aware.
-// Same light look as the auth pages. Keep the contact email and the 14-day chat retention in sync with docs/CHAT.md.
-import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+// Marketing look (docs/FRONTEND.md): editorial reading column, sticky contents on desktop. Keep the contact email and the 14-day chat retention in sync with docs/CHAT.md.
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Icon } from '../ui';
-import { Logo } from './Brand';
+import { MkFooter, MkNav, MkRoot } from './mk/Shell';
 
 const CONTACT = 'code.devshalom@gmail.com';
 const UPDATED = '12 October 2026';
@@ -14,34 +12,49 @@ function Mail() {
 }
 
 function LegalPage({ title, children }: { title: string; children: ReactNode }) {
+  const body = useRef<HTMLElement>(null);
+  const [toc, setToc] = useState<{ id: string; text: string }[]>([]);
+  const [active, setActive] = useState('');
   useEffect(() => {
     const prev = document.title;
     document.title = `${title} · Benin Life`;
     window.scrollTo(0, 0);
     return () => { document.title = prev; };
   }, [title]);
+  // The contents list is built from the section headings, so the legal text itself stays exactly as written.
+  useEffect(() => {
+    const hs = Array.from(body.current?.querySelectorAll('h2') ?? []);
+    hs.forEach((h, i) => { h.id = `sec-${i + 1}`; });
+    setToc(hs.map((h) => ({ id: h.id, text: h.textContent ?? '' })));
+    if (typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(
+      (entries) => { for (const e of entries) if (e.isIntersecting) setActive(e.target.id); },
+      { rootMargin: '-15% 0px -75% 0px' },
+    );
+    hs.forEach((h) => io.observe(h));
+    return () => io.disconnect();
+  }, [title]);
   return (
-    <div className="auth legal">
-      <Link to="/" className="auth__back"><Icon name="back" size={16} /> Back</Link>
-      <div className="legal__inner">
-        <header className="legal__brand">
-          <Logo size={48} title="" />
-          <div>
-            <p className="legal__eyebrow">Benin Life <span className="beta-badge">Beta</span></p>
-            <h1 className="legal__title">{title}</h1>
-            <p className="legal__updated">Last updated {UPDATED}</p>
-          </div>
+    <MkRoot className="lg">
+      <MkNav links={[{ href: '/about/', label: 'About' }, { href: '/faq/', label: 'FAQ' }]}>
+        <Link to="/auth?mode=signup" className="mk-btn mk-btn--primary mk-btn--sm">Start playing</Link>
+      </MkNav>
+      <div className="mk-wrap lg-grid">
+        <header className="lg-head">
+          <h1 className="mk-display">{title}</h1>
+          <p className="lg-updated">Last updated {UPDATED}</p>
         </header>
-        <main className="auth-card legal__card">{children}</main>
-        <nav className="legal__nav" aria-label="Legal">
-          <Link to="/terms">Terms of Service</Link>
-          <span aria-hidden>·</span>
-          <Link to="/privacy">Privacy Policy</Link>
-          <span aria-hidden>·</span>
-          <Mail />
+        <nav className="lg-toc" aria-label="Contents">
+          <ol>
+            {toc.map((t) => (
+              <li key={t.id}><a href={`#${t.id}`} aria-current={active === t.id ? 'true' : undefined}>{t.text.replace(/^\d+\.\s*/, '')}</a></li>
+            ))}
+          </ol>
         </nav>
+        <main id="main" className="lg-body" ref={body}>{children}</main>
       </div>
-    </div>
+      <MkFooter note={<>Questions? <Mail /></>} />
+    </MkRoot>
   );
 }
 

@@ -192,3 +192,44 @@
 .au-alert--info { background: var(--accent-soft); color: var(--text); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
 .au-note { text-align: center; color: var(--text-3); font-size: 14px; }
 @media (prefers-reduced-motion: reduce) { .au-card { animation: none; } }
+
+/* =====================================================================
+   Terms and Privacy: an editorial reading layout
+   ===================================================================== */
+.lg-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 40px 0 88px; }
+.lg-head h1 { font-size: clamp(38px, 5vw, 60px); }
+.lg-updated { margin-top: 12px; color: var(--text-3); font-size: 15px; }
+.lg-toc { display: none; }
+.lg-toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.lg-toc a { display: block; padding: 8px 14px; border-radius: 12px; color: var(--text-2); text-decoration: none; font-size: 15px; line-height: 1.35; transition: background-color 200ms ease, color 200ms ease; }
+.lg-toc a[aria-current="true"] { background: var(--accent-soft); color: var(--text); }
+@media (hover: hover) and (pointer: fine) { .lg-toc a:hover { color: var(--text); } }
+.lg-body { max-width: 68ch; font-size: 17px; line-height: 1.7; color: var(--text-2); }
+.lg-body .legal__lead { font-size: 19px; color: var(--text); }
+.lg-body h2 { margin: 44px 0 12px; font: 600 clamp(22px, 2.4vw, 28px) / 1.2 var(--display); letter-spacing: -0.025em; color: var(--text); scroll-margin-top: 88px; }
+.lg-body p { margin: 0 0 14px; }
+.lg-body ul, .lg-body ol { margin: 0 0 16px; padding-left: 22px; display: grid; gap: 8px; }
+.lg-body b, .lg-body strong { color: var(--text); font-weight: 600; }
+.lg-body a { color: var(--accent); text-underline-offset: 3px; }
+@media (min-width: 960px) {
+  .lg-grid { grid-template-columns: 250px minmax(0, 1fr); gap: 20px 72px; }
+  .lg-head { grid-column: 1 / -1; }
+  .lg-toc { display: block; position: sticky; top: 88px; align-self: start; }
+}
+
+/* =====================================================================
+   Company card and error screen
+   ===================================================================== */
+.cp-main { display: grid; place-items: start center; padding: 40px 0 88px; min-height: calc(100dvh - 160px); }
+.cp-card { width: min(460px, 100%); display: grid; gap: 16px; padding: 24px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--text); }
+.cp-card .co-public, .cp-card .co-public h3 { color: var(--text); }
+.cp-card .co-meta, .cp-card .co-desc, .cp-card .bz-hint, .cp-card .bz-rows span { color: var(--text-2); }
+.cp-missing h1 { font-size: 30px; }
+.cp-missing p { margin-top: 8px; color: var(--text-2); }
+.er-main { display: grid; place-items: center; min-height: calc(100dvh - 64px); padding-bottom: 64px; }
+.er-card { width: min(480px, 100%); padding: 32px 28px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--line); display: grid; gap: 12px; justify-items: start; }
+.er-icon { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--danger-soft); }
+.er-icon svg { width: 24px; height: 24px; fill: var(--danger); }
+.er-card h1 { font-size: 30px; }
+.er-card p { color: var(--text-2); }
+.er-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
