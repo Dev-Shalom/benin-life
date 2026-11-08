@@ -65,7 +65,8 @@
 }
 .lp-cell { position: relative; border-radius: var(--r-card); overflow: hidden; background: var(--surface); border: 1px solid var(--line); min-height: 220px; display: flex; flex-direction: column; justify-content: flex-end; isolation: isolate; }
 .lp-cell--media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; transition: transform 1200ms var(--ease-out); }
-.lp-cell--media::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, transparent 30%, var(--scrim)); }
+.lp-cell--media { min-height: 300px; }
+.lp-cell--media::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, transparent 15%, rgb(10 11 13 / .6) 50%, var(--scrim) 85%); }
 .lp-b-club::after { background: linear-gradient(180deg, rgb(10 11 13 / .1), var(--scrim) 62%) !important; }
 .lp-cell__copy { padding: 22px 24px; }
 .lp-cell h3 { font: 600 22px / 1.15 var(--display); letter-spacing: -0.02em; }
