@@ -67,7 +67,7 @@ end $$;
 do $$
 declare n int;
 begin
-  perform pg_temp.assert((select count(*) from game_config where key like 'roam.%') = 33, 'thirty-three roam settings (12 + 18 + 3)');
+  perform pg_temp.assert((select count(*) from game_config where key like 'roam.%') = 52, 'fifty-two roam settings (12 + 21 + 19 live)');
   select count(*) into n from game_config where key like 'roam.%'
      and (category <> 'roam' or coalesce(label, '') = '' or coalesce(description, '') = '' or (kind in ('number', 'naira', 'percent') and (min is null or max is null)));
   perform pg_temp.assert(n = 0, 'every roam setting is in category roam with a label, a description and a range (' || n || ' without)');
