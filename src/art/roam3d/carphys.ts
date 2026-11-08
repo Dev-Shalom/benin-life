@@ -100,7 +100,8 @@ export function discsFor(spec: CarSpec): Disc[] {
   d = [];
   const R = spec.wid / 2;
   const span = spec.len - 2 * R;
-  const n = Math.max(1, Math.ceil(span / (R * 1.1)) + 1);
+  // close enough that the scallops between neighbouring discs are only a couple of centimetres deep
+  const n = Math.max(1, Math.ceil(span / (R * 0.5)) + 1);
   for (let i = 0; i < n; i++) d.push({ u: n === 1 ? 0 : -span / 2 + (span * i) / (n - 1), v: 0, r: R });
   const cr = R * 0.55;
   for (const su of [-1, 1]) for (const sv of [-1, 1]) d.push({ u: su * (spec.len / 2 - cr), v: sv * (R - cr), r: cr });
