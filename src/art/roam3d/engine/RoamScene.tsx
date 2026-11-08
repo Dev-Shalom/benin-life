@@ -28,7 +28,9 @@ import {
   PointLight,
   Quaternion,
   SphereGeometry,
+  Vector2,
   Vector3,
+  Raycaster,
 } from 'three';
 import type { AvatarConfig } from '../../../lib/types';
 import { defaultAvatar, randomAvatar } from '../../avatar3d/catalog';
@@ -152,6 +154,12 @@ export interface RoamApi {
   advance(sec: number): void;
   /** Dev / tests: set the stick (x right, y forward) and the hand brake. */
   setInput(sx: number, sy: number, brake?: boolean): void;
+  /** Dev: hide every mesh whose name starts with this (solid, glass-lit, glow, signs, far, landmark). */
+  hide(prefix: string): void;
+  /** Dev: dark, high triangles in the chunk meshes (to find a stray black slab). */
+  findDark(): string[];
+  /** Dev: what is under this screen point (NDC)? */
+  pick(nx: number, ny: number, name?: string): string;
   /** Dev / tests: a scripted walker or driver that follows a route to random places (walk: the GPS route, drive: the road network), forever. null = off. */
   auto(o: { mode: 'walk' | 'drive'; run?: boolean; speed?: number; dest?: { x: number; y: number } } | null): void;
   world: RoamWorld;
@@ -1267,6 +1275,33 @@ function Rig(props: RoamSceneProps) {
         autoS.pts = [];
         autoS.plan = 0;
       },
+      pick: (nx, ny, name = 'signs') => {
+        const rc = new Raycaster();
+        rc.setFromCamera(new Vector2(nx, ny), cam);
+        const list: Mesh[] = [];
+        root.traverse((o) => { if ((o as Mesh).isMesh && o.name === name) list.push(o as Mesh); });
+        const hit = rc.intersectObjects(list, false)[0];
+        if (!hit) return 'none';
+        const m = hit.object as Mesh;
+        const col = m.geometry.attributes.color;
+        const f = hit.face;
+        return `${hit.object.name} dist ${hit.distance.toFixed(1)} at ${hit.point.x.toFixed(1)},${hit.point.y.toFixed(1)},${hit.point.z.toFixed(1)} color ${col && f ? [col.getX(f.a), col.getY(f.a), col.getZ(f.a)].map((v) => v.toFixed(2)).join(',') : '-'} normal ${f ? [f.normal.x, f.normal.y, f.normal.z].map((v) => v.toFixed(2)).join(',') : '-'}`;
+      },
+      findDark: () => {
+        const out: string[] = [];
+        root.traverse((o) => {
+          const m = o as Mesh;
+          if (!m.isMesh || o.name !== 'solid') return;
+          const P = m.geometry.attributes.position;
+          for (let i = 0; i < P.count; i += 3) {
+            const e = Math.max(Math.hypot(P.getX(i) - P.getX(i + 1), P.getZ(i) - P.getZ(i + 1)), Math.hypot(P.getX(i) - P.getX(i + 2), P.getZ(i) - P.getZ(i + 2)));
+            const C = m.geometry.attributes.color;
+            if (Math.hypot(P.getX(i) - player.x, P.getZ(i) - player.y) < 12 && C.getX(i) < 0.03 && C.getZ(i) < 0.06 && out.length < 16) out.push(`${P.getX(i).toFixed(0)},${P.getY(i).toFixed(1)},${P.getZ(i).toFixed(0)} edge ${e.toFixed(1)} ny ${m.geometry.attributes.normal.getY(i).toFixed(2)}`);
+          }
+        });
+        return out;
+      },
+      hide: (prefix) => { root.traverse((o) => { if (o.name.startsWith(prefix)) o.visible = false; }); },
       setInput: (sx, sy, brake = false) => {
         const I = P.current.input.current;
         I.sx = sx; I.sy = sy; I.brake = brake;

@@ -71,7 +71,7 @@ export function RoamHost({ state, hour, avatar }: { state: GameState; hour: numb
 
   // every place of the city (closed ones too: the airport stands there with a shut gate)
   const places = useMemo(
-    () => locations.filter((l) => rc.all || placeInRoam(l, rc)).map((l) => ({ id: l.id, name: l.name, scene: l.scene, x: Number(l.x), y: Number(l.y), active: l.active !== false, keke_ok: l.keke_ok })),
+    () => locations.filter((l) => (rc.all ? Number(l.remote_km ?? 0) === 0 : placeInRoam(l, rc))).map((l) => ({ id: l.id, name: l.name, scene: l.scene, x: Number(l.x), y: Number(l.y), active: l.active !== false, keke_ok: l.keke_ok })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [locations, rc.enabled, rc.all, rc.box.x0, rc.box.y0, rc.box.x1, rc.box.y1],
   );
@@ -95,7 +95,8 @@ export function RoamHost({ state, hour, avatar }: { state: GameState; hour: numb
     return {
       info: carInfo,
       fuelPerM: (Number(cfg(`drive.fuel.lpk_${cls}`, 0.11)) * Number(cfg('roam.drive.fuel_scale', 8))) / 1000,
-      mechanicCost: Number(cfg('drive.dry.mechanic_cost', 3500)),
+      mechanicCost: Number(cfg('drive.dry.mechanic_cost', 12000)),
+      refresh: async () => { try { const i = await roamCarInfo(); setCarInfo(i.enabled ? i : { ...i, has_car: false }); } catch { /* keep the old numbers */ } },
       readyS: Number(cfg('roam.car.ready_s', 4)),
       setMode: async (mode, pose) => {
         const r = await roamSetMode(mode, pose);

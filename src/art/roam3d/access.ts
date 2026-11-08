@@ -23,8 +23,10 @@ export function roamCfg(cfg: <T>(key: string, fallback: T) => T): RoamCfg {
   };
 }
 
-export function placeInRoam(loc: { x: number; y: number; active?: boolean } | null | undefined, c: RoamCfg): boolean {
+export function placeInRoam(loc: { x: number; y: number; active?: boolean; remote_km?: number | null } | null | undefined, c: RoamCfg): boolean {
   if (!c.enabled || !loc || loc.active === false) return false;
+  // far places (km away, keke banned) stay quick-travel only
+  if (c.all && Number(loc.remote_km ?? 0) > 0) return false;
   const x = Number(loc.x), y = Number(loc.y);
   if (c.all) return x >= AREA.x0 && x <= AREA.x1 && y >= AREA.y0 && y <= AREA.y1;
   return x >= c.box.x0 && x <= c.box.x1 && y >= c.box.y0 && y <= c.box.y1;

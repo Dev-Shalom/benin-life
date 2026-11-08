@@ -14,7 +14,7 @@ import { AREA, type PlaceIn } from './area';
 import type { RoamApi, RoamInput, RoamLive } from './engine/RoamScene';
 import { RoamMap } from './RoamMap';
 import { MagnifierIcon, RoamSheet, type SheetItem } from './RoamSheet';
-import { getRoamWorld } from './world';
+import { getRoamWorld, type RoamWorld } from './world';
 import './roam3d.css';
 
 const RoamScene = lazy(() => import('./engine/RoamScene'));
@@ -28,6 +28,8 @@ export interface RoamCarCtl {
   mechanicCost: number;
   /** Seconds the car takes to arrive at the kerb after Get my car (roam.car.ready_s). */
   readyS: number;
+  /** Re-read the tank and condition from the server (after a mechanic, a repair). */
+  refresh(): Promise<void>;
   setMode(mode: 'walk' | 'car', pose?: { x: number; y: number; a: number } | null): Promise<RoamModeResult>;
   report(r: { dist_m: number; light: number; hard: number; x: number; y: number; a: number }): Promise<RoamDriveReport>;
   dry(choice: 'push' | 'mechanic'): Promise<RoamDryResult>;
@@ -118,10 +120,39 @@ const EXIT_MSG: Record<string, string> = {
   blocked: 'No room to open the door here. Move the car a little.',
 };
 
-export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLost, car: carCtl, keke, stream, demo, onApi }: RoamViewProps) {
+/** Builds the whole city's collision world AFTER the first paint (a "Loading the city" screen shows at once), then mounts the view. */
+export function RoamView(props: RoamViewProps) {
+  const chunkM = Math.max(80, Math.min(200, Math.round(props.stream?.chunkM ?? 120)));
+  const sig = props.places.map((p) => `${p.id}:${p.x}:${p.y}:${p.scene}`).join('|');
+  const [world, setWorld] = useState<RoamWorld | null>(null);
+  useEffect(() => {
+    let dead = false;
+    const id = window.setTimeout(() => {
+      const w = getRoamWorld(props.places, chunkM);
+      if (!dead) setWorld(w);
+    }, 60);
+    return () => {
+      dead = true;
+      window.clearTimeout(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig, chunkM]);
+  if (!world) {
+    return (
+      <div className="roam" data-testid="roam">
+        <div className="roam__loading" role="status">
+          <span>Loading the city…</span>
+          <small>Building the streets and doors</small>
+        </div>
+      </div>
+    );
+  }
+  return <RoamViewInner {...props} world={world} />;
+}
+
+function RoamViewInner({ world, startId, avatar, hour, onGoIn, onLeave, onLost, car: carCtl, keke, stream, demo, onApi }: RoamViewProps & { world: RoamWorld }) {
   const hookTier = useTier();
   const tier = demo?.tier ?? hookTier;
-  const world = useMemo(() => getRoamWorld(places, Math.max(80, Math.min(200, Math.round(stream?.chunkM ?? 120)))), [places, stream?.chunkM]);
   const input = useRef<RoamInput>({ sx: 0, sy: 0, run: Boolean(demo?.run), lookX: 0, lookY: 0, brake: false });
   const live = useRef<RoamLive>({
     x: 0, y: 0, h: 0, speed: 0, nearId: null, nearDist: 99, street: '', left: null, route: null, nearTalk: false, camYaw: 0, running: false, t: 0, ready: false, loaded: 0, atKerb: false,
@@ -151,7 +182,7 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
   const [cond, setCond] = useState<number>(info?.cond ?? 100);
   const tank = info?.tank_l ?? (info?.class === 'bicycle' ? 0 : 45);
   const noFuelNeeded = info?.class === 'bicycle' || info?.fuel_on === false || (demoItem === 'bicycle');
-  const engine = (noFuelNeeded || fuelL > 0.02) && cond > 0;
+  const engine = (noFuelNeeded || fuelL > 0.01) && cond > 0;
   const fuelFrac = noFuelNeeded ? null : tank > 0 ? Math.max(0, Math.min(1, fuelL / tank)) : 0;
   const rain = Boolean(info?.rain) || Boolean(demo?.rain);
   const pend = useRef({ dist: 0, light: 0, hard: 0 });
@@ -276,7 +307,7 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
     if (!api || !has) return;
     if ((info?.ready_in_s ?? 0) > 0) { showNote('The mechanic is still working on it.'); return; }
     if (info?.wont_start || cond <= 0) { showNote('Your vehicle is too damaged to start. Repair it at the Mechanic Village, or hail a keke.'); return; }
-    if (!noFuelNeeded && fuelL <= 0.02) { showNote('The tank is empty. Call a mechanic, push it to a pump, or hail a keke.'); return; }
+    if (!noFuelNeeded && fuelL <= 0.01) { showNote('The tank is empty. Call a mechanic, push it to a pump, or hail a keke.'); return; }
     const ask = () => {
       const r = api.car.summon();
       if (r === 'ok') showNote(`Your ${info?.name ?? 'car'} is at the kerb, a short walk away.`, 3600);
@@ -295,14 +326,20 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
     if (!api || !carCtl || busy) return;
     setBusy(true);
     try {
-      const r = await carCtl.setMode('car');
-      if (r.fuel_l !== undefined) setFuelL(r.fuel_l);
-      if (r.cond !== undefined) setCond(r.cond);
-      pend.current = { dist: 0, light: 0, hard: 0 };
-      api.car.takeReport();
-      if (!api.car.enter()) showNote('Walk up to the driver\'s door first.');
-    } catch (e) {
-      showNote(e instanceof Error ? e.message : 'Could not start the car.', 5000);
+      // the scene decides first (are you at the door?), the server second; if the server refuses, we step back out
+      if (!api.car.enter()) { showNote('Walk up to the driver\'s door first.'); return; }
+      try {
+        const r = await carCtl.setMode('car');
+        if (r.fuel_l !== undefined) setFuelL(r.fuel_l);
+        if (r.cond !== undefined) setCond(r.cond);
+        pend.current = { dist: 0, light: 0, hard: 0 };
+        api.car.takeReport();
+      } catch (e) {
+        api.car.exit();
+        input.current.sx = 0;
+        input.current.sy = 0;
+        showNote(e instanceof Error ? e.message : 'Could not start the car.', 5000);
+      }
     } finally {
       setBusy(false);
     }
@@ -320,10 +357,16 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
     input.current.sy = 0;
     const st = api.car.state();
     await flushRef.current(true);
+    const pose = { x: st.x, y: st.y, a: st.h };
     try {
-      await carCtl.setMode('walk', { x: st.x, y: st.y, a: st.h });
+      await carCtl.setMode('walk', pose);
     } catch {
-      /* the server still thinks you drive until the walk ends; harmless */
+      // never leave the server thinking you drive: try once more, then say so
+      try {
+        await carCtl.setMode('walk', pose);
+      } catch {
+        showNote('Could not tell the server you left the car. It will sort itself out when you leave the street.', 5000);
+      }
     }
   }, [carCtl, busy, showNote]);
 
@@ -480,7 +523,7 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
 
   /* ---------------- stranded: out of fuel ---------------- */
   const [dryBusy, setDryBusy] = useState(false);
-  const stranded = hud.driving && hud.dry && !engine && (fuelL <= 0.02 || demo?.dry);
+  const stranded = hud.driving && hud.dry && !engine && (fuelL <= 0.01 || demo?.dry);
   const dryChoice = async (choice: 'push' | 'mechanic' | 'keke') => {
     const api = apiRef.current;
     if (!api || !carCtl || dryBusy) return;
@@ -499,8 +542,9 @@ export function RoamView({ places, startId, avatar, hour, onGoIn, onLeave, onLos
       }
       const res = await carCtl.dry(choice);
       showNote(res.message, 5200);
+      void carCtl.refresh();
       if (choice === 'push') api.car.pushToKerb();
-      if (choice === 'mechanic') setFuelL(res.fuel_l);
+      if (choice === 'mechanic' || choice === 'push') setFuelL(res.fuel_l);
       const r = api.car.exit();
       void r;
       pend.current = { dist: 0, light: 0, hard: 0 };

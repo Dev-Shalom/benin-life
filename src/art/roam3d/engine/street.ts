@@ -343,7 +343,7 @@ export function* buildChunkGen(kit: Kit, ck: ChunkData): Generator<void, ChunkMe
       const isDoor = i === b.doorEdge;
       const visible = W.col.clear(mx + nx * 0.7, my + ny * 0.7, 0.2, -1, false) || isDoor;
       if (!visible) continue;
-      if (isDoor) addDoor(b, bi, a, c, ex, ey, nx, ny, len);
+      if (isDoor && b.h >= 2.0) addDoor(b, bi, a, c, ex, ey, nx, ny, len);
       const margin = len < 3.4 ? 0.5 : 0.8;
       const cols = Math.max(len < 3.4 ? 1 : 0, Math.floor((len - margin * 2) / 2.7));
       const floors = Math.max(1, Math.floor((h - 0.2) / 3));
@@ -516,7 +516,8 @@ export function* buildChunkGen(kit: Kit, ck: ChunkData): Generator<void, ChunkMe
     const right = [ny, 0, -nx]; // viewer's right when looking at the sign from outside
     const Q = (u: number, y: number): number[] => [px + right[0] * u + nx * off, y, pz + right[2] * u + ny * off];
     signSoup.quadUv(Q(-w / 2, yTop - hgt), Q(w / 2, yTop - hgt), Q(w / 2, yTop), Q(-w / 2, yTop), nrm, cell.u0, cell.v0, cell.u1, cell.v1);
-    if (backToo) {
+    if (backToo || true) {
+      // always lettered on both faces: seen from behind a board is never a blank black slab
       const Qb = (u: number, y: number): number[] => [px + right[0] * u - nx * off, y, pz + right[2] * u - ny * off];
       signSoup.quadUv(Qb(w / 2, yTop - hgt), Qb(-w / 2, yTop - hgt), Qb(-w / 2, yTop), Qb(w / 2, yTop), [-nx, 0, -ny], cell.u0, cell.v0, cell.u1, cell.v1);
     }

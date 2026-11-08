@@ -140,7 +140,8 @@ const ACCENT: Record<string, string> = {
 let cache: { key: string; w: RoamWorld } | null = null;
 
 export function getRoamWorld(places: PlaceIn[], chunkM = CHUNK_M): RoamWorld {
-  const key = chunkM + '#' + places.map((p) => `${p.id}:${p.x}:${p.y}:${p.active === false ? 0 : 1}`).join('|');
+  // geometry-relevant data only (ids, positions, kinds): an active flag flipping does not rebuild the city
+  const key = chunkM + '#' + places.map((p) => `${p.id}:${p.x}:${p.y}:${p.scene}`).join('|');
   if (cache && cache.key === key) return cache.w;
   const w = buildRoamWorld(places, chunkM);
   cache = { key, w };
@@ -165,7 +166,7 @@ export function buildRoamWorld(placesIn: PlaceIn[], chunkM = CHUNK_M): RoamWorld
   const ZINC = ['#a5573a', '#8f979c', '#b5674a', '#7e878c', '#9b5434', '#6f8f7a'];
   const nearMain = (x: number, y: number) => L.net.clear(x, y, false, 14) < 9;
   /** 1 to 2 floors mostly, some 3, a few taller on main roads (3.0 m a floor + plinth). */
-  const heightFor = (areaM2: number, x: number, y: number, zone = 'res') => {
+  const heightFor = (areaM2: number, x: number, y: number, zone = 'res', minSide = 99) => {
     const r1 = R(), r2 = R();
     let f = areaM2 < 45 ? 1 : areaM2 < 120 ? 1 + (r1 < 0.2 ? 1 : 0) : areaM2 < 300 ? 1 + (r1 < 0.5 ? 1 : 0) + (r2 < 0.1 ? 1 : 0) : 2 + (r1 < 0.35 ? 1 : 0);
     if (areaM2 > 60 && nearMain(x, y) && r2 < 0.2) f += 1;
@@ -175,7 +176,28 @@ export function buildRoamWorld(placesIn: PlaceIn[], chunkM = CHUNK_M): RoamWorld
     else if (zone === 'gra') f = Math.min(f, 2);
     else if (zone === 'campus') f = Math.min(f, areaM2 > 200 ? 3 : 2);
     else if (zone === 'farm') f = 1;
-    return Math.min(zone === 'core' ? 5 : 4, f) * 3 + 0.5;
+    let h = Math.min(zone === 'core' ? 5 : 4, f) * 3 + 0.5;
+    // no thin towers: a small or narrow footprint stays a low shed / stall / shop; markets and crowded quarters are one floor at most.
+    // Only a real multi-storey (broad footprint on a main road, or in the centre) may exceed 1.5 x its smaller side.
+    if (zone === 'market') h = Math.min(h, 3.5);
+    const realStorey = areaM2 > 120 && minSide >= 7 && (nearMain(x, y) || zone === 'core');
+    if (!realStorey) h = Math.min(h, Math.max(2.3, 1.5 * minSide));
+    // a footprint under about 2 m across is a market stand / crate / shed, not a house: a low block
+    if (minSide < 2.2) h = Math.min(h, 1.3);
+    return h;
+  };
+  /** Sides of the oriented bounding box (along the longest edge) of a footprint. */
+  const dims = (poly: readonly Pt[]): [number, number] => {
+    let la = 0, ll = 0;
+    for (let i = 0; i < poly.length; i++) {
+      const p0 = poly[i], p1 = poly[(i + 1) % poly.length];
+      const l = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+      if (l > ll) { ll = l; la = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]); }
+    }
+    const c = Math.cos(la), sn = Math.sin(la);
+    let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+    for (const q of poly) { const u = q[0] * c + q[1] * sn, v = -q[0] * sn + q[1] * c; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
+    return [u1 - u0, v1 - v0];
   };
   /** Wall / roof palette of a district (GRA white villas under terracotta and green, campus cream blocks under green roofs). */
   const ZONE_WALL: Record<string, string[]> = {
@@ -201,7 +223,7 @@ export function buildRoamWorld(placesIn: PlaceIn[], chunkM = CHUNK_M): RoamWorld
     const zone = districtAt(b.x, b.y);
     const zw = ZONE_WALL[zone];
     const zi = addBuilding({
-      poly, h: Math.min(b.h * 10 > 3.2 ? heightFor(b.w * b.d, b.x, b.y, zone) : 3.5, 16), wall: zw ? zw[Math.floor(R() * zw.length)] : R() < 0.5 ? PAINT[Math.floor(R() * PAINT.length)] : b.wall, roof: ZONE_ROOF[zone] && R() < 0.8 ? ZONE_ROOF[zone][Math.floor(R() * ZONE_ROOF[zone].length)] : b.roof, roofType: b.roofType,
+      poly, h: Math.min(b.h * 10 > 3.2 ? heightFor(b.w * b.d, b.x, b.y, zone, Math.min(b.w, b.d)) : 3.5, 16), wall: zw ? zw[Math.floor(R() * zw.length)] : R() < 0.5 ? PAINT[Math.floor(R() * PAINT.length)] : b.wall, roof: ZONE_ROOF[zone] && R() < 0.8 ? ZONE_ROOF[zone][Math.floor(R() * ZONE_ROOF[zone].length)] : b.roof, roofType: b.roofType,
       rect: { x: b.x, y: b.y, w: b.w, d: b.d, a: b.a }, lit: b.lit, osm: false, detail: 1, over: 0.35,
     });
     zones.set(zi, zone);
@@ -214,7 +236,8 @@ export function buildRoamWorld(placesIn: PlaceIn[], chunkM = CHUNK_M): RoamWorld
     let cx = 0, cy = 0;
     for (const q of poly) { cx += q[0] / poly.length; cy += q[1] / poly.length; }
     const zone = districtAt(cx, cy);
-    const h = heightFor(ar, cx, cy, zone);
+    const dm = dims(poly);
+    const h = heightFor(ar, cx, cy, zone, Math.min(dm[0], dm[1]));
     // small simple footprints get a pitched zinc roof on their oriented bounding box, the rest a flat roof with a parapet
     let rect: RoamBuilding['rect'] = null, roofType: RoamBuilding['roofType'] = 'flat';
     if (poly.length <= 8 && ar < 260 && ar > 16) {
@@ -440,7 +463,7 @@ export function buildRoamWorld(placesIn: PlaceIn[], chunkM = CHUNK_M): RoamWorld
     }
     if (!door) continue;
     const idx = places.push({ ...p, label, accent, door, closed }) - 1;
-    if (door.kind === 'wall') buildings[door.b].place = idx;
+    if (door.kind === 'wall') { buildings[door.b].place = idx; buildings[door.b].h = Math.max(buildings[door.b].h, 3.8); }
     if (door.kind === 'wall' && p.scene === 'workshop') {
       // bronze pieces on plinths on both sides of the workshop door
       for (const sg of [-1, 1]) {
@@ -720,7 +743,7 @@ export function buildRoamWorld(placesIn: PlaceIn[], chunkM = CHUNK_M): RoamWorld
     b.doorEdge = bestE;
     b.doorT = 0.35 + R() * 0.3;
     // some buildings on the roads are small shop fronts with a made-up name
-    if (bestE >= 0 && bestS > 0.55 && b.h <= 7.5) {
+    if (bestE >= 0 && bestS > 0.55 && b.h <= 7.5 && b.h >= 3.4) {
       const a0 = b.poly[bestE], c0 = b.poly[(bestE + 1) % b.poly.length];
       const len = dist(a0[0], a0[1], c0[0], c0[1]);
       const mx = a0[0] + (c0[0] - a0[0]) * b.doorT, my = a0[1] + (c0[1] - a0[1]) * b.doorT;
