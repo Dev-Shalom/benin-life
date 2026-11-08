@@ -3,18 +3,20 @@
 // the phase-1 area, plus the street-scale extras (place doors, stalls, kiosks, edge fence), the collision world and the
 // two walking grids (free walking and the GPS grid that prefers pavements).
 // scripts/roam-collide-check.mjs loads this file in node and fires random moves at the real colliders.
-import { at, MARKETS, PALACE, rng, type Pt } from '../map/mapGeo';
+import { at, MARKETS, PALACE, rng, STADIUM, TECH_HUB, TERMINAL, RAMAT, GROVE, BRIDGE, type Pt } from '../map/mapGeo';
 import { getCityLayout, snapPlace, VEHICLE_SIZE, type CityLayout } from '../city3d/engine/layout';
-import { MODEL_FOOTPRINTS, padLayout } from '../city3d/engine/footprints';
+import { FARM_HUTS, MODEL_FOOTPRINTS, padLayout } from '../city3d/engine/footprints';
+import { districtAt } from '../drive3d/district';
+import { indexChunks, type ChunkIndex } from './chunks';
 import { pointInPoly, polyArea, polysOverlap, rectCorners } from '../city3d/engine/geom';
 import { KERB } from '../city3d/engine/roadnet';
 import { blockRect, makeGrid, type NavGrid } from '../sim/nav';
 import { shortName } from '../map/mapGeo';
-import { AREA, BACKDROP, MARGIN, PLAYER_R, inArea, type PlaceIn } from './area';
+import { AREA, CHUNK_M, PLAYER_R, inArea, type PlaceIn } from './area';
 import { CollisionWorld, inPoly, obbCorners } from './collide';
 
 export interface Door {
-  kind: 'wall' | 'arch' | 'kiosk';
+  kind: 'wall' | 'arch' | 'kiosk' | 'gate';
   /** Door / arch centre (on the wall, between the arch posts, at the kiosk window). */
   x: number;
   y: number;
@@ -36,6 +38,8 @@ export interface RoamPlace extends PlaceIn {
   label: string;
   accent: string;
   door: Door;
+  /** Inactive place: a shut gate and an "Under construction" board; roam_enter refuses it. */
+  closed: boolean;
 }
 
 export interface RoamBuilding {
@@ -113,9 +117,15 @@ export interface RoamWorld {
   gps: NavGrid;
   /** Roads touching the region (indices into L.roads). */
   roadIdx: number[];
-  /** Detail box (walkable box + MARGIN) and backdrop box. */
+  /** The walkable box (the whole city). */
   box: [number, number, number, number];
-  far: [number, number, number, number];
+  /** Compound walls (GRA plots): oriented boxes (centre, length along a, thickness 0.3). */
+  walls: { x: number; y: number; len: number; a: number; gra: boolean }[];
+  /** Landmark pieces to draw (keys for buildLandmarks) with the map point each belongs to. */
+  lmAnchors: { key: string; x: number; y: number }[];
+  /** District name per building (for look and crowd). */
+  zones: Map<number, string>;
+  chunks: ChunkIndex;
 }
 
 const dist = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
@@ -129,20 +139,22 @@ const ACCENT: Record<string, string> = {
 
 let cache: { key: string; w: RoamWorld } | null = null;
 
-export function getRoamWorld(places: PlaceIn[]): RoamWorld {
-  const key = places.map((p) => `${p.id}:${p.x}:${p.y}`).join('|');
+export function getRoamWorld(places: PlaceIn[], chunkM = CHUNK_M): RoamWorld {
+  // geometry-relevant data only (ids, positions, kinds): an active flag flipping does not rebuild the city
+  const key = chunkM + '#' + places.map((p) => `${p.id}:${p.x}:${p.y}:${p.scene}`).join('|');
   if (cache && cache.key === key) return cache.w;
-  const w = buildRoamWorld(places);
+  const w = buildRoamWorld(places, chunkM);
   cache = { key, w };
   return w;
 }
 
-export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
+export function buildRoamWorld(placesIn: PlaceIn[], chunkM = CHUNK_M): RoamWorld {
   const L = getCityLayout();
-  const box: [number, number, number, number] = [AREA.x0 - MARGIN, AREA.y0 - MARGIN, AREA.x1 + MARGIN, AREA.y1 + MARGIN];
-  const far: [number, number, number, number] = [box[0] - BACKDROP, box[1] - BACKDROP, box[2] + BACKDROP, box[3] + BACKDROP];
+  const box: [number, number, number, number] = [AREA.x0, AREA.y0, AREA.x1, AREA.y1];
   const inBox = (x: number, y: number, pad = 0) => x >= box[0] - pad && x <= box[2] + pad && y >= box[1] - pad && y <= box[3] + pad;
-  const inFar = (x: number, y: number, pad = 0) => x >= far[0] - pad && x <= far[2] + pad && y >= far[1] - pad && y <= far[3] + pad;
+  const inFar = (x: number, y: number, pad = 0) => inBox(x, y, pad + 40);
+  const walls: RoamWorld['walls'] = [];
+  const zones = new Map<number, string>();
   const R = rng(20261120);
   const col = new CollisionWorld();
   col.bounds = [AREA.x0, AREA.y0, AREA.x1, AREA.y1];
@@ -154,11 +166,50 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
   const ZINC = ['#a5573a', '#8f979c', '#b5674a', '#7e878c', '#9b5434', '#6f8f7a'];
   const nearMain = (x: number, y: number) => L.net.clear(x, y, false, 14) < 9;
   /** 1 to 2 floors mostly, some 3, a few taller on main roads (3.0 m a floor + plinth). */
-  const heightFor = (areaM2: number, x: number, y: number) => {
+  const heightFor = (areaM2: number, x: number, y: number, zone = 'res', minSide = 99) => {
     const r1 = R(), r2 = R();
     let f = areaM2 < 45 ? 1 : areaM2 < 120 ? 1 + (r1 < 0.2 ? 1 : 0) : areaM2 < 300 ? 1 + (r1 < 0.5 ? 1 : 0) + (r2 < 0.1 ? 1 : 0) : 2 + (r1 < 0.35 ? 1 : 0);
     if (areaM2 > 60 && nearMain(x, y) && r2 < 0.2) f += 1;
-    return Math.min(4, f) * 3 + 0.5;
+    // by district: the centre grows tall, GRA and campus stay low and spread, the crowded quarters and markets stay small, the outskirts are huts
+    if (zone === 'core') f += areaM2 > 80 && r1 < 0.45 ? 1 : 0;
+    else if (zone === 'cramped' || zone === 'market') f = Math.min(f, areaM2 > 150 ? 2 : 1);
+    else if (zone === 'gra') f = Math.min(f, 2);
+    else if (zone === 'campus') f = Math.min(f, areaM2 > 200 ? 3 : 2);
+    else if (zone === 'farm') f = 1;
+    let h = Math.min(zone === 'core' ? 5 : 4, f) * 3 + 0.5;
+    // no thin towers: a small or narrow footprint stays a low shed / stall / shop; markets and crowded quarters are one floor at most.
+    // Only a real multi-storey (broad footprint on a main road, or in the centre) may exceed 1.5 x its smaller side.
+    if (zone === 'market') h = Math.min(h, 3.5);
+    const realStorey = areaM2 > 120 && minSide >= 7 && (nearMain(x, y) || zone === 'core');
+    if (!realStorey) h = Math.min(h, Math.max(2.3, 1.5 * minSide));
+    // a footprint under about 2 m across is a market stand / crate / shed, not a house: a low block
+    if (minSide < 2.2) h = Math.min(h, 1.3);
+    return h;
+  };
+  /** Sides of the oriented bounding box (along the longest edge) of a footprint. */
+  const dims = (poly: readonly Pt[]): [number, number] => {
+    let la = 0, ll = 0;
+    for (let i = 0; i < poly.length; i++) {
+      const p0 = poly[i], p1 = poly[(i + 1) % poly.length];
+      const l = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+      if (l > ll) { ll = l; la = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]); }
+    }
+    const c = Math.cos(la), sn = Math.sin(la);
+    let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+    for (const q of poly) { const u = q[0] * c + q[1] * sn, v = -q[0] * sn + q[1] * c; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
+    return [u1 - u0, v1 - v0];
+  };
+  /** Wall / roof palette of a district (GRA white villas under terracotta and green, campus cream blocks under green roofs). */
+  const ZONE_WALL: Record<string, string[]> = {
+    gra: ['#fbf8f1', '#f6f2e9', '#f3f3ef', '#f8eedc', '#f1ead9'],
+    campus: ['#efe4cc', '#f2ead9', '#e6dcc4', '#e9e1c8'],
+    market: ['#d8c3a0', '#e3d2b3', '#d9b98e'],
+    cramped: ['#e3cba8', '#dcc09a', '#e9d8bd', '#d6c3a5'],
+  };
+  const ZONE_ROOF: Record<string, string[]> = {
+    gra: ['#b8432f', '#c25b3c', '#2f6f55', '#3d5f80', '#b8432f', '#5d6a72'],
+    campus: ['#3f7d4a', '#2f6f45', '#4b8a52', '#5d6a72'],
+    cramped: ['#8a4a2c', '#7b4328', '#96553a', '#8f969b', '#9a5f42'],
   };
   const addBuilding = (b: Omit<RoamBuilding, 'place' | 'doorEdge' | 'doorT'>) => {
     const i = buildings.push({ ...b, place: -1, doorEdge: -1, doorT: 0.5 }) - 1;
@@ -169,20 +220,24 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
   for (const b of L.buildings) {
     if (!inFar(b.x, b.y)) continue;
     const poly = rectCorners(b.x, b.y, b.w, b.d, b.a);
-    const detail = polyIn(poly, 0, inBox) ? 1 : 0;
-    addBuilding({
-      poly, h: Math.min(b.h * 10 > 3.2 ? heightFor(b.w * b.d, b.x, b.y) : 3.5, 13), wall: R() < 0.5 ? PAINT[Math.floor(R() * PAINT.length)] : b.wall, roof: b.roof, roofType: b.roofType,
-      rect: { x: b.x, y: b.y, w: b.w, d: b.d, a: b.a }, lit: b.lit, osm: false, detail, over: 0.35,
+    const zone = districtAt(b.x, b.y);
+    const zw = ZONE_WALL[zone];
+    const zi = addBuilding({
+      poly, h: Math.min(b.h * 10 > 3.2 ? heightFor(b.w * b.d, b.x, b.y, zone, Math.min(b.w, b.d)) : 3.5, 16), wall: zw ? zw[Math.floor(R() * zw.length)] : R() < 0.5 ? PAINT[Math.floor(R() * PAINT.length)] : b.wall, roof: ZONE_ROOF[zone] && R() < 0.8 ? ZONE_ROOF[zone][Math.floor(R() * ZONE_ROOF[zone].length)] : b.roof, roofType: b.roofType,
+      rect: { x: b.x, y: b.y, w: b.w, d: b.d, a: b.a }, lit: b.lit, osm: false, detail: 1, over: 0.35,
     });
+    zones.set(zi, zone);
   }
   for (const o of L.osmBuildings) {
     const poly = o.ring as Pt[];
     if (!poly.some((p) => inFar(p[0], p[1]))) continue;
-    const detail = polyIn(poly, 0, inBox) ? 1 : 0;
+    const detail = 1;
     const ar = polyArea(poly);
     let cx = 0, cy = 0;
     for (const q of poly) { cx += q[0] / poly.length; cy += q[1] / poly.length; }
-    const h = detail ? heightFor(ar, cx, cy) : 3.5 + R() * 3;
+    const zone = districtAt(cx, cy);
+    const dm = dims(poly);
+    const h = heightFor(ar, cx, cy, zone, Math.min(dm[0], dm[1]));
     // small simple footprints get a pitched zinc roof on their oriented bounding box, the rest a flat roof with a parapet
     let rect: RoamBuilding['rect'] = null, roofType: RoamBuilding['roofType'] = 'flat';
     if (poly.length <= 8 && ar < 260 && ar > 16) {
@@ -202,18 +257,24 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
         roofType = R() < 0.6 ? 'gable' : 'hip';
       }
     }
-    addBuilding({ poly, h, wall: PAINT[Math.floor(R() * PAINT.length)], roof: ZINC[Math.floor(R() * ZINC.length)], roofType, rect, lit: true, osm: true, detail, over: 0.15 });
+    const zw = ZONE_WALL[zone], zr = ZONE_ROOF[zone];
+    const oi = addBuilding({ poly, h, wall: zw ? zw[Math.floor(R() * zw.length)] : PAINT[Math.floor(R() * PAINT.length)], roof: zr && R() < 0.7 ? zr[Math.floor(R() * zr.length)] : ZINC[Math.floor(R() * ZINC.length)], roofType, rect, lit: true, osm: true, detail, over: 0.15 });
+    zones.set(oi, zone);
   }
 
   /* ---------------- landmark footprints ---------------- */
   const landmarks: string[] = [];
-  const lmWanted: [string, string, number, number, number][] = [
-    ['museum', '', 500, 500, 60],
-    ['palace', '', 405, 503, 40],
-    ['police', '', 497, 610, 25],
+  // every landmark piece the city map draws, with the map point it belongs to (a chunk draws the pieces anchored in it)
+  const lmAnchors: RoamWorld['lmAnchors'] = [
+    { key: 'museum', x: 500, y: 500 }, { key: 'palace', x: 405, y: 503 }, { key: 'police', x: 497, y: 610 },
+    { key: 'uniben', x: 480, y: 125 }, { key: 'stadium', x: STADIUM.x, y: STADIUM.y }, { key: 'ubth', x: 421, y: 170 },
+    { key: 'hub', x: TECH_HUB.x, y: TECH_HUB.y }, { key: 'airport', x: TERMINAL.x, y: TERMINAL.y }, { key: 'bridge', x: BRIDGE.x, y: BRIDGE.y },
+    { key: 'ramat', x: RAMAT.x, y: RAMAT.y }, { key: 'shrine', x: GROVE.x, y: GROVE.y },
+    { key: 'farm', x: FARM_HUTS[0][0], y: FARM_HUTS[0][1] },
   ];
-  for (const [k, , x, y, rad] of lmWanted) if (inBox(x, y, rad)) landmarks.push(k);
-  for (const [mx, my, mr, id] of MARKETS) if (inBox(mx, my, mr)) landmarks.push('market:' + id);
+  for (const [mx, my, , id] of MARKETS) lmAnchors.push({ key: 'market:' + id, x: mx, y: my });
+  L.pads.forEach((pd, i) => lmAnchors.push({ key: 'park:' + i, x: pd.x, y: pd.y }));
+  for (const a of lmAnchors) landmarks.push(a.key);
   const museumR = 10.9;
   col.addCircle(500, 500, museumR, { tall: true, id: 'national museum', h: 9 });
   for (const f of MODEL_FOOTPRINTS) {
@@ -275,7 +336,7 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
   const STALL_COL = ['#2f6fd0', '#d63c32', '#f2b632', '#2e9d58', '#e06a1c', '#7a4ac8', '#1aa3a3'];
   for (const [mx, my, mr, id] of MARKETS) {
     if (!inBox(mx, my, 4)) continue;
-    const target = id === 'oba_market' ? 26 : 14;
+    const target = id === 'oba_market' ? 44 : 24;
     let tries = 0;
     while (stalls.filter((s) => dist(s.x, s.y, mx, my) < mr + 6).length < target && tries++ < 400) {
       const ang = R() * Math.PI * 2;
@@ -300,7 +361,7 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
 
   /** Rasterise every collider into a walking grid (cells within the player's radius + a margin are blocked). */
   function rasterGrid(): NavGrid {
-    const cell = 0.5;
+    const cell = 1.0;
     const g = makeGrid([AREA.x0, AREA.y0, AREA.x1, AREA.y1], cell);
     const pad = PLAYER_R + GROUND_PAD;
     for (const pl of col.polys) {
@@ -364,17 +425,27 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
   const places: RoamPlace[] = [];
   const kiosks: RoamWorld['kiosks'] = [];
   const inside = placesIn.filter((p) => inArea(p.x, p.y)).sort((a, b) => a.id.localeCompare(b.id));
-  const wallPlaces = new Set(['buka', 'salon', 'cyber', 'bank', 'hospital', 'police', 'workshop', 'office', 'palace', 'mall', 'hotel', 'club', 'lounge', 'cinema', 'car_dealer']);
+  const wallPlaces = new Set(['buka', 'salon', 'cyber', 'bank', 'hospital', 'police', 'workshop', 'office', 'palace', 'mall', 'hotel', 'club', 'lounge', 'cinema', 'car_dealer', 'church', 'school', 'clinic', 'pharmacy', 'mosque']);
   for (const p of inside) {
     const snapped = snapPlace(L, p.x, p.y, true);
     const label = shortName(p.id, p.name);
     const accent = ACCENT[p.scene] ?? '#7a6a52';
+    const closed = p.active === false;
     let door: Door | null = null;
-    if (wallPlaces.has(p.scene) || p.scene.startsWith('home_')) {
+    if (closed) {
+      // a closed place (the airport): a shut gate across clear ground by the road
+      door = gateAt(snapped.x, snapped.y);
+    }
+    if (!door && !closed && (wallPlaces.has(p.scene) || p.scene.startsWith('home_'))) {
       door = wallDoor(snapped.x, snapped.y, p.scene === 'palace' ? 2.0 : 1.1);
       if (!door) door = shopAt(snapped.x, snapped.y, p.scene === 'buka' ? '#e8d3a8' : '#eadfc8', p.scene === 'buka' ? '#b5583a' : '#8f979c');
     }
     if (!door && p.scene === 'museum') door = archAt(500, 500 + 11.9, 0, 1, 6.2, 'arch');
+    // motor parks, the campus gate, the shrine grove and the farm: a signed entrance arch on clear ground facing the road
+    if (!door && (p.scene === 'motorpark' || p.scene === 'campus' || p.scene === 'shrine' || p.scene === 'farm' || p.scene === 'stadium')) {
+      const rd0 = nearestRoad(snapped.x, snapped.y);
+      door = archAt(snapped.x, snapped.y, rd0.dx, rd0.dy, p.scene === 'campus' ? 7 : 5.0, 'arch');
+    }
     if (!door && p.scene === 'market') {
       const m = MARKETS.find((q) => q[3] === p.id);
       if (m) {
@@ -391,8 +462,8 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
       door = kioskAt(snapped.x, snapped.y, places.length);
     }
     if (!door) continue;
-    const idx = places.push({ ...p, label, accent, door }) - 1;
-    if (door.kind === 'wall') buildings[door.b].place = idx;
+    const idx = places.push({ ...p, label, accent, door, closed }) - 1;
+    if (door.kind === 'wall') { buildings[door.b].place = idx; buildings[door.b].h = Math.max(buildings[door.b].h, 3.8); }
     if (door.kind === 'wall' && p.scene === 'workshop') {
       // bronze pieces on plinths on both sides of the workshop door
       for (const sg of [-1, 1]) {
@@ -438,6 +509,30 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
     void near;
     void polyOf;
     return best && best.score < 70 ? best.door : null;
+  }
+
+  /** A shut gate (two posts and a solid leaf across the opening) on clear ground facing the road. */
+  function gateAt(x: number, y: number): Door | null {
+    const rd0 = nearestRoad(x, y);
+    const nx = rd0.dx, ny = rd0.dy;
+    const width = 7.0;
+    for (let r = 0; r <= 18; r += 1) {
+      for (let k = 0; k < (r === 0 ? 1 : 12); k++) {
+        const a = (k / 12) * Math.PI * 2;
+        const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+        const sx = px + nx * 1.4, sy = py + ny * 1.4;
+        const lx = -ny, ly = nx;
+        const p1 = [px + lx * (width / 2), py + ly * (width / 2)];
+        const p2 = [px - lx * (width / 2), py - ly * (width / 2)];
+        if (!spotFree(sx, sy, 0.5) || !spotFree(p1[0], p1[1], 0.6) || !spotFree(p2[0], p2[1], 0.6) || !spotFree(px, py, 0.6) || !connected(sx, sy)) continue;
+        if (onCarriage(px, py, 1.2) || onCarriage(sx, sy, 0.6)) continue;
+        col.addCircle(p1[0], p1[1], 0.3, { tall: true, id: 'gate post', h: 3 });
+        col.addCircle(p2[0], p2[1], 0.3, { tall: true, id: 'gate post', h: 3 });
+        col.addObb(px, py, 0.25, width - 0.5, Math.atan2(ny, nx), { tall: true, id: 'shut gate', h: 2.4 });
+        return { kind: 'gate', x: px, y: py, nx, ny, sx, sy, w: width, b: -1, e: -1 };
+      }
+    }
+    return null;
   }
 
   function archAt(x: number, y: number, nx: number, ny: number, width: number, kind: 'arch'): Door | null {
@@ -526,7 +621,7 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
     for (const ri of roadIdx) {
       const rd = L.roads[ri];
       if (rd.hw < 6) continue;
-      for (let sArc = 10 + R() * 20; sArc < rd.sp.length && n < 26; sArc += 20 + R() * 45) {
+      for (let sArc = 10 + R() * 20; sArc < rd.sp.length && n < 170; sArc += 20 + R() * 45) {
         const p = at(rd.sp, sArc);
         if (!inArea(p.x, p.y, 4)) continue;
         const side = R() < 0.5 ? 1 : -1;
@@ -565,6 +660,63 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
     }
   }
 
+  /* ---------------- GRA: compound walls with a gate gap, hedge trees in the yards ---------------- */
+  {
+    let nextTree = 0;
+    for (let bi = 0; bi < buildings.length; bi++) {
+      const b = buildings[bi];
+      if (zones.get(bi) !== 'gra' || b.osm || !b.rect) continue;
+      const r = b.rect;
+      const m = 3.2;
+      const hw = r.w / 2 + m, hd = r.d / 2 + m;
+      const c = Math.cos(r.a), sn = Math.sin(r.a);
+      const P = (u: number, v: number): [number, number] => [r.x + u * c - v * sn, r.y + u * sn + v * c];
+      const road = nearestRoad(r.x, r.y);
+      // the side that faces the road gets the gate gap
+      const sides: [[number, number], [number, number], number, number][] = [
+        [P(-hw, -hd), P(hw, -hd), 0, -1], [P(hw, -hd), P(hw, hd), 1, 0], [P(hw, hd), P(-hw, hd), 0, 1], [P(-hw, hd), P(-hw, -hd), -1, 0],
+      ];
+      let gateSide = 0, bestDot = -9;
+      sides.forEach((sd, i) => {
+        const nx = sd[2] * c - sd[3] * sn, ny = sd[2] * sn + sd[3] * c;
+        const dpt = nx * road.dx + ny * road.dy;
+        if (dpt > bestDot) { bestDot = dpt; gateSide = i; }
+      });
+      const pieces: { x: number; y: number; len: number; a: number }[] = [];
+      let ok = true;
+      sides.forEach(([p0, p1], i) => {
+        const len = dist(p0[0], p0[1], p1[0], p1[1]);
+        const ang = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]);
+        const spans: [number, number][] = i === gateSide ? [[0, len / 2 - 1.7], [len / 2 + 1.7, len]] : [[0, len]];
+        for (const [u0, u1] of spans) {
+          if (u1 - u0 < 0.5) continue;
+          const ex = Math.cos(ang), ey = Math.sin(ang);
+          const mx = p0[0] + ex * (u0 + u1) / 2, my = p0[1] + ey * (u0 + u1) / 2;
+          let good = true;
+          for (let u = u0; u <= u1 && good; u += 1.2) {
+            const qx = p0[0] + ex * u, qy = p0[1] + ey * u;
+            if (!inArea(qx, qy, 2) || !col.clear(qx, qy, 0.45, -1, false) || L.net.clear(qx, qy, true, 2) < 0.7) good = false;
+          }
+          // a side that runs into something stays open (a gap in the wall), the rest of the plot is still fenced
+          if (good) pieces.push({ x: mx, y: my, len: u1 - u0, a: ang });
+        }
+      });
+      void ok;
+      if (pieces.length < 2) continue;
+      for (const pc of pieces) {
+        walls.push({ ...pc, gra: true });
+        col.addObb(pc.x, pc.y, pc.len, 0.3, pc.a, { tall: true, id: 'compound wall', h: 1.8 });
+      }
+      // two yard trees (palms or shade) in the corners behind the wall
+      for (let k = 0; k < 2; k++) {
+        const [tx, ty] = P((k ? 1 : -1) * (hw - 1.6), (k ? -1 : 1) * (hd - 1.6));
+        if (!col.clear(tx, ty, 1.0, -1, false) || trees.some((q) => dist(q.x, q.y, tx, ty) < 3)) continue;
+        trees.push({ x: tx, y: ty, r: 2.2 + (nextTree++ % 3) * 0.3, c: nextTree % 6, palm: nextTree % 4 === 0 });
+        col.addCircle(tx, ty, 0.3, { tall: true, id: 'tree', h: 4 });
+      }
+    }
+  }
+
   /* ---------------- a door on every building ---------------- */
   buildings.forEach((b) => {
     if (b.place >= 0) {
@@ -591,7 +743,7 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
     b.doorEdge = bestE;
     b.doorT = 0.35 + R() * 0.3;
     // some buildings on the roads are small shop fronts with a made-up name
-    if (bestE >= 0 && bestS > 0.55 && b.h <= 7.5) {
+    if (bestE >= 0 && bestS > 0.55 && b.h <= 7.5 && b.h >= 3.4) {
       const a0 = b.poly[bestE], c0 = b.poly[(bestE + 1) % b.poly.length];
       const len = dist(a0[0], a0[1], c0[0], c0[1]);
       const mx = a0[0] + (c0[0] - a0[0]) * b.doorT, my = a0[1] + (c0[1] - a0[1]) * b.doorT;
@@ -628,6 +780,34 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
   /* ---------------- walking grids ---------------- */
   const walk = rasterGrid();
   const cell = walk.cell;
+  // every place's standing spot must be on open ground the street network reaches. Colliders added after a door was placed (other
+  // places' posts, kiosks, shops, parked cars, walls) can seal a pocket, so check against the FINAL grid and move the stand to the
+  // nearest reachable free cell within 16 m of the door when needed.
+  {
+    const seen = floodMain(walk);
+    const okCell = (x: number, y: number) => {
+      const c = Math.floor((x - AREA.x0) / cell), r = Math.floor((y - AREA.y0) / cell);
+      return c >= 0 && r >= 0 && c < walk.cols && r < walk.rows && seen[r * walk.cols + c] === 1 && !walk.blocked[r * walk.cols + c];
+    };
+    for (const pl of places) {
+      const d = pl.door;
+      if (okCell(d.sx, d.sy)) continue;
+      let best: [number, number] | null = null, bd = Infinity;
+      const c0 = Math.floor((d.x - AREA.x0) / cell), r0 = Math.floor((d.y - AREA.y0) / cell);
+      const rad = Math.ceil(16 / cell);
+      for (let r = r0 - rad; r <= r0 + rad; r++)
+        for (let c = c0 - rad; c <= c0 + rad; c++) {
+          if (c < 0 || r < 0 || c >= walk.cols || r >= walk.rows) continue;
+          const i = r * walk.cols + c;
+          if (!seen[i] || walk.blocked[i]) continue;
+          const px = AREA.x0 + (c + 0.5) * cell, py = AREA.y0 + (r + 0.5) * cell;
+          const front = (px - d.x) * d.nx + (py - d.y) * d.ny;
+          const score = dist(px, py, d.x, d.y) + (front > 0 ? 0 : 4);
+          if (score < bd) { bd = score; best = [px, py]; }
+        }
+      if (best) { d.sx = best[0]; d.sy = best[1]; }
+    }
+  }
   const gps = { ...walk, blocked: new Uint8Array(walk.blocked) };
   // cross roads only at crossings (every ~45 m and at junctions) so the GPS line follows the pavements
   const allowed = new Uint8Array(walk.blocked.length);
@@ -655,7 +835,9 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
       if (L.net.clear(px, py, false, 1) < -0.3) gps.blocked[i] = 1;
     }
 
-  return { L, col, places, buildings, landmarks, trees, lamps, parked, stalls, displays, kiosks, edge, walk, gps, roadIdx, box, far };
+  const W: RoamWorld = { L, col, places, buildings, landmarks, trees, lamps, parked, stalls, displays, kiosks, edge, walk, gps, roadIdx, box, walls, lmAnchors, zones, chunks: null as unknown as ChunkIndex };
+  W.chunks = indexChunks(W, chunkM);
+  return W;
 }
 
 function signedArea(poly: readonly Pt[]): number {

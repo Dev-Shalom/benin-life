@@ -49,6 +49,8 @@ begin
   perform set_config('bl.test_offset_seconds',
     (mod((12 * 3600 - ((bl_game_clock(bl_now()) ->> 'hour')::int * 3600 + (bl_game_clock(bl_now()) ->> 'minute')::int * 60) + 86400)::numeric, 86400))::text, true);
   perform pg_temp.assert((bl_game_clock(bl_now()) ->> 'hour')::int = 12, 'test setup: the clock is pinned to noon');
+  -- phase 1 tests check the box: phase 2 (roam2_test.sql) covers the whole city
+  update game_config set value = 'false' where key = 'roam.area.all';
 end $$;
 
 -- put the player at a place, free to move, nothing running
@@ -63,7 +65,7 @@ end $$;
 do $$
 declare n int;
 begin
-  perform pg_temp.assert((select count(*) from game_config where key like 'roam.%') = 12, 'twelve roam settings seeded');
+  perform pg_temp.assert((select count(*) from game_config where key like 'roam.%') = 33, 'thirty-three roam settings seeded (12 phase 1 + 21 phase 2)');
   select count(*) into n from game_config where key like 'roam.%'
      and (category <> 'roam' or coalesce(label, '') = '' or coalesce(description, '') = '' or (kind in ('number', 'naira', 'percent') and (min is null or max is null)));
   perform pg_temp.assert(n = 0, 'every roam setting is in category roam with a label, a description and a range (' || n || ' without)');

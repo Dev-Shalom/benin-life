@@ -5,35 +5,83 @@
 import { BufferGeometry, Color, Float32BufferAttribute } from 'three';
 
 const _c = new Color();
+const _rgb = new Map<string, [number, number, number]>();
+
+/** Growable float buffer (no JS array of numbers: a chunk's soup is a few hundred thousand floats, and garbage would show as hitches). */
+class FBuf {
+  a: Float32Array;
+  n = 0;
+  constructor(cap = 6144) {
+    this.a = new Float32Array(cap);
+  }
+  ensure(extra: number) {
+    if (this.n + extra <= this.a.length) return;
+    const b = new Float32Array(Math.max(this.a.length * 2, this.n + extra));
+    b.set(this.a.subarray(0, this.n));
+    this.a = b;
+  }
+}
 
 export class Soup {
-  pos: number[] = [];
-  col: number[] = [];
-  uv: number[] = [];
+  private p = new FBuf();
+  private c = new FBuf();
+  private nr = new FBuf();
+  private t = new FBuf(4096);
   withUv = false;
   tris = 0;
+  /** Keep only the triangles whose centre lies in [x0, z0, x1, z1) (a streaming chunk). */
+  clip: [number, number, number, number] | null = null;
 
-  private color(hex: string | number | Color, k = 1): [number, number, number] {
-    _c.set(hex as string);
-    return [_c.r * k, _c.g * k, _c.b * k];
+  /** Floats written to the position buffer (0 = nothing in this soup). */
+  get size() {
+    return this.p.n;
+  }
+
+  private rgb(hex: string | number | Color): [number, number, number] {
+    if (typeof hex === 'string') {
+      let v = _rgb.get(hex);
+      if (!v) {
+        _c.set(hex);
+        v = [_c.r, _c.g, _c.b];
+        _rgb.set(hex, v);
+      }
+      return v;
+    }
+    _c.set(hex as Color);
+    return [_c.r, _c.g, _c.b];
   }
 
   /** One triangle; the winding is flipped if it disagrees with the hint normal (nx, ny, nz). */
   tri(ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number, hex: string | number | Color, nx: number, ny: number, nz: number, ka = 1, kb = ka, kc = ka) {
+    if (this.clip) {
+      const mx = (ax + bx + cx) / 3, mz = (az + bz + cz) / 3;
+      const k = this.clip;
+      if (mx < k[0] || mx >= k[2] || mz < k[1] || mz >= k[3]) return;
+    }
     const ux = bx - ax, uy = by - ay, uz = bz - az;
     const vx = cx - ax, vy = cy - ay, vz = cz - az;
-    const dx = uy * vz - uz * vy, dy = uz * vx - ux * vz, dz = ux * vy - uy * vx;
+    let dx = uy * vz - uz * vy, dy = uz * vx - ux * vz, dz = ux * vy - uy * vx;
     const flip = dx * nx + dy * ny + dz * nz < 0;
-    const A = this.color(hex, ka), B = this.color(hex, kb), C = this.color(hex, kc);
-    if (!flip) this.push3(ax, ay, az, A, bx, by, bz, B, cx, cy, cz, C);
-    else this.push3(ax, ay, az, A, cx, cy, cz, C, bx, by, bz, B);
-    if (this.withUv) this.uv.push(0, 0, 0, 0, 0, 0);
+    const l = Math.hypot(dx, dy, dz);
+    if (l < 1e-12) return; // a degenerate sliver draws nothing
+    dx /= l; dy /= l; dz /= l;
+    if (flip) { dx = -dx; dy = -dy; dz = -dz; }
+    const [r, g, b] = this.rgb(hex);
+    const P = this.p, C = this.c, N = this.nr;
+    P.ensure(9); C.ensure(9); N.ensure(9);
+    const o = P.n;
+    const pa = P.a, ca = C.a, na = N.a;
+    if (!flip) {
+      pa[o] = ax; pa[o + 1] = ay; pa[o + 2] = az; pa[o + 3] = bx; pa[o + 4] = by; pa[o + 5] = bz; pa[o + 6] = cx; pa[o + 7] = cy; pa[o + 8] = cz;
+      ca[o] = r * ka; ca[o + 1] = g * ka; ca[o + 2] = b * ka; ca[o + 3] = r * kb; ca[o + 4] = g * kb; ca[o + 5] = b * kb; ca[o + 6] = r * kc; ca[o + 7] = g * kc; ca[o + 8] = b * kc;
+    } else {
+      pa[o] = ax; pa[o + 1] = ay; pa[o + 2] = az; pa[o + 3] = cx; pa[o + 4] = cy; pa[o + 5] = cz; pa[o + 6] = bx; pa[o + 7] = by; pa[o + 8] = bz;
+      ca[o] = r * ka; ca[o + 1] = g * ka; ca[o + 2] = b * ka; ca[o + 3] = r * kc; ca[o + 4] = g * kc; ca[o + 5] = b * kc; ca[o + 6] = r * kb; ca[o + 7] = g * kb; ca[o + 8] = b * kb;
+    }
+    for (let i = 0; i < 9; i += 3) { na[o + i] = dx; na[o + i + 1] = dy; na[o + i + 2] = dz; }
+    P.n += 9; C.n += 9; N.n += 9;
+    if (this.withUv) { this.t.ensure(6); this.t.n += 6; }
     this.tris++;
-  }
-
-  private push3(ax: number, ay: number, az: number, A: number[], bx: number, by: number, bz: number, B: number[], cx: number, cy: number, cz: number, C: number[]) {
-    this.pos.push(ax, ay, az, bx, by, bz, cx, cy, cz);
-    this.col.push(A[0], A[1], A[2], B[0], B[1], B[2], C[0], C[1], C[2]);
   }
 
   /** Quad a-b-c-d (in order around it) facing the hint normal. k0 darkens a and b, k1 darkens c and d (a soft ground contact). */
@@ -44,24 +92,25 @@ export class Soup {
 
   /** Quad with UVs (u0,v0 at a, u1,v1 at c); a-b is the bottom edge, c-d the top. */
   quadUv(a: number[], b: number[], c: number[], d: number[], n: number[], u0: number, v0: number, u1: number, v1: number, hex: string | number | Color = '#ffffff') {
-    const before = this.uv.length;
+    const n0 = this.p.n;
     const wasUv = this.withUv;
     this.withUv = false;
     this.quad(a, b, c, d, hex, n);
     this.withUv = wasUv;
-    // six vertices: (a b c) (a c d) in the winding that was used, so look the corner up by position
-    const cs: Record<string, [number, number]> = {};
-    const key = (p: number[]) => `${p[0].toFixed(4)},${p[1].toFixed(4)},${p[2].toFixed(4)}`;
-    cs[key(a)] = [u0, v0];
-    cs[key(b)] = [u1, v0];
-    cs[key(c)] = [u1, v1];
-    cs[key(d)] = [u0, v1];
-    const base = this.pos.length - 18;
-    for (let i = 0; i < 6; i++) {
-      const k = `${this.pos[base + i * 3].toFixed(4)},${this.pos[base + i * 3 + 1].toFixed(4)},${this.pos[base + i * 3 + 2].toFixed(4)}`;
-      const uv = cs[k] ?? [0, 0];
-      this.uv[before + i * 2] = uv[0];
-      this.uv[before + i * 2 + 1] = uv[1];
+    if (!wasUv) return;
+    // the vertices that survived the clip: look each corner up by position
+    const corners = [a, b, c, d];
+    const uvs = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
+    const P = this.p.a;
+    this.t.ensure((this.p.n - n0) / 3 * 2);
+    for (let i = n0; i < this.p.n; i += 3) {
+      let uv = uvs[0];
+      for (let k = 0; k < 4; k++) {
+        const q = corners[k];
+        if (Math.abs(P[i] - q[0]) < 1e-4 && Math.abs(P[i + 1] - q[1]) < 1e-4 && Math.abs(P[i + 2] - q[2]) < 1e-4) { uv = uvs[k]; break; }
+      }
+      this.t.a[this.t.n++] = uv[0];
+      this.t.a[this.t.n++] = uv[1];
     }
   }
 
@@ -103,33 +152,27 @@ export class Soup {
     this.quad([ax + nx, y, az + nz], [bx + nx, y, bz + nz], [bx - nx, y, bz - nz], [ax - nx, y, az - nz], hex, [0, 1, 0]);
   }
 
-  geometry(): BufferGeometry {
+  /** The same geometry, built in small steps (one attribute copy per step) so a streaming chunk never spends a long slice here. */
+  *geometryGen(): Generator<void, BufferGeometry> {
     const g = new BufferGeometry();
-    g.setAttribute('position', new Float32BufferAttribute(this.pos, 3));
-    g.setAttribute('color', new Float32BufferAttribute(this.col, 3));
-    if (this.withUv) g.setAttribute('uv', new Float32BufferAttribute(this.uv, 2));
-    g.computeVertexNormals();
+    g.setAttribute('position', new Float32BufferAttribute(this.p.a.slice(0, this.p.n), 3));
+    yield;
+    g.setAttribute('color', new Float32BufferAttribute(this.c.a.slice(0, this.c.n), 3));
+    yield;
+    g.setAttribute('normal', new Float32BufferAttribute(this.nr.a.slice(0, this.nr.n), 3));
+    if (this.withUv) g.setAttribute('uv', new Float32BufferAttribute(this.t.a.slice(0, this.t.n), 2));
+    yield;
     g.computeBoundingSphere();
     return g;
   }
-}
 
-/**
- * A soup split into square chunks (by triangle centroid) so the GPU can skip the ones that are off screen: one mesh per chunk,
- * each with its own bounding sphere. Same API as Soup (every shape ends in `tri`).
- */
-export class ChunkedSoup extends Soup {
-  readonly chunks = new Map<string, Soup>();
-  private size: number;
-  constructor(size = 140) {
-    super();
-    this.size = size;
-  }
-  override tri(ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number, hex: string | number | Color, nx: number, ny: number, nz: number, ka = 1, kb = ka, kc = ka) {
-    const k = `${Math.floor((ax + bx + cx) / 3 / this.size)},${Math.floor((az + bz + cz) / 3 / this.size)}`;
-    let s = this.chunks.get(k);
-    if (!s) this.chunks.set(k, (s = new Soup()));
-    s.tri(ax, ay, az, bx, by, bz, cx, cy, cz, hex, nx, ny, nz, ka, kb, kc);
-    this.tris++;
+  geometry(): BufferGeometry {
+    const g = new BufferGeometry();
+    g.setAttribute('position', new Float32BufferAttribute(this.p.a.slice(0, this.p.n), 3));
+    g.setAttribute('color', new Float32BufferAttribute(this.c.a.slice(0, this.c.n), 3));
+    g.setAttribute('normal', new Float32BufferAttribute(this.nr.a.slice(0, this.nr.n), 3));
+    if (this.withUv) g.setAttribute('uv', new Float32BufferAttribute(this.t.a.slice(0, this.t.n), 2));
+    g.computeBoundingSphere();
+    return g;
   }
 }

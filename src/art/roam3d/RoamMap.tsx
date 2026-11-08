@@ -16,11 +16,13 @@ interface Props {
   onPick: (id: string) => void;
 }
 
-const SMALL = 64; // metres each side of the player in the small map
+const SMALL = 64; // metres each side of the player in the small map (on foot)
+const SMALL_DRIVE = 130; // and in the car
 
 function MiniBase({ world, live, open, onToggle, destId, onPick }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const me = useRef<SVGGElement>(null);
+  const carMark = useRef<SVGRectElement>(null);
   const route = useRef<SVGPolylineElement>(null);
   const openRef = useRef(open);
   openRef.current = open;
@@ -57,9 +59,18 @@ function MiniBase({ world, live, open, onToggle, destId, onPick }: Props) {
         const w = geo.x1 - geo.x0, h = geo.y1 - geo.y0;
         el.setAttribute('viewBox', `${geo.x0} ${geo.y0} ${w} ${h}`);
       } else {
-        el.setAttribute('viewBox', `${(L.x - SMALL).toFixed(1)} ${(L.y - SMALL).toFixed(1)} ${SMALL * 2} ${SMALL * 2}`);
+        const sp = L.car.driving ? SMALL_DRIVE : SMALL;
+        el.setAttribute('viewBox', `${(L.x - sp).toFixed(1)} ${(L.y - sp).toFixed(1)} ${sp * 2} ${sp * 2}`);
       }
-      const unit = openRef.current ? (geo.x1 - geo.x0) / 300 : SMALL / 46;
+      const unit = openRef.current ? (geo.x1 - geo.x0) / 300 : (L.car.driving ? SMALL_DRIVE : SMALL) / 46;
+      // your parked car, a small blue block on the map
+      if (carMark.current) {
+        const show = L.car.here && !L.car.driving;
+        carMark.current.setAttribute('visibility', show ? 'visible' : 'hidden');
+        if (show) {
+          carMark.current.setAttribute('transform', `translate(${L.car.x.toFixed(1)} ${L.car.y.toFixed(1)}) rotate(${((L.car.h * 180) / Math.PI).toFixed(0)}) scale(${unit.toFixed(2)})`);
+        }
+      }
       if (me.current) me.current.setAttribute('transform', `translate(${L.x.toFixed(1)} ${L.y.toFixed(1)}) rotate(${((L.h * 180) / Math.PI).toFixed(0)}) scale(${unit.toFixed(2)})`);
       if (route.current) {
         const pts = L.route;
@@ -100,7 +111,7 @@ function MiniBase({ world, live, open, onToggle, destId, onPick }: Props) {
         <polyline ref={route} className="rm-route" points="" />
         {world.places.map((p) => (
           <g key={p.id} onClick={(e) => { if (open) { e.stopPropagation(); onPick(p.id); } }} style={{ cursor: open ? 'pointer' : 'default' }}>
-            <circle className={`rm-pin${destId === p.id ? ' is-dest' : ''}`} cx={p.door.sx} cy={p.door.sy} r={u * (open ? 5.2 : 3.2)} strokeWidth={u * 1.4} />
+            <circle className={`rm-pin${destId === p.id ? ' is-dest' : ''}${p.closed ? ' is-closed' : ''}`} cx={p.door.sx} cy={p.door.sy} r={u * (open ? 5.2 : 3.2)} strokeWidth={u * 1.4} />
             {open && (
               <text className="rm-label" x={p.door.sx} y={p.door.sy - u * 8} fontSize={u * 9.5} textAnchor="middle" strokeWidth={u * 3}>
                 {p.label}
@@ -108,6 +119,7 @@ function MiniBase({ world, live, open, onToggle, destId, onPick }: Props) {
             )}
           </g>
         ))}
+        <rect ref={carMark} className="rm-car" x={-4.4} y={-2} width={8.8} height={4} rx={1.2} visibility="hidden" />
         <g ref={me}>
           <circle className="rm-me-halo" r={7} />
           <path className="rm-me" d="M7 0 L-5 5 L-2.5 0 L-5 -5Z" strokeWidth={1.4} strokeLinejoin="round" />

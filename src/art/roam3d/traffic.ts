@@ -30,6 +30,17 @@ export interface Car {
   braking: boolean;
   /** Fraction of the cruise speed this car may use (traffic is a little uneven). */
   jam: boolean;
+  /** The other cars of its lane (the car ahead is looked for among these only). */
+  mates: Car[];
+  /** Waiting invisible at the start of its stretch because somebody stands where it would appear. */
+  held: boolean;
+  /** Within the fade-in zone at the start of its stretch. */
+  entering: boolean;
+  /** The slowest pace of its lane (kept for tools). */
+  laneV: number;
+  /** Where cars of its stream appear (the entering end of the stretch, on its lane). */
+  ex: number;
+  ey: number;
 }
 
 export interface Person {
@@ -39,12 +50,17 @@ export interface Person {
 }
 
 const SPEED_SCALE = 0.8;
+/** A car is not allowed to appear (fade in) with a person or the player's car nearer than this (m): no shoving, no pop-in on somebody. */
+export const SPAWN_SAFE = 8;
+/** Cars farther than this from the focus just cruise (no braking checks): nobody sees them. */
+const SIM_R = 190;
 export const OKADA_SIZE: readonly [number, number] = [2.0, 0.8];
 const EXTRA_COL = ['#d9a441', '#2e7d5b', '#c0392b', '#3d5f80', '#e8e4da', '#5a4a8a'];
 const DECEL = 7.5;
 const ACCEL = 3.2;
 const wrap = (v: number, len: number) => ((v % len) + len) % len;
 const _s = { x: 0, y: 0, a: 0, s: 0 };
+const rdClosed = (L: CityLayout, c: Car) => L.roads[c.road].closed && !c.jam;
 
 export class Traffic {
   readonly cars: Car[] = [];
@@ -52,15 +68,15 @@ export class Traffic {
   /** dynamic boxes handed to the collision world (reused objects). */
   private boxes: DynBox[] = [];
 
-  constructor(L: CityLayout, box: [number, number, number, number]) {
+  constructor(L: CityLayout, box?: [number, number, number, number]) {
     this.L = L;
     let id = 0;
     for (const v of L.vehicles) {
       if (v.px !== undefined) continue;
       const rd = L.roads[v.road];
       const len = v.s1 - v.s0;
-      let touch = false;
-      for (let k = 0; k <= 24 && !touch; k++) {
+      let touch = !box;
+      for (let k = 0; box && k <= 24 && !touch; k++) {
         const p = at(rd.sp, v.s0 + (k / 24) * len, _s);
         if (p.x > box[0] - 20 && p.x < box[2] + 20 && p.y > box[1] - 20 && p.y < box[3] + 20) touch = true;
       }
@@ -68,10 +84,30 @@ export class Traffic {
       const [vl, vw] = VEHICLE_SIZE[v.kind];
       this.cars.push({
         id: id++, kind: v.kind, color: v.color, road: v.road, lane: v.lane, s0: v.s0, s1: v.s1, s: v.s, run: 0,
-        v: v.speed * SPEED_SCALE, cruise: v.speed * SPEED_SCALE * (v.jam ? 0.7 : 1), len: vl, wid: vw, x: 0, y: 0, a: 0, k: 1, braking: false, jam: v.jam,
+        v: v.speed * SPEED_SCALE, cruise: v.speed * SPEED_SCALE * (v.jam ? 0.7 : 1), len: vl, wid: vw, x: 0, y: 0, a: 0, k: 1, braking: false, jam: v.jam, mates: [], held: false, entering: false, laneV: 0, ex: 0, ey: 0,
       });
     }
     this.densify(id);
+    const lanes = new Map<string, Car[]>();
+    for (const c of this.cars) {
+      // one stream = one stretch of one lane (a jam queue and the free traffic of the same road never share a stretch)
+      const k = c.road + ':' + c.lane + ':' + c.s0 + ':' + c.s1;
+      let arr = lanes.get(k);
+      if (!arr) lanes.set(k, (arr = []));
+      arr.push(c);
+      c.mates = arr;
+    }
+    for (const arr of lanes.values()) {
+      let lv = Infinity;
+      for (const c of arr) lv = Math.min(lv, c.cruise);
+      for (const c of arr) c.laneV = lv;
+      // the entering point of this stream
+      const c0 = arr[0];
+      const rd = this.L.roads[c0.road];
+      const p = at(rd.sp, c0.lane > 0 ? c0.s0 : c0.s1, _s);
+      const off = rd.hw * 0.48 * c0.lane;
+      for (const c of arr) { c.ex = p.x - Math.sin(p.a) * off; c.ey = p.y + Math.cos(p.a) * off; }
+    }
     for (const c of this.cars) this.pose(c);
   }
 
@@ -81,7 +117,7 @@ export class Traffic {
     const groups = new Map<string, Car[]>();
     for (const c of this.cars) {
       if (c.jam) continue;
-      const k = c.road + ':' + c.lane;
+      const k = c.road + ':' + c.lane + ':' + c.s0 + ':' + c.s1;
       (groups.get(k) ?? groups.set(k, []).get(k)!).push(c);
     }
     const extras = ['keke', 'okada', 'car', 'okada', 'keke'] as const;
@@ -99,7 +135,7 @@ export class Traffic {
         this.cars.push({
           id: id++, kind, color: EXTRA_COL[n % EXTRA_COL.length], road: c0.road, lane: c0.lane, s0: c0.s0, s1: c0.s1,
           s: c0.s0 + ((a + gap / 2) % len), run: 0, v: c0.cruise, cruise: c0.cruise * (kind === 'okada' ? 1.1 : 0.95), len: vl, wid: vw,
-          x: 0, y: 0, a: 0, k: 1, braking: false, jam: false,
+          x: 0, y: 0, a: 0, k: 1, braking: false, jam: false, mates: [], held: false, entering: false, laneV: 0, ex: 0, ey: 0,
         });
       }
     }
@@ -117,20 +153,42 @@ export class Traffic {
     const closed = rd.closed && !c.jam;
     const edge = Math.min(s - c.s0, c.s1 - s);
     c.k = closed ? 1 : Math.max(0.001, Math.min(1, edge / 4));
+    // a car enters at the end it comes from: the start of the stretch for lane +1, the far end for lane -1
+    c.entering = !closed && edge < 5 && (c.lane > 0 ? s - c.s0 < c.s1 - s : c.s1 - s < s - c.s0);
+    if (c.held) c.k = 0.001;
     return s;
   }
 
   /** Advance every car by dt. `people` = the player and pedestrians (circles). */
-  step(dt: number, people: readonly Person[]) {
+  step(dt: number, people: readonly Person[], focus?: { x: number; y: number }) {
     const cars = this.cars;
     for (let i = 0; i < cars.length; i++) {
       const c = cars[i];
+      // far from the player nobody is there to hit or to be seen: skip the people checks (the car ahead is still respected)
+      const far = Boolean(focus) && (Math.abs(c.x - focus!.x) > SIM_R || Math.abs(c.y - focus!.y) > SIM_R);
+      // a car about to appear never does so on top of a person or the player's car: it waits, unseen, until they have moved
+      if (far) c.held = false;
+      else if (c.entering) {
+        let near = false;
+        for (let j = 0; j < people.length && !near; j++) {
+          const p = people[j];
+          const wx = p.x - c.x, wy = p.y - c.y;
+          if (wx > SPAWN_SAFE + p.r || wx < -SPAWN_SAFE - p.r || wy > SPAWN_SAFE + p.r || wy < -SPAWN_SAFE - p.r) continue;
+          near = Math.hypot(wx, wy) < SPAWN_SAFE + p.r;
+        }
+        c.held = near;
+        if (near) {
+          c.v = 0;
+          c.braking = true;
+          continue;
+        }
+      } else c.held = false;
       let vmax = c.cruise;
       let braking = false;
       const ch = Math.cos(c.a), sh = Math.sin(c.a);
       // obstacles ahead: people, then the car in front in the same lane
       const look = c.v * c.v / (2 * DECEL) + 6;
-      for (let j = 0; j < people.length; j++) {
+      for (let j = 0; !far && j < people.length; j++) {
         const p = people[j];
         const wx = p.x - c.x, wy = p.y - c.y;
         if (wx > look + 6 || wx < -look - 6 || wy > look + 6 || wy < -look - 6) continue;
@@ -142,9 +200,29 @@ export class Traffic {
         const vs = Math.sqrt(2 * DECEL * Math.max(0, d));
         if (vs < vmax) { vmax = vs; braking = true; }
       }
-      for (let j = 0; j < cars.length; j++) {
-        const o = cars[j];
-        if (o === c || o.road !== c.road || o.lane !== c.lane) continue;
+      if (!far && !rdClosed(this.L, c)) {
+        // the car would wrap to the entering point of its stream: if somebody stands there it waits (smoothly) before the end
+        const len0 = c.s1 - c.s0;
+        const u = wrap(c.s - c.s0 + c.run * c.lane, len0);
+        const dEnd = c.lane > 0 ? len0 - u : u;
+        if (dEnd < look + 14) {
+          let busy = false;
+          for (let j = 0; j < people.length && !busy; j++) {
+            const p = people[j];
+            const wx = p.x - c.ex, wy = p.y - c.ey;
+            if (wx > SPAWN_SAFE + 3 + p.r || wx < -SPAWN_SAFE - 3 - p.r || wy > SPAWN_SAFE + 3 + p.r || wy < -SPAWN_SAFE - 3 - p.r) continue;
+            busy = Math.hypot(wx, wy) < SPAWN_SAFE + 3 + p.r;
+          }
+          if (busy) {
+            const d = dEnd - 3 - c.len / 2;
+            const vs = Math.sqrt(2 * DECEL * Math.max(0, d));
+            if (vs < vmax) { vmax = vs; braking = true; }
+          }
+        }
+      }
+      for (let j = 0; j < c.mates.length; j++) {
+        const o = c.mates[j];
+        if (o === c) continue;
         const len = c.s1 - c.s0;
         const sc = wrap(c.s - c.s0 + c.run * c.lane, len);
         const so = wrap(o.s - o.s0 + o.run * o.lane, len);
@@ -152,7 +230,8 @@ export class Traffic {
         ahead = wrap(ahead, len);
         const d = ahead - c.len / 2 - o.len / 2 - 2.2;
         if (ahead < look + 10) {
-          const vs = Math.max(0, o.v) + Math.sqrt(2 * DECEL * Math.max(0, d));
+          // keep a gap in which this car could stop even if the one ahead stopped dead (a pedestrian stepping out in front of it)
+          const vs = Math.sqrt(2 * DECEL * Math.max(0, d));
           if (d < 0.2) { vmax = Math.min(vmax, 0); braking = true; }
           else if (vs < vmax) { vmax = vs; braking = true; }
         }
@@ -162,7 +241,7 @@ export class Traffic {
       else c.v = Math.min(vmax, c.v + ACCEL * dt);
       // never roll into a person this step
       const nx = c.v * dt;
-      if (nx > 0) {
+      if (nx > 0 && !far) {
         let go = true;
         const steps = Math.ceil(nx / 0.1);
         for (let q = 1; q <= steps && go; q++) {
@@ -181,6 +260,22 @@ export class Traffic {
       c.run += c.v * dt;
     }
     for (const c of cars) this.pose(c);
+    // a car that has just wrapped to the start of its stretch (or crept into it) never appears on top of a person: it goes back and waits unseen
+    for (const c of cars) {
+      if (!c.entering) continue;
+      let near = false;
+      for (let j = 0; j < people.length && !near; j++) {
+        const p = people[j];
+        const wx = p.x - c.x, wy = p.y - c.y;
+        if (wx > SPAWN_SAFE + p.r || wx < -SPAWN_SAFE - p.r || wy > SPAWN_SAFE + p.r || wy < -SPAWN_SAFE - p.r) continue;
+        near = Math.hypot(wx, wy) < SPAWN_SAFE + p.r;
+      }
+      if (!near) continue;
+      c.run -= c.v * dt;
+      c.v = 0;
+      c.held = true;
+      this.pose(c);
+    }
   }
 
   /** Publish the solid cars within `reach` m of (px, py) to the collision world. */

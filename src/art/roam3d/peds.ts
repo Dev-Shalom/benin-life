@@ -4,7 +4,8 @@
 import { at, rng } from '../map/mapGeo';
 import { KERB } from '../city3d/engine/roadnet';
 import type { CollisionWorld, DynCircle } from './collide';
-import { AREA, inArea } from './area';
+import { districtAt } from '../drive3d/district';
+import { inArea } from './area';
 import type { RoamWorld } from './world';
 
 export type PedKind = 'walker' | 'seller' | 'idler';
@@ -37,6 +38,18 @@ export interface Ped {
   homeH: number;
   look: number;
   salt: number;
+  /** Stall / door this seller or idler stands at (index into W.stalls / W.places), -1 none. */
+  at: number;
+}
+
+/** How crowded the pavements are in a district (0..1): markets and the centre busy, GRA and the outskirts quiet. */
+export const BUSY: Record<string, number> = { market: 1, core: 0.9, cramped: 0.7, campus: 0.55, res: 0.45, gra: 0.18, farm: 0.07 };
+
+export interface CarObstacle {
+  x: number;
+  y: number;
+  a: number;
+  speed: number;
 }
 
 export class Peds {
@@ -66,7 +79,7 @@ export class Peds {
     const push = (kind: PedKind): Ped => {
       const p: Ped = {
         id: id++, kind, x: 0, y: 0, h: 0, moved: 0, phase: this.rnd(), gait: 0, speed: 1.1 + this.rnd() * 0.35, v: 0,
-        road: 0, s: 0, dir: 1, side: 1, until: 0, pause: 0, wait: 0, homeX: 0, homeY: 0, homeH: 0, look: id, salt: this.rnd() * 10,
+        road: 0, s: 0, dir: 1, side: 1, until: 0, pause: 0, wait: 0, homeX: 0, homeY: 0, homeH: 0, look: id, salt: this.rnd() * 10, at: -1,
       };
       this.list.push(p);
       this.circles.push({ x: 0, y: 0, r: 0.3, id: p.id });
@@ -80,6 +93,7 @@ export class Peds {
     for (let i = 0; i < Math.min(opt.sellers, sellers.length); i++) {
       const st = sellers[i];
       const p = push('seller');
+      p.at = W.stalls.indexOf(st);
       p.homeX = st.x - st.fx * 0.95;
       p.homeY = st.y - st.fy * 0.95;
       p.homeH = Math.atan2(st.fy, st.fx);
@@ -89,6 +103,7 @@ export class Peds {
     for (let i = 0; i < Math.min(opt.idlers, doors.length); i++) {
       const d = doors[(i * 3 + 1) % doors.length].door;
       const p = push('idler');
+      p.at = W.places.indexOf(doors[(i * 3 + 1) % doors.length]);
       // beside the door, not in front of it
       p.homeX = d.sx + d.ny * 3.6;
       p.homeY = d.sy - d.nx * 3.6;
@@ -116,6 +131,7 @@ export class Peds {
         if (dd < 8 || dd > 55) continue;
       }
       if (!inArea(q[0], q[1], 3) || !this.W.col.clear(q[0], q[1], 0.35, -1, false)) continue;
+      if (this.around && tries < 30 && this.list.indexOf(p) < 14 && this.rnd() > (BUSY[districtAt(q[0], q[1])] ?? 0.4) + 0.25) continue;
       p.x = q[0];
       p.y = q[1];
       p.until = 20 + this.rnd() * 50;
@@ -148,10 +164,106 @@ export class Peds {
     }
   }
 
-  step(dt: number, col: CollisionWorld, player: { x: number; y: number }) {
+  /**
+   * Keep the crowd round the player in a city that is bigger than the screen: walkers that are far away reappear on a pavement near the
+   * player (more where the district is busy, never in front of the camera close up), sellers and idlers move to a stall / door nearby.
+   * Called a couple of times a second.
+   */
+  recycle(px: number, py: number, view: { dx: number; dy: number }) {
+    const W = this.W;
+    const L = W.L;
+    this.recycleN++;
+    for (const p of this.list) {
+      const d2 = (p.x - px) ** 2 + (p.y - py) ** 2;
+      if (p.kind === 'walker') {
+        if (d2 < 110 * 110) continue;
+        for (let tries = 0; tries < 36; tries++) {
+          const ri = this.roads[Math.floor(this.rnd() * this.roads.length)];
+          const r = L.roads[ri];
+          // pick a point on the road, then test its distance to the player
+          const s = this.rnd() * r.sp.length;
+          p.road = ri;
+          p.s = s;
+          p.dir = this.rnd() < 0.5 ? 1 : -1;
+          p.side = this.rnd() < 0.5 ? 1 : -1;
+          const q = this.offsetAt(p, s);
+          const dd = Math.hypot(q[0] - px, q[1] - py);
+          if (dd < 28 || dd > 75) continue;
+          const ahead = ((q[0] - px) * view.dx + (q[1] - py) * view.dy) / (dd || 1);
+          if (dd < 50 && ahead > 0.3) continue;
+          if (this.rnd() > (BUSY[districtAt(q[0], q[1])] ?? 0.4) + 0.1) continue;
+          if (!inArea(q[0], q[1], 3) || !W.col.clear(q[0], q[1], 0.35, -1, false)) continue;
+          p.x = q[0]; p.y = q[1]; p.until = this.t + 20 + this.rnd() * 50; p.pause = 0; p.wait = 0;
+          p.h = Math.atan2(Math.sin(r.sp.samples[0].a) * p.dir, Math.cos(r.sp.samples[0].a) * p.dir);
+          break;
+        }
+      } else if (d2 > 120 * 120) {
+        // a seller / idler: a free stall or door within 20..70 m
+        if (p.kind === 'seller') {
+          const taken = new Set<number>();
+          for (const q of this.list) if (q.kind === 'seller' && q.at >= 0) taken.add(q.at);
+          let best = -1, bd = Infinity;
+          for (let i = 0; i < W.stalls.length; i++) {
+            const st = W.stalls[i];
+            if (!st.seller || taken.has(i)) continue;
+            const dd = Math.hypot(st.x - px, st.y - py);
+            if (dd < 18 || dd > 90) continue;
+            const ahead = ((st.x - px) * view.dx + (st.y - py) * view.dy) / (dd || 1);
+            if (dd < 40 && ahead > 0.3) continue;
+            if (dd < bd) { bd = dd; best = i; }
+          }
+          if (best >= 0) {
+            const st = W.stalls[best];
+            p.at = best;
+            p.homeX = st.x - st.fx * 0.95; p.homeY = st.y - st.fy * 0.95; p.homeH = Math.atan2(st.fy, st.fx);
+            p.x = p.homeX; p.y = p.homeY; p.h = p.homeH;
+          }
+        } else {
+          const doors = W.places.filter((pl) => pl.door.kind === 'wall' && Math.hypot(pl.door.sx - px, pl.door.sy - py) > 25 && Math.hypot(pl.door.sx - px, pl.door.sy - py) < 80);
+          if (doors.length) {
+            const pl = doors[(this.recycleN * 7 + p.id) % doors.length];
+            const d = pl.door;
+            let hx = d.sx + d.ny * 3.6, hy = d.sy - d.nx * 3.6;
+            if (!W.col.clear(hx, hy, 0.4, -1, false)) { hx = d.sx - d.ny * 3.6; hy = d.sy + d.nx * 3.6; }
+            if (W.col.clear(hx, hy, 0.4, -1, false)) {
+              p.at = W.places.indexOf(pl);
+              p.homeX = hx; p.homeY = hy; p.homeH = Math.atan2(-d.ny, -d.nx);
+              p.x = hx; p.y = hy; p.h = p.homeH;
+            }
+          }
+        }
+      }
+    }
+  }
+  private recycleN = 0;
+
+  step(dt: number, col: CollisionWorld, player: { x: number; y: number }, car?: CarObstacle | null) {
     this.t += dt;
     for (const p of this.list) {
       p.moved = 0;
+      // a car coming: step aside early, well before it is near (nobody is ever hit)
+      if (car && car.speed > 1.2 && p.kind !== 'seller') {
+        const wx = p.x - car.x, wy = p.y - car.y;
+        if (Math.abs(wx) < 16 && Math.abs(wy) < 16) {
+          const ch = Math.cos(car.a), sh = Math.sin(car.a);
+          const lx = wx * ch + wy * sh, ly = -wx * sh + wy * ch;
+          const reach = 4 + car.speed * 1.1;
+          if (lx > -3 && lx < reach && Math.abs(ly) < 4.2) {
+            const sg = ly >= 0 ? 1 : -1;
+            const sp = Math.min(3.6, 1.6 + car.speed * 0.12) * dt;
+            this._p.x = p.x;
+            this._p.y = p.y;
+            const m = col.move(this._p, -sh * sg * sp, ch * sg * sp, 0.28, p.id);
+            p.x = this._p.x;
+            p.y = this._p.y;
+            p.moved = m;
+            p.h = turnTo(p.h, Math.atan2(ch * sg, -sh * sg), 10 * dt);
+            p.gait = Math.min(1, p.gait + dt * 6);
+            p.pause = 0;
+            continue;
+          }
+        }
+      }
       if (p.kind !== 'walker') {
         // sellers and idlers stand; they turn to the player when he is close
         const dx = player.x - p.x, dy = player.y - p.y;
@@ -209,7 +321,6 @@ export class Peds {
     }
     this.syncCircles();
     col.dynCircles = this.circles;
-    void AREA;
   }
 }
 

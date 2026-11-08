@@ -384,3 +384,301 @@
     transition: none;
   }
 }
+
+/* ---- phase 2: your own vehicle, search / hail sheet, stranded card ---- */
+.roam-carbtn {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  min-width: 84px;
+  height: 46px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: var(--glass);
+  color: var(--glass-text);
+  box-shadow: var(--e2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--t-press) var(--ease-out), background-color 160ms linear;
+}
+.roam-carbtn:active {
+  transform: scale(0.95);
+}
+.roam-carbtn.is-ready {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.roam-carbtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.roam-carbtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring), var(--e2);
+}
+.roam-brake {
+  color: var(--bad);
+}
+.roam-brake:active {
+  background: var(--bad);
+  color: var(--on-primary);
+}
+.roam-hail {
+  color: var(--glass-text);
+}
+.roam-stick__tag {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--glass-text);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.roam-stick__tag--u {
+  top: 8px;
+}
+.roam-stick__tag--d {
+  bottom: 8px;
+}
+.roam-carhud {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--sal) + 12px);
+  top: calc(var(--sat) + 160px);
+  pointer-events: none;
+}
+.roam-carhud .drive-hud {
+  align-items: flex-start;
+  flex-direction: row;
+}
+.roam-speed {
+  position: fixed;
+  z-index: 3;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--sab) + 30px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  padding: 7px 16px 8px;
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  color: var(--glass-text);
+  box-shadow: var(--e2);
+  pointer-events: none;
+}
+.roam-speed b {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-variant-numeric: tabular-nums;
+}
+.roam-speed small {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--glass-muted);
+}
+.roam-dry {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(340px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: 16px;
+  border-radius: var(--r-lg);
+  background: var(--glass-strong);
+  color: var(--glass-text);
+  box-shadow: var(--e3);
+}
+.roam-dry b {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+}
+.roam-dry p {
+  margin: 0 0 4px;
+  font-size: var(--fs-sm);
+  color: var(--glass-muted);
+}
+.roam-dry button {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-2, var(--glass));
+  color: var(--glass-text);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  text-align: left;
+}
+.roam-dry button small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--glass-muted);
+}
+.roam-dry button:disabled {
+  opacity: 0.6;
+}
+.roam-dry button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* search / hail sheet */
+.roam-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.roam-sheet__scrim {
+  position: absolute;
+  inset: 0;
+  appearance: none;
+  border: 0;
+  background: color-mix(in srgb, var(--ink-solid) 38%, transparent);
+  cursor: default;
+}
+.roam-sheet__card {
+  position: relative;
+  width: min(520px, 100%);
+  max-height: 72%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: 14px 14px calc(var(--sab) + 12px);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  background: var(--glass-strong);
+  color: var(--glass-text);
+  box-shadow: var(--e3);
+}
+.roam-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--fs-md);
+}
+.roam-sheet__head b {
+  font-family: var(--font-display);
+}
+.roam-sheet__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2, var(--glass));
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--glass-muted);
+}
+.roam-sheet__search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--glass-text);
+  font: inherit;
+  font-size: 16px;
+}
+.roam-sheet__search:focus-within {
+  box-shadow: var(--focus-ring);
+}
+.roam-sheet__hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--glass-muted);
+}
+.roam-sheet__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+}
+.roam-sheet__row {
+  appearance: none;
+  border: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'name dist' 'sub dist';
+  column-gap: 12px;
+  align-items: center;
+  text-align: left;
+  padding: 9px 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-bottom: 1px solid var(--line);
+}
+.roam-sheet__row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--r-sm);
+}
+.roam-sheet__row.is-off {
+  opacity: 0.55;
+}
+.roam-sheet__name {
+  grid-area: name;
+  font-weight: 800;
+  font-size: var(--fs-sm);
+}
+.roam-sheet__sub {
+  grid-area: sub;
+  font-size: var(--fs-xs);
+  color: var(--glass-muted);
+}
+.roam-sheet__dist {
+  grid-area: dist;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+.roam-sheet__none {
+  padding: 18px 4px;
+  color: var(--glass-muted);
+  font-size: var(--fs-sm);
+}
+.roam__loading small {
+  font-size: var(--fs-xs);
+  opacity: 0.8;
+}
+
+.rm-car {
+  fill: var(--primary);
+  stroke: var(--glass-strong);
+  stroke-width: 0.6;
+}
+.rm-pin.is-closed {
+  opacity: 0.5;
+  stroke-dasharray: 2 2;
+}
