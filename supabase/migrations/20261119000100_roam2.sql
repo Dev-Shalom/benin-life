@@ -437,6 +437,7 @@ end $$;
 -- ---------------------------------------------------------------------------------------------
 revoke execute on function public.bl_roam_session(public.profiles) from public, anon, authenticated;
 revoke execute on function public.bl_roam_count_call(uuid) from public, anon, authenticated;
+revoke execute on function public.bl_roam_speed_cap(text) from public, anon, authenticated;
 revoke execute on function public.roam_car_info() from public, anon;
 revoke execute on function public.roam_set_mode(text, text, numeric, numeric, numeric) from public, anon;
 revoke execute on function public.roam_drive_report(jsonb) from public, anon;
