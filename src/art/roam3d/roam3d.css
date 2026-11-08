@@ -780,8 +780,8 @@
 .roam-livechip {
   position: absolute;
   z-index: 3;
-  left: calc(var(--sal) + 12px);
-  top: calc(var(--sat) + 72px);
+  left: calc(var(--sal) + 112px);
+  top: calc(var(--sat) + 62px);
   appearance: none;
   border: 0;
   cursor: pointer;

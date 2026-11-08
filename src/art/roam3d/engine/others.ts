@@ -158,7 +158,7 @@ export class OthersLayer {
         this.poseWalker(s, r, nowMs / 1000, dt, near);
       }
       // name tag
-      const headY = wantCar ? 2.0 : 2.1;
+      const headY = wantCar ? 1.9 : 1.98;
       this.v.set(x, headY, y);
       this.v.project(o.cam);
       const d = r.dist;
@@ -349,6 +349,7 @@ export class OthersLayer {
     return this.pos.size;
   }
   debug() {
-    return { slots: this.slots.size, drawn: this.pos.size, passable: this.passable, last: this.lastFrame };
+    const first = [...this.slots.values()][0];
+    return { slots: this.slots.size, drawn: this.pos.size, passable: this.passable, last: this.lastFrame, armRz: first?.rig ? +first.rig.ch.rig.armR.rotation.z.toFixed(2) : null, gait: first?.gait ?? null, vis: first?.g.visible ?? null };
   }
 }

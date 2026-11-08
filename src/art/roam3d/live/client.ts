@@ -53,6 +53,8 @@ export interface Remote {
   py: number;
   bubble: { text: string; until: number } | null;
   seenAt: number;
+  /** Ticks in a row the server did not list it (a player at the edge of the cap flickers: it is dropped after two). */
+  missing: number;
   /** Seconds since it was added (fade in) and since it was dropped (fade out; > 0 means leaving). */
   born: number;
   leaving: number;
@@ -277,7 +279,8 @@ export class LiveClient {
     const ids = [...want.keys()].slice(0, this.maxShown());
     const keep = new Set(ids);
     for (const [id, r] of this.remotes) {
-      if (!keep.has(id) && r.leaving === 0) r.leaving = 0.0001;
+      if (keep.has(id)) r.missing = 0;
+      else if (r.leaving === 0 && ++r.missing >= 2) r.leaving = 0.0001;
     }
     for (const id of ids) {
       const row = want.get(id)!;
@@ -288,7 +291,7 @@ export class LiveClient {
         r = {
           id, name: row.n, avatar: row.av ?? null, streetCred: Number(row.sc ?? 0), title: row.t ?? null, crew: row.c ?? null,
           mode: row.m === 'car' ? 'car' : 'walk', veh: row.v ?? null, track: new RemoteTrack(), px: row.x, py: row.y, bubble: null,
-          seenAt: now, born: 0, leaving: 0, dist: 99,
+          seenAt: now, missing: 0, born: 0, leaving: 0, dist: 99,
         };
         this.remotes.set(id, r);
       } else {

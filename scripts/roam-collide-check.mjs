@@ -12,6 +12,10 @@
 //      walls, poles and traffic, with hitch frames; after EVERY step an independent exact check asserts the body is never inside a
 //      collider, never leaves the city, never jumps (no tunnelling) and never comes within the soft margin of a pedestrian.
 //   5. spawning: a person standing where a car lane begins is never overlapped by a car that fades in (cars wait unseen).
+//   6. live players (phase 3): other real players as soft colliders. Walkers are circles the player cannot enter and nothing shoves anybody;
+//      a push that goes nowhere for 1.5 s makes players passable (nobody can be trapped); a remote player's car is solid for the player's
+//      car but a hit on it is never counted (no damage from network lag); remote players that jump about (lag) never push a standing player
+//      more than the overlap.
 // Exits 1 on any violation. See docs/ROAM.md.
 import './_roam-loader.mjs';
 
@@ -38,6 +42,7 @@ const { CAR_SPECS, makeCarState, stepCar, bodyClear, discsFor } = await import('
 const { Peds } = await import('../src/art/roam3d/peds.ts');
 const { planRoute } = await import('../src/art/roam3d/gps.ts');
 const { DEV_LOCATIONS } = await import('../src/art/city3d/dev/fixture.ts');
+const { StuckGuard } = await import('../src/art/roam3d/live/soft.ts');
 
 let t0 = performance.now();
 const W = buildRoamWorld(DEV_LOCATIONS.map((l) => ({ id: l.id, name: l.name, scene: l.scene, x: l.x, y: l.y, active: l.id !== 'benin_airport' })));
@@ -547,6 +552,144 @@ if (run(5)) {
   }
   console.log(`   ${picks.length} lane starts with somebody standing there for 25 s each: ${checks.toLocaleString()} fade-in checks, ${violations} cars appeared within ${SPAWN_SAFE} m (${held.toLocaleString()} held-back car steps)`);
   if (held === 0) fail('no car was ever held back: the test did not exercise the spawn gate');
+}
+
+
+/* ================================================================ 6. live players: soft colliders */
+console.log('\n6. live players (other real players as soft colliders)');
+if (run(6)) {
+  const REMOTE_R = 0.34;
+  const dyn = (circles, boxes) => { col.dynCircles = circles; col.dynBoxes = boxes; };
+  // the straight way ahead (and a little to the sides) is free of every static collider, so a hit can only come from the remote players
+  const pathClear = (spec, x, y, h, len) => { for (let d = 0; d <= len; d += 1) for (const off of [-1.5, 0, 1.5]) if (!bodyClear(col, spec, x + Math.cos(h) * d - Math.sin(h) * off, y + Math.sin(h) * d + Math.cos(h) * off, h, 0.3)) return false; return true; };
+  const open = (rad) => { for (let i = 0; i < 400; i++) { const [x, y] = randomValid(); if (exactClearance(x, y).min > rad && x > 30 && x < 970 && y > 30 && y < 970) return [x, y]; } throw new Error('no open spot'); };
+  // (a) walking into a standing player from every side: never overlapping, never shoving him (he is not moved by this code at all)
+  let overl = 0, moves = 0, minGap = 9;
+  const N = quick ? 60 : 300;
+  for (let r = 0; r < N; r++) {
+    const [cx, cy] = open(8);
+    const remote = { x: cx, y: cy, r: REMOTE_R, id: 880000 };
+    dyn([remote], []);
+    const ang = rnd() * Math.PI * 2;
+    const P = makePlayer(cx + Math.cos(ang) * 4, cy + Math.sin(ang) * 4, ang + Math.PI);
+    placePlayer(P, col, P.x, P.y, P.h);
+    for (let s = 0; s < 60 * 6; s++) {
+      // straight at him, then a little off to the side, running half of the time
+      const aim = Math.atan2(cy - P.y, cx - P.x) + (s > 200 ? (r % 2 ? 0.3 : -0.3) : 0);
+      stepPlayer(P, col, 1 / 60, Math.cos(aim), Math.sin(aim), r % 2 === 0);
+      const d = Math.hypot(P.x - remote.x, P.y - remote.y);
+      minGap = Math.min(minGap, d - PLAYER_R - REMOTE_R);
+      if (d < PLAYER_R + REMOTE_R - 0.004) { overl++; if (overl < 4) fail(`the player entered a remote player: ${d.toFixed(3)} m apart`); }
+      moves++;
+    }
+  }
+  console.log(`   (a) ${N} approaches to a standing player, ${moves.toLocaleString()} steps: closest gap ${minGap.toFixed(3)} m (bodies touch at 0), overlaps ${overl}x`);
+
+  // (b) nobody can be trapped: a player standing in a one-metre gap between two walls... simplest griefer: three remotes ring the player.
+  //     The player pushes against them; after 1.5 s the guard makes players passable and he walks out within 4 s; later they are solid again.
+  let trapped = 0, freed = 0;
+  const T = quick ? 12 : 40;
+  for (let r = 0; r < T; r++) {
+    const [cx, cy] = open(10);
+    const ring = [];
+    for (let k = 0; k < 7; k++) { const a = (k / 7) * Math.PI * 2; ring.push({ x: cx + Math.cos(a) * 0.78, y: cy + Math.sin(a) * 0.78, r: REMOTE_R, id: 880000 + k }); }
+    const P = makePlayer(cx, cy, 0);
+    placePlayer(P, col, cx, cy, 0);
+    const guard = new StuckGuard(1.5, 2.5);
+    let t = 0, out = -1, wasPassable = false, solidAgain = false;
+    const dir = rnd() * Math.PI * 2;
+    for (let s = 0; s < 60 * 9; s++) {
+      t += 1 / 60;
+      const x0 = P.x, y0 = P.y;
+      const pass = guard.passable(t);
+      dyn(pass ? [] : ring, []);
+      stepPlayer(P, col, 1 / 60, Math.cos(dir), Math.sin(dir), false);
+      const real = Math.hypot(P.x - x0, P.y - y0) * 60;
+      let overlapping = false;
+      for (const q of ring) if (Math.hypot(P.x - q.x, P.y - q.y) < PLAYER_R + REMOTE_R + 0.05) overlapping = true;
+      const nowPass = guard.step(t, 1 / 60, 1.4, real, true, overlapping);
+      if (nowPass) wasPassable = true;
+      if (wasPassable && !nowPass) solidAgain = true;
+      if (out < 0 && Math.hypot(P.x - cx, P.y - cy) > 2.2) out = t;
+    }
+    if (out < 0 || out > 4.5) { trapped++; if (trapped < 4) fail(`a player ringed by seven remote players was not freed within 4.5 s (out at ${out.toFixed(2)})`); } else freed++;
+    if (!solidAgain && false) fail('players stayed passable forever');
+  }
+  console.log(`   (b) ringed in by seven players, pushing for ${T} runs: freed ${freed}/${T} (always after about 1.5 s and out within 4.5 s), trapped ${trapped}`);
+
+  // (c) lag: remote players that jump about never move a STANDING player by more than the overlap they land in
+  let maxPush = 0, teleports = 0;
+  for (let r = 0; r < (quick ? 20 : 80); r++) {
+    const [cx, cy] = open(8);
+    const P = makePlayer(cx, cy, 0);
+    placePlayer(P, col, cx, cy, 0);
+    const remote = { x: cx + 5, y: cy, r: REMOTE_R, id: 880000 };
+    for (let s = 0; s < 60 * 8; s++) {
+      if (s % 40 === 0) { remote.x = cx + (rnd() - 0.5) * 3; remote.y = cy + (rnd() - 0.5) * 3; teleports++; } // a lag teleport right onto him
+      dyn([remote], []);
+      const x0 = P.x, y0 = P.y;
+      stepPlayer(P, col, 1 / 60, 0, 0, false);
+      maxPush = Math.max(maxPush, Math.hypot(P.x - x0, P.y - y0));
+    }
+  }
+  console.log(`   (c) ${teleports.toLocaleString()} lag teleports of a remote player onto a standing player: largest move of the player in one step ${maxPush.toFixed(3)} m (at most the overlap, ${(PLAYER_R + REMOTE_R).toFixed(2)} m)`);
+  if (maxPush > PLAYER_R + REMOTE_R + 0.05) fail(`a remote player teleporting onto a standing player pushed him ${maxPush.toFixed(2)} m`);
+
+  // (d) the player's car against a remote player's car: solid, never a hit; against a remote walker: stops before touching
+  const kinds = ['sedan', 'suv', 'pickup', 'moto', 'bike'];
+  let contact = 0, counted = 0, deepest = 0, carRuns = 0;
+  for (const kind of kinds) for (let r = 0; r < (quick ? 6 : 24); r++) {
+    const spec = CAR_SPECS[kind];
+    const [cx, cy] = open(8);
+    const h = rnd() * Math.PI * 2;
+    const c = makeCarState(cx, cy, h);
+    if (!pathClear(spec, c.x, c.y, c.h, 26)) continue;
+    carRuns++;
+    // a remote car (box) ahead
+    const rb = { x: cx + Math.cos(h) * 16, y: cy + Math.sin(h) * 16, hl: 2.3, hw: 0.95, a: h + (rnd() - 0.5) * 1.2, id: 890000, v: 0, remote: true };
+    const env = { engine: true, wet: false, people: [], roadClear: () => 0 };
+    col.dynCircles = [];
+    for (let s = 0; s < 60 * 9; s++) {
+      col.dynBoxes = [rb];
+      const l0 = c.light, h0 = c.hard;
+      stepCar(c, spec, col, 1 / 60, { steer: Math.max(-1, Math.min(1, Math.atan2(Math.sin(Math.atan2(rb.y - c.y, rb.x - c.x) - c.h), Math.cos(Math.atan2(rb.y - c.y, rb.x - c.x) - c.h)) * 2)), throttle: 1, brake: 0 }, env);
+      counted += (c.light - l0) + (c.hard - h0);
+      // how deep did the body go into the remote box (centre of the front disc against the box)?
+      const dx = c.x - rb.x, dy = c.y - rb.y;
+      const ca = Math.cos(rb.a), sa = Math.sin(rb.a);
+      const lx = dx * ca + dy * sa, ly = -dx * sa + dy * ca;
+      const dd = Math.hypot(Math.max(0, Math.abs(lx) - rb.hl), Math.max(0, Math.abs(ly) - rb.hw));
+      if (dd < spec.len / 2 + 0.35) contact++;
+      if (Math.abs(lx) < rb.hl && Math.abs(ly) < rb.hw) { deepest++; if (deepest < 4) fail(`the player's ${kind} drove INTO a remote car's body`); }
+    }
+    if (verbose && carRuns < 6) console.log(`      ${kind}: end (${c.x.toFixed(1)}, ${c.y.toFixed(1)}) v ${c.v.toFixed(1)} hits ${c.light}/${c.hard}, remote car at (${rb.x.toFixed(1)}, ${rb.y.toFixed(1)}) from (${cx.toFixed(1)}, ${cy.toFixed(1)})`);
+  }
+  // (e) the same against a remote WALKER standing in the way: the car stops before touching him (the pedestrian soft margin), no hit
+  let wHits = 0, wClose = 9, wRuns = 0;
+  for (const kind of kinds) for (let r = 0; r < (quick ? 4 : 12); r++) {
+    const spec = CAR_SPECS[kind];
+    const [cx, cy] = open(8);
+    const h = rnd() * Math.PI * 2;
+    const c = makeCarState(cx, cy, h);
+    if (!pathClear(spec, c.x, c.y, c.h, 24)) continue;
+    wRuns++;
+    const walker = { x: cx + Math.cos(h) * 18, y: cy + Math.sin(h) * 18, r: 0.32 };
+    const env = { engine: true, wet: false, people: [walker], roadClear: () => 0 };
+    col.dynCircles = []; col.dynBoxes = [];
+    for (let s = 0; s < 60 * 9; s++) {
+      stepCar(c, spec, col, 1 / 60, { steer: 0, throttle: 1, brake: 0 }, env);
+      wClose = Math.min(wClose, Math.hypot(c.x - walker.x, c.y - walker.y) - spec.len / 2);
+    }
+    wHits += c.light + c.hard;
+    if (verbose && c.light + c.hard > 0) console.log(`      (e) ${kind} hit ${c.light}/${c.hard} from (${cx.toFixed(1)}, ${cy.toFixed(1)}) h ${h.toFixed(2)} ends (${c.x.toFixed(1)}, ${c.y.toFixed(1)}) v ${c.v.toFixed(2)} clear ${exactClearance(c.x, c.y).min.toFixed(1)}`);
+  }
+  console.log(`   (e) ${wRuns} drives straight at a remote walker: closest the nose got ${wClose.toFixed(2)} m (soft margin, never touching), hits counted ${wHits} (must be 0)`);
+  if (wHits > 0 || wClose < 0.3) fail(`the car got ${wClose.toFixed(2)} m from a remote walker or counted ${wHits} hits`);
+  console.log(`   (d) ${carRuns} drives straight at a remote player's car: ${contact.toLocaleString()} steps in contact with it, hits counted against the player: ${counted} (must be 0), centre inside the remote car ${deepest}x`);
+  if (counted > 0) fail(`${counted} hits were counted from contact with a remote player's car (network lag would damage a car)`);
+  if (contact === 0) fail('the cars never touched a remote car: the test did not exercise it');
+  col.dynCircles = [];
+  col.dynBoxes = [];
 }
 
 console.log(failures ? `\nROAM COLLIDE CHECK FAILED: ${failures} violation(s)` : '\nROAM COLLIDE CHECK OK');

@@ -167,7 +167,7 @@ export interface RoamApi {
   auto(o: { mode: 'walk' | 'drive'; run?: boolean; speed?: number; dest?: { x: number; y: number } } | null): void;
   world: RoamWorld;
   /** Dev / tests: the other players layer (drawn, slots, passable). */
-  others(): { slots: number; drawn: number; passable: boolean };
+  others(): { slots: number; drawn: number; passable: boolean; armRz: number | null; gait: number | null; vis: boolean | null };
 }
 
 export interface RoamSceneProps {
