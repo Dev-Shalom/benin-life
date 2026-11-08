@@ -1,13 +1,16 @@
 // Sign up / Log in / Forgot password / Set a new password.
-// One white card on the sky: logo + tagline above, a segmented switch, filled pill inputs with helper text.
+// Marketing look (docs/FRONTEND.md): a picture panel beside the form on desktop, the form alone on phones.
+// Labels above inputs, helper or error text below. All the sign-in logic below is unchanged.
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { storedReferral } from '../lib/referral';
 import { supabase } from '../lib/supabase';
 import { authErrorMessage, randomGreeting } from '../lib/pidgin';
 import { useGame } from '../state/game';
-import { Button, Icon, Segmented, toast } from '../ui';
-import { Logo } from './Brand';
+import { toast } from '../ui';
+import { Ph } from './mk/Ph';
+import { MkRoot, MkBrand } from './mk/Shell';
+import { ThemeToggle } from './mk/ThemeToggle';
 
 type Mode = 'signup' | 'signin' | 'forgot' | 'reset';
 
@@ -22,13 +25,13 @@ function Field({ id, label, helper, error, children }: {
   id: string; label: string; helper?: ReactNode; error?: string | null; children: ReactNode;
 }) {
   return (
-    <div className="field">
+    <div className="au-field">
       <label htmlFor={id}>{label}</label>
       {children}
       {error ? (
-        <p className="field__msg field__msg--error" id={`${id}-msg`} role="alert">{error}</p>
+        <p className="au-msg au-msg--error" id={`${id}-msg`} role="alert">{error}</p>
       ) : helper ? (
-        <p className="field__msg hint" id={`${id}-msg`}>{helper}</p>
+        <p className="au-msg" id={`${id}-msg`}>{helper}</p>
       ) : null}
     </div>
   );
@@ -39,10 +42,10 @@ function PasswordInput({ id, value, onChange, autoComplete, invalid }: {
 }) {
   const [show, setShow] = useState(false);
   return (
-    <div className="input-wrap">
+    <div className="au-pw">
       <input
         id={id}
-        className="input"
+        className="au-input"
         type={show ? 'text' : 'password'}
         autoComplete={autoComplete}
         value={value}
@@ -54,12 +57,12 @@ function PasswordInput({ id, value, onChange, autoComplete, invalid }: {
       />
       <button
         type="button"
-        className="input-wrap__btn"
+        className="au-pw__btn"
         onClick={() => setShow((s) => !s)}
         aria-label={show ? 'Hide password' : 'Show password'}
         aria-pressed={show}
       >
-        <Icon name={show ? 'eyeOff' : 'eye'} size={20} />
+        <Ph name={show ? 'eyeSlash' : 'eye'} />
       </button>
     </div>
   );
@@ -145,7 +148,7 @@ export default function Auth() {
     <Field id={`${uid}-email`} label="Email" helper={helper} error={err?.field === 'email' ? err.msg : null}>
       <input
         id={`${uid}-email`}
-        className="input"
+        className="au-input"
         type="email"
         inputMode="email"
         autoComplete="email"
@@ -168,49 +171,47 @@ export default function Auth() {
     </Field>
   );
 
-  const formError = err?.field === 'form' ? <p className="auth-alert auth-alert--error" role="alert">{err.msg}</p> : null;
-  const formInfo = info ? <p className="auth-alert auth-alert--info" role="status">{info}</p> : null;
+  const formError = err?.field === 'form' ? <p className="au-alert au-alert--error" role="alert">{err.msg}</p> : null;
+  const formInfo = info ? <p className="au-alert au-alert--info" role="status">{info}</p> : null;
 
   let body: ReactNode;
   if (mode === 'signup' || mode === 'signin') {
     const signup = mode === 'signup';
     body = (
       <>
-        <Segmented
-          label="Account"
-          value={mode}
-          onChange={(m) => setMode(m)}
-          options={[
-            { id: 'signup', label: 'Create account' },
-            { id: 'signin', label: 'Log in' },
-          ]}
-        />
-        <form className="auth-form" onSubmit={submit} noValidate>
+        <div className="au-tabs" role="tablist" aria-label="Account">
+          {(['signup', 'signin'] as const).map((m) => (
+            <button key={m} type="button" role="tab" aria-selected={mode === m} className={mode === m ? 'is-on' : ''} onClick={() => setMode(m)}>
+              {m === 'signup' ? 'Create account' : 'Log in'}
+            </button>
+          ))}
+        </div>
+        <form className="au-form" onSubmit={submit} noValidate>
           {emailField(signup ? "We'll use it to log you in and to reset your password." : undefined)}
           {passwordField('Password', signup ? 'At least 6 characters.' : undefined, signup ? 'new-password' : 'current-password')}
           {signup ? (
-            <div className="field">
-              <label className={`auth-check${err?.field === 'adult' ? ' is-invalid' : ''}`}>
+            <div className="au-field">
+              <label className={`au-check${err?.field === 'adult' ? ' is-invalid' : ''}`}>
                 <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)}
                   aria-describedby={err?.field === 'adult' ? `${uid}-adult-msg` : undefined} />
-                <span className="auth-check__box" aria-hidden><Icon name="check" size={14} stroke={3} /></span>
+                <span className="au-check__box" aria-hidden><Ph name="check" /></span>
                 <span>
                   I'm <b>18 or older</b> and I agree to the{' '}
-                  <a href="/terms" target="_blank" rel="noopener" className="auth-check__link">Terms</a> and{' '}
-                  <a href="/privacy" target="_blank" rel="noopener" className="auth-check__link">Privacy Policy</a>.
+                  <a href="/terms" target="_blank" rel="noopener" className="au-link-inline">Terms</a> and{' '}
+                  <a href="/privacy" target="_blank" rel="noopener" className="au-link-inline">Privacy Policy</a>.
                 </span>
               </label>
-              {err?.field === 'adult' && <p className="field__msg field__msg--error" id={`${uid}-adult-msg`} role="alert">{err.msg}</p>}
+              {err?.field === 'adult' && <p className="au-msg au-msg--error" id={`${uid}-adult-msg`} role="alert">{err.msg}</p>}
             </div>
           ) : (
-            <button type="button" className="auth-link" onClick={() => setMode('forgot')}>Forgot password?</button>
+            <button type="button" className="au-link" onClick={() => setMode('forgot')}>Forgot password?</button>
           )}
           {formError}
           {formInfo}
-          <Button type="submit" size="lg" block loading={busy}>
-            {signup ? 'Create account' : 'Log in'}
-          </Button>
-          <p className="auth-note">
+          <button type="submit" className="mk-btn mk-btn--primary mk-btn--block" aria-busy={busy || undefined} disabled={busy}>
+            {busy ? 'One moment...' : signup ? 'Create account' : 'Log in'}
+          </button>
+          <p className="au-note">
             {signup ? 'Free to play. Your Sim lives in the same Benin City as every other player.' : 'Welcome back to Benin City.'}
           </p>
         </form>
@@ -218,35 +219,35 @@ export default function Auth() {
     );
   } else if (mode === 'forgot') {
     body = (
-      <form className="auth-form" onSubmit={submit} noValidate>
-        <div className="auth-card__head">
+      <form className="au-form" onSubmit={submit} noValidate>
+        <div className="au-head">
           <h2>Reset your password</h2>
           <p>Enter the email you signed up with. We'll send you a link to choose a new password.</p>
         </div>
         {emailField()}
         {formError}
         {formInfo}
-        <Button type="submit" size="lg" block loading={busy}>Send reset link</Button>
-        <button type="button" className="auth-link auth-link--center" onClick={() => setMode('signin')}>
-          <Icon name="back" size={16} /> Back to log in
+        <button type="submit" className="mk-btn mk-btn--primary mk-btn--block" aria-busy={busy || undefined} disabled={busy}>{busy ? 'One moment...' : 'Send reset link'}</button>
+        <button type="button" className="au-link au-link--center" onClick={() => setMode('signin')}>
+          <Ph name="arrowLeft" /> Back to log in
         </button>
       </form>
     );
   } else {
     const linkDead = authReady && !session;
     body = (
-      <form className="auth-form" onSubmit={submit} noValidate>
-        <div className="auth-card__head">
+      <form className="au-form" onSubmit={submit} noValidate>
+        <div className="au-head">
           <h2>Choose a new password</h2>
           <p>{linkDead ? 'This reset link has expired or was already used. Request a new one.' : 'Pick something you will remember. At least 6 characters.'}</p>
         </div>
         {linkDead ? (
-          <Button size="lg" block onClick={() => setMode('forgot')}>Get a new link</Button>
+          <button type="button" className="mk-btn mk-btn--primary mk-btn--block" onClick={() => setMode('forgot')}>Get a new link</button>
         ) : (
           <>
             {passwordField('New password', 'At least 6 characters.', 'new-password')}
             {formError}
-            <Button type="submit" size="lg" block loading={busy} disabled={!authReady}>Save password</Button>
+            <button type="submit" className="mk-btn mk-btn--primary mk-btn--block" aria-busy={busy || undefined} disabled={busy || !authReady}>{busy ? 'One moment...' : 'Save password'}</button>
           </>
         )}
       </form>
@@ -254,20 +255,29 @@ export default function Auth() {
   }
 
   return (
-    <div className="auth">
-      <Link to="/" className="auth__back"><Icon name="back" size={16} /> Back</Link>
-      <div className="auth__inner">
-        <header className="auth__brand">
-          <h1 className="auth__title auth__title--logo">
-            <Logo variant="stacked" size={132} title="Benin Life" />
-            <span className="age-badge" aria-label="18 plus">18+</span>
+    <MkRoot className="au">
+      <header className="mk-nav">
+        <div className="mk-wrap">
+          <MkBrand />
+          <div className="mk-links">
+            <Link to="/" className="mk-text au-backlink"><Ph name="arrowLeft" /> Back</Link>
+            <ThemeToggle />
+          </div>
+        </div>
+      </header>
+      <main id="main" className="au-grid mk-wrap">
+        <aside className="au-side" aria-hidden="true">
+          <img src="/mk/hero-1300.webp" srcSet="/mk/hero-700.webp 700w, /mk/hero-1300.webp 1300w" sizes="560px" width={1300} height={813} alt="" decoding="async" />
+          <p className="mk-display">A life-sim set in the real Benin City.</p>
+        </aside>
+        <section className="au-card" key={mode === 'signup' || mode === 'signin' ? 'account' : mode} aria-label="Account">
+          <h1 className="mk-display au-title">
+            {mode === 'signup' ? 'Create your account' : mode === 'signin' ? 'Welcome back' : mode === 'forgot' ? 'Reset your password' : 'Choose a new password'}
           </h1>
-          <p className="auth__tagline">A life-sim set in the real Benin City.</p>
-        </header>
-        <main className="auth-card" key={mode === 'signup' || mode === 'signin' ? 'account' : mode}>
+          <p className="au-sub">A life-sim set in the real Benin City. <span className="au-age" aria-label="18 plus">18+</span></p>
           {body}
-        </main>
-      </div>
-    </div>
+        </section>
+      </main>
+    </MkRoot>
   );
 }

@@ -8,19 +8,31 @@
     <meta name="theme-color" content="#e4f0fa" />
     <meta name="color-scheme" content="light" />
     <script>
-      /* Light / Dark before first paint (docs/THEME.md): read the saved choice, resolve "system", set data-theme. */
+      /* Light / Dark before first paint (docs/THEME.md): read the saved choice, resolve "system", set data-theme.
+         The marketing pages (/, /auth, /terms, /privacy, /c/:id: docs/FRONTEND.md) have no saved choice on a first
+         visit, so they follow the phone until the visitor picks; they also get the graphite page colour and
+         preloads for their fonts and hero picture. Keep the path list in sync with src/lib/marketing.ts. */
       (function () {
-        var d = document.documentElement, t = 'light';
+        var d = document.documentElement, t = 'light', saved = null, p = location.pathname;
+        var mk = p === '/' || p === '/auth' || p === '/terms' || p === '/privacy' || p.indexOf('/c/') === 0;
         try {
-          var c = (JSON.parse(localStorage.getItem('bl.prefs.v1') || '{}') || {}).theme;
-          if (c === 'dark') t = 'dark';
-          else if (c === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+          saved = (JSON.parse(localStorage.getItem('bl.prefs.v1') || '{}') || {}).theme;
+          var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (saved === 'dark') t = 'dark';
+          else if (saved === 'system' && dark) t = 'dark';
+          else if (mk && saved !== 'light' && saved !== 'system' && dark) t = 'dark';
         } catch (e) {}
         d.setAttribute('data-theme', t);
-        if (t === 'dark') {
-          var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', '#0f1130');
-          var k = document.querySelector('meta[name="color-scheme"]'); if (k) k.setAttribute('content', 'dark');
+        if (mk) {
+          d.className += ' mk-page';
+          var add = function (attrs) { var l = document.createElement('link'); for (var k in attrs) l.setAttribute(k, attrs[k]); document.head.appendChild(l); };
+          add({ rel: 'preload', as: 'font', type: 'font/woff2', href: '/fonts/outfit.woff2', crossorigin: '' });
+          add({ rel: 'preload', as: 'font', type: 'font/woff2', href: '/fonts/figtree.woff2', crossorigin: '' });
+          if (p === '/') add({ rel: 'preload', as: 'image', href: '/mk/hero-1300.webp', imagesrcset: '/mk/hero-700.webp 700w, /mk/hero-1300.webp 1300w', imagesizes: '(min-width: 960px) 580px, calc(100vw - 40px)', fetchpriority: 'high' });
         }
+        var bar = mk ? (t === 'dark' ? '#0e0f11' : '#f6f5f2') : (t === 'dark' ? '#0f1130' : null);
+        if (bar) { var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', bar); }
+        if (t === 'dark') { var k = document.querySelector('meta[name="color-scheme"]'); if (k) k.setAttribute('content', 'dark'); }
       })();
     </script>
     <meta name="mobile-web-app-capable" content="yes" />
@@ -50,10 +62,16 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- The game's fonts. Not render-blocking: text shows in the fallback font and swaps (font-display: swap). -->
     <link
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@500..800&family=Figtree:wght@400..800&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500..800&family=Figtree:wght@400..800&display=swap" rel="stylesheet" />
+    </noscript>
     <title>Benin Life (Official Site): Free Online Life Game Set in Benin City, Nigeria</title>
     <script type="application/ld+json">
       {
@@ -101,6 +119,8 @@
       /* Paint the sky before JS loads so slow connections never flash a blank page. */
       html, body { margin: 0; background: #eef4fa; }
       html[data-theme='dark'], html[data-theme='dark'] body { background: #0f1130; }
+      html.mk-page, html.mk-page body { background: #0e0f11; }
+      html.mk-page[data-theme='light'], html.mk-page[data-theme='light'] body { background: #f6f5f2; }
     </style>
   </head>
   <body>

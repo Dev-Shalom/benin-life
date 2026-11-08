@@ -316,7 +316,6 @@
 :root button.yh-gm__friend,
 :root button.rk-tab.is-on,
 :root button.rk-tab,
-:root a.lp-nav__login,
 :root button.wish-chip {
   min-height: var(--tap);
 }

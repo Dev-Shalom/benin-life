@@ -1,235 +1,227 @@
-// Marketing landing page (English). It sells the game; it must not look like the game has started.
-// No origin odds or starting amounts here: the birth lottery is a surprise at sign-up.
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
+// Player-facing landing page (English), the "/" route when signed out. It sells the game; it must not look like the
+// game has started. No origin odds or starting amounts here: the birth lottery is a surprise at sign-up.
+// Look: the graphite and bronze marketing kit (public/mk/mk.css, docs/FRONTEND.md), dark and light with a toggle.
+// Every picture is a real screenshot of the 3D city (public/sponsor/img, public/mk).
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { SceneType } from '../lib/types';
-import { GoSlow, Logo } from './Brand';
-import type { LandingArtProps } from './LandingArt';
-
-// Scenes + avatars are heavy: they load only when a frame scrolls near the screen.
-const LandingArt = lazy(() => import('./LandingArt'));
+import { Accordion } from './mk/Accordion';
+import { Ph } from './mk/Ph';
+import { MkFooter, MkNav, MkRoot } from './mk/Shell';
 
 const SIGN_UP = '/auth?mode=signup';
 const LOG_IN = '/auth?mode=signin';
 const CTA_START = 'Start playing';
 const CTA_LOGIN = 'Log in';
+const TIKTOK = 'https://www.tiktok.com/@beninlife_official_';
 
-const PLACES: { scene: SceneType; night: boolean; name: string; line: string }[] = [
-  { scene: 'palace', night: false, name: "Oba's Palace", line: 'The heart of the old city. Dress well and greet with respect.' },
-  { scene: 'market', night: false, name: 'Oba Market', line: 'Buy, sell and haggle with the sharpest traders in town.' },
-  { scene: 'motorpark', night: false, name: 'Ramat Park', line: 'Catch the ECTS bus here, if the go-slow lets you.' },
-  { scene: 'campus', night: false, name: 'UNIBEN, Ugbowo', line: 'Lectures by day, hostel gist by night.' },
-  { scene: 'club', night: true, name: 'Bronze Lounge', line: 'Friday night on Sapele Road. The DJ is ready.' },
+const STORY = [
+  { title: "Walk King's Square", body: 'Step out of your house and walk the real streets, from the National Museum to Igun Street.', img: '/sponsor/img/palace.webp', alt: "The National Museum on King's Square in Benin Life" },
+  { title: 'Shop at Oba Market', body: 'Stalls, sellers and a Market Day every Wednesday that brings everyone out.', img: '/sponsor/img/market.webp', alt: 'Sellers at their stalls in Oba Market' },
+  { title: 'Drive the real roads', body: 'Ugbowo-Lagos Road, Sapele Road and Ring Road, with traffic, go-slow and ECTS buses.', img: '/sponsor/img/drive.webp', alt: 'Driving down a Benin road with traffic and a yellow ECTS bus' },
+  { title: 'Go out at night', body: 'Clubs, bukas and owambes after dark, with street lamps and lit windows.', img: '/sponsor/img/night.webp', alt: 'A buka lit up at night in Benin Life' },
+] as const;
+
+const START = [
+  { icon: 'envelopeSimple', title: 'Create your account', body: 'Free, with just an email. Nothing to download.' },
+  { icon: 'userCircle', title: 'Design your Sim', body: 'Pick a look, a style and a name that feels like you.' },
+  { icon: 'mapPin', title: 'Step into Benin', body: 'Find your feet, find work and make the city yours.' },
+] as const;
+
+const QUESTIONS = [
+  { q: 'Is Benin Life free?', a: 'Yes. Benin Life is free to play. There is nothing to download.' },
+  { q: 'How do I play?', a: 'Open playbeninlife.app in your phone or computer browser, sign up and create your character. It works on any modern browser.' },
+  { q: 'Do I need to download an app?', a: 'No. Benin Life runs in your browser. You can add it to your phone home screen from the browser menu.' },
+  { q: 'Who can play?', a: 'Players must be 18 or older.' },
 ];
 
-const LADDER = ['Intern', 'Junior Dev', 'Mid-level Dev', 'Senior Dev', 'Tech Lead', 'Eng. Manager', 'CTO'];
+function Ctas() {
+  return (
+    <div className="lp-ctas">
+      <Link to={SIGN_UP} className="mk-btn mk-btn--primary">
+        {CTA_START}
+        <Ph name="arrowRight" className="arrow" />
+      </Link>
+      <Link to={LOG_IN} className="mk-btn mk-btn--ghost">{CTA_LOGIN}</Link>
+    </div>
+  );
+}
 
-const STEPS = [
-  { title: 'Create your account', body: 'Free, with just an email. Nothing to download.' },
-  { title: 'Design your Sim', body: 'Pick a look, a style and a name that feels like you.' },
-  { title: 'Step into Benin', body: 'Find your feet, find work and make the city yours.' },
-];
-
-/** True once the element has come within `margin` of the viewport (then stays true). */
-function useSeen<T extends Element>(margin = '0px') {
-  const ref = useRef<T>(null);
-  // Very old browsers without IntersectionObserver just show everything straight away.
-  const [seen, setSeen] = useState(() => typeof IntersectionObserver === 'undefined');
+/** The step in the middle of the screen chooses the picture (observer, not a scroll listener). */
+function Story() {
+  const [cur, setCur] = useState(0);
+  const refs = useRef<(HTMLDivElement | null)[]>([]);
   useEffect(() => {
-    const el = ref.current;
-    if (!el || seen) return;
+    if (typeof IntersectionObserver === 'undefined') return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setSeen(true);
-          io.disconnect();
-        }
+        for (const en of entries) if (en.isIntersecting) setCur(Number((en.target as HTMLElement).dataset.step));
       },
-      { rootMargin: margin },
+      { rootMargin: '-45% 0px -45% 0px' },
     );
-    io.observe(el);
+    refs.current.forEach((el) => el && io.observe(el));
     return () => io.disconnect();
-  }, [margin, seen]);
-  return [ref, seen] as const;
-}
-
-/** Fixed-ratio frame; mounts the lazy art only when near the viewport (no layout shift). */
-function ArtFrame({ art, className, label }: { art: LandingArtProps; className?: string; label?: string }) {
-  const [ref, seen] = useSeen<HTMLDivElement>('300px');
+  }, []);
   return (
-    <div ref={ref} className={`lp-art ${className ?? ''}`} role={label ? 'img' : undefined} aria-label={label || undefined}>
-      {seen && (
-        <Suspense fallback={null}>
-          <LandingArt {...art} />
-        </Suspense>
-      )}
-    </div>
-  );
-}
-
-/** Section that rises in once, when it enters the viewport. */
-function Reveal({ className, children, labelledBy }: { className?: string; children: ReactNode; labelledBy: string }) {
-  const [ref, seen] = useSeen<HTMLElement>('0px 0px -10% 0px');
-  return (
-    <section ref={ref} className={`lp-section ${className ?? ''} lp-reveal${seen ? ' is-in' : ''}`} aria-labelledby={labelledBy}>
-      {children}
+    <section className="lp-story" aria-labelledby="lp-story-h">
+      <div className="mk-wrap">
+        <h2 id="lp-story-h" className="mk-display mk-rise">A real city, not a generic map.</h2>
+        <div className="lp-story__grid">
+          <div className="lp-steps">
+            {STORY.map((s, i) => (
+              <div key={s.title} ref={(el) => { refs.current[i] = el; }} data-step={i} className={`lp-step${cur === i ? ' on' : ''}`}>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+                <img src={s.img} width={1400} height={788} loading="lazy" decoding="async" alt={s.alt} />
+              </div>
+            ))}
+          </div>
+          <div className="lp-stage" aria-hidden="true">
+            <div className="lp-stage__frame">
+              {STORY.map((s, i) => (
+                <img key={s.img} className={cur === i ? 'on' : ''} src={s.img} width={1400} height={788} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" alt="" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
-  );
-}
-
-function Ctas({ center }: { center?: boolean }) {
-  return (
-    <div className={`lp-cta${center ? ' lp-cta--center' : ''}`}>
-      <Link to={SIGN_UP} className="bl-btn bl-btn--primary bl-btn--lg">
-        <span className="bl-btn__label">{CTA_START}</span>
-      </Link>
-      <Link to={LOG_IN} className="bl-btn bl-btn--ghost bl-btn--lg">
-        <span className="bl-btn__label">{CTA_LOGIN}</span>
-      </Link>
-    </div>
-  );
-}
-
-function Emoji({ children }: { children: string }) {
-  return (
-    <span className="lp-emoji emoji" aria-hidden>
-      {children}
-    </span>
   );
 }
 
 export default function Landing() {
   return (
-    <div className="lp">
-      <header className="lp-nav">
-        <Link to="/" className="lp-brand" aria-label="Benin Life home">
-          <Logo variant="full" size={52} title="" className="lp-brand__logo" />
-          <span className="beta-badge" title="Benin Life is in beta: new features land often">Beta</span>
-        </Link>
-        <nav className="lp-nav__actions" aria-label="Account">
-          <Link to={LOG_IN} className="lp-nav__login">{CTA_LOGIN}</Link>
-          <Link to={SIGN_UP} className="bl-btn bl-btn--primary bl-btn--sm lp-nav__start">
-            <span className="bl-btn__label">{CTA_START}</span>
-          </Link>
-        </nav>
-      </header>
+    <MkRoot className="lp">
+      <MkNav beta links={[{ href: '#life', label: 'What you can do' }, { href: '/faq/', label: 'FAQ' }]}>
+        <Link to={LOG_IN} className="mk-text lp-login">{CTA_LOGIN}</Link>
+        <Link to={SIGN_UP} className="mk-btn mk-btn--primary mk-btn--sm">{CTA_START}</Link>
+      </MkNav>
 
-      <main>
-        <section className="lp-hero" aria-labelledby="lp-title">
-          <div className="lp-hero__copy">
-            <p className="lp-eyebrow">
-              <span className="emoji" aria-hidden>📍</span> Benin City, Edo State
-            </p>
-            <h1 id="lp-title" className="lp-hero__title">
-              Live a whole new life in <span>Benin City.</span>
-            </h1>
-            <p className="lp-hero__sub">
-              Create your Sim, find work, make friends and get around the real city, alongside other real players.
-            </p>
-            <Ctas />
-          </div>
-          <div className="lp-hero__visual">
-            <ArtFrame art={{ scene: 'campus', night: false }} className="lp-postcard lp-postcard--back" />
-            <ArtFrame art={{ scene: 'market', night: false, sim: 'lapo' }} className="lp-postcard lp-postcard--front"
-              label="A Benin Life Sim at Oba Market" />
+      <main id="main">
+        <section className="lp-hero" data-hero aria-labelledby="lp-title">
+          <div className="mk-wrap lp-hero__grid">
+            <div className="lp-hero__copy">
+              <h1 id="lp-title" className="mk-display mk-rise" style={{ ['--i' as string]: 0 }}>Live a whole new life in Benin City.</h1>
+              <p className="mk-lede mk-rise" style={{ ['--i' as string]: 1 }}>
+                Walk the real streets, drive the real roads and build a life next to thousands of other players.
+              </p>
+              <div className="mk-rise" style={{ ['--i' as string]: 2 }}><Ctas /></div>
+            </div>
+            <div className="lp-hero__media">
+              <figure className="lp-hero__main mk-reveal-media">
+                <img
+                  src="/mk/hero-1300.webp"
+                  srcSet="/mk/hero-700.webp 700w, /mk/hero-1300.webp 1300w"
+                  sizes="(min-width: 960px) 580px, calc(100vw - 40px)"
+                  width={1300}
+                  height={813}
+                  fetchPriority="high"
+                  decoding="async"
+                  alt="Aerial view of Benin City in Benin Life, with King's Square in the middle and the river beside it"
+                />
+              </figure>
+              <figure className="lp-hero__inset mk-rise" style={{ ['--i' as string]: 4 }}>
+                <img src="/sponsor/img/market.webp" width={1400} height={788} decoding="async" alt="Players at their stalls in Oba Market" />
+              </figure>
+            </div>
           </div>
         </section>
 
-        <Reveal className="lp-life" labelledBy="lp-life">
-          <div className="lp-wrap">
-            <h2 id="lp-life" className="lp-h2">Everything a real life needs.</h2>
-            <p className="lp-lede">Work, rest, hustle and get around a city you can actually recognise.</p>
-            <div className="bento">
-              <article className="bento__cell bento__cell--work">
+        <section className="lp-numbers" aria-labelledby="lp-n-h">
+          <div className="mk-wrap">
+            <h2 id="lp-n-h" className="mk-display mk-rise">A busy city is already waiting.</h2>
+            <div className="lp-num-grid">
+              <div className="lp-num mk-rise" style={{ ['--i' as string]: 0 }}><strong data-count="6000" data-suffix="+">6,000+</strong><span>players signed up, mostly from Benin and Edo</span></div>
+              <div className="lp-num mk-rise" style={{ ['--i' as string]: 1 }}><strong data-count="100" data-suffix="+">100+</strong><span>playing at the same time at peak</span></div>
+              <div className="lp-num mk-rise" style={{ ['--i' as string]: 2 }}><strong><span className="ngn">N</span>0</strong><span>to play. It opens in any phone browser, no download</span></div>
+              <div className="lp-num mk-rise" style={{ ['--i' as string]: 3 }}><strong>18+</strong><span>Benin Life is for players 18 and over</span></div>
+            </div>
+          </div>
+        </section>
+
+        <Story />
+
+        <section className="lp-life" id="life" aria-labelledby="lp-life-h">
+          <div className="mk-wrap">
+            <p className="mk-eyebrow mk-rise">What you can do</p>
+            <h2 id="lp-life-h" className="mk-display mk-rise" style={{ ['--i' as string]: 1 }}>Everything a real life needs.</h2>
+            <p className="mk-lede mk-rise" style={{ ['--i' as string]: 2 }}>Work, rest, hustle and get around a city you can actually recognise.</p>
+            <div className="lp-bento">
+              <article className="lp-cell lp-cell--media lp-b-work mk-rise">
+                <img src="/sponsor/img/igun.webp" width={1400} height={788} loading="lazy" decoding="async" alt="Igun Street with bronze work outside the door" />
+                <div className="lp-cell__copy">
+                  <h3>Work up the ladder or open your own business</h3>
+                  <p>Start as an intern and climb, or open a shop of your own. Every shift and every sale moves you forward.</p>
+                </div>
+              </article>
+              <article className="lp-cell lp-cell--tint lp-b-family mk-rise" style={{ ['--i' as string]: 1 }}>
+                <span className="lp-cell__icon"><Ph name="usersThree" /></span>
+                <div className="lp-cell__copy">
+                  <h3>Start a family</h3>
+                  <p>Marry, raise children and send them to school and university.</p>
+                </div>
+              </article>
+              <article className="lp-cell lp-cell--media lp-b-club mk-rise" style={{ ['--i' as string]: 2 }}>
+                <img src="/sponsor/img/night.webp" width={1400} height={788} loading="lazy" decoding="async" alt="" />
+                <div className="lp-cell__copy">
+                  <h3>Join a club</h3>
+                  <p>Friday night on Sapele Road. Bring your friends.</p>
+                </div>
+              </article>
+              <article className="lp-cell lp-cell--tint lp-b-vote mk-rise">
+                <span className="lp-cell__icon"><Ph name="gavel" /></span>
+                <div className="lp-cell__copy">
+                  <h3>Vote, run and go to court</h3>
+                  <p>Stand for Councillor, Chairman or Governor in the Benin Votes election. Settle a dispute before a judge.</p>
+                </div>
+              </article>
+              <article className="lp-cell lp-cell--tint lp-b-gist mk-rise" style={{ ['--i' as string]: 1 }}>
+                <span className="lp-cell__icon"><Ph name="chatCircleText" /></span>
+                <div className="lp-cell__copy">
+                  <h3>Gist with real players</h3>
+                  <p>Post gists, join group chats and send money on Benin Gist, the in-game social app.</p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section className="lp-born" aria-labelledby="lp-born-h">
+          <div className="mk-wrap">
+            <h2 id="lp-born-h" className="mk-display mk-rise">Born into a different life.</h2>
+            <p className="mk-lede mk-rise" style={{ ['--i' as string]: 1 }}>
+              Every player starts somewhere different. Some start in one room and hustle their way up. Some start with
+              Dad's connections and a house in GRA. You find out the moment your Sim is born.
+            </p>
+            <div className="lp-born__cards">
+              <article className="lp-sim mk-rise">
+                <img src="/art/sim-lapo.webp" width={240} height={480} loading="lazy" decoding="async" alt="A self-made Sim in Benin Life" />
                 <div>
-                  <Emoji>💼</Emoji>
-                  <h3>Start as an intern. Retire as the boss.</h3>
-                  <p>Tech, health, banking, the police and more. Every job has a ladder, and every shift moves you up.</p>
-                </div>
-                <ol className="ladder" aria-label="Tech career ladder">
-                  {LADDER.map((rung, i) => (
-                    <li key={rung} className="ladder__rung" style={{ ['--i' as string]: i }}>
-                      {rung}
-                    </li>
-                  ))}
-                </ol>
-              </article>
-              <article className="bento__cell bento__cell--travel">
-                <Emoji>🛺</Emoji>
-                <h3>Get around the real city</h3>
-                <p>Walk, take a keke or the ECTS bus, or book a drop. Just plan around the Ramat Park go-slow.</p>
-                <GoSlow className="bento__goslow" />
-              </article>
-              <article className="bento__cell bento__cell--hustle">
-                <Emoji>🧺</Emoji>
-                <h3>Hustle on the side</h3>
-                <p>Run a PoS stand, farm in Iguobazuwa or trade with other players at the market.</p>
-              </article>
-              <article className="bento__cell bento__cell--live">
-                <Emoji>🍲</Emoji>
-                <h3>Eat, sleep, enjoy</h3>
-                <p>Your Sim gets hungry, tired and bored. Look after them and everything goes better.</p>
-              </article>
-              <article className="bento__cell bento__cell--night">
-                <Emoji>🌙</Emoji>
-                <h3>Stay sharp after dark</h3>
-                <p>Some streets get risky at night. Keep your money in the bank and get home early.</p>
-              </article>
-            </div>
-          </div>
-        </Reveal>
-
-        <Reveal className="lp-places" labelledBy="lp-places">
-          <div className="lp-wrap">
-            <h2 id="lp-places" className="lp-h2">Real places, from Ring Road to Ugbowo.</h2>
-            <p className="lp-lede">Benin City's landmarks, markets and night spots, on one map that turns from day to night.</p>
-          </div>
-          <ul className="lp-strip" tabIndex={0} aria-label="Places on the map">
-            {PLACES.map((p) => (
-              <li key={p.scene} className="place">
-                <ArtFrame art={{ scene: p.scene, night: p.night }} label={`${p.name} illustration`} />
-                <h3 className="place__name">{p.name}</h3>
-                <p className="place__line">{p.line}</p>
-              </li>
-            ))}
-          </ul>
-        </Reveal>
-
-        <Reveal className="lp-origin" labelledBy="lp-origin">
-          <div className="lp-wrap lp-origin__grid">
-            <div className="lp-origin__copy">
-              <h2 id="lp-origin" className="lp-h2">Born into a different life.</h2>
-              <p className="lp-lede">
-                Every player starts somewhere different. Some start in one room and hustle their way up. Some start
-                with Dad's connections and a house in GRA. You find out the moment your Sim is born.
-              </p>
-            </div>
-            <div className="lp-origin__cards">
-              <article className="origin-card">
-                <ArtFrame art={{ scene: 'home_face_me', night: false, sim: 'lapo' }} label="A LAPO baby outside a face-me-I-face-you compound" />
-                <div className="origin-card__body">
-                  <h3>LAPO baby</h3>
-                  <p>Self-made. Start small, learn fast and build it all yourself.</p>
+                  <h3>Self-made</h3>
+                  <p>Start small, learn fast and build it all yourself.</p>
                 </div>
               </article>
-              <article className="origin-card">
-                <ArtFrame art={{ scene: 'home_duplex', night: false, sim: 'nepo' }} label="A Nepo baby in front of a GRA duplex" />
-                <div className="origin-card__body">
-                  <h3>Nepo baby</h3>
-                  <p>Born connected. Dad opens doors, but the city still tests you.</p>
+              <article className="lp-sim mk-rise" style={{ ['--i' as string]: 1 }}>
+                <img src="/art/sim-nepo.webp" width={240} height={480} loading="lazy" decoding="async" alt="A well-connected Sim in Benin Life" />
+                <div>
+                  <h3>Born connected</h3>
+                  <p>Dad opens doors, but the city still tests you.</p>
                 </div>
               </article>
             </div>
           </div>
-        </Reveal>
+        </section>
 
-        <Reveal className="lp-how" labelledBy="lp-how">
-          <div className="lp-wrap">
-            <h2 id="lp-how" className="lp-h2">Up and running in a minute.</h2>
-            <ol className="how">
-              {STEPS.map((s, i) => (
-                <li key={s.title} className="how__step">
-                  <span className="how__n" aria-hidden>{i + 1}</span>
+        <section className="lp-start" aria-labelledby="lp-start-h">
+          <div className="mk-wrap lp-start__grid">
+            <div>
+              <p className="mk-eyebrow mk-rise">How it starts</p>
+              <h2 id="lp-start-h" className="mk-display mk-rise" style={{ ['--i' as string]: 1 }}>Up and running in a minute.</h2>
+              <p className="mk-lede mk-rise" style={{ ['--i' as string]: 2 }}>It opens in your browser, so there is no download and no app store. Add it to your home screen for one-tap play.</p>
+            </div>
+            <ol className="lp-start__list">
+              {START.map((s, i) => (
+                <li key={s.title} className="mk-rise" style={{ ['--i' as string]: i }}>
+                  <span className="lp-start__icon"><Ph name={s.icon} /></span>
                   <div>
                     <h3>{s.title}</h3>
                     <p>{s.body}</p>
@@ -238,36 +230,45 @@ export default function Landing() {
               ))}
             </ol>
           </div>
-        </Reveal>
+        </section>
 
-        <Reveal className="lp-final" labelledBy="lp-final">
-          <div className="lp-wrap">
-            <div className="lp-final__card">
-              <Logo size={72} title="" />
-              <h2 id="lp-final" className="lp-h2 lp-h2--center">Your Benin life is waiting.</h2>
-              <p className="lp-lede lp-lede--center">Free to play in your browser, on any phone.</p>
-              <Ctas center />
-              <p className="lp-age">
-                <span className="age-badge">18+</span>
-                <span>For players 18 and over. Benin Life is a game: the money is fake and nothing in it is real-world advice.</span>
-              </p>
+        <section className="lp-social" aria-labelledby="lp-social-h">
+          <div className="mk-wrap">
+            <div className="lp-social__card mk-rise">
+              <span className="lp-social__icon"><Ph name="tiktokLogo" /></span>
+              <div>
+                <h2 id="lp-social-h" className="mk-display">See the city before you play.</h2>
+                <p>Clips and updates from Benin Life are on TikTok.</p>
+              </div>
+              <a className="mk-btn mk-btn--ghost" href={TIKTOK} target="_blank" rel="noopener">
+                Follow on TikTok
+                <Ph name="arrowUpRight" className="arrow" />
+              </a>
             </div>
           </div>
-        </Reveal>
+        </section>
+
+        <section className="lp-faq" aria-labelledby="lp-faq-h">
+          <div className="mk-wrap">
+            <h2 id="lp-faq-h" className="mk-display mk-rise">Quick answers.</h2>
+            <div className="mk-rise" style={{ ['--i' as string]: 1 }}><Accordion items={QUESTIONS} /></div>
+            <p className="lp-faq__more mk-rise">More in the <a href="/faq/">full FAQ</a>.</p>
+          </div>
+        </section>
+
+        <section className="lp-final" aria-labelledby="lp-final-h">
+          <div className="mk-wrap">
+            <h2 id="lp-final-h" className="mk-display mk-rise">Your Benin life is waiting.</h2>
+            <p className="mk-lede mk-rise" style={{ ['--i' as string]: 1 }}>Free to play in your browser, on any phone.</p>
+            <div className="mk-rise" style={{ ['--i' as string]: 2 }}><Ctas /></div>
+            <p className="lp-final__age mk-rise" style={{ ['--i' as string]: 3 }}>
+              For players 18 and over. Benin Life is a game: the money is fake and nothing in it is real-world advice.
+            </p>
+          </div>
+        </section>
       </main>
 
-      <footer className="lp-footer">
-        <span className="lp-brand">
-          <Logo variant="full" size={36} />
-        </span>
-        <p>Game money only. It has no real cash value.</p>
-        <p>Made with love for Benin City.</p>
-        <nav className="lp-footer__links" aria-label="Legal">
-          <Link to="/terms">Terms of Service</Link>
-          <span aria-hidden>·</span>
-          <Link to="/privacy">Privacy Policy</Link>
-        </nav>
-      </footer>
-    </div>
+      <MkFooter note="Made in Benin City by Shalom Uwagboe. Game money only, it has no real cash value." />
+    </MkRoot>
   );
 }

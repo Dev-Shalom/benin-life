@@ -72,6 +72,16 @@ export const usePrefs = create<PrefsStore>((set, get) => ({
   toggle: (k) => get().set({ [k]: !get()[k] } as Partial<Prefs>),
 }));
 
+/** True when this device has a saved Light / Dark / Match my phone choice. Without one, the marketing pages follow the phone (docs/FRONTEND.md). */
+export function hasStoredTheme(): boolean {
+  try {
+    const v = JSON.parse(localStorage.getItem(KEY) || '{}') as Partial<Prefs> | null;
+    return v?.theme === 'light' || v?.theme === 'dark' || v?.theme === 'system';
+  } catch {
+    return false;
+  }
+}
+
 /** True on very slow or data-saver connections (navigator.connection), for R5's automatic lite map. */
 export function isSlowNetwork(): boolean {
   try {

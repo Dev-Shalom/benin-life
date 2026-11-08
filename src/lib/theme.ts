@@ -2,7 +2,8 @@
 // theme is written to <html data-theme="light|dark"> and the browser bar colour to <meta name="theme-color">.
 // index.html runs the same resolution in an inline script before first paint, so a reload never flashes the
 // wrong theme. All colour tokens live in src/styles/tokens.css and are re-pointed under [data-theme='dark'].
-import { usePrefs, type ThemeChoice } from './prefs';
+import { hasStoredTheme, usePrefs, type ThemeChoice } from './prefs';
+import { isMarketingPath } from './marketing';
 
 export type ResolvedTheme = 'light' | 'dark';
 
@@ -26,9 +27,14 @@ export function resolveTheme(choice: ThemeChoice): ResolvedTheme {
   return mq()?.matches ? 'dark' : 'light';
 }
 
+/** Marketing pages (html.mk-page) use the graphite and off-white page colours. */
+const MK_BAR: Record<ResolvedTheme, string> = { light: '#f6f5f2', dark: '#0e0f11' };
+
 function paintBar(theme: ResolvedTheme) {
-  const night = document.documentElement.dataset.daypart === 'night';
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', BAR[theme][night ? 'night' : 'day']);
+  const root = document.documentElement;
+  const night = root.dataset.daypart === 'night';
+  const color = root.classList.contains('mk-page') ? MK_BAR[theme] : BAR[theme][night ? 'night' : 'day'];
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
   document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', theme);
 }
 
@@ -66,18 +72,74 @@ export function applyTheme(choice: ThemeChoice, animate: boolean) {
   paintBar(next);
 }
 
+/** Marketing pages with no saved choice follow the phone; everything else follows the saved prefs. */
+export function followsPhone(): boolean {
+  const c = usePrefs.getState().theme;
+  if (hasStoredTheme()) return c === 'system';
+  return document.documentElement.classList.contains('mk-page');
+}
+
+let committing = false;
+
+/**
+ * The theme toggle on the marketing pages. Saves the choice in prefs (so the game keeps it) and reveals the
+ * new theme in a circle growing from the button (View Transitions API, ~520 ms). Without the API it falls back
+ * to the 250 ms colour fade; with prefers-reduced-motion it just switches. Docs: docs/FRONTEND.md.
+ */
+export function setThemeAnimated(next: ResolvedTheme, origin: Element | null) {
+  const root = document.documentElement;
+  if (root.dataset.theme === next && hasStoredTheme() && usePrefs.getState().theme === next) return;
+  const commit = () => {
+    committing = true;
+    usePrefs.getState().set({ theme: next });
+    committing = false;
+    root.dataset.theme = next;
+    paintBar(next);
+  };
+  let reduce = false;
+  try {
+    reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    /* no matchMedia: animate */
+  }
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void>; finished: Promise<void> } };
+  if (reduce || !origin || typeof doc.startViewTransition !== 'function') {
+    if (reduce) commit();
+    else {
+      usePrefs.getState().set({ theme: next }); // the prefs subscriber runs the colour fade
+      paintBar(next);
+    }
+    return;
+  }
+  const r = origin.getBoundingClientRect();
+  const x = r.left + r.width / 2;
+  const y = r.top + r.height / 2;
+  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  root.classList.add('mk-vt');
+  const vt = doc.startViewTransition(commit);
+  const done = () => root.classList.remove('mk-vt');
+  vt.ready.then(() => {
+    root.animate(
+      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+      { duration: 520, easing: 'cubic-bezier(0.23, 1, 0.32, 1)', pseudoElement: '::view-transition-new(root)' },
+    );
+  }, done);
+  vt.finished.then(done, done);
+}
+
 /** Call once at startup: follows the prefs choice and, for "Match my phone", the OS setting live. */
 export function initTheme() {
-  applyTheme(usePrefs.getState().theme, false);
+  // First visit on a marketing page: follow the phone until the visitor picks a theme.
+  applyTheme(!hasStoredTheme() && isMarketingPath(window.location.pathname) ? 'system' : usePrefs.getState().theme, false);
   let last = usePrefs.getState().theme;
   usePrefs.subscribe((s) => {
     if (s.theme !== last) {
       last = s.theme;
-      applyTheme(s.theme, true);
+      // The toggle commits inside a View Transition (which sets data-theme itself and animates it).
+      if (!committing) applyTheme(s.theme, true);
     }
   });
   mq()?.addEventListener?.('change', () => {
-    const c = usePrefs.getState().theme;
-    if (c === 'system') applyTheme(c, true);
+    if (followsPhone()) applyTheme('system', true);
   });
 }
