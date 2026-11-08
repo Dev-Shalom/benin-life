@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Partner with Benin Life</title>
+<meta name="description" content="Put your brand on the streets of Benin City. Billboards, branded places, events and prizes inside Benin Life, a free life game played by 6,000+ young people from Benin and Edo." />
+<link rel="canonical" href="https://playbeninlife.app/sponsor/" />
+<meta property="og:title" content="Partner with Benin Life" />
+<meta property="og:description" content="Billboards, branded places, events and prizes inside a 3D Benin City. Packages from ₦30,000." />
+<meta property="og:image" content="https://playbeninlife.app/sponsor/img/og.jpg" />
+<meta property="og:url" content="https://playbeninlife.app/sponsor/" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#0e0f11" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)" />
+<meta name="color-scheme" content="dark light" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="preload" href="/sponsor/fonts/outfit.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/sponsor/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/sponsor/img/boards.webp" as="image" />
+<style>
+@font-face { font-family: "Outfit"; src: url("/sponsor/fonts/outfit.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Figtree"; src: url("/sponsor/fonts/figtree.woff2") format("woff2"); font-weight: 300 900; font-display: swap; }
+
+/* Tokens. Dark is the default look; light follows the phone or computer setting. */
+:root {
+  --bg: #0e0f11;
+  --bg-2: #15171a;
+  --surface: #1a1c20;
+  --line: rgb(255 255 255 / .09);
+  --line-2: rgb(255 255 255 / .16);
+  --text: #f3f2ee;
+  --text-2: #b9b7b0;
+  --text-3: #8d8b85;
+  --accent: #d9a446;          /* Benin bronze, tuned for dark */
+  --accent-ink: #17130b;      /* text on a bronze button */
+  --accent-soft: rgb(217 164 70 / .14);
+  --shadow: 0 30px 80px -30px rgb(0 0 0 / .65);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-io: cubic-bezier(0.77, 0, 0.175, 1);
+  --r-card: 22px;
+  --r-media: 18px;
+  --display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --body: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f5f2;
+    --bg-2: #efeee9;
+    --surface: #ffffff;
+    --line: rgb(17 18 20 / .09);
+    --line-2: rgb(17 18 20 / .16);
+    --text: #121315;
+    --text-2: #4a4b4f;
+    --text-3: #6f7075;
+    --accent: #a8721d;
+    --accent-ink: #ffffff;
+    --accent-soft: rgb(168 114 29 / .1);
+    --shadow: 0 30px 70px -32px rgb(40 32 18 / .35);
+    color-scheme: light;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+img { display: block; max-width: 100%; height: auto; }
+a { color: inherit; }
+h1, h2, h3, p { margin: 0; }
+.wrap { width: min(1200px, 100% - 40px); margin-inline: auto; }
+.display { font-family: var(--display); letter-spacing: -0.035em; line-height: 1.02; font-weight: 600; }
+.lede { color: var(--text-2); font-size: clamp(17px, 1.6vw, 20px); max-width: 52ch; }
+.eyebrow { font-family: var(--body); font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 16px; top: 12px; z-index: 30; background: var(--surface); padding: 8px 12px; border-radius: 10px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
+
+/* Buttons: full pill. Press feedback scale .97. */
+.btn { --h: 48px; display: inline-flex; align-items: center; gap: 10px; height: var(--h); padding: 0 22px; border-radius: 999px; font: 600 16px/1 var(--body); text-decoration: none; white-space: nowrap; border: 1px solid transparent; cursor: pointer; transition: transform 160ms var(--ease-out), background-color 200ms ease, border-color 200ms ease, color 200ms ease; }
+.btn:active { transform: scale(0.97); }
+.btn svg { width: 18px; height: 18px; fill: currentColor; transition: transform 200ms var(--ease-out); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-ghost { background: transparent; color: var(--text); border-color: var(--line-2); }
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover { background: color-mix(in srgb, var(--accent) 88%, white); }
+  .btn-ghost:hover { border-color: var(--text-3); }
+  .btn:hover svg.arrow { transform: translateX(3px); }
+}
+
+/* Nav: frosted bar (a web approximation of Apple-style glass, not Apple's material). */
+.nav { position: sticky; top: 0; z-index: 20; height: 64px; display: flex; align-items: center; transition: background-color 250ms ease, border-color 250ms ease; border-bottom: 1px solid transparent; }
+.nav.is-stuck { background: color-mix(in srgb, var(--bg) 72%, transparent); border-bottom-color: var(--line); -webkit-backdrop-filter: saturate(170%) blur(18px); backdrop-filter: saturate(170%) blur(18px); }
+@media (prefers-reduced-transparency: reduce) { .nav.is-stuck { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+.nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font: 600 18px/1 var(--display); letter-spacing: -0.02em; }
+.brand img { width: 30px; height: 30px; }
+.nav-links { display: flex; align-items: center; gap: 22px; }
+.nav-links a.text { text-decoration: none; color: var(--text-2); font-size: 15px; font-weight: 500; transition: color 200ms ease; }
+.nav-links a.text:hover { color: var(--text); }
+.nav .btn { --h: 40px; padding: 0 16px; font-size: 15px; }
+@media (max-width: 720px) { .nav-links a.text { display: none; } }
+
+/* Hero: asymmetric split */
+.hero { padding: 40px 0 72px; }
+.hero-grid { display: grid; grid-template-columns: 1fr; gap: 36px; align-items: center; }
+@media (min-width: 960px) { .hero { padding: 56px 0 96px; } .hero-grid { grid-template-columns: 6fr 7fr; gap: 56px; } }
+.hero h1 { font-size: clamp(40px, 5.2vw, 68px); margin: 14px 0 20px; }
+.hero .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.hero-media { position: relative; border-radius: var(--r-card); overflow: hidden; box-shadow: var(--shadow); aspect-ratio: 1267 / 762; background: var(--bg-2); }
+.hero-media img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Entrance: blur + rise, staggered. Hidden only when JS runs, so the page is readable without it. */
+.js .rise { opacity: 0; transform: translateY(18px); filter: blur(8px); }
+.js .rise.in { opacity: 1; transform: none; filter: blur(0); transition: opacity 900ms var(--ease-out), transform 900ms var(--ease-out), filter 900ms var(--ease-out); transition-delay: calc(var(--i, 0) * 80ms); }
+.js .reveal-media { clip-path: inset(8% 8% 8% 8% round 28px); transform: scale(1.04); }
+.js .reveal-media.in { clip-path: inset(0 0 0 0 round var(--r-card)); transform: scale(1); transition: clip-path 1400ms var(--ease-out), transform 1600ms var(--ease-out); }
+
+.ngn { position: relative; display: inline-block; line-height: 1; }
+.ngn::before, .ngn::after { content: ""; position: absolute; left: -0.07em; right: -0.07em; height: 0.075em; background: currentColor; border-radius: 1px; }
+.ngn::before { top: 0.39em; } .ngn::after { top: 0.55em; }
+/* Numbers */
+.numbers { padding: 24px 0 96px; }
+.numbers h2 { font-size: clamp(30px, 3.6vw, 44px); max-width: 18ch; }
+.num-grid { margin-top: 44px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 36px 24px; }
+@media (min-width: 860px) { .num-grid { grid-template-columns: repeat(4, 1fr); } }
+.num { border-top: 1px solid var(--line); padding-top: 18px; }
+.num strong { display: block; font: 600 clamp(40px, 5vw, 64px)/1 var(--display); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.num > span { display: block; margin-top: 10px; color: var(--text-2); font-size: 15px; max-width: 22ch; }
+
+/* Story: pinned media, text steps */
+.story { padding: 64px 0 40px; background: var(--bg-2); }
+.story h2 { font-size: clamp(34px, 4.4vw, 56px); max-width: 16ch; }
+.story-grid { margin-top: 48px; display: grid; grid-template-columns: 1fr; gap: 28px; }
+@media (min-width: 960px) { .story-grid { grid-template-columns: 5fr 7fr; gap: 64px; } }
+.steps { display: grid; gap: 0; }
+.step { padding: 28px 0; min-height: 58vh; display: flex; flex-direction: column; justify-content: center; border-top: 1px solid var(--line); opacity: .38; transition: opacity 500ms var(--ease-out); }
+.step:first-child { border-top: 0; }
+.step.on { opacity: 1; }
+.step h3 { font: 600 clamp(24px, 2.4vw, 30px)/1.15 var(--display); letter-spacing: -0.025em; }
+.step p { margin-top: 10px; color: var(--text-2); max-width: 40ch; }
+.step img { display: none; margin-top: 20px; border-radius: var(--r-media); }
+.stage { position: sticky; top: calc(50vh - min(26vw, 230px)); height: fit-content; }
+.stage-frame { position: relative; aspect-ratio: 16 / 9; border-radius: var(--r-card); overflow: hidden; box-shadow: var(--shadow); background: var(--surface); }
+.stage-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.04); filter: blur(10px); transition: opacity 700ms var(--ease-out), transform 1100ms var(--ease-out), filter 700ms var(--ease-out); }
+.stage-frame img.on { opacity: 1; transform: scale(1); filter: blur(0); }
+@media (max-width: 959px) {
+  .stage { display: none; }
+  .step { min-height: 0; opacity: 1; padding: 26px 0; }
+  .step img { display: block; }
+}
+
+/* Bento: exactly five cells */
+.bento-sec { padding: 104px 0; }
+.bento-sec h2 { font-size: clamp(34px, 4.4vw, 56px); max-width: 14ch; }
+.bento-sec .lede { margin-top: 16px; }
+.bento { margin-top: 44px; display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 900px) {
+  .bento { grid-template-columns: repeat(6, 1fr); grid-auto-rows: minmax(200px, auto); }
+  .b-boards { grid-column: span 4; grid-row: span 2; }
+  .b-sign { grid-column: span 2; grid-row: span 2; }
+  .b-events { grid-column: span 2; }
+  .b-prizes { grid-column: span 2; }
+  .b-push { grid-column: span 2; }
+}
+.cell { position: relative; border-radius: var(--r-card); overflow: hidden; background: var(--surface); border: 1px solid var(--line); min-height: 220px; display: flex; flex-direction: column; justify-content: flex-end; isolation: isolate; }
+.cell.media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; transition: transform 1200ms var(--ease-out); }
+.cell.media::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, transparent 30%, rgb(10 11 13 / .88)); }
+.b-events::after { background: linear-gradient(180deg, rgb(10 11 13 / .1), rgb(10 11 13 / .9) 62%) !important; }
+.cell .copy { padding: 22px 24px; }
+.cell h3 { font: 600 22px/1.15 var(--display); letter-spacing: -0.02em; }
+.cell p { margin-top: 6px; font-size: 15.5px; color: var(--text-2); max-width: 36ch; }
+.cell.media h3, .cell.media p { color: #f3f2ee; }
+.cell.media p { color: rgb(243 242 238 / .82); }
+.cell.tint { background: linear-gradient(160deg, var(--accent-soft), transparent 70%), var(--surface); justify-content: space-between; }
+.cell .big { padding: 22px 24px 0; font: 600 44px/1 var(--display); letter-spacing: -0.04em; color: var(--accent); }
+.cell .icon { margin: 22px 24px 0; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); }
+.cell .icon svg { width: 22px; height: 22px; fill: var(--accent); }
+@media (hover: hover) and (pointer: fine) { .cell.media:hover img { transform: scale(1.03); } }
+
+/* Packages */
+.pk-sec { padding: 104px 0; background: var(--bg-2); }
+.pk-sec h2 { font-size: clamp(34px, 4.4vw, 56px); max-width: 15ch; margin-top: 12px; }
+.pk { margin-top: 44px; display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .pk { grid-template-columns: repeat(12, 1fr); } .pk-starter { grid-column: span 7; } .pk-event { grid-column: span 5; } .pk-gold { grid-column: span 5; } .pk-title { grid-column: span 7; } }
+.tier { border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--line); padding: 28px; display: flex; flex-direction: column; gap: 14px; min-height: 260px; }
+.tier h3 { font: 600 24px/1.1 var(--display); letter-spacing: -0.02em; }
+.tier p { color: var(--text-2); font-size: 15.5px; max-width: 42ch; }
+.price { margin-top: auto; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.price strong { font: 600 clamp(36px, 4vw, 48px)/1 var(--display); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.price > span { color: var(--text-3); font-size: 15px; }
+.pk-gold { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: linear-gradient(170deg, var(--accent-soft), transparent 60%), var(--surface); }
+.pk-gold .tag { align-self: flex-start; font-size: 13px; font-weight: 600; color: var(--accent-ink); background: var(--accent); padding: 5px 10px; border-radius: 999px; }
+.pk-title { background: linear-gradient(140deg, color-mix(in srgb, var(--accent) 22%, var(--surface)), var(--surface) 65%); }
+.pk-note { margin-top: 18px; color: var(--text-3); font-size: 15px; }
+
+/* Segmented control with a sliding thumb (transform only, so it is smooth and interruptible). */
+.seg { position: relative; display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 4px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); align-self: flex-start; }
+.seg button { position: relative; z-index: 1; appearance: none; border: 0; background: transparent; color: var(--text-2); font: 600 14px/1 var(--body); height: 36px; padding: 0 18px; border-radius: 999px; cursor: pointer; transition: color 200ms ease; white-space: nowrap; }
+.seg button[aria-pressed="true"] { color: var(--text); }
+.seg .thumb { position: absolute; z-index: 0; top: 4px; left: 4px; height: 36px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line-2); box-shadow: 0 6px 18px -8px rgb(0 0 0 / .45); transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1), width 380ms cubic-bezier(0.32, 0.72, 0, 1); }
+.swap { display: inline-block; transition: opacity 180ms ease, filter 180ms ease, transform 180ms var(--ease-out); }
+.swap.out { opacity: 0; filter: blur(4px); transform: translateY(4px); }
+
+/* Invest: a ladder of amounts */
+.inv { padding: 104px 0; }
+.inv-grid { display: grid; gap: 40px; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 960px) { .inv-grid { grid-template-columns: 5fr 7fr; gap: 64px; } }
+.inv h2 { font-size: clamp(34px, 4.4vw, 56px); max-width: 12ch; }
+.inv .lede { margin-top: 16px; }
+.earn { margin-top: 28px; display: grid; gap: 12px; }
+.earn div { display: flex; gap: 12px; align-items: flex-start; color: var(--text-2); font-size: 16px; }
+.earn svg { flex: none; width: 20px; height: 20px; margin-top: 3px; fill: var(--accent); }
+.ladder { border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--line); padding: 10px; }
+.rung { width: 100%; appearance: none; text-align: left; border: 0; background: transparent; color: var(--text); display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 16px; padding: 18px 18px; border-radius: 16px; cursor: pointer; transition: background-color 220ms ease; font: inherit; }
+.rung + .rung { margin-top: 2px; }
+.rung strong { font: 600 26px/1.1 var(--display); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.rung .what { grid-column: 1 / -1; color: var(--text-2); font-size: 15.5px; display: grid; grid-template-rows: 0fr; transition: grid-template-rows 380ms var(--ease-out), opacity 300ms ease; opacity: 0; }
+.rung .what > span { overflow: hidden; }
+.rung .chev { width: 22px; height: 22px; fill: var(--text-3); transition: transform 300ms var(--ease-out), fill 200ms ease; }
+.rung[aria-expanded="true"] { background: var(--accent-soft); }
+.rung[aria-expanded="true"] .what { grid-template-rows: 1fr; opacity: 1; }
+.rung[aria-expanded="true"] .chev { transform: rotate(90deg); fill: var(--accent); }
+@media (hover: hover) and (pointer: fine) { .rung:not([aria-expanded="true"]):hover { background: color-mix(in srgb, var(--text) 4%, transparent); } }
+.split-bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; margin-top: 14px; gap: 3px; }
+.split-bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.split-legend { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; color: var(--text-3); }
+
+/* Final call: manifesto centred, the message is the design */
+.final { padding: 120px 0 112px; text-align: center; background: radial-gradient(60% 70% at 50% 100%, var(--accent-soft), transparent 70%), var(--bg); }
+.final h2 { font-size: clamp(40px, 5.6vw, 76px); max-width: 17ch; margin-inline: auto; }
+.final .lede { margin: 22px auto 0; }
+.final .ctas { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+.contact { margin-top: 30px; display: flex; justify-content: center; flex-wrap: wrap; gap: 10px 26px; color: var(--text-2); font-size: 15.5px; }
+.contact a { text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+.contact a:hover { color: var(--text); }
+.contact svg { width: 18px; height: 18px; fill: currentColor; }
+
+footer { border-top: 1px solid var(--line); padding: 30px 0 40px; color: var(--text-3); font-size: 14.5px; }
+footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+footer nav { display: flex; gap: 20px; flex-wrap: wrap; }
+footer a { text-decoration: none; }
+footer a:hover { color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .js .rise, .js .reveal-media { opacity: 1; transform: none; filter: none; clip-path: none; }
+  .js .rise.in, .js .reveal-media.in { transition: opacity 200ms ease; }
+  .stage-frame img { transform: none; filter: none; transition: opacity 200ms ease; }
+  .seg .thumb, .swap, .rung .what, .rung .chev, .cell.media img { transition: none; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="Benin Life home"><img src="/brand/logo-mark.svg" alt="" width="30" height="30" />Benin Life</a>
+    <div class="nav-links">
+      <a class="text" href="#packages">Packages</a>
+      <a class="text" href="/">Play the game</a>
+      <a class="btn btn-primary" data-wa href="https://wa.me/2349056529919">Start a partnership</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow rise" style="--i:0">For sponsors and partners</p>
+        <h1 class="display rise" style="--i:1">Put your brand on Benin's streets.</h1>
+        <p class="lede rise" style="--i:2">Benin Life is a free life game set in our city. Over 6,000 players walk, drive and shop in it.</p>
+        <div class="ctas rise" style="--i:3">
+          <a class="btn btn-primary" data-wa href="https://wa.me/2349056529919">Start a partnership <svg class="arrow" viewBox="0 0 256 256" aria-hidden="true"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></svg></a>
+          <a class="btn btn-ghost" href="/">Play the game</a>
+        </div>
+      </div>
+      <figure class="hero-media reveal-media" style="margin:0">
+        <img src="/sponsor/img/boards.webp" width="1267" height="762" fetchpriority="high" alt="Billboards on the 3D map of Benin City in Benin Life, near King's Square and the Ikpoba river" />
+      </figure>
+    </div>
+  </section>
+
+  <section class="numbers" aria-labelledby="n-h">
+    <div class="wrap">
+      <h2 id="n-h" class="display rise">Young, local and always on their phones.</h2>
+      <div class="num-grid">
+        <div class="num rise" style="--i:0"><strong data-count="6000" data-suffix="+">6,000+</strong><span>players signed up, mostly from Benin and Edo</span></div>
+        <div class="num rise" style="--i:1"><strong data-count="100" data-suffix="+">100+</strong><span>playing at the same time at peak</span></div>
+        <div class="num rise" style="--i:2"><strong>16-28</strong><span>the age of most players, many of them students</span></div>
+        <div class="num rise" style="--i:3"><strong><span class="ngn">N</span>0</strong><span>to play. It opens in any phone browser, no download</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="story" aria-labelledby="s-h">
+    <div class="wrap">
+      <h2 id="s-h" class="display rise">A real city, not a generic map.</h2>
+      <div class="story-grid">
+        <div class="steps">
+          <div class="step on" data-step="0">
+            <h3>Walk King's Square</h3>
+            <p>Players step out of their homes and walk the real streets, from the National Museum to Igun Street.</p>
+            <img src="/sponsor/img/palace.webp" width="1400" height="788" loading="lazy" alt="The National Museum on King's Square in Benin Life" />
+          </div>
+          <div class="step" data-step="1">
+            <h3>Shop at Oba Market</h3>
+            <p>Stalls, sellers and a Market Day every Wednesday that brings everyone out.</p>
+            <img src="/sponsor/img/market.webp" width="1400" height="788" loading="lazy" alt="Sellers at their stalls in Oba Market" />
+          </div>
+          <div class="step" data-step="2">
+            <h3>Drive the real roads</h3>
+            <p>Ugbowo-Lagos Road, Sapele Road and Ring Road, with traffic, go-slow and ECTS buses.</p>
+            <img src="/sponsor/img/drive.webp" width="1400" height="788" loading="lazy" alt="Driving down a Benin road with traffic and a yellow ECTS bus" />
+          </div>
+          <div class="step" data-step="3">
+            <h3>Go out at night</h3>
+            <p>Clubs, bukas and owambes after dark, with street lamps and lit windows.</p>
+            <img src="/sponsor/img/night.webp" width="1400" height="788" loading="lazy" alt="A buka lit up at night in Benin Life" />
+          </div>
+        </div>
+        <div class="stage" aria-hidden="true">
+          <div class="stage-frame">
+            <img class="on" src="/sponsor/img/palace.webp" width="1400" height="788" alt="" />
+            <img src="/sponsor/img/market.webp" width="1400" height="788" alt="" loading="lazy" />
+            <img src="/sponsor/img/drive.webp" width="1400" height="788" alt="" loading="lazy" />
+            <img src="/sponsor/img/night.webp" width="1400" height="788" alt="" loading="lazy" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bento-sec" aria-labelledby="b-h">
+    <div class="wrap">
+      <h2 id="b-h" class="display rise">Where your brand shows up.</h2>
+      <p class="lede rise" style="--i:1">Inside the game, where players spend their time. Not in a banner they scroll past.</p>
+      <div class="bento">
+        <article class="cell media b-boards rise">
+          <img src="/sponsor/img/city.webp" width="1600" height="900" loading="lazy" alt="Aerial view of Benin City in Benin Life with King's Square in the middle" />
+          <div class="copy"><h3>Billboards across the city</h3><p>On the 3D streets and on the map that every player opens.</p></div>
+        </article>
+        <article class="cell media b-sign rise" style="--i:1">
+          <img src="/sponsor/img/shopsign.webp" width="1400" height="788" loading="lazy" alt="A shop sign by a motor park on a Benin Life street" />
+          <div class="copy"><h3>Your own place</h3><p>A shop, lounge or brand front that players can walk into.</p></div>
+        </article>
+        <article class="cell media b-events rise">
+          <img src="/sponsor/img/igun.webp" width="1400" height="788" loading="lazy" alt="Igun Street with bronze work outside the door" />
+          <div class="copy"><h3>Events</h3><p>Your name on a club night, an election week or a prize night.</p></div>
+        </article>
+        <article class="cell tint b-prizes rise" style="--i:1">
+          <p class="big">Prizes</p>
+          <div class="copy"><p>Your data, vouchers or discounts as the rewards players chase.</p></div>
+        </article>
+        <article class="cell tint b-push rise" style="--i:2">
+          <div class="icon"><svg viewBox="0 0 256 256" aria-hidden="true"><path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM203.43,64,128,133.15,52.57,64ZM216,192H40V74.19l82.59,75.71a8,8,0,0,0,10.82,0L216,74.19V192Z"/></svg></div>
+          <div class="copy"><h3>A message to every player</h3><p>An announcement in the game and a phone notification, from your brand.</p></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="pk-sec" id="packages" aria-labelledby="p-h">
+    <div class="wrap">
+      <p class="eyebrow rise">Packages</p>
+      <h2 id="p-h" class="display rise" style="--i:1">Start small. Grow with the game.</h2>
+      <div class="pk">
+        <article class="tier pk-starter rise">
+          <h3>Starter billboard</h3>
+          <p>A billboard on the 3D streets and the city map. The quickest way to see your brand in Benin Life.</p>
+          <div class="seg" role="group" aria-label="Billboard length" data-seg>
+            <span class="thumb" aria-hidden="true"></span>
+            <button type="button" aria-pressed="true" data-price="30,000" data-label="for 1 day">1 day</button>
+            <button type="button" aria-pressed="false" data-price="75,000" data-label="for 3 days">3 days</button>
+            <button type="button" aria-pressed="false" data-price="150,000" data-label="for 7 days">7 days</button>
+          </div>
+          <div class="price"><strong><span class="swap" data-price-out><span class="ngn">N</span>30,000</span></strong><span class="swap" data-label-out>for 1 day</span></div>
+        </article>
+        <article class="tier pk-event rise" style="--i:1">
+          <h3>Event partner</h3>
+          <p>Your name on a club night, election week or prize night, plus an announcement to every player.</p>
+          <div class="price"><strong><span class="ngn">N</span>250,000</strong><span>per event</span></div>
+        </article>
+        <article class="tier pk-gold rise">
+          <span class="tag">Best value</span>
+          <h3>Gold partner</h3>
+          <p>Everything in Event partner, plus a 7-day billboard and a phone notification to every player.</p>
+          <div class="price"><strong><span class="ngn">N</span>500,000</strong><span>per campaign</span></div>
+        </article>
+        <article class="tier pk-title rise" style="--i:1">
+          <h3>Title partner</h3>
+          <p>Billboards, your own place in the city, events, announcements and social posts, for a full season.</p>
+          <div class="price"><strong><span class="ngn">N</span>1,000,000</strong><span>for 3 months</span></div>
+        </article>
+      </div>
+      <p class="pk-note rise">Prices are a starting point. We build every package around your budget.</p>
+    </div>
+  </section>
+
+  <section class="inv" aria-labelledby="i-h">
+    <div class="wrap inv-grid">
+      <div>
+        <h2 id="i-h" class="display rise">Back Benin Life at your size.</h2>
+        <p class="lede rise" style="--i:1">For investors and promoters who want a stake in a game made in Benin, for Benin.</p>
+        <div class="earn rise" style="--i:2">
+          <div><svg viewBox="0 0 256 256" aria-hidden="true"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Sponsors and billboards</div>
+          <div><svg viewBox="0 0 256 256" aria-hidden="true"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>In-game purchases and real-business listings through Paystack</div>
+          <div><svg viewBox="0 0 256 256" aria-hidden="true"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Partner events and prizes</div>
+        </div>
+      </div>
+      <div class="ladder rise" style="--i:1" data-ladder>
+        <button class="rung" type="button" aria-expanded="true"><strong><span class="ngn">N</span>250,000</strong><svg class="chev" viewBox="0 0 256 256" aria-hidden="true"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg><span class="what"><span>A campus launch at UNIBEN, AAU or Igbinedion: posters, ambassadors and a launch night.</span></span></button>
+        <button class="rung" type="button" aria-expanded="false"><strong><span class="ngn">N</span>500,000</strong><svg class="chev" viewBox="0 0 256 256" aria-hidden="true"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg><span class="what"><span>A month of creators and promotion on TikTok, Instagram and X.</span></span></button>
+        <button class="rung" type="button" aria-expanded="false"><strong><span class="ngn">N</span>1,000,000</strong><svg class="chev" viewBox="0 0 256 256" aria-hidden="true"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg><span class="what"><span>Three months of servers, storage and faster updates.</span></span></button>
+        <button class="rung" type="button" aria-expanded="false"><strong><span class="ngn">N</span>5,000,000</strong><svg class="chev" viewBox="0 0 256 256" aria-hidden="true"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg><span class="what"><span>The full growth plan.
+          <span class="split-bar" aria-hidden="true"><i style="flex:35"></i><i style="flex:30;opacity:.75"></i><i style="flex:20;opacity:.5"></i><i style="flex:15;opacity:.3"></i></span>
+          <span class="split-legend"><span>35% development</span><span>30% marketing</span><span>20% servers and payments</span><span>15% reserve</span></span></span></span></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="final" aria-labelledby="f-h">
+    <div class="wrap">
+      <h2 id="f-h" class="display rise">Play it for two minutes. Then let's talk.</h2>
+      <p class="lede rise" style="--i:1">Tell me what you sell and your budget. I'll show you your brand inside the game.</p>
+      <div class="ctas rise" style="--i:2">
+        <a class="btn btn-primary" data-wa href="https://wa.me/2349056529919">Start a partnership <svg class="arrow" viewBox="0 0 256 256" aria-hidden="true"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></svg></a>
+        <a class="btn btn-ghost" href="/">Play the game</a>
+      </div>
+      <div class="contact rise" style="--i:3">
+        <a data-wa href="https://wa.me/2349056529919"><svg viewBox="0 0 256 256" aria-hidden="true"><path d="M187.58,144.84l-32-16a8,8,0,0,0-8,.5l-14.69,9.8a40.55,40.55,0,0,1-16-16l9.8-14.69a8,8,0,0,0,.5-8l-16-32A8,8,0,0,0,104,64a40,40,0,0,0-40,40,88.1,88.1,0,0,0,88,88,40,40,0,0,0,40-40A8,8,0,0,0,187.58,144.84ZM152,176a72.08,72.08,0,0,1-72-72A24,24,0,0,1,99.29,80.46l11.48,23L101,118a8,8,0,0,0-.73,7.51,56.47,56.47,0,0,0,30.15,30.15A8,8,0,0,0,138,155l14.61-9.74,23,11.48A24,24,0,0,1,152,176ZM128,24A104,104,0,0,0,36.18,176.88L24.83,210.93a16,16,0,0,0,20.24,20.24l34.05-11.35A104,104,0,1,0,128,24Zm0,192a87.87,87.87,0,0,1-44.06-11.81,8,8,0,0,0-6.54-.67L40,216,52.47,178.6a8,8,0,0,0-.66-6.54A88,88,0,1,1,128,216Z"/></svg>+234 905 652 9919</a>
+        <a href="mailto:code.devshalom@gmail.com?subject=Benin%20Life%20partnership"><svg viewBox="0 0 256 256" aria-hidden="true"><path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM203.43,64,128,133.15,52.57,64ZM216,192H40V74.19l82.59,75.71a8,8,0,0,0,10.82,0L216,74.19V192Z"/></svg>code.devshalom@gmail.com</a>
+        <a href="/sponsor/Benin-Life-Sponsor-Package.pdf" download><svg viewBox="0 0 256 256" aria-hidden="true"><path d="M224,152a8,8,0,0,1-8,8H192v16h16a8,8,0,0,1,0,16H192v16a8,8,0,0,1-16,0V152a8,8,0,0,1,8-8h32A8,8,0,0,1,224,152ZM92,172a28,28,0,0,1-28,28H56v8a8,8,0,0,1-16,0V152a8,8,0,0,1,8-8H64A28,28,0,0,1,92,172Zm-16,0a12,12,0,0,0-12-12H56v24h8A12,12,0,0,0,76,172Zm88,8a36,36,0,0,1-36,36H112a8,8,0,0,1-8-8V152a8,8,0,0,1,8-8h16A36,36,0,0,1,164,180Zm-16,0a20,20,0,0,0-20-20h-8v40h8A20,20,0,0,0,148,180ZM40,112V40A16,16,0,0,1,56,24h96a8,8,0,0,1,5.66,2.34l56,56A8,8,0,0,1,216,88v24a8,8,0,0,1-16,0V96H152a8,8,0,0,1-8-8V40H56v72a8,8,0,0,1-16,0ZM160,80h28.69L160,51.31Z"/></svg>Download the PDF</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Made in Benin City by Shalom Uwagboe.</span>
+    <nav aria-label="Footer"><a href="/">Play</a><a href="/about/">About</a><a href="/faq/">FAQ</a><a href="https://www.tiktok.com/@beninlife_official_" rel="noopener">TikTok</a></nav>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var doc = document.documentElement;
+  doc.classList.add('js');
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // WhatsApp links carry a ready-made first message.
+  var msg = encodeURIComponent("Hi Shalom, I saw the Benin Life sponsor page and I'd like to talk about a partnership.");
+  document.querySelectorAll('[data-wa]').forEach(function (a) { a.href = 'https://wa.me/2349056529919?text=' + msg; a.target = '_blank'; a.rel = 'noopener'; });
+
+  // Frosted nav once the page has moved past the top (observer, not a scroll listener).
+  var nav = document.getElementById('nav');
+  var sentinel = document.createElement('div');
+  sentinel.style.cssText = 'position:absolute;top:0;height:8px;width:1px';
+  document.body.prepend(sentinel);
+  new IntersectionObserver(function (e) { nav.classList.toggle('is-stuck', !e[0].isIntersecting); }).observe(sentinel);
+
+  // Reveal on enter, once.
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      en.target.classList.add('in');
+      io.unobserve(en.target);
+      var c = en.target.querySelector('[data-count]');
+      if (c) countUp(c);
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+  document.querySelectorAll('.rise, .reveal-media').forEach(function (el) { io.observe(el); });
+  // Hero is visible at load: reveal it on the next frame so the transition plays.
+  requestAnimationFrame(function () { document.querySelectorAll('.hero .rise, .hero .reveal-media').forEach(function (el) { el.classList.add('in'); }); });
+
+  function countUp(el) {
+    var to = +el.dataset.count, suf = el.dataset.suffix || '';
+    if (reduce) { el.textContent = to.toLocaleString('en-NG') + suf; return; }
+    var t0 = performance.now(), dur = 1400;
+    function tick(t) {
+      var k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 4);
+      el.textContent = Math.round(to * e).toLocaleString('en-NG') + suf;
+      if (k < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // Story: the step in the middle of the screen chooses the picture.
+  var steps = [].slice.call(document.querySelectorAll('.step'));
+  var frames = [].slice.call(document.querySelectorAll('.stage-frame img'));
+  var current = 0;
+  var so = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      var i = +en.target.dataset.step;
+      if (i === current) return;
+      current = i;
+      steps.forEach(function (s, k) { s.classList.toggle('on', k === i); });
+      frames.forEach(function (f, k) { f.classList.toggle('on', k === i); });
+    });
+  }, { rootMargin: '-45% 0px -45% 0px' });
+  steps.forEach(function (s) { so.observe(s); });
+
+  // Segmented control: slide the thumb, swap the price with a short blur.
+  document.querySelectorAll('[data-seg]').forEach(function (seg) {
+    var thumb = seg.querySelector('.thumb');
+    var btns = [].slice.call(seg.querySelectorAll('button'));
+    var card = seg.closest('.tier');
+    var pOut = card.querySelector('[data-price-out]'), lOut = card.querySelector('[data-label-out]');
+    function place(b) { thumb.style.width = b.offsetWidth + 'px'; thumb.style.transform = 'translateX(' + (b.offsetLeft - 4) + 'px)'; }
+    function pick(b) {
+      btns.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      place(b);
+      [pOut, lOut].forEach(function (el) { el.classList.add('out'); });
+      setTimeout(function () {
+        pOut.innerHTML = '<span class="ngn">N</span>' + b.dataset.price; lOut.textContent = b.dataset.label;
+        [pOut, lOut].forEach(function (el) { el.classList.remove('out'); });
+      }, reduce ? 0 : 170);
+    }
+    btns.forEach(function (b) { b.addEventListener('click', function () { pick(b); }); });
+    var start = btns[0];
+    thumb.style.transition = 'none'; place(start); thumb.getBoundingClientRect(); thumb.style.transition = '';
+    window.addEventListener('resize', function () { place(seg.querySelector('[aria-pressed="true"]')); });
+    if (document.fonts) document.fonts.ready.then(function () { place(seg.querySelector('[aria-pressed="true"]')); });
+  });
+
+  // Investment ladder: one open at a time.
+  document.querySelectorAll('[data-ladder]').forEach(function (l) {
+    var rungs = [].slice.call(l.querySelectorAll('.rung'));
+    rungs.forEach(function (r) { r.addEventListener('click', function () { rungs.forEach(function (x) { x.setAttribute('aria-expanded', x === r ? 'true' : 'false'); }); }); });
+  });
+})();
+</script>
+</body>
+</html>
