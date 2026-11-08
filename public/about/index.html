@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0f11">
 <meta name="color-scheme" content="dark light">
-<script>(function(){var d=document.documentElement,t="dark";try{var c=(JSON.parse(localStorage.getItem("bl.prefs.v1")||"{}")||{}).theme;if(c==="light")t="light";else if(c==="dark")t="dark";else if(window.matchMedia("(prefers-color-scheme: light)").matches)t="light"}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#f6f5f2":"#0e0f11")})()</script>
+<script>(function(){var d=document.documentElement,t="light";try{var c=(JSON.parse(localStorage.getItem("bl.prefs.v1")||"{}")||{}).theme;if(c==="dark"||(c==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches))t="dark"}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#f6f5f2":"#0e0f11")})()</script>
 <title>About Benin Life and its creator Shalom Uwagboe</title>
 <meta name="description" content="Benin Life is a free online life game set in Benin City, Nigeria. It was created and is owned by Shalom Uwagboe. Learn what the game is, who made it and how to contact the team.">
 <link rel="canonical" href="https://playbeninlife.app/about/">

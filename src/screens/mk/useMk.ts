@@ -2,7 +2,7 @@
 // All with IntersectionObserver (no scroll listeners). The static pages do the same in public/mk/mk.js.
 import { useEffect, useLayoutEffect, type RefObject } from 'react';
 import { applyTheme } from '../../lib/theme';
-import { hasStoredTheme, usePrefs } from '../../lib/prefs';
+import { usePrefs } from '../../lib/prefs';
 
 let mounted = 0;
 
@@ -12,8 +12,8 @@ export function useMarketingPage() {
     const root = document.documentElement;
     mounted++;
     root.classList.add('mk-page', 'mk-js');
-    // Nothing saved yet: follow the phone on these pages (the game itself defaults to light).
-    applyTheme(hasStoredTheme() ? usePrefs.getState().theme : 'system', false);
+    // Light is the default everywhere until the player picks (owner rule); then their choice carries over.
+    applyTheme(usePrefs.getState().theme, false);
     return () => {
       mounted--;
       // Landing -> Auth swaps screens in one commit: only leave marketing mode if nothing took over.

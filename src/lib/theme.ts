@@ -3,7 +3,6 @@
 // index.html runs the same resolution in an inline script before first paint, so a reload never flashes the
 // wrong theme. All colour tokens live in src/styles/tokens.css and are re-pointed under [data-theme='dark'].
 import { hasStoredTheme, usePrefs, type ThemeChoice } from './prefs';
-import { isMarketingPath } from './marketing';
 
 export type ResolvedTheme = 'light' | 'dark';
 
@@ -72,11 +71,11 @@ export function applyTheme(choice: ThemeChoice, animate: boolean) {
   paintBar(next);
 }
 
-/** Marketing pages with no saved choice follow the phone; everything else follows the saved prefs. */
+/** Follow the phone only when the player chose "Match my phone". Light is the default everywhere. */
 export function followsPhone(): boolean {
   const c = usePrefs.getState().theme;
   if (hasStoredTheme()) return c === 'system';
-  return document.documentElement.classList.contains('mk-page');
+  return false; // light is the default everywhere until the player picks (owner rule)
 }
 
 let committing = false;
@@ -130,7 +129,7 @@ export function setThemeAnimated(next: ResolvedTheme, origin: Element | null) {
 /** Call once at startup: follows the prefs choice and, for "Match my phone", the OS setting live. */
 export function initTheme() {
   // First visit on a marketing page: follow the phone until the visitor picks a theme.
-  applyTheme(!hasStoredTheme() && isMarketingPath(window.location.pathname) ? 'system' : usePrefs.getState().theme, false);
+  applyTheme(usePrefs.getState().theme, false);
   let last = usePrefs.getState().theme;
   usePrefs.subscribe((s) => {
     if (s.theme !== last) {

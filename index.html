@@ -20,7 +20,6 @@
           var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           if (saved === 'dark') t = 'dark';
           else if (saved === 'system' && dark) t = 'dark';
-          else if (mk && saved !== 'light' && saved !== 'system' && dark) t = 'dark';
         } catch (e) {}
         d.setAttribute('data-theme', t);
         if (mk) {

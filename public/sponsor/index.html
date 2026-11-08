@@ -13,7 +13,7 @@
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="theme-color" content="#0e0f11" />
 <meta name="color-scheme" content="dark light" />
-<script>(function(){var d=document.documentElement,t="dark";try{var c=(JSON.parse(localStorage.getItem("bl.prefs.v1")||"{}")||{}).theme;if(c==="light")t="light";else if(c==="dark")t="dark";else if(window.matchMedia("(prefers-color-scheme: light)").matches)t="light"}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#f6f5f2":"#0e0f11")})()</script>
+<script>(function(){var d=document.documentElement,t="light";try{var c=(JSON.parse(localStorage.getItem("bl.prefs.v1")||"{}")||{}).theme;if(c==="dark"||(c==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches))t="dark"}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#f6f5f2":"#0e0f11")})()</script>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="preload" href="/fonts/outfit.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="preload" href="/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin />
