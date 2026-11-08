@@ -757,6 +757,34 @@ export function buildRoamWorld(placesIn: PlaceIn[]): RoamWorld {
   /* ---------------- walking grids ---------------- */
   const walk = rasterGrid();
   const cell = walk.cell;
+  // every place's standing spot must be on open ground the street network reaches. Colliders added after a door was placed (other
+  // places' posts, kiosks, shops, parked cars, walls) can seal a pocket, so check against the FINAL grid and move the stand to the
+  // nearest reachable free cell within 16 m of the door when needed.
+  {
+    const seen = floodMain(walk);
+    const okCell = (x: number, y: number) => {
+      const c = Math.floor((x - AREA.x0) / cell), r = Math.floor((y - AREA.y0) / cell);
+      return c >= 0 && r >= 0 && c < walk.cols && r < walk.rows && seen[r * walk.cols + c] === 1 && !walk.blocked[r * walk.cols + c];
+    };
+    for (const pl of places) {
+      const d = pl.door;
+      if (okCell(d.sx, d.sy)) continue;
+      let best: [number, number] | null = null, bd = Infinity;
+      const c0 = Math.floor((d.x - AREA.x0) / cell), r0 = Math.floor((d.y - AREA.y0) / cell);
+      const rad = Math.ceil(16 / cell);
+      for (let r = r0 - rad; r <= r0 + rad; r++)
+        for (let c = c0 - rad; c <= c0 + rad; c++) {
+          if (c < 0 || r < 0 || c >= walk.cols || r >= walk.rows) continue;
+          const i = r * walk.cols + c;
+          if (!seen[i] || walk.blocked[i]) continue;
+          const px = AREA.x0 + (c + 0.5) * cell, py = AREA.y0 + (r + 0.5) * cell;
+          const front = (px - d.x) * d.nx + (py - d.y) * d.ny;
+          const score = dist(px, py, d.x, d.y) + (front > 0 ? 0 : 4);
+          if (score < bd) { bd = score; best = [px, py]; }
+        }
+      if (best) { d.sx = best[0]; d.sy = best[1]; }
+    }
+  }
   const gps = { ...walk, blocked: new Uint8Array(walk.blocked) };
   // cross roads only at crossings (every ~45 m and at junctions) so the GPS line follows the pavements
   const allowed = new Uint8Array(walk.blocked.length);

@@ -1,6 +1,6 @@
 // Free roam: the player's own vehicle (pure TypeScript, no three.js). A kinematic bicycle model with the drive scene's feel (smooth
 // speed, steering that tightens with speed, body roll and nose dip) and REAL collisions: the body is a set of circles along the car, moved in
-// sub-steps of at most 0.25 m, pushed out of walls, poles, trunks, parked cars (statics) and other traffic (boxes). Pedestrians are a SOFT
+// sub-steps of at most 7 cm (the smallest corner disc is 8 cm), pushed out of walls, poles, trunks, parked cars (statics) and other traffic (boxes). Pedestrians are a SOFT
 // collider: the car is stopped 0.7 m before touching one (no damage, no contact), and they step aside long before that (peds.ts).
 // Impacts are classified light / hard for the server's clamped damage report. scripts/roam-collide-check.mjs drives this at random.
 import type { CollisionWorld, DynBox } from './collide';
@@ -104,11 +104,14 @@ export function discsFor(spec: CarSpec): Disc[] {
   for (let i = 0; i < n; i++) d.push({ u: n === 1 ? 0 : -span / 2 + (span * i) / (n - 1), v: 0, r: R });
   const cr = R * 0.55;
   for (const su of [-1, 1]) for (const sv of [-1, 1]) d.push({ u: su * (spec.len / 2 - cr), v: sv * (R - cr), r: cr });
+  // and a tiny one in each exact corner, so the real corners of the box cannot poke into a pole
+  const tr = 0.08;
+  for (const su of [-1, 1]) for (const sv of [-1, 1]) d.push({ u: su * (spec.len / 2 - tr), v: sv * (R - tr), r: tr });
   discCache.set(key, d);
   return d;
 }
 
-const STEP_M = 0.25;
+const STEP_M = 0.07;
 const SOFT = 0.7;
 const HIT_COOLDOWN = 0.8;
 
@@ -218,6 +221,7 @@ export function stepCar(c: CarState, spec: CarSpec, col: CollisionWorld, dt: num
   c.steer += (want - c.steer) * Math.min(1, dt * 9);
   const targetYaw = (c.v / spec.wheelbase) * Math.tan(c.steer);
   c.yaw += (targetYaw - c.yaw) * Math.min(1, dt * 7);
+  const h0 = c.h;
   c.h += c.yaw * dt;
   // ---- move in sub-steps through the collision
   const dist = c.v * dt;
@@ -229,9 +233,11 @@ export function stepCar(c: CarState, spec: CarSpec, col: CollisionWorld, dt: num
   const boxes = col.dynBoxes;
   let hitN = 0, hitX = 0, hitY = 0, hitKind = 0;
   for (let i = 0; i < n; i++) {
+    const lx0 = c.x, ly0 = c.y;
     c.x += sx;
     c.y += sy;
-    for (let it = 0; it < 8; it++) {
+    let resolved = false;
+    for (let it = 0; it < 10; it++) {
       const ch = Math.cos(c.h), sh = Math.sin(c.h);
       let best = 0, bx = 0, by = 0, bk = 0;
       for (let k = 0; k < discs.length; k++) {
@@ -239,7 +245,7 @@ export function stepCar(c: CarState, spec: CarSpec, col: CollisionWorld, dt: num
         const dep = probeDisc(col, c.x + d.u * ch - d.v * sh, c.y + d.u * sh + d.v * ch, d.r, env, boxes);
         if (dep > best) { best = dep; bx = _px; by = _py; bk = _kind; }
       }
-      if (best <= 0.003) break;
+      if (best <= 0.003) { resolved = true; break; }
       c.x += bx;
       c.y += by;
       hitN++;
@@ -247,6 +253,18 @@ export function stepCar(c: CarState, spec: CarSpec, col: CollisionWorld, dt: num
       hitX = bx / l;
       hitY = by / l;
       hitKind = bk;
+    }
+    if (!resolved) {
+      // wedged between two things: stay where the last sub-step was valid and lose the speed
+      c.x = lx0;
+      c.y = ly0;
+      c.h = h0;
+      c.yaw = 0;
+      hitN++;
+      hitX = -Math.cos(c.h) * Math.sign(c.v || 1);
+      hitY = -Math.sin(c.h) * Math.sign(c.v || 1);
+      hitKind = 0;
+      break;
     }
   }
   const moved = Math.hypot(c.x - x0, c.y - y0);
@@ -268,7 +286,7 @@ export function stepCar(c: CarState, spec: CarSpec, col: CollisionWorld, dt: num
         c.v = (nvx * hx + nvy * hy) * 0.88;
         // the nose swings away from the wall a touch
         const side = hx * hitY - hy * hitX;
-        c.h += Math.max(-0.5, Math.min(0.5, side * imp * 0.02)) * (c.v >= 0 ? 1 : -1);
+        c.h += Math.max(-0.06, Math.min(0.06, side * imp * 0.01)) * (c.v >= 0 ? 1 : -1);
         if (imp >= 1.6) {
           c.impact = imp;
           c.impactAt = c.t;
