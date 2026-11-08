@@ -277,8 +277,13 @@ const victim = main[0], attacker = main[1];
 let forgeResult = 'not tried';
 setTimeout(async () => {
   // the attacker is subscribed to the victim's topic (read-only, as any near player is): he broadcasts a forged packet on it
-  const ch = attacker.chans.get(P.posTopic(victim.uid));
-  if (!ch) { forgeResult = 'attacker had no channel on the victim topic'; return; }
+  let ch = attacker.chans.get(P.posTopic(victim.uid));
+  if (!ch) {
+    // not among his 8 nearest: join the topic by hand (reading is allowed to anybody near, the write must still be refused)
+    ch = attacker.sb.channel(P.posTopic(victim.uid), { config: { private: true, broadcast: { self: false, ack: false } } });
+    const st = await new Promise((res) => { ch.subscribe((x) => { if (x !== 'SUBSCRIBING') res(x); }); setTimeout(() => res('timeout'), 8000); });
+    if (st !== 'SUBSCRIBED') { forgeResult = `attacker's own join of the victim topic: ${st} (nothing to forge on)`; return; }
+  }
   try {
     const r1 = await ch.send({ type: 'broadcast', event: 'p', payload: [5, 5, 0, 0, 0, 200] });
     const r2 = await ch.send({ type: 'broadcast', event: 'p', payload: { d: [5, 5, 0, 0, 0, 200] } });
