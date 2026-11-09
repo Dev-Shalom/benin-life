@@ -47,6 +47,7 @@ import { makePlayer, placePlayer, stepPlayer, type PlayerState } from '../player
 import { SPAWN_SAFE, Traffic } from '../traffic';
 import { SHOP_NAMES, type RoamWorld } from '../world';
 import { busGeometry, carGeometry, kekeGeometry, okadaGeometry } from './cars';
+import { vehicleMaterial } from '../../vehicles';
 import { CarRig, KIND_OF } from './carview';
 import { OthersLayer } from './others';
 import { poseEmote } from '../live/emotes';
@@ -279,9 +280,9 @@ function Rig(props: RoamSceneProps) {
 
     /* ---------- traffic ---------- */
     const traffic = new Traffic(W.L);
-    const vMat = own(new MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+    const vMat = own(vehicleMaterial());
     const kinds = ['car', 'bus', 'keke', 'okada'] as const;
-    const geos = { car: own(carGeometry()), bus: own(busGeometry()), keke: own(kekeGeometry()), okada: own(okadaGeometry()) };
+    const geos = { car: own(carGeometry(low)), bus: own(busGeometry(low)), keke: own(kekeGeometry(low)), okada: own(okadaGeometry(low)) };
     const inst = {} as Record<(typeof kinds)[number], InstancedMesh>;
     for (const k of kinds) {
       const n = traffic.cars.filter((c) => c.kind === k).length;
@@ -337,7 +338,7 @@ function Rig(props: RoamSceneProps) {
     const veh = P.current.vehicle ?? null;
     const carKind: CarKind = veh ? KIND_OF[veh.kind] : 'sedan';
     const spec = CAR_SPECS[carKind];
-    const carRig = veh ? new CarRig(veh.kind, veh.color) : null;
+    const carRig = veh ? new CarRig(veh.kind, veh.color, false, low) : null;
     if (carRig) {
       root.add(carRig.group);
       carRig.group.visible = false;
@@ -464,6 +465,7 @@ function Rig(props: RoamSceneProps) {
       if (key === lastLight) return;
       lastLight = key;
       dark = c.dark;
+      vMat.glow.value = 0.5 + 1.1 * c.dark;
       wetNow = wet;
       hemi.color.set(c.hemiSky);
       hemi.groundColor.set(c.hemiGround).lerp(new Color(c.hemiSky), 0.3);

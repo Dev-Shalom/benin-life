@@ -31,7 +31,7 @@ export default function RoamLab() {
   const carCtl: RoamCarCtl | undefined = item
     ? {
         info: {
-          has_car: true, enabled: true, item, name: 'Toyota Camry', class: item === 'bicycle' ? 'bicycle' : item === 'bajaj_boxer' ? 'motorcycle' : 'car',
+          has_car: true, enabled: true, item, name: 'Family Saloon', class: item === 'bicycle' ? 'bicycle' : item === 'bajaj_boxer' ? 'motorcycle' : 'car',
           fuel_l: (fuel ?? 0.7) * 45, tank_l: 45, cond: cond ?? 100, fuel_on: true, rain: q.get('rain') === '1', mode: 'walk',
         },
         fuelPerM: (0.11 * 8) / 1000,

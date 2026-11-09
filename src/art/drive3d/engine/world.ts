@@ -19,7 +19,7 @@ import {
   Object3D,
 } from 'three';
 import { ColorBatch } from './batch';
-import { vehicleGeometry } from './vehicles';
+import { vehicleGeometry, vehicleMaterial } from './vehicles';
 
 export const PERIOD = 60;
 export const COPIES = 5;
@@ -172,7 +172,7 @@ export function buildStreet(density: number): Street {
   const umbPole = instanced(new CylinderGeometry(0.03, 0.03, 1, 5), lambert('#555'), 20 * C);
   const umbTop = instanced(new ConeGeometry(1, 0.35, 8), lambert(), 20 * C);
   const shrub = instanced(new IcosahedronGeometry(1, 0), lambert(), 16 * C);
-  const parked = instanced(vehicleGeometry('sedan').clone(), track(new MeshLambertMaterial({ vertexColors: true })), 6 * C);
+  const parked = instanced(vehicleGeometry('sedan', 1).clone(), track(vehicleMaterial()), 6 * C);
   const dash = instanced(new BoxGeometry(0.14, 0.02, 2.6), basic('#e7e4da'), 2 * (PERIOD / 6) * C);
 
   const winRand: number[] = [];

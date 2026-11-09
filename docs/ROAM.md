@@ -82,6 +82,10 @@ The magnifier button lists every place in the city (name, kind, distance), searc
 - `roam_hail_keke(dest)`, `roam_car_info()`.
 Tests: `roam_test.sql` (phase 1, run with `roam.area.all` off) and `roam2_test.sql` (settings, whole city, closed airport, mode and ownership, driving anti-teleport, fuel validation and clamps, damage clamps, rate limits, robbery with mode car and no fare, out of fuel, keke, structure and grants). Time is pinned with `bl.test_offset_seconds`; street robbery is switched off or forced where money is asserted.
 
+## Vehicles
+
+Every car, keke, bus, motorcycle and bicycle here comes from the shared vehicle library, `src/art/vehicles/` (see the **Vehicles** section of `docs/DRIVE.md` for models, detail levels and triangle budgets). Free roam draws the own car (full detail, steering and spinning wheels), other live players' cars (level 1) and the traffic (level 2) from it, with lamps that glow at night.
+
 ## Tunables (Admin -> Settings -> Free roam, category `roam`)
 Phase 1: `roam.enabled`, `roam.area.enabled`, `roam.area.x0/y0/x1/y1` (the box, used when `roam.area.all` is off), `roam.max_speed_mps` 6.5, `roam.door_slack_m` 15, `roam.min_enter_s` 1.5, `roam.session_ttl_s` 7200, `roam.rate.window_s` 60, `roam.rate.max_calls` 20.
 Phase 2: `roam.area.all` (whole city), `roam.drive.enabled`, `roam.drive.max_speed_mps` 24, `roam.drive.fuel_scale` 8 (a street kilometre burns that many real kilometres of fuel: a 45 L sedan lasts about 50 km), `roam.drive.report_gap_s` 3, `roam.drive.max_reports_min` 24, `roam.drive.slack_m` 40 (per 10 s), `roam.drive.max_speed_bicycle` 7, `roam.drive.max_speed_motorcycle` 22, `roam.dry.push_litres` 1.5, `roam.drive.max_hits_report` 6, `roam.drive.min_s_per_hit` 1.2, `roam.drive.damage_light` 1.2, `roam.drive.damage_hard` 4.5, `roam.drive.max_damage_report` 15, `roam.drive.max_damage_min` 30, `roam.drive.min_report_pct` 60, `roam.car.ready_s` 4, `roam.keke.enabled`, `roam.chunk.m` 120 (80-200) and `roam.chunk.load_m` 200 (100-400), the two streaming hints the client reads. Plus the Drive settings it reuses (`drive.fuel.*`, `drive.damage.*`, `drive.dry.*`, `drive.rain.*`, `drive.weather.*`).

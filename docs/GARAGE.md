@@ -59,6 +59,10 @@ No source gave a naira price for a finished garage, so the two garage prices are
 - **Cars:** most expensive first, up to the capacity inside. Without a garage, one car stands on a pad outside. One more car parks **on the street** in front (High tier only). The models come from `place3d/engine/cars.ts`, and tokunbo or used cars reuse the saloon, GLE and G-Class bodies with their own paint (`CAR_MODELS` in `room.ts`).
 - **Perf:** everything merges into the home's few per-layer meshes through `HomeBuilder`, so cars add triangles but no draw calls. The Low tier draws fewer roof strips and no street car.
 
+## Vehicles
+
+Every car, keke, bus, motorcycle and bicycle here comes from the shared vehicle library, `src/art/vehicles/` (see the **Vehicles** section of `docs/DRIVE.md` for models, detail levels and triangle budgets). The garage, dealer showrooms and lots draw it through `place3d/engine/cars.ts` into the HomeBuilder layers (solid, glass, glow), so cars add triangles but no draw calls; `CAR_NAMES` are generic names and the internal `LuxCar` keys stay as they were.
+
 ## H2: selling cars and dealer price tiers
 
 Migration `20261012000400_sell_receipts.sql`, test `sell_receipts_test.sql`.

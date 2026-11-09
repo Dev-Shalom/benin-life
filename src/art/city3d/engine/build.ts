@@ -25,6 +25,7 @@ import {
   Vector2,
   type Material,
 } from 'three';
+import { markerGeometry, paintedBody } from '../../vehicles';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HomeBuilder } from '../../home3d/engine/build';
 import {
@@ -261,21 +262,8 @@ function gableGeometry(): BufferGeometry {
 }
 
 function vehicleGeometry(): BufferGeometry {
-  const body = new BoxGeometry(1, 0.42, 0.5);
-  body.translate(0, 0.29, 0);
-  const cab = new BoxGeometry(0.55, 0.3, 0.46);
-  cab.translate(-0.05, 0.64, 0);
-  const paint = (g: BufferGeometry, v: number) => {
-    const n = g.attributes.position.count;
-    g.setAttribute('color', new Float32BufferAttribute(new Array(n * 3).fill(v), 3));
-    g.deleteAttribute('uv');
-  };
-  paint(body, 1);
-  paint(cab, 0.42);
-  const m = mergeGeometries([body, cab])!;
-  body.dispose();
-  cab.dispose();
-  return m;
+  // the shared library's saloon at map-marker detail (about 130 triangles), 1 unit long, long axis +x
+  return markerGeometry(1);
 }
 
 const _o = new Object3D();
@@ -1079,14 +1067,8 @@ export function routeGeometry(pts: Pt[], hw: number): { geo: BufferGeometry; len
 
 /** The keke used as the travel marker (merged, vertex coloured). */
 export function kekeGeometry(): BufferGeometry {
-  const b = new HomeBuilder();
-  b.box(0.9, 0.36, 0.5, 0, 0.1, 0, '#f2c230');
-  b.box(0.6, 0.06, 0.54, -0.1, 0.72, 0, '#1f7a3f');
-  for (const z of [-0.24, 0.24]) b.box(0.05, 0.3, 0.05, -0.36, 0.42, z, '#2a2a2a');
-  b.box(0.05, 0.3, 0.05, 0.22, 0.42, 0, '#2a2a2a');
-  b.box(0.14, 0.2, 0.46, 0.36, 0.42, 0, '#9fc3d8');
-  for (const [x, z] of [[-0.3, -0.26], [-0.3, 0.26], [0.36, 0]] as const) b.cyl(0.11, 0.11, 0.08, x, 0.11, z, '#222', { seg: 8, rx: Math.PI / 2 });
-  return b.finish().solid!;
+  // the shared library's keke (yellow body, green canopy), about 0.9 long, resting on y = 0
+  return paintedBody(markerGeometry(0.9, 'keke', 2), 0xf2c230);
 }
 
 export function pinGeometry(): BufferGeometry {

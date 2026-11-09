@@ -36,13 +36,13 @@ import {
 import type { DriveKind } from '../../../api/drive';
 import { cityLight } from '../../city3d/engine/light';
 import { districtAt } from '../district';
-import { roadAt, type CamMode, type VehicleKind, type VehicleLook } from '../model';
+import { roadAt, type CamMode, type VehicleLook } from '../model';
 import { LANE_OFFSET, type Track } from '../track';
 import { MANUAL_MS, newStats, type SteerInput, type SteerStats } from '../steer';
 import { buildBusRig, buildStop, destBoard, type BusRig, type StopRig } from './bus';
 import { buildPlaceModel, type PlaceModel } from './place';
 import { buildCockpit, buildEventProps, buildGate, buildSign, gateAccent, type Cockpit, type EventProps, type Gate } from './props';
-import { unitWheelGeometry, vehicleGeometry, vehicleKit } from './vehicles';
+import { unitWheelGeometry, vehicleGeometry, vehicleKit, vehicleMaterial, type VehicleMaterial, type VehicleModel } from './vehicles';
 import { buildJunctions, buildStreet, LANE_IN, LANE_OUT, PERIOD, ROAD_HALF, STYLE_GROUND, type Street, type StreetSpec, type Style } from './world';
 
 /** The player's lane: the outer lane, by the pavement. */
@@ -124,7 +124,7 @@ export interface DriveSceneProps {
   onLost?: () => void;
 }
 
-type NpcKind = VehicleKind | 'okada2';
+type NpcKind = VehicleModel;
 interface Npc {
   kind: NpcKind;
   lane: number;
@@ -145,12 +145,12 @@ interface SlowNpc {
   vis: boolean;
   color: Color;
 }
-const HALF_LEN: Record<string, number> = { sedan: 2.3, suv: 2.4, pickup: 2.6, keke: 1.3, moto: 1.0, okada2: 1.0, bus: 5.4, bike: 0.8 };
+const HALF_LEN: Record<string, number> = { hatch: 2.1, minibus: 2.7, sedan2: 2.45, sedan: 2.3, suv: 2.4, pickup: 2.6, keke: 1.3, moto: 1.0, okada2: 1.0, bus: 5.4, bike: 0.8 };
 const HALF_WID: Record<string, number> = { sedan: 0.78, suv: 0.85, pickup: 0.85, keke: 0.55, moto: 0.18, okada2: 0.18, bus: 1.1, bike: 0.12 };
 /** Lateral positions of the lane steps: oncoming lane, inner lane, outer lane (default), the shoulder (off the road). */
 const LANE_LAT = [-LANE_IN, LANE_IN, LANE_OFFSET, 8.9];
 
-const NPC_KINDS: NpcKind[] = ['sedan', 'sedan', 'suv', 'keke', 'okada2', 'moto', 'bus', 'pickup', 'sedan', 'keke', 'moto', 'bus'];
+const NPC_KINDS: NpcKind[] = ['sedan', 'hatch', 'suv', 'keke', 'okada2', 'moto', 'bus', 'pickup', 'sedan2', 'keke', 'minibus', 'bus'];
 const NPC_COLORS = ['#c3c7cd', '#4a5d7a', '#a23c36', '#efebe0', '#5a8068', '#6c7480', '#aab3bd', '#7d8ca0', '#9a7650', '#d6d1c2'];
 const RING_LEN = 210;
 const RING_FAR = -160;
@@ -358,15 +358,25 @@ function Rig(p: DriveSceneProps) {
     }
 
     // ---- the player's vehicle: body without wheels + wheels that steer and spin
-    const kit = vehicleKit(kind);
-    const carMat = own(new MeshLambertMaterial({ vertexColors: true, color: isBus ? '#ffffff' : P.current.vehicle.color }));
+    // vehicles come from the shared library (src/art/vehicles): the player's vehicle at full detail (a lighter one on Graphics Low),
+    // traffic at a cheaper level; their lamps glow with the night (vmats)
+    const vmats: VehicleMaterial[] = [];
+    const vmat = (c: string | number = 0xffffff) => {
+      const m = own(vehicleMaterial(c));
+      vmats.push(m);
+      return m;
+    };
+    const lodNear = low ? 1 : 0;
+    const lodTraffic = low ? 2 : 1;
+    const kit = vehicleKit(kind, lodNear);
+    const carMat = vmat(isBus ? '#ffffff' : P.current.vehicle.color);
     const car = new Group();
     const rig = new Group();
     car.add(rig);
     const carMesh = new Mesh(kit.body, carMat);
     rig.add(carMesh);
-    const wheelGeo = own(unitWheelGeometry());
-    const wheelMat = own(new MeshLambertMaterial({ vertexColors: true }));
+    const wheelGeo = unitWheelGeometry(kit.wheels[0]?.style ?? 'car', lodNear);
+    const wheelMat = vmat();
     const wheels = new InstancedMesh(wheelGeo, wheelMat, Math.max(1, kit.wheels.length));
     wheels.frustumCulled = false;
     rig.add(wheels);
@@ -477,7 +487,7 @@ function Rig(p: DriveSceneProps) {
     }
 
     // ---- NPC traffic: one instanced mesh per kind (buses are the yellow-and-red ECTS ones)
-    const npcMats = own(new MeshLambertMaterial({ vertexColors: true }));
+    const npcMats = vmat();
     const npcs: Npc[] = [];
     const nCars = low ? 9 : 16;
     const perLane = [Math.ceil(nCars * 0.4), Math.floor(nCars * 0.6)];
@@ -494,7 +504,7 @@ function Rig(p: DriveSceneProps) {
     const npcMesh = new Map<NpcKind, InstancedMesh>();
     for (const k of kinds) {
       const count = npcs.filter((n) => n.kind === k).length;
-      const im = new InstancedMesh(vehicleGeometry(k), npcMats, count);
+      const im = new InstancedMesh(vehicleGeometry(k, 2), npcMats, count);
       im.frustumCulled = false;
       root.add(im);
       npcMesh.set(k, im);
@@ -529,7 +539,7 @@ function Rig(p: DriveSceneProps) {
     }));
     const slowMesh = new Map<NpcKind, InstancedMesh>();
     for (const k of new Set(slow.map((n) => n.kind))) {
-      const im = new InstancedMesh(vehicleGeometry(k), npcMats, slow.filter((n) => n.kind === k).length);
+      const im = new InstancedMesh(vehicleGeometry(k, lodTraffic), npcMats, slow.filter((n) => n.kind === k).length);
       im.frustumCulled = false;
       im.count = 0;
       root.add(im);
@@ -606,10 +616,10 @@ function Rig(p: DriveSceneProps) {
     let wetNow = 0;
 
     // a slow vehicle ahead in our lane during the traffic slow-downs
-    const lead = new Mesh(vehicleGeometry('suv'), own(new MeshLambertMaterial({ vertexColors: true, color: '#8d96a3' })));
+    const lead = new Mesh(vehicleGeometry('suv', lodTraffic), vmat('#8d96a3'));
     lead.visible = false;
     root.add(lead);
-    const leadBus = isBus ? null : new Mesh(vehicleGeometry('bus'), own(new MeshLambertMaterial({ vertexColors: true, color: '#ffffff' })));
+    const leadBus = isBus ? null : new Mesh(vehicleGeometry('bus', lodTraffic), vmat('#ffffff'));
     if (leadBus) {
       leadBus.visible = false;
       root.add(leadBus);
@@ -617,7 +627,7 @@ function Rig(p: DriveSceneProps) {
 
     // ---- other players' cars (a pool of 8) and their name tags
     const otherPool = Array.from({ length: 8 }, () => {
-      const m = new Mesh(vehicleGeometry('sedan'), own(new MeshLambertMaterial({ vertexColors: true })));
+      const m = new Mesh(vehicleGeometry('sedan', lodTraffic), vmat());
       m.visible = false;
       root.add(m);
       return { mesh: m, id: '' as string, z: 0 };
@@ -737,6 +747,7 @@ function Rig(p: DriveSceneProps) {
     const applyLight = (hour: number) => {
       const c = cityLight(hour);
       dark = c.dark;
+      for (const vm of vmats) vm.glow.value = 0.5 + 1.1 * c.dark;
       const wet = P.current.rain ? 1 : 0;
       const key = `${Math.round(c.dark * 20)}|${c.sky}|${wet}`;
       if (key === lastLightKey) return;
@@ -1290,7 +1301,7 @@ function Rig(p: DriveSceneProps) {
             otherPool[s].z = -(16 + s * 21 + (hash(o.id) % 5));
           }
           const sl = otherPool[s];
-          sl.mesh.geometry = vehicleGeometry(o.look.kind === 'bike' ? 'moto' : o.look.kind);
+          sl.mesh.geometry = vehicleGeometry(o.look.kind === 'bike' ? 'moto' : o.look.kind, lodTraffic);
           (sl.mesh.material as MeshLambertMaterial).color.set(o.look.kind === 'bus' ? '#ffffff' : o.look.color);
         });
       }

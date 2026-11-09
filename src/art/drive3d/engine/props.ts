@@ -19,7 +19,7 @@ import {
 import type { DriveKind } from '../../../api/drive';
 import type { VehicleKind } from '../model';
 import { ColorBatch, MatBatch } from './batch';
-import { figure, vehicleGeometry } from './vehicles';
+import { figure, vehicleGeometry, vehicleMaterial } from './vehicles';
 import { LANE_IN, LANE_OUT, ROAD_HALF } from './world';
 
 // ---------------------------------------------------------------- signs
@@ -168,7 +168,7 @@ export function buildEventProps(kind: DriveKind, seed: number): EventProps {
       officers.push(f);
     });
     // a police pickup parked beside the road with a light bar
-    const veh = new Mesh(vehicleGeometry('pickup'), new MeshLambertMaterial({ vertexColors: true, color: '#dfe5ea' }));
+    const veh = new Mesh(vehicleGeometry('pickup', 1), vehicleMaterial('#dfe5ea'));
     veh.position.set(ROAD_HALF + 1.6, 0, -4.8);
     veh.rotation.y = 0.18;
     group.add(veh);
@@ -208,11 +208,11 @@ export function buildEventProps(kind: DriveKind, seed: number): EventProps {
     }
     // okada riders weaving at the edge
     for (let i = 0; i < 3; i++) spots.push({ k: i === 1 ? ('okada2' as VehicleKind) : 'moto', x: 4.1 + (i - 1) * 0.35, z: -10 - i * 14, c: 0x8f98a4 });
-    const qMat = track(new MeshLambertMaterial({ vertexColors: true }));
+    const qMat = track(vehicleMaterial());
     const dm = new Object3D();
     for (const k of new Set(spots.map((sp) => sp.k))) {
       const list = spots.filter((sp) => sp.k === k);
-      const im = new InstancedMesh(vehicleGeometry(k), qMat, list.length);
+      const im = new InstancedMesh(vehicleGeometry(k, 1), qMat, list.length);
       list.forEach((sp, i) => {
         dm.position.set(sp.x, 0, sp.z);
         dm.rotation.set(0, 0, 0);

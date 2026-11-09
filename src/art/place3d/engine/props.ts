@@ -9,7 +9,7 @@ import type { Room } from '../model';
 import type { Mat } from '../../feel/atlas';
 import { buildClutter, buildOutside, buildPools, seeded, type ClutterKind, type Rect } from '../../feel/kit';
 import { rigFor, type Rig } from '../../feel/rigs';
-import { bicycle, drawCar, motorcycle, type LuxCar } from './cars';
+import { bicycle, drawCar, drawModel, motorcycle, type LuxCar } from './cars';
 
 type B = HomeBuilder;
 
@@ -87,13 +87,8 @@ function person(b: B, x: number, z: number, c: string, seated = false) {
   if (!seated) b.box(0.26, 0.75, 0.16, x, 0, z, '#2a2d3a');
 }
 function car(b: B, x: number, z: number, ry: number, c: string, s = 1) {
-  b.setFrame(x, 0, z, ry);
-  b.box(1.8 * s, 0.55 * s, 4.0 * s, 0, 0.25 * s, 0, c);
-  b.box(1.6 * s, 0.5 * s, 2.0 * s, 0, 0.8 * s, -0.2 * s, c);
-  b.box(1.62 * s, 0.38 * s, 1.85 * s, 0, 0.85 * s, -0.2 * s, '#bfe3f7', { layer: 'glass' });
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.cyl(0.33 * s, 0.33 * s, 0.22 * s, sx * 0.86 * s, 0.33 * s, sz * 1.25 * s, BLACK, { seg: 10, rz: Math.PI / 2 });
-  b.box(0.36 * s, 0.12 * s, 0.05, 0.6 * s, 0.45 * s, 2.0 * s, '#fff6c8', { layer: 'glow' });
-  b.box(0.36 * s, 0.12 * s, 0.05, -0.6 * s, 0.45 * s, 2.0 * s, '#fff6c8', { layer: 'glow' });
+  // the shared library's saloon (hatchback for the small ones), the same car the drive scene and free roam draw
+  drawModel(b, s < 0.58 ? 'hatch' : 'sedan', x, z, ry, s * 0.92, c);
 }
 
 /** One zone's prop. `lw`/`ld` = footprint in the zone's own frame (front = +z). */

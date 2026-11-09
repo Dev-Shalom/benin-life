@@ -9,14 +9,13 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
-  MeshLambertMaterial,
   PlaneGeometry,
   Quaternion,
   Vector3,
 } from 'three';
 import type { VehicleKind } from '../../drive3d/model';
 import { buildCockpit, type Cockpit } from '../../drive3d/engine/props';
-import { unitWheelGeometry, vehicleKit } from '../../drive3d/engine/vehicles';
+import { unitWheelGeometry, vehicleKit, vehicleMaterial, type VehicleMaterial } from '../../drive3d/engine/vehicles';
 import type { CarKind, CarState } from '../carphys';
 
 export const KIND_OF: Record<VehicleKind, CarKind> = { sedan: 'sedan', suv: 'suv', pickup: 'pickup', moto: 'moto', bike: 'bike', keke: 'sedan', bus: 'suv' };
@@ -75,21 +74,22 @@ export class CarRig {
   private s3 = new Vector3();
   private ax = new Vector3(1, 0, 0);
   private ay = new Vector3(0, 1, 0);
-  readonly bodyMat: MeshLambertMaterial;
+  readonly bodyMat: VehicleMaterial;
   /** Half-length / width of the model (m). */
   readonly half: { l: number; w: number };
 
-  /** `lite` = another player's car: no cockpit / dashboard. */
-  constructor(kind: VehicleKind, color: number, lite = false) {
+  /** `lite` = another player's car: no cockpit / dashboard, a cheaper model. `low` = Graphics Low: the lighter model too. */
+  constructor(kind: VehicleKind, color: number, lite = false, low = false) {
     this.kind = kind;
-    const kit = vehicleKit(kind);
+    const lod = lite || low ? 1 : 0;
+    const kit = vehicleKit(kind, lod);
     const own = <T extends { dispose(): void }>(o: T) => (this.owned.push(o), o);
-    this.bodyMat = own(new MeshLambertMaterial({ vertexColors: true, color }));
+    this.bodyMat = own(vehicleMaterial(color));
     this.body = new Mesh(kit.body, this.bodyMat);
     this.rig.add(this.body);
     this.group.add(this.rig);
-    const wheelGeo = own(unitWheelGeometry());
-    const wheelMat = own(new MeshLambertMaterial({ vertexColors: true }));
+    const wheelGeo = unitWheelGeometry(kit.wheels[0]?.style ?? 'car', lod);
+    const wheelMat = own(vehicleMaterial());
     this.wheelSpec = kit.wheels;
     this.wheels = new InstancedMesh(wheelGeo, wheelMat, Math.max(1, kit.wheels.length));
     this.wheels.frustumCulled = false;
@@ -145,6 +145,7 @@ export class CarRig {
     this.wheels.instanceMatrix.needsUpdate = true;
     this.beamMat.opacity = headlights ? Math.min(1, dark * 1.3) * 0.7 : 0;
     this.tailMat.opacity = c.braking ? 0.95 : headlights && dark > 0.3 ? 0.55 : 0;
+    this.bodyMat.glow.value = 0.5 + 1.1 * dark;
     this.cockpit?.setLook(this.bodyMat.color.getHex(), dark);
   }
 

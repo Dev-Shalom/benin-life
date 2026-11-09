@@ -30,6 +30,7 @@ const HomeLab = import.meta.env.DEV ? lazy(() => import('./art/home3d/dev/HomeLa
 const CityLab = import.meta.env.DEV ? lazy(() => import('./art/city3d/dev/CityLab')) : null;
 const DriveLab = import.meta.env.DEV ? lazy(() => import('./art/drive3d/dev/DriveLab')) : null;
 const RoamLab = import.meta.env.DEV ? lazy(() => import('./art/roam3d/dev/RoamLab')) : null;
+const CarLab = import.meta.env.DEV ? lazy(() => import('./art/vehicles/dev/VehicleLab')) : null;
 const VehicleLab = import.meta.env.DEV ? lazy(() => import('./screens/game/dev/VehicleLab')) : null;
 
 function RequireSession({ children }: { children: ReactNode }) {
@@ -149,6 +150,7 @@ export default function App() {
           {CityLab && <Route path="/dev/city" element={<CityLab />} /> /* 3D city without a session */}
           {DriveLab && <Route path="/dev/drive" element={<DriveLab />} /> /* drive scene without a session */}
           {RoamLab && <Route path="/dev/roam" element={<RoamLab />} /> /* free roam without a session */}
+          {CarLab && <Route path="/dev/vehicles" element={<CarLab />} /> /* shared vehicle library lab, dev server only */}
           {VehicleLab && <Route path="/dev/vehicle" element={<VehicleLab />} /> /* fuel and repair screens without a session */}
           {import.meta.env.DEV && <Route path="/dev/create" element={<CreateSim />} /> /* creator without a session, for screenshots */}
           <Route path="*" element={<Navigate to="/" replace />} />
