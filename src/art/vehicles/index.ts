@@ -8,7 +8,7 @@ import { buildModel, type VehicleModel } from './models';
 import { unitWheel, disposeWheels } from './wheels';
 
 export { BUS, VEH_LEN, type VehicleModel } from './models';
-export { vehicleMaterial, type VehicleMaterial, type Lod, type WheelSpec, type Role, type Part } from './kit';
+export { vehicleMaterial, setVehicleRenderer, setVehicleLight, type VehicleMaterial, type Lod, type WheelSpec, type Role, type Part } from './kit';
 export { LUX_MODEL } from './lux';
 
 const cache = new Map<string, BufferGeometry>();

@@ -27,7 +27,7 @@ import {
 } from 'three';
 import { HomeBuilder } from '../../home3d/engine/build';
 import { bicycle, drawCar, motorcycle, type LuxCar } from '../../place3d/engine/cars';
-import { LAB_MODELS, labGeometry, labKit, labMaterial, labWheelGeometry, labTris } from './labApi';
+import { LAB_MODELS, labGeometry, labKit, labMaterial, labWheelGeometry, labTris, setVehicleRenderer } from './labApi';
 
 export default function VehicleLab() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -36,6 +36,7 @@ export default function VehicleLab() {
     const cv = ref.current!;
     const renderer = new WebGLRenderer({ canvas: cv, antialias: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+    setVehicleRenderer(renderer);
     const view = q.get('view') ?? 'one';
     const night = q.get('night') === '1';
     const lod = Number(q.get('lod') ?? 0) as 0 | 1 | 2;
@@ -224,9 +225,13 @@ export default function VehicleLab() {
       disposers.push(() => d.remove());
     }
     let raf = 0;
+    let drawn = 0;
     const loop = () => {
       renderer.render(scene, cam);
       tick?.();
+      drawn++;
+      // ?still=1: a few frames for a screenshot, then stop (software GL is slow)
+      if (q.get('still') === '1' && drawn > 3) return;
       raf = requestAnimationFrame(loop);
     };
     loop();

@@ -42,7 +42,7 @@ import { MANUAL_MS, newStats, type SteerInput, type SteerStats } from '../steer'
 import { buildBusRig, buildStop, destBoard, type BusRig, type StopRig } from './bus';
 import { buildPlaceModel, type PlaceModel } from './place';
 import { buildCockpit, buildEventProps, buildGate, buildSign, gateAccent, type Cockpit, type EventProps, type Gate } from './props';
-import { unitWheelGeometry, vehicleGeometry, vehicleKit, vehicleMaterial, type VehicleMaterial, type VehicleModel } from './vehicles';
+import { setVehicleLight, setVehicleRenderer, unitWheelGeometry, vehicleGeometry, vehicleKit, vehicleMaterial, type VehicleMaterial, type VehicleModel } from './vehicles';
 import { buildJunctions, buildStreet, LANE_IN, LANE_OUT, PERIOD, ROAD_HALF, STYLE_GROUND, type Street, type StreetSpec, type Style } from './world';
 
 /** The player's lane: the outer lane, by the pavement. */
@@ -361,22 +361,24 @@ function Rig(p: DriveSceneProps) {
     // vehicles come from the shared library (src/art/vehicles): the player's vehicle at full detail (a lighter one on Graphics Low),
     // traffic at a cheaper level; their lamps glow with the night (vmats)
     const vmats: VehicleMaterial[] = [];
-    const vmat = (c: string | number = 0xffffff) => {
-      const m = own(vehicleMaterial(c));
+    setVehicleRenderer(gl);
+    // near = the player's vehicle, the car ahead, other players: paint and glass reflect a baked sky (not on Graphics Low); traffic is cheap
+    const vmat = (c: string | number = 0xffffff, near = false) => {
+      const m = own(vehicleMaterial(c, { cheap: low || !near }));
       vmats.push(m);
       return m;
     };
     const lodNear = low ? 1 : 0;
     const lodTraffic = low ? 2 : 1;
     const kit = vehicleKit(kind, lodNear);
-    const carMat = vmat(isBus ? '#ffffff' : P.current.vehicle.color);
+    const carMat = vmat(isBus ? '#ffffff' : P.current.vehicle.color, true);
     const car = new Group();
     const rig = new Group();
     car.add(rig);
     const carMesh = new Mesh(kit.body, carMat);
     rig.add(carMesh);
     const wheelGeo = unitWheelGeometry(kit.wheels[0]?.style ?? 'car', lodNear);
-    const wheelMat = vmat();
+    const wheelMat = vmat(0xffffff, true);
     const wheels = new InstancedMesh(wheelGeo, wheelMat, Math.max(1, kit.wheels.length));
     wheels.frustumCulled = false;
     rig.add(wheels);
@@ -616,7 +618,7 @@ function Rig(p: DriveSceneProps) {
     let wetNow = 0;
 
     // a slow vehicle ahead in our lane during the traffic slow-downs
-    const lead = new Mesh(vehicleGeometry('suv', lodTraffic), vmat('#8d96a3'));
+    const lead = new Mesh(vehicleGeometry('suv', lodTraffic), vmat('#8d96a3', true));
     lead.visible = false;
     root.add(lead);
     const leadBus = isBus ? null : new Mesh(vehicleGeometry('bus', lodTraffic), vmat('#ffffff'));
@@ -747,7 +749,7 @@ function Rig(p: DriveSceneProps) {
     const applyLight = (hour: number) => {
       const c = cityLight(hour);
       dark = c.dark;
-      for (const vm of vmats) vm.glow.value = 0.5 + 1.1 * c.dark;
+      for (const vm of vmats) setVehicleLight(vm, c.dark);
       const wet = P.current.rain ? 1 : 0;
       const key = `${Math.round(c.dark * 20)}|${c.sky}|${wet}`;
       if (key === lastLightKey) return;
@@ -1302,7 +1304,7 @@ function Rig(p: DriveSceneProps) {
           }
           const sl = otherPool[s];
           sl.mesh.geometry = vehicleGeometry(o.look.kind === 'bike' ? 'moto' : o.look.kind, lodTraffic);
-          (sl.mesh.material as MeshLambertMaterial).color.set(o.look.kind === 'bus' ? '#ffffff' : o.look.color);
+          (sl.mesh.material as unknown as VehicleMaterial).color.set(o.look.kind === 'bus' ? '#ffffff' : o.look.color);
         });
       }
       const tagEls = tagLayer ? (Array.from(tagLayer.children) as HTMLElement[]) : [];

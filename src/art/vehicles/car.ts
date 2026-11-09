@@ -4,7 +4,7 @@
 // handles, door seams, arch liners, bumpers). Real proportions, original shapes. Metres, nose -z.
 import { BoxGeometry, BufferGeometry, Float32BufferAttribute, PlaneGeometry } from 'three';
 import { Kit, type Role } from './kit';
-import { fan, loft, mirrorRing, pchip, rbox, rod, smoothPoly, ell, cylZ, type Ring } from './prim';
+import { fan, loft, mirrorRing, pchip, rbox, rod, smoothPoly, cylZ, type Ring } from './prim';
 import { wheelParts } from './wheels';
 
 type Tab = [number, number][];
@@ -27,6 +27,11 @@ export interface CarDesign {
   roof: [number, number];
   /** Door seams (z), the A pillar base z is cab[0].z. */
   seams: number[];
+  /** z of the B-type pillars (default: the second seam). */
+  posts?: number[];
+  /** Angular, flat-shaded panels (a wedge truck) instead of smooth curves. */
+  crisp?: boolean;
+  /** Running boards / side steps. */
   wheel: { zf: number; zr: number; r: number; wid: number; x: number };
   /** Lamp shapes. */
   head: { w: number; h: number; y: number; yaw?: number; drl?: boolean };
@@ -49,42 +54,67 @@ export interface CarDesign {
   mirrorZ: number;
 }
 
-const GLYPH: Record<string, [number, number, number, number][]> = {
-  E: [[0, 0, 1, 5], [0, 0, 3, 1], [0, 2, 3, 1], [0, 4, 3, 1]],
-  D: [[0, 0, 1, 5], [0, 0, 2, 1], [0, 4, 2, 1], [2, 1, 1, 3]],
-  O: [[0, 0, 1, 5], [2, 0, 1, 5], [0, 0, 3, 1], [0, 4, 3, 1]],
+/** 3 x 5 pixel font for the plates (rows top to bottom). */
+const FONT: Record<string, string[]> = {
+  A: ['010', '101', '111', '101', '101'],
+  B: ['110', '101', '110', '101', '110'],
+  D: ['110', '101', '101', '101', '110'],
+  E: ['111', '100', '110', '100', '111'],
+  N: ['101', '111', '111', '101', '101'],
+  O: ['111', '101', '101', '101', '111'],
+  '1': ['010', '110', '010', '010', '111'],
+  '2': ['110', '001', '010', '100', '111'],
+  '3': ['110', '001', '010', '001', '110'],
 };
 
-/** A generic Nigerian-style plate: white, a green band on top and the state code in blocky letters. `face` +1 = rear (+z), -1 = front. */
-export function plate(K: Kit, x: number, y: number, z: number, face: 1 | -1, w = 0.5, text = 'EDO') {
-  const h = w * 0.22;
+/**
+ * A generic Nigerian-style plate: white, a green band along the top, the letters read correctly from outside.
+ * `face` +1 = rear (seen from +z), -1 = front (seen from -z). Near detail draws "BEN 123 AB"; far levels only the plate.
+ */
+export function plate(K: Kit, x: number, y: number, z: number, face: 1 | -1, w = 0.5, text = 'BEN 123 AB') {
+  const h = w * 0.24;
   K.put(rbox(w, h, 0.025, 0.006, 1), 'plate', x, y, z + face * 0.008);
-  K.put(rbox(w * 0.96, h * 0.16, 0.006, 0.002, 1), 'plateband', x, y + h * 0.36, z + face * 0.022);
+  K.put(rbox(w * 0.96, h * 0.14, 0.006, 0.002, 1), 'plateband', x, y + h * 0.4, z + face * 0.022);
   if (K.lod > 0) return;
-  const cw = w * 0.05;
-  const ch = h * 0.12;
-  const gap = cw * 0.9;
-  const total = text.length * 3 * cw + (text.length - 1) * gap;
-  const parts: BufferGeometry[] = [];
-  [...text].forEach((c, i) => {
-    const off = -total / 2 + i * (3 * cw + gap);
-    for (const [gx, gy, gw, gh] of GLYPH[c]) {
-      const q = new PlaneGeometry(gw * cw, gh * ch);
-      // plane faces +z; the rear plate is read from behind (+z side looking -z): left to right is -x .. +x as seen, so mirror for the rear
-      q.translate((off + gx * cw + (gw * cw) / 2) * (face === 1 ? 1 : -1) * -1, -(gy * ch + (gh * ch) / 2) + 2.5 * ch - h * 0.1, 0);
-      if (face === -1) q.rotateY(Math.PI);
-      q.translate(x, y, z + face * 0.036);
-      parts.push(q);
+  // layout in the plate's own plane: u to the viewer's right, v up
+  const chars = [...text];
+  const unit = (w * 0.9) / (chars.length * 4 - 1); // one pixel step: letters are 3 px wide plus 1 px gap
+  const px = unit * 0.82;
+  const rowH = (h * 0.52) / 5;
+  const total = chars.length * 4 * unit - unit;
+  const quads: BufferGeometry[] = [];
+  chars.forEach((c, i) => {
+    const glyph = FONT[c];
+    if (!glyph) return;
+    for (let r = 0; r < 5; r++) {
+      let col = 0;
+      while (col < 3) {
+        if (glyph[r][col] !== '1') {
+          col++;
+          continue;
+        }
+        let end = col;
+        while (end + 1 < 3 && glyph[r][end + 1] === '1') end++;
+        const wq = (end - col + 1) * unit - (unit - px);
+        const q = new PlaneGeometry(wq, rowH * 0.92);
+        const u = -total / 2 + (i * 4 + col) * unit + wq / 2;
+        q.translate(u, (2 - r) * rowH - h * 0.08, 0);
+        if (face === -1) q.rotateY(Math.PI);
+        q.translate(x, y, z + face * 0.036);
+        quads.push(q);
+        col = end + 1;
+      }
     }
   });
-  parts.forEach((q) => K.add(q, 'trim'));
+  quads.forEach((q) => K.add(q, 'trim'));
 }
 
 export function buildCar(K: Kit, D: CarDesign, wheelStyle: 'car' = 'car') {
   const lod = K.lod;
   const N = lod === 0 ? 18 : lod === 1 ? 12 : lod === 2 ? 6 : 4;
   const slim = lod >= 2; // far traffic: a five-point section and a four-station greenhouse
-  const sub = lod === 0 ? 1 : 0;
+  const crisp = !!D.crisp;
+  const sub = lod === 0 && !crisp ? 1 : 0;
   const hwF = pchip(D.plan.map(([z, v]) => [z, v * D.hw] as [number, number]));
   const y0F = pchip(D.y0);
   const y1F = pchip(D.y1);
@@ -109,7 +139,7 @@ export function buildCar(K: Kit, D: CarDesign, wheelStyle: 'car' = 'car') {
     const y0 = y0F(z);
     const y1 = y1F(z);
     const h = y1 - y0;
-    const half: [number, number][] = slim ? [[0, y0], [hw * 0.95, y0 + h * 0.12], [hw, y0 + h * 0.55], [hw * 0.8, y1], [0, y1 + crF(z)]] : [
+    const half: [number, number][] = crisp ? [[0, y0], [hw * 0.92, y0], [hw, y0 + h * 0.14], [hw, y1 - h * 0.12], [hw * 0.9, y1], [0, y1]] : slim ? [[0, y0], [hw * 0.95, y0 + h * 0.12], [hw, y0 + h * 0.55], [hw * 0.8, y1], [0, y1 + crF(z)]] : [
       [0, y0],
       [hw * 0.72, y0],
       [hw * 0.94, y0 + h * 0.1],
@@ -121,89 +151,114 @@ export function buildCar(K: Kit, D: CarDesign, wheelStyle: 'car' = 'car') {
     ];
     rings.push({ z, pts: mirrorRing(smoothPoly(half, sub)) });
   }
-  K.add(loft(rings, { capStart: true, capEnd: true }), 'body');
+  K.add(loft(rings, { capStart: true, capEnd: true, flat: crisp }), 'body');
 
   /* ---------------------------------------------------------------- greenhouse */
-  const cabRings: Ring[] = [];
+  // The glasshouse is one swept surface; the pillars, the roof panel and the window frame are ribbons cut from the SAME rings (nudged a
+  // few millimetres outward), so they sit flush on the glass edge instead of floating over it.
   const kEdgeCtl = slim ? 2 : 3;
-  const cabSub = lod === 0 ? 1 : 0;
-  const mk = (st: CarDesign['cab'][number], base: boolean) => {
+  const cabSub = lod === 0 && !crisp ? 1 : 0;
+  const kE = kEdgeCtl * (cabSub + 1);
+  const nHalf = slim ? 4 : 6 + (6 - 1) * cabSub; // points in the half profile
+  const kLast = 2 * (nHalf - 1) - kE; // mirrored index of kE
+  const topF = pchip(D.cab.map((c) => [c.z, c.top] as [number, number]));
+  const hwtF = pchip(D.cab.map((c) => [c.z, c.hwt ?? D.hwt] as [number, number]));
+  const cabEnd0 = D.cab[0].z;
+  const cabEnd1 = D.cab[D.cab.length - 1].z;
+  const ringAt = (z: number): [number, number][] => {
     const yb = D.cabBase;
-    const yt = Math.max(yb + 0.025, st.top);
+    const yt = Math.max(yb + 0.025, topF(z));
     const h = yt - yb;
     const hwb = D.hwb;
-    const hwt = st.hwt ?? D.hwt;
+    const hwt = hwtF(z);
+    const end = z <= cabEnd0 + 1e-4 || z >= cabEnd1 - 1e-4;
     const half: [number, number][] = slim ? [[0, yb], [hwb, yb], [hwt + 0.025, yt - h * 0.11], [0, yt]] : [
       [0, yb],
       [hwb, yb],
-      [hwb - (hwb - hwt) * 0.42, yb + h * 0.55],
-      [hwt + 0.025, yt - h * 0.11],
-      [hwt * 0.78, yt - h * 0.004],
-      [0, yt + (base ? 0 : 0.012)],
+      [hwb - (hwb - hwt) * 0.4, yb + h * 0.55],
+      [hwt + 0.025, yt - h * 0.1],
+      [hwt * 0.8, yt - h * 0.004],
+      [0, yt + (end ? 0 : 0.01)],
     ];
     return mirrorRing(smoothPoly(half, cabSub));
   };
-  const cabIdx = slim ? [0, D.roof[0], D.roof[1], D.cab.length - 1] : D.cab.map((_, i) => i);
-  const cabS = cabIdx.map((i) => D.cab[i]);
-  const roofR: [number, number] = slim ? [1, 2] : D.roof;
-  cabS.forEach((st, i) => cabRings.push({ z: st.z, pts: mk(st, i === 0 || i === cabS.length - 1) }));
-  K.add(loft(cabRings, { capStart: true, capEnd: true }), 'glass');
-  // body-colour roof panel: the top arc of the stations roof[0]..roof[1]
-  {
-    const kE = kEdgeCtl * (cabSub + 1);
-    const nHalf = slim ? 4 : 6 + (6 - 1) * cabSub; // points in the half profile
-    const last = 2 * (nHalf - 1) - kE; // mirrored index of kE
-    const rr: Ring[] = [];
-    for (let i = roofR[0]; i <= roofR[1]; i++) {
-      const pts = cabRings[i].pts.slice(kE, last + 1).map(([x, y]) => [x * 1.004, y + 0.006] as [number, number]);
-      rr.push({ z: cabRings[i].z, pts });
-    }
-    const cy = D.cabBase;
-    K.add(loft(rr, { closed: false, ref: () => [0, cy] }), 'body');
-  }
+  // stations: the design's own plus evenly spaced ones so the windscreen and rear glass curve smoothly
+  const zset = new Set<number>(D.cab.map((c) => c.z));
+  const extra = lod === 0 ? 10 : lod === 1 ? 2 : 0;
+  for (let i = 1; i <= extra; i++) zset.add(cabEnd0 + ((cabEnd1 - cabEnd0) * i) / (extra + 1));
+  const cz = [...zset].sort((a, b) => a - b).filter((z, i, arr) => i === 0 || z - arr[i - 1] > 0.04);
+  const rf0 = D.cab[D.roof[0]];
+  const rf1 = D.cab[D.roof[1]];
+  const czs = slim ? [cabEnd0, rf0.z, rf1.z, cabEnd1] : cz;
+  const cabRings: Ring[] = czs.map((z) => ({ z, pts: ringAt(z) }));
+  K.add(loft(cabRings, { capStart: true, capEnd: true, flat: crisp }), 'glass');
+  const cyRef = D.cabBase;
+  /** A ribbon on the glasshouse surface between two z (rings sampled at every station in range), over ring points i0..i1. */
+  const ribbon = (z0: number, z1: number, i0: number, i1: number, role: Role, off = 0.005, hex?: number) => {
+    const zs = czs.filter((z) => z > z0 + 1e-4 && z < z1 - 1e-4);
+    const all = [z0, ...zs, z1];
+    const rr: Ring[] = all.map((z) => ({
+      z,
+      pts: ringAt(z).slice(i0, i1 + 1).map(([x, y]) => [x + Math.sign(x) * off, y + off * 0.6] as [number, number]),
+    }));
+    K.add(loft(rr, { closed: false, ref: () => [0, cyRef] }), role, hex);
+  };
+  /** A constant-width band that follows ring point k from z0 to z1 (an A / C pillar, the window frame): sits flush on the glass. */
+  const band = (z0: number, z1: number, k: number, halfW: number, role: Role, off = 0.006) => {
+    const zs = czs.filter((z) => z > z0 + 1e-4 && z < z1 - 1e-4);
+    const rr: Ring[] = [z0, ...zs, z1].map((z) => {
+      const r = ringAt(z);
+      const p = r[k];
+      let tx = r[k + 1][0] - r[k - 1][0];
+      let ty = r[k + 1][1] - r[k - 1][1];
+      const l = Math.hypot(tx, ty) || 1;
+      tx /= l;
+      ty /= l;
+      const ox = Math.sign(p[0]) * off;
+      const oy = off * 0.6;
+      return { z, pts: [[p[0] - tx * halfW + ox, p[1] - ty * halfW + oy], [p[0] + tx * halfW + ox, p[1] + ty * halfW + oy]] as [number, number][] };
+    });
+    K.add(loft(rr, { closed: false, ref: () => [0, cyRef] }), role);
+  };
+  // body-colour roof panel, flush with the top of the glass
+  ribbon(rf0.z, rf1.z, kE, kLast, 'body', 0.004);
   if (lod === 3) {
     for (const s of [-1, 1]) K.put(rbox(0.2, 0.3, 2.6, 0.05, 1), 'tyre', s * (D.hw * 0.9), 0.26, 0, { sy: 1 });
     return;
   }
-  // pillars: dark, so the glasshouse reads as one tinted band under a body-colour roof
-  const cz0 = D.cab[0].z;
-  const czR = D.cab[D.cab.length - 1].z;
-  const rf0 = D.cab[D.roof[0]];
-  const rf1 = D.cab[D.roof[1]];
-  const pr = lod === 0 ? 5 : 4;
-  if (lod < 2) for (const s of [-1, 1]) {
-    K.add(rod([s * (D.hwb - 0.01), D.cabBase + 0.01, cz0], [s * (D.hwt + 0.02), rf0.top - 0.03, rf0.z], 0.03, pr), 'trim');
-    K.add(rod([s * (D.hwb - 0.01), D.cabBase + 0.01, czR], [s * (D.hwt + 0.02), rf1.top - 0.03, rf1.z], 0.034, pr), 'trim');
-    if (lod < 2) {
-      // B pillar: a thin black post between the doors
-      const zb = D.seams[1] ?? 0.2;
-      // the roof height at zb
-      const topF = pchip(D.cab.map((c) => [c.z, c.top] as [number, number]));
-      const yt = topF(zb);
-      K.add(rod([s * (D.hwb - 0.04), D.cabBase + 0.02, zb], [s * (D.hwt + 0.03), yt - 0.05, zb], 0.024, 4), 'trim');
+  if (lod < 2) {
+    // A pillar (windscreen corner), C pillar (rear glass corner): bands along the edge ring point; the window frame under the roof edge
+    band(cabEnd0, rf0.z, kE, 0.032, 'trim');
+    band(rf1.z, cabEnd1, kE, 0.036, 'trim');
+    band(rf0.z, rf1.z, kE - 1, 0.012, 'trim');
+    // B pillar(s) and any extra posts (the van's window posts): vertical bands on the side glass
+    for (const zb of D.posts ?? [D.seams[1] ?? 0.2]) {
+      if (zb > cabEnd0 + 0.1 && zb < cabEnd1 - 0.1) ribbon(zb - 0.035, zb + 0.035, 2, kE, 'trim', 0.006);
     }
+    // the belt line: a slim bright strip along the foot of the glass
+    ribbon(cabEnd0 + 0.05, cabEnd1 - 0.05, 1, 1 + (cabSub ? 1 : 0), 'chrome', 0.007);
   }
 
   /* ---------------------------------------------------------------- details */
   const wz = [D.wheel.zf, D.wheel.zr];
   // wheel-arch liners: a dark patch that follows the body side behind each wheel
-  const archR = D.wheel.r + 0.075;
+  const archR = D.wheel.r + 0.05;
   const yAxle = D.wheel.r;
   if (lod < 2) for (const s of [-1, 1]) {
     for (const zc of wz) {
       const yLow = y0F(zc) + 0.005;
       const a0 = Math.asin(Math.min(1, Math.max(-1, (yLow - yAxle) / archR)));
-      const n = lod === 0 ? 10 : 6;
+      const n = lod === 0 ? 20 : 8;
       const pts: [number, number, number][] = [];
       for (let k = 0; k <= n; k++) {
         const a = a0 + (k / n) * (Math.PI - 2 * a0);
         const z = zc + archR * Math.cos(a);
         const y = yAxle + archR * Math.sin(a);
         // an arch can run past the body: clamp the height to the shoulder
-        const yy = Math.min(y, y1F(z) - 0.1);
-        pts.push([s * (side(z, yy) + 0.004), yy, z]);
+        const yy = Math.min(y, y1F(z) - 0.08);
+        pts.push([s * (side(z, yy) + 0.006), yy, z]);
       }
-      const c: [number, number, number] = [s * (side(zc, yAxle) + 0.004), yAxle, zc];
+      const c: [number, number, number] = [s * (side(zc, yAxle) + 0.006), yAxle, zc];
       const g = fan(pts, c);
       K.add(flipFor(g, s), 'trim');
     }
@@ -232,17 +287,21 @@ export function buildCar(K: Kit, D: CarDesign, wheelStyle: 'car' = 'car') {
   const hz = front + 0.17;
   const hx = hwF(hz) * 0.74;
   const lampY = D.head.y;
-  for (const s of [-1, 1]) {
+  const wideHead = D.head.w > 1.2; // one full-width light bar instead of two lamps
+  const wideTail = D.tail.w > 1.2;
+  if (wideHead) K.put(rbox(D.head.w, D.head.h, 0.06, D.head.h * 0.45, 1), 'head', 0, D.head.y, front + 0.02);
+  if (wideTail) K.put(rbox(D.tail.w, D.tail.h, 0.06, D.tail.h * 0.45, 1), 'tail', 0, D.tail.y, rear - 0.02);
+  for (const s of wideHead && wideTail ? [] : [-1, 1]) {
     const yaw = -s * Math.atan2(1, Math.max(0.2, dHw(hz))) * 0.9;
     K.put(rbox(D.head.w, D.head.h, 0.1, Math.min(D.head.h, 0.1) * 0.45, lod === 0 ? 2 : 1), 'head', s * hx, lampY, hz, { ry: yaw - (s === 1 ? 0 : 0), rz: -s * (D.head.yaw ?? 0.12) });
     if (D.head.drl && lod === 0) K.put(rbox(D.head.w * 0.9, 0.018, 0.06, 0.006, 1), 'chrome', s * hx, lampY + D.head.h * 0.5 + 0.02, hz + 0.0, { ry: yaw, rz: -s * (D.head.yaw ?? 0.12) });
     // rear lamps wrap the corner
-    const tz = rear - 0.14;
-    const tx = hwF(tz) * 0.76;
+    const tz = D.bed ? rear - 0.0 : rear - 0.14;
+    const tx = D.bed ? D.hw * 0.86 : hwF(tz) * 0.76;
     if (D.tail.bar) {
       K.put(rbox(D.tail.w, D.tail.h, 0.06, D.tail.h * 0.4, 1), 'tail', s * tx, D.tail.y, rear - 0.05, { ry: s * 0.12 });
     } else {
-      K.put(rbox(D.tail.w, D.tail.h, 0.09, Math.min(D.tail.w, D.tail.h) * 0.4, lod === 0 ? 2 : 1), 'tail', s * tx, D.tail.y, tz, { ry: s * Math.atan2(1, Math.max(0.2, Math.abs(dHw(tz)))) * 0.9 });
+      K.put(rbox(D.tail.w, D.tail.h, 0.09, Math.min(D.tail.w, D.tail.h) * 0.4, lod === 0 ? 2 : 1), 'tail', s * tx, D.tail.y, tz, { ry: D.bed ? 0 : s * Math.atan2(1, Math.max(0.2, Math.abs(dHw(tz)))) * 0.9 });
     }
     if (lod === 0) {
       // indicators and reverse lamps
@@ -250,19 +309,19 @@ export function buildCar(K: Kit, D: CarDesign, wheelStyle: 'car' = 'car') {
       K.put(rbox(0.1, 0.04, 0.05, 0.012, 1), 'chrome', s * (tx - D.tail.w * 0.28), D.tail.y - D.tail.h * 0.7, rear - 0.06);
     }
   }
-  if (D.tail.bar) K.put(rbox(D.hw * 1.1, D.tail.h * 0.35, 0.05, 0.01, 1), 'tail', 0, D.tail.y, rear - 0.015);
+  if (D.tail.bar && !wideTail) K.put(rbox(D.hw * 1.1, D.tail.h * 0.35, 0.05, 0.01, 1), 'tail', 0, D.tail.y, rear - 0.015);
   // plates
   if (lod < 2) {
     plate(K, 0, D.plateY[0], front - 0.004, -1);
     plate(K, 0, D.plateY[1], rear + 0.004, 1);
   }
-  // mirrors
+  // mirrors: a body-colour shell on a short dark foot, fixed to the door at the foot of the A pillar
   if (lod < 2) {
     for (const s of [-1, 1]) {
-      const mx = D.hwb + 0.11;
-      K.put(rbox(0.13, 0.09, 0.2, 0.035, 1), 'body', s * mx, D.cabBase + 0.02, D.mirrorZ);
-      if (lod === 0) K.put(rbox(0.1, 0.065, 0.012, 0.02, 1), 'glass', s * (mx - 0.0), D.cabBase + 0.02, D.mirrorZ + 0.1 + 0.006, { ry: 0 });
-      K.add(rod([s * (D.hwb - 0.02), D.cabBase - 0.01, D.mirrorZ - 0.05], [s * (mx - 0.05), D.cabBase + 0.01, D.mirrorZ], 0.012, 4), 'trim');
+      const mz = D.mirrorZ;
+      const mx = D.hwb + 0.07;
+      K.put(rbox(0.13, 0.09, 0.19, 0.04, 1), 'body', s * mx, D.cabBase + 0.03, mz);
+      K.put(rbox(0.06, 0.03, 0.06, 0.012, 1), 'trim', s * (D.hwb + 0.01), D.cabBase + 0.0, mz + 0.02);
     }
   }
   // door seams, handles, sill, belt trim: lod 0 only
@@ -286,13 +345,6 @@ export function buildCar(K: Kit, D: CarDesign, wheelStyle: 'car' = 'car') {
       const z1 = D.wheel.zr - archR * 0.6;
       const zc = (z0 + z1) / 2;
       K.put(rbox(0.045, 0.075, z1 - z0, 0.02, 1), 'trim', s * (side(zc, y0F(zc) + 0.07) + 0.0), y0F(zc) + 0.075, zc);
-      // chrome belt line under the glass
-      const bs = D.cab;
-      for (let i = 0; i + 1 < bs.length; i++) {
-        const a = bs[i].z;
-        const b = bs[i + 1].z;
-        K.add(rod([s * (D.hwb + 0.003), D.cabBase + 0.012, a], [s * (D.hwb + 0.003), D.cabBase + 0.012, b], 0.009, 4), 'chrome');
-      }
       if (D.cladding) {
         // black plastic wheel arch flares
         for (const zc2 of wz) K.put(rbox(0.05, 0.1, archR * 1.7, 0.02, 1), 'trim', s * (side(zc2, y0F(zc2) + 0.3) + 0.003), y0F(zc2) + 0.55, zc2, { rz: s * 0.1 });
@@ -301,7 +353,6 @@ export function buildCar(K: Kit, D: CarDesign, wheelStyle: 'car' = 'car') {
     if (D.exhaust) {
       K.put(cylZ(0.035, 0.1, 8), 'chrome', D.hw * 0.5, y0F(rear) + 0.04, rear - 0.0);
     }
-    if (D.fin) K.put(ell(0.05, 0.035, 0.12, 6, 4), 'trim', 0, rf1.top + 0.025, rf1.z - 0.25);
   }
   // SUV extras
   if (D.rails) {

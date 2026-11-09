@@ -4,7 +4,7 @@ import { BoxGeometry, BufferAttribute, BufferGeometry, Color, SphereGeometry } f
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BUS } from '../../vehicles';
 
-export { BUS, VEH_LEN, vehicleGeometry, vehicleKit, unitWheelGeometry, disposeVehicleCache, vehicleMaterial } from '../../vehicles';
+export { BUS, VEH_LEN, vehicleGeometry, vehicleKit, unitWheelGeometry, disposeVehicleCache, vehicleMaterial, setVehicleRenderer, setVehicleLight } from '../../vehicles';
 export type { WheelSpec, VehicleModel, VehicleMaterial } from '../../vehicles';
 
 const YELLOW = 0xf0b72a;
@@ -20,7 +20,7 @@ function paint(g: BufferGeometry, hex: number): BufferGeometry {
   }
   g.setAttribute('color', new BufferAttribute(a, 3));
   // the shared vehicle material reads aPart (glow, body mask): figures never glow and take no tint
-  g.setAttribute('aPart', new BufferAttribute(new Float32Array(n * 2), 2));
+  g.setAttribute('aPart', new BufferAttribute(new Float32Array(n * 4), 4));
   return g;
 }
 

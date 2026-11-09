@@ -1,15 +1,15 @@
 // Shared vehicle library: the models. Each builder draws into a Kit (see kit.ts), nose -z, wheels on y = 0.
 import { BoxGeometry, type BufferGeometry } from 'three';
 import { buildCar, plate } from './car';
-import { HATCH, MINIBUS, PICKUP, SEDAN, SEDAN2, SUV, SUVLUX } from './designs';
+import { HATCH, MINIBUS, PICKUP, SEDAN, SEDAN2, SUV, SUVBOX, SUVFULL, SUVLUX, SUVSPORT, WEDGE } from './designs';
 import { Kit, type Role } from './kit';
 import { cylX, cylZ, ell, loft, mirrorRing, rbox, rod, smoothPoly, type Ring } from './prim';
 import { wheelParts } from './wheels';
 
-export type VehicleModel = 'sedan' | 'sedan2' | 'hatch' | 'suv' | 'suvlux' | 'pickup' | 'minibus' | 'moto' | 'okada2' | 'bike' | 'keke' | 'bus';
+export type VehicleModel = 'sedan' | 'sedan2' | 'hatch' | 'suv' | 'suvlux' | 'suvbox' | 'suvsport' | 'suvfull' | 'wedge' | 'pickup' | 'minibus' | 'moto' | 'okada2' | 'bike' | 'keke' | 'bus';
 
 /** Footprint half-length used to keep traffic apart (unchanged from the first drive scene). */
-export const VEH_LEN: Record<VehicleModel, number> = { sedan: 4.4, sedan2: 4.8, hatch: 3.9, suv: 4.7, suvlux: 4.9, pickup: 5.1, minibus: 5.3, moto: 2.2, okada2: 2.2, bike: 1.8, keke: 3.4, bus: 9.8 };
+export const VEH_LEN: Record<VehicleModel, number> = { sedan: 4.4, sedan2: 4.8, hatch: 3.9, suv: 4.7, suvlux: 4.9, suvbox: 4.75, suvsport: 4.95, suvfull: 5.2, wedge: 5.4, pickup: 5.1, minibus: 5.3, moto: 2.2, okada2: 2.2, bike: 1.8, keke: 3.4, bus: 9.8 };
 
 /* ------------------------------------------------------------------------------------------------ people on two wheels */
 
@@ -18,19 +18,33 @@ function rider(K: Kit, o: { x?: number; y: number; z: number; lean: number; shir
   if (!K.rider) return;
   const x = o.x ?? 0;
   const lod = K.lod;
-  const tz = o.z - 0.06 - o.lean * 0.1;
-  K.put(rbox(0.38, 0.52, 0.22, 0.08, lod === 0 ? 2 : 1), 'cloth', x, o.y + 0.3, tz, { rx: o.lean, hex: o.shirt });
-  K.put(ell(0.14, 0.15, 0.15, lod === 0 ? 9 : 6, lod === 0 ? 6 : 4), 'skin', x, o.y + 0.7, tz - o.lean * 0.22, { hex: o.skin });
-  if (o.helmet !== undefined) K.put(ell(0.15, 0.13, 0.16, lod === 0 ? 9 : 6, lod === 0 ? 5 : 4), 'accent', x, o.y + 0.74, tz - o.lean * 0.22 - 0.01, { hex: o.helmet });
+  const th = o.lean;
+  // the spine leans forward (-z) from the hip; shoulders, head and arms follow it
+  const hip: [number, number, number] = [x, o.y + 0.08, o.z + 0.04];
+  const L = 0.46;
+  const sh: [number, number, number] = [x, hip[1] + L * Math.cos(th), hip[2] - L * Math.sin(th)];
+  const mid: [number, number, number] = [x, (hip[1] + sh[1]) / 2, (hip[2] + sh[2]) / 2];
+  K.put(rbox(0.36, L + 0.06, 0.2, 0.08, lod === 0 ? 2 : 1), 'cloth', mid[0], mid[1], mid[2], { rx: -th, hex: o.shirt });
+  const hd: [number, number, number] = [x, sh[1] + 0.17 * Math.cos(th * 0.5), sh[2] - 0.17 * Math.sin(th * 0.5)];
+  K.put(ell(0.105, 0.12, 0.11, lod === 0 ? 9 : 6, lod === 0 ? 6 : 4), 'skin', hd[0], hd[1], hd[2], { hex: o.skin });
+  if (o.helmet !== undefined) {
+    // a close-fitting helmet: a shell over the top and back of the head and a dark visor at the front
+    K.put(ell(0.125, 0.12, 0.135, lod === 0 ? 10 : 6, lod === 0 ? 6 : 4), 'accent', hd[0], hd[1] + 0.025, hd[2] + 0.012, { hex: o.helmet });
+    if (lod === 0) K.put(rbox(0.17, 0.05, 0.05, 0.02, 1), 'glass', hd[0], hd[1] + 0.0, hd[2] - 0.105);
+  }
   if (lod >= 2) return;
   for (const s of [-1, 1]) {
-    // arms: shoulder to the grip
-    K.add(rod([x + s * 0.2, o.y + 0.5, tz - o.lean * 0.12], [x + s * 0.24, o.bars[0], o.bars[1]], 0.045, 4), 'cloth', o.shirt);
+    // arms: shoulder, a slightly bent elbow, the grip
+    const shoulder: [number, number, number] = [x + s * 0.19, sh[1] - 0.03, sh[2]];
+    const grip: [number, number, number] = [x + s * 0.25, o.bars[0], o.bars[1]];
+    const elbow: [number, number, number] = [(shoulder[0] + grip[0]) / 2 + s * 0.06, (shoulder[1] + grip[1]) / 2 - 0.05, (shoulder[2] + grip[2]) / 2];
+    K.add(rod(shoulder, elbow, 0.036, 4), 'cloth', o.shirt);
+    K.add(rod(elbow, grip, 0.032, 4), 'cloth', o.shirt);
     // legs: hip to knee to the peg
-    const hipx = x + s * 0.11;
-    const knee: [number, number, number] = [x + s * (o.legW ?? 0.2), o.y + 0.05, o.z - 0.34];
-    K.add(rod([hipx, o.y + 0.08, o.z + 0.02], knee, 0.07, 4), 'cloth', 0x2f3646);
-    K.add(rod(knee, [x + s * 0.16, o.peg[0], o.peg[1]], 0.06, 4), 'cloth', 0x2f3646);
+    const hipx = x + s * 0.1;
+    const knee: [number, number, number] = [x + s * (o.legW ?? 0.2), o.y + 0.09, o.z - 0.3];
+    K.add(rod([hipx, hip[1], hip[2]], knee, 0.062, 4), 'cloth', 0x2f3646);
+    K.add(rod(knee, [x + s * 0.16, o.peg[0], o.peg[1]], 0.052, 4), 'cloth', 0x2f3646);
   }
 }
 
@@ -74,8 +88,8 @@ function moto(K: Kit, passenger: boolean) {
     K.put(rbox(0.04, 0.1, 0.14, 0.015, 1), 'plate', 0, 0.7, 1.12);
   }
   // rider (and a passenger on the okada2 variant)
-  rider(K, { y: 0.82, z: 0.3, lean: 0.4, shirt: passenger ? 0x8a5a44 : 0x4d6a8f, skin: 0x7a5236, helmet: 0xe6e2d6, bars: [1.08, zf + 0.22], peg: [0.32, 0.18] });
-  if (passenger) rider(K, { y: 0.82, z: 0.78, lean: 0.12, shirt: 0xc9b9a0, skin: 0x6a4630, bars: [0.9, 0.5], peg: [0.32, 0.7], legW: 0.22 });
+  rider(K, { y: 0.88, z: 0.3, lean: 0.55, shirt: passenger ? 0x8a5a44 : 0x4d6a8f, skin: 0x7a5236, helmet: 0xe6e2d6, bars: [1.08, zf + 0.22], peg: [0.32, 0.18] });
+  if (passenger) rider(K, { y: 0.88, z: 0.78, lean: 0.12, shirt: 0xc9b9a0, skin: 0x6a4630, bars: [0.9, 0.5], peg: [0.32, 0.7], legW: 0.22 });
 }
 
 /* ------------------------------------------------------------------------------------------------ bicycle */
@@ -109,7 +123,7 @@ function bike(K: Kit) {
     K.put(rbox(0.1, 0.03, 0.14, 0.01, 1), 'trim', 0.1, 0.26, 0.12);
     K.put(ell(0.045, 0.045, 0.03, 6, 4), 'head', 0, 0.94, -0.5);
   }
-  rider(K, { y: 0.86, z: 0.24, lean: 0.55, shirt: 0x6f8a6a, skin: 0x7a5236, bars: [0.98, -0.42], peg: [0.3, 0.12], legW: 0.17 });
+  rider(K, { y: 0.86, z: 0.24, lean: 0.8, shirt: 0x6f8a6a, skin: 0x7a5236, bars: [0.98, -0.42], peg: [0.3, 0.12], legW: 0.17 });
 }
 
 /* ------------------------------------------------------------------------------------------------ keke (tricycle taxi) */
@@ -153,6 +167,20 @@ function keke(K: Kit) {
     K.put(rbox(1.14, 0.12, 0.6, 0.04, 1), 'seat', 0, 1.06, 0.78); // bench
     K.put(rbox(1.14, 0.42, 0.1, 0.04, 1), 'seat', 0, 1.3, 1.2);
     K.put(rbox(0.46, 0.12, 0.42, 0.04, 1), 'seat', 0, 1.02, -0.15); // driver seat
+  }
+  if (lod < 2) {
+    // the passenger compartment: low side panels, a grab rail along each side, a back rest and two seated passengers
+    for (const sd of [-1, 1]) {
+      K.put(rbox(0.045, 0.3, 1.25, 0.02, 1), 'body', sd * 0.68, 1.08, 0.62);
+      K.add(rod([sd * 0.7, 1.45, -0.2], [sd * 0.7, 1.45, 1.28], 0.018, 4), 'chrome');
+      K.add(rod([sd * 0.7, 1.45, 0.5], [sd * 0.7, 1.22, 0.5], 0.014, 4), 'chrome');
+    }
+    if (K.rider) {
+      for (const [px, shirt] of [[-0.27, 0xb8574a], [0.27, 0x5b7fa8]] as const) {
+        K.put(rbox(0.3, 0.46, 0.2, 0.07, lod === 0 ? 2 : 1), 'cloth', px, 1.36, 1.02, { hex: shirt });
+        K.put(ell(0.1, 0.115, 0.105, lod === 0 ? 8 : 6, lod === 0 ? 6 : 4), 'skin', px, 1.72, 1.02, { hex: px < 0 ? 0x6a4630 : 0x8a5a3c });
+      }
+    }
   }
   // front: mudguard, headlamp, bumper, handlebars
   K.put(rbox(0.36, 0.05, 0.62, 0.02, 1), 'body', 0, 0.62, -1.55);
@@ -296,6 +324,14 @@ export function buildModel(model: VehicleModel, K: Kit, o: { doors?: boolean } =
       return buildCar(K, SUV);
     case 'suvlux':
       return buildCar(K, SUVLUX);
+    case 'suvbox':
+      return buildCar(K, SUVBOX);
+    case 'suvsport':
+      return buildCar(K, SUVSPORT);
+    case 'suvfull':
+      return buildCar(K, SUVFULL);
+    case 'wedge':
+      return buildCar(K, WEDGE);
     case 'pickup':
       return buildCar(K, PICKUP);
     case 'minibus':

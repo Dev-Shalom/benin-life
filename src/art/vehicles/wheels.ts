@@ -18,7 +18,7 @@ function lathe(profile: [number, number][], seg: number): BufferGeometry {
 function carWheel(lod: Lod): Part[] {
   const parts: Part[] = [];
   const add = (g: BufferGeometry, role: Role) => parts.push({ g, role });
-  const seg = lod === 0 ? 18 : lod === 1 ? 10 : 8;
+  const seg = lod === 0 ? 20 : lod === 1 ? 10 : 8;
   if (lod >= 1) {
     add(cylX(1, 1, seg), 'tyre');
     if (lod === 1) for (const sd of [-1, 1]) {
@@ -28,26 +28,34 @@ function carWheel(lod: Lod): Part[] {
     }
     return parts;
   }
-  // tyre: bead, rounded shoulder, flat tread (the profile runs outside-in, face to face)
+  // tyre: a short modern sidewall (rim about 70 % of the radius), rounded shoulder, flat tread; the profile runs face to face
   add(
     lathe(
-      [[0.62, -0.46], [0.8, -0.5], [0.96, -0.42], [1, -0.25], [1, 0.25], [0.96, 0.42], [0.8, 0.5], [0.62, 0.46]],
+      [[0.7, -0.46], [0.84, -0.5], [0.96, -0.43], [1, -0.26], [1, 0.26], [0.96, 0.43], [0.84, 0.5], [0.7, 0.46]],
       seg,
     ),
     'tyre',
   );
-  // dark barrel + brake disc behind the spokes
-  add(cylX(0.64, 0.9, seg), 'disc');
+  // dark barrel behind the spokes
+  add(cylX(0.72, 0.9, seg), 'disc');
   for (const s of [-1, 1]) {
+    // brake disc (a lighter steel ring) and a red caliper, seen between the spokes
+    const bd = cylX(0.52, 0.05, seg);
+    bd.translate(s * 0.34, 0, 0);
+    add(bd, 'metal');
+    const cal = rbox(0.1, 0.22, 0.2, 0.04, 1);
+    cal.translate(s * 0.34, 0.5, 0);
+    cal.rotateX(0.5);
+    parts.push({ g: cal, role: 'accent', hex: 0xb22a24 });
     // rim lip: a ring just inside the tyre bead
-    const lip = lathe([[0.6, 0], [0.66, 0.03], [0.62, 0.06]], seg);
+    const lip = lathe([[0.68, 0], [0.74, 0.03], [0.7, 0.06]], seg);
     lip.translate(s * 0.46 - 0.03, 0, 0);
     add(lip, 'rim');
-    // five spokes, slightly raised from the barrel, each a small rounded bar
+    // five spokes, each a small rounded bar from the hub to the lip
     for (let k = 0; k < 5; k++) {
       const a = (k / 5) * Math.PI * 2;
-      const sp = rbox(0.07, 0.42, 0.14, 0.03, 1);
-      sp.translate(0, 0.33, 0);
+      const sp = rbox(0.07, 0.56, 0.15, 0.03, 1);
+      sp.translate(0, 0.4, 0);
       sp.rotateX(a);
       sp.translate(s * 0.45, 0, 0);
       add(sp, 'rim');

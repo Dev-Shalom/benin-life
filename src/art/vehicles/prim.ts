@@ -147,7 +147,7 @@ export function mirrorRing(half: [number, number][]): [number, number][] {
  * `closed` wraps the last point to the first; `capStart` / `capEnd` close the ends with a fan; `ref` gives the interior reference
  * point of ring i (default: the ring's centroid) used to turn every face outward.
  */
-export function loft(rings: Ring[], o: { closed?: boolean; capStart?: boolean; capEnd?: boolean; ref?: (i: number) => [number, number]; inward?: boolean } = {}): BufferGeometry {
+export function loft(rings: Ring[], o: { closed?: boolean; capStart?: boolean; capEnd?: boolean; ref?: (i: number) => [number, number]; inward?: boolean; flat?: boolean } = {}): BufferGeometry {
   const closed = o.closed ?? true;
   const M = rings[0].pts.length;
   const pos: number[] = [];
@@ -229,6 +229,12 @@ export function loft(rings: Ring[], o: { closed?: boolean; capStart?: boolean; c
     g.setIndex(idx);
   }
   g.computeVertexNormals();
+  if (o.flat) {
+    const f = g.toNonIndexed();
+    g.dispose();
+    f.computeVertexNormals();
+    return f;
+  }
   return g;
 }
 

@@ -47,7 +47,7 @@ import { makePlayer, placePlayer, stepPlayer, type PlayerState } from '../player
 import { SPAWN_SAFE, Traffic } from '../traffic';
 import { SHOP_NAMES, type RoamWorld } from '../world';
 import { busGeometry, carGeometry, kekeGeometry, okadaGeometry } from './cars';
-import { vehicleMaterial } from '../../vehicles';
+import { setVehicleLight, setVehicleRenderer, vehicleMaterial } from '../../vehicles';
 import { CarRig, KIND_OF } from './carview';
 import { OthersLayer } from './others';
 import { poseEmote } from '../live/emotes';
@@ -280,6 +280,7 @@ function Rig(props: RoamSceneProps) {
 
     /* ---------- traffic ---------- */
     const traffic = new Traffic(W.L);
+    setVehicleRenderer(gl);
     const vMat = own(vehicleMaterial());
     const kinds = ['car', 'bus', 'keke', 'okada'] as const;
     const geos = { car: own(carGeometry(low)), bus: own(busGeometry(low)), keke: own(kekeGeometry(low)), okada: own(okadaGeometry(low)) };
@@ -465,7 +466,7 @@ function Rig(props: RoamSceneProps) {
       if (key === lastLight) return;
       lastLight = key;
       dark = c.dark;
-      vMat.glow.value = 0.5 + 1.1 * c.dark;
+      setVehicleLight(vMat, c.dark);
       wetNow = wet;
       hemi.color.set(c.hemiSky);
       hemi.groundColor.set(c.hemiGround).lerp(new Color(c.hemiSky), 0.3);
