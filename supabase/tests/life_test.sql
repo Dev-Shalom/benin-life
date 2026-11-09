@@ -94,7 +94,7 @@ begin
   perform pg_temp.assert(exists (select 1 from ledger where user_id = a), 'Ada has a ledger');
   perform pg_temp.assert(exists (select 1 from events where user_id = a), 'Ada has events');
 
-  r := life_restart();
+  r := life_restart(pg_temp.my_sim());
   perform pg_temp.assert(r->>'message' ilike '%archived%', 'restart message: ' || r::text);
   perform pg_temp.assert((r->>'life_no')::int = 2, 'next life is number 2');
 
@@ -137,7 +137,7 @@ begin
   perform pg_temp.lf_hint($q$ select get_my_state() $q$, 'no_profile');
   perform pg_temp.lf_hint($q$ select choose_start_home('ekenwan_face_me') $q$, 'no_profile');
   perform pg_temp.lf_hint($q$ select do_activity('use_toilet') $q$, 'no_profile');
-  perform pg_temp.lf_hint($q$ select life_restart() $q$, 'no_profile');
+  perform pg_temp.lf_hint($q$ select life_restart(pg_temp.my_sim()) $q$, 'no_profile');
   -- the one-shot origin override applies to the new Sim and is consumed
   update game_config set value = '"lapo"' where key = 'origin.force_next';
   st := create_profile_v2('Life_Ada', 'female', '{"gender":"female"}', '{hustler,foodie}', 'oga_at_the_top');
@@ -164,13 +164,13 @@ declare
   st jsonb;
 begin
   perform pg_temp.login(c);
-  perform life_restart();
+  perform life_restart(pg_temp.my_sim());
   perform set_config('bl.test_rand', '0.05', true);
   st := create_profile_v2('Life_Chidi', 'male', '{"gender":"male"}', '{hustler,foodie}', 'oga_at_the_top');
   perform pg_temp.assert(st->'profile'->>'origin' = 'nepo', 'nepo_pct roll applies to the new life');
   perform set_config('bl.test_rand', '0.5', true);
   perform choose_start_home('gra_duplex');
-  perform life_restart();
+  perform life_restart(pg_temp.my_sim());
   st := create_profile_v2('Life_Chidi', 'male', '{"gender":"male"}', '{hustler,foodie}', 'oga_at_the_top');
   perform pg_temp.assert(st->'profile'->>'origin' = 'lapo', 'roll above nepo_pct = LAPO');
   perform pg_temp.assert((select count(*) from profile_archive where user_id = c) = 2, 'two lives archived');
@@ -187,19 +187,19 @@ declare
 begin
   perform pg_temp.login(b);
   update game_config set value = 'false' where key = 'life.restart_enabled';
-  m := pg_temp.lf_hint($q$ select life_restart() $q$, 'restart_disabled');
+  m := pg_temp.lf_hint($q$ select life_restart(pg_temp.my_sim()) $q$, 'restart_disabled');
   perform pg_temp.assert(exists (select 1 from profiles where id = b), 'disabled: profile kept');
   perform pg_temp.assert(not exists (select 1 from profile_archive where user_id = b), 'disabled: nothing archived');
   update game_config set value = 'true' where key = 'life.restart_enabled';
 
   update game_config set value = '2' where key = 'life.restart_cooldown_hours';
-  perform life_restart();   -- first one is fine
+  perform life_restart(pg_temp.my_sim());   -- first one is fine
   update game_config set value = '"lapo"' where key = 'origin.force_next';
   perform create_profile_v2('Life_Bisi', 'female', '{"gender":"female"}', '{hustler,foodie}', 'oga_at_the_top');
-  m := pg_temp.lf_hint($q$ select life_restart() $q$, 'restart_cooldown');
+  m := pg_temp.lf_hint($q$ select life_restart(pg_temp.my_sim()) $q$, 'restart_cooldown');
   perform pg_temp.assert(m ilike '%2 hours%', 'cooldown message: ' || m);
   perform set_config('bl.test_offset_seconds', '7300', true);
-  perform life_restart();
+  perform life_restart(pg_temp.my_sim());
   perform pg_temp.assert(not exists (select 1 from profiles where id = b), 'after the cooldown: restarted');
   perform set_config('bl.test_offset_seconds', '', true);
   update game_config set value = '0' where key = 'life.restart_cooldown_hours';
@@ -215,14 +215,14 @@ declare
 begin
   -- life_restart takes no target: Efe restarting only ever touches Efe
   perform pg_temp.login(e);
-  perform life_restart();
+  perform life_restart(pg_temp.my_sim());
   perform pg_temp.assert(exists (select 1 from profiles where id = d), 'Dayo untouched by Efe''s restart');
   perform pg_temp.assert(not exists (select 1 from profile_archive where user_id = d), 'nothing archived for Dayo');
   -- not logged in
   perform set_config('request.jwt.claims', '', true);
   perform set_config('request.jwt.claim.sub', '', true);
   begin
-    perform life_restart();
+    perform life_restart(pg_temp.my_sim());
     raise exception 'TEST FAILED: restart without login';
   exception when others then
     if sqlerrm like 'TEST FAILED%' then raise; end if;
@@ -230,7 +230,7 @@ begin
   -- banned players cannot restart (no ban evasion)
   update profiles set banned = true where id = d;
   perform pg_temp.login(d);
-  perform pg_temp.lf_hint($q$ select life_restart() $q$, 'banned');
+  perform pg_temp.lf_hint($q$ select life_restart(pg_temp.my_sim()) $q$, 'banned');
   perform pg_temp.assert(exists (select 1 from profiles where id = d), 'banned: profile kept');
   update profiles set banned = false where id = d;
   -- the archive is private: Dayo sees no one else's lives

@@ -1,6 +1,6 @@
 -- Test helpers (session-scoped). Loaded by scripts/sql-test.sh before each test file.
 -- pg_temp.new_user(email) -> uuid : creates an auth user
--- pg_temp.login(uid)              : impersonates that user for auth.uid()
+-- pg_temp.login(uid)              : impersonates that user for auth.uid() (the JWT carries a fresh iat)
 -- pg_temp.assert(cond, msg)       : raises msg when cond is not true
 
 create or replace function pg_temp.new_user(p_email text) returns uuid
@@ -16,9 +16,13 @@ end $$;
 
 create or replace function pg_temp.login(p uuid) returns void
 language sql as $$
-  select set_config('request.jwt.claims', json_build_object('sub', p, 'role', 'authenticated')::text, true);
+  select set_config('request.jwt.claims', json_build_object('sub', p, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint)::text, true);
   select set_config('request.jwt.claim.sub', p::text, true);
 $$;
+
+-- pg_temp.my_sim() -> text : the logged-in test user's Sim name (life_restart(p_confirm) needs it)
+create or replace function pg_temp.my_sim() returns text
+language sql stable as $$ select username from public.profiles where id = auth.uid() $$;
 
 create or replace function pg_temp.assert(p_cond boolean, p_msg text) returns void
 language plpgsql as $$

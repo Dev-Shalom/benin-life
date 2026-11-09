@@ -65,7 +65,7 @@ create or replace function pg_temp.sub(p_user uuid, p_n int default 1) returns v
 language plpgsql as $$
 begin
   insert into push_subscriptions (user_id, endpoint, p256dh, auth)
-  values (p_user, 'https://push.example.test/' || p_user || '/' || p_n, repeat('A', 87), repeat('B', 22));
+  values (p_user, 'https://fcm.googleapis.com/fcm/send/' || p_user || '/' || p_n, repeat('A', 87), repeat('B', 22));
 end $$;
 
 do $$
@@ -140,20 +140,20 @@ declare a uuid := current_setting('pp.a')::uuid; s jsonb; i int;
 begin
   perform pg_temp.login(a);
   perform pg_temp.assert(pg_temp.hint_of($q$select push_subscribe('http://insecure.test/x1234567', repeat('A', 87), repeat('B', 22))$q$) = 'bad_value', 'http endpoint refused');
-  perform pg_temp.assert(pg_temp.hint_of($q$select push_subscribe('https://push.example.test/abcdefg', 'short', repeat('B', 22))$q$) = 'bad_value', 'bad key refused');
-  s := push_subscribe('https://push.example.test/dev-1', repeat('A', 87), repeat('B', 22), 'UA test');
+  perform pg_temp.assert(pg_temp.hint_of($q$select push_subscribe('https://fcm.googleapis.com/fcm/send/abcdefg', 'short', repeat('B', 22))$q$) = 'bad_value', 'bad key refused');
+  s := push_subscribe('https://fcm.googleapis.com/fcm/send/dev-1', repeat('A', 87), repeat('B', 22), 'UA test');
   perform pg_temp.assert((s->>'devices')::int = 1, 'one device');
-  s := push_subscribe('https://push.example.test/dev-1', repeat('A', 87), repeat('B', 22), 'UA test');
+  s := push_subscribe('https://fcm.googleapis.com/fcm/send/dev-1', repeat('A', 87), repeat('B', 22), 'UA test');
   perform pg_temp.assert((s->>'devices')::int = 1, 'same endpoint is not doubled');
-  for i in 2..10 loop perform push_subscribe('https://push.example.test/dev-' || i, repeat('A', 87), repeat('B', 22), 'UA'); end loop;
+  for i in 2..10 loop perform push_subscribe('https://fcm.googleapis.com/fcm/send/dev-' || i, repeat('A', 87), repeat('B', 22), 'UA'); end loop;
   perform pg_temp.assert((push_state()->>'devices')::int = 8, 'at most 8 devices');
-  perform pg_temp.assert(not exists (select 1 from push_subscriptions where endpoint = 'https://push.example.test/dev-1'), 'oldest device dropped');
-  s := push_unsubscribe('https://push.example.test/dev-10');
+  perform pg_temp.assert(not exists (select 1 from push_subscriptions where endpoint = 'https://fcm.googleapis.com/fcm/send/dev-1'), 'oldest device dropped');
+  s := push_unsubscribe('https://fcm.googleapis.com/fcm/send/dev-10');
   perform pg_temp.assert((s->>'devices')::int = 7, 'unsubscribe removes one');
   -- somebody else's endpoint cannot be removed by me
   perform pg_temp.login(current_setting('pp.b')::uuid);
-  perform push_unsubscribe('https://push.example.test/dev-9');
-  perform pg_temp.assert(exists (select 1 from push_subscriptions where endpoint = 'https://push.example.test/dev-9'), 'cannot remove another player''s device');
+  perform push_unsubscribe('https://fcm.googleapis.com/fcm/send/dev-9');
+  perform pg_temp.assert(exists (select 1 from push_subscriptions where endpoint = 'https://fcm.googleapis.com/fcm/send/dev-9'), 'cannot remove another player''s device');
   -- keep one tidy device each for the next groups
   delete from push_subscriptions where user_id = a;
   raise notice 'ok 2: devices';

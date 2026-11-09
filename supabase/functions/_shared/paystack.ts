@@ -24,8 +24,10 @@ const ALLOWED_ORIGINS = [
 
 export function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
-  // Vercel preview deployments of this project too (benin-life-*.vercel.app)
+  // Vercel preview deployments of this project too (benin-life-*.vercel.app), and the Cloudflare Workers site
+  // (benin-life*.<account>.workers.dev: the subdomain must start with benin-life)
   const ok = ALLOWED_ORIGINS.includes(origin) || /^https:\/\/benin-life[a-z0-9-]*\.vercel\.app$/.test(origin)
+    || /^https:\/\/benin-life[a-z0-9-]*\.[a-z0-9-]+\.workers\.dev$/.test(origin)
     || /^http:\/\/localhost:\d+$/.test(origin);
   return {
     'Access-Control-Allow-Origin': ok ? origin : ALLOWED_ORIGINS[0],

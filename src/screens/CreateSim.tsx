@@ -20,6 +20,7 @@ import { playIntro, useIntro } from '../onboarding/introStore';
 import { Button, Icon, LoadingScreen, toast } from '../ui';
 import ErrorScreen from './ErrorScreen';
 import OriginReveal from './OriginReveal';
+import { DeleteAccount } from './game/DeleteAccount';
 import LookPanel, { USERNAME_RE } from './creator/LookPanel';
 import { DreamPanel, HomePanel, TraitPanel } from './creator/Panels';
 
@@ -241,6 +242,9 @@ export default function CreateSim() {
               {cur === LOOK && (
                 <LookPanel avatar={avatar} onAvatar={setAvatar} username={username}
                   onUsername={(v) => { setUsername(v); setNameError(null); }} nameError={nameError} nameRef={nameRef} />
+              )}
+              {cur === LOOK && session && !state && (
+                <div className="creator__account" data-testid="creator-delete-account"><DeleteAccount hasSim={false} /></div>
               )}
               {cur === TRAITS && (
                 <TraitPanel name={shownName} traits={catalog?.traits ?? null} picked={traits} need={needTraits}

@@ -6,19 +6,37 @@ import { useGame } from '../../state/game';
 import { useUi } from '../../state/ui';
 import { Button, Sheet, toast } from '../../ui';
 
+const FALLBACK = 'Delete failed. Check your connection and try again. Nothing was deleted.';
+
+/** The short reason the server gave. A non-2xx answer arrives as a FunctionsHttpError whose `context` is the Response: read its body. */
+async function reasonFrom(error: unknown, data: unknown): Promise<string> {
+  const fromBody = (b: unknown): string | null => {
+    const o = b as { message?: unknown; error?: unknown } | null;
+    if (o && typeof o.message === 'string' && o.message.trim()) return o.message.trim();
+    return null;
+  };
+  const ctx = (error as { context?: unknown } | null)?.context;
+  if (ctx instanceof Response) {
+    try {
+      const m = fromBody(await ctx.clone().json());
+      if (m) return m;
+    } catch { /* not JSON */ }
+    try {
+      const txt = (await ctx.text()).trim();
+      if (txt && txt.length < 200) return txt;
+    } catch { /* no body */ }
+  }
+  return fromBody(data) ?? FALLBACK;
+}
+
 async function deleteMyAccount(confirm: string): Promise<string> {
   const { data, error } = await supabase.functions.invoke('delete-my-account', { body: { confirm } });
   if (!error && data?.ok) return String(data.message ?? 'Account deleted.');
-  let msg = 'Delete failed. Check your connection and try again. Nothing was deleted.';
-  try {
-    const ctx = (error as { context?: Response } | null)?.context;
-    const body = ctx ? await ctx.json() : data;
-    if (body?.message) msg = String(body.message);
-  } catch { /* keep the generic text */ }
-  throw new Error(msg);
+  throw new Error(await reasonFrom(error, data));
 }
 
-export function DeleteAccount() {
+/** `hasSim` false = a login with no Sim yet (creator screen): the same steps, wording without the Sim. */
+export function DeleteAccount({ hasSim = true }: { hasSim?: boolean } = {}) {
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -46,11 +64,17 @@ export function DeleteAccount() {
             <>
               <p><b>This deletes your login and your whole life in Benin Life, for good.</b></p>
               <ul className="hint" style={{ paddingLeft: 18, margin: 0 }}>
-                <li>Your Sim, money (cash and bank), bag, furniture, homes, cars, businesses and gang spot are gone.</li>
-                <li>Your messages, friends and rank go with them.</li>
+                {hasSim ? (
+                  <>
+                    <li>Your Sim, money (cash and bank), bag, furniture, homes, cars, businesses and gang spot are gone.</li>
+                    <li>Your messages, friends and rank go with them.</li>
+                  </>
+                ) : (
+                  <li>Your login and anything saved with it (for example an old life in the archive) are gone.</li>
+                )}
                 <li>Nobody, not even the team, can bring it back. You can sign up again later, but you start from nothing.</li>
               </ul>
-              <p className="hint">Just want a fresh start with the same login? Use "Start a new life" instead.</p>
+              {hasSim && <p className="hint">Just want a fresh start with the same login? Use "Start a new life" instead.</p>}
               <div className="stack">
                 <Button variant="danger" block onClick={() => setStep(2)}>I understand, continue</Button>
                 <Button variant="ghost" block onClick={close}>Keep my account</Button>

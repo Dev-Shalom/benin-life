@@ -3,11 +3,14 @@
 // Labels above inputs, helper or error text below. All the sign-in logic below is unchanged.
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { passwordProblem } from '../lib/passwordPolicy';
 import { storedReferral } from '../lib/referral';
 import { supabase } from '../lib/supabase';
 import { authErrorMessage, randomGreeting } from '../lib/pidgin';
+import { captchaOption, turnstileEnabled } from '../lib/turnstile';
 import { useGame } from '../state/game';
 import { toast } from '../ui';
+import { Turnstile } from '../ui/Turnstile';
 import { Ph } from './mk/Ph';
 import { MkRoot, MkBrand } from './mk/Shell';
 import { ThemeToggle } from './mk/ThemeToggle';
@@ -37,8 +40,8 @@ function Field({ id, label, helper, error, children }: {
   );
 }
 
-function PasswordInput({ id, value, onChange, autoComplete, invalid }: {
-  id: string; value: string; onChange: (v: string) => void; autoComplete: string; invalid?: boolean;
+function PasswordInput({ id, value, onChange, autoComplete, invalid, minLength }: {
+  id: string; value: string; onChange: (v: string) => void; autoComplete: string; invalid?: boolean; minLength?: number;
 }) {
   const [show, setShow] = useState(false);
   return (
@@ -53,7 +56,7 @@ function PasswordInput({ id, value, onChange, autoComplete, invalid }: {
         aria-invalid={invalid || undefined}
         aria-describedby={`${id}-msg`}
         required
-        minLength={6}
+        minLength={minLength}
       />
       <button
         type="button"
@@ -83,6 +86,9 @@ export default function Auth() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<{ field: 'email' | 'password' | 'adult' | 'form'; msg: string } | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  // Optional Turnstile CAPTCHA (only when VITE_TURNSTILE_SITE_KEY is set): one single-use token per attempt
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
 
   // Logged in already? Go play. (Not while choosing a new password: the recovery link signs you in.)
   useEffect(() => {
@@ -105,15 +111,20 @@ export default function Auth() {
     setInfo(null);
     const em = email.trim();
     if (mode !== 'reset' && !EMAIL_RE.test(em)) return fail('email', "That email doesn't look right. Check it and try again.");
-    if (mode !== 'forgot' && password.length < 6) return fail('password', 'Your password needs at least 6 characters.');
+    if (mode === 'signin' && password.length < 1) return fail('password', 'Type your password.');
+    if (mode === 'signup' || mode === 'reset') {
+      const problem = passwordProblem(password);
+      if (problem) return fail('password', problem);
+    }
     if (mode === 'signup' && !adult) return fail('adult', 'Please confirm you are 18 or older to create an account.');
+    if (turnstileEnabled && mode !== 'reset' && !captcha) return fail('form', 'Please wait for the safety check to finish, then try again.');
     setBusy(true);
     try {
       if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
           email: em,
           password,
-          options: { data: { age_confirmed: true, age_confirmed_at: new Date().toISOString(), ...(storedReferral() ? { referral_code: storedReferral() } : {}) } },
+          options: { ...captchaOption(captcha), data: { age_confirmed: true, age_confirmed_at: new Date().toISOString(), ...(storedReferral() ? { referral_code: storedReferral() } : {}) } },
         });
         if (error) throw error;
         if (!data.session) {
@@ -122,12 +133,13 @@ export default function Auth() {
         }
         // No toast here: it would cover the creator's top bar, which already greets the player.
       } else if (mode === 'signin') {
-        const { error } = await supabase.auth.signInWithPassword({ email: em, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: em, password, options: captchaOption(captcha) });
         if (error) throw error;
         toast(randomGreeting(), 'good');
       } else if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(em, {
           redirectTo: `${window.location.origin}/auth?mode=reset`,
+          ...captchaOption(captcha),
         });
         if (error) throw error;
         setInfo(`If there is an account for ${em}, a reset link is on its way. Check your inbox and spam folder.`);
@@ -141,6 +153,7 @@ export default function Auth() {
       fail('form', authErrorMessage(e instanceof Error ? e.message : String(e)));
     } finally {
       setBusy(false);
+      if (turnstileEnabled && mode !== 'reset') { setCaptcha(null); setCaptchaReset((n) => n + 1); }
     }
   };
 
@@ -167,7 +180,7 @@ export default function Auth() {
   const passwordField = (label: string, helper: string | undefined, autoComplete: string) => (
     <Field id={`${uid}-pass`} label={label} helper={helper} error={err?.field === 'password' ? err.msg : null}>
       <PasswordInput id={`${uid}-pass`} value={password} onChange={setPassword} autoComplete={autoComplete}
-        invalid={err?.field === 'password'} />
+        invalid={err?.field === 'password'} minLength={mode === 'signup' || mode === 'reset' ? 8 : undefined} />
     </Field>
   );
 
@@ -188,7 +201,7 @@ export default function Auth() {
         </div>
         <form className="au-form" onSubmit={submit} noValidate>
           {emailField(signup ? "We'll use it to log you in and to reset your password." : undefined)}
-          {passwordField('Password', signup ? 'At least 6 characters.' : undefined, signup ? 'new-password' : 'current-password')}
+          {passwordField('Password', signup ? 'At least 8 characters, and not only numbers.' : undefined, signup ? 'new-password' : 'current-password')}
           {signup ? (
             <div className="au-field">
               <label className={`au-check${err?.field === 'adult' ? ' is-invalid' : ''}`}>
@@ -206,6 +219,7 @@ export default function Auth() {
           ) : (
             <button type="button" className="au-link" onClick={() => setMode('forgot')}>Forgot password?</button>
           )}
+          <Turnstile onToken={setCaptcha} resetKey={captchaReset} />
           {formError}
           {formInfo}
           <button type="submit" className="mk-btn mk-btn--primary mk-btn--block" aria-busy={busy || undefined} disabled={busy}>
@@ -225,6 +239,7 @@ export default function Auth() {
           <p>Enter the email you signed up with. We'll send you a link to choose a new password.</p>
         </div>
         {emailField()}
+        <Turnstile onToken={setCaptcha} resetKey={captchaReset} />
         {formError}
         {formInfo}
         <button type="submit" className="mk-btn mk-btn--primary mk-btn--block" aria-busy={busy || undefined} disabled={busy}>{busy ? 'One moment...' : 'Send reset link'}</button>
@@ -239,13 +254,13 @@ export default function Auth() {
       <form className="au-form" onSubmit={submit} noValidate>
         <div className="au-head">
           <h2>Choose a new password</h2>
-          <p>{linkDead ? 'This reset link has expired or was already used. Request a new one.' : 'Pick something you will remember. At least 6 characters.'}</p>
+          <p>{linkDead ? 'This reset link has expired or was already used. Request a new one.' : 'Pick something you will remember. At least 8 characters, and not only numbers.'}</p>
         </div>
         {linkDead ? (
           <button type="button" className="mk-btn mk-btn--primary mk-btn--block" onClick={() => setMode('forgot')}>Get a new link</button>
         ) : (
           <>
-            {passwordField('New password', 'At least 6 characters.', 'new-password')}
+            {passwordField('New password', 'At least 8 characters, and not only numbers.', 'new-password')}
             {formError}
             <button type="submit" className="mk-btn mk-btn--primary mk-btn--block" aria-busy={busy || undefined} disabled={busy || !authReady}>{busy ? 'One moment...' : 'Save password'}</button>
           </>

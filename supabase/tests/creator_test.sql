@@ -352,7 +352,7 @@ begin
   -- make an admin
   perform pg_temp.login(adm);
   perform set_config('bl.test_rand', '0.99', true);
-  perform create_profile('Admin_1', 'male', '{}');
+  perform create_profile('Boss_1', 'male', '{}');
   perform set_config('bl.test_rand', '', true);
   update profiles set is_admin = true where id = adm;
   perform pg_temp.expect_hint(format('select admin_set_origin(%L, %L)', v, 'royal'), 'bad_origin');

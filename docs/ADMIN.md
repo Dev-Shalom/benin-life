@@ -51,7 +51,7 @@ Phones get a bottom tab bar and full-screen detail panes; desktops get a sidebar
 | `chat.history_days` | (M3) How far back scrolling up loads messages (default 14, 1–14; the server caps it at 14). |
 | `admin.gift_max` / `admin.gift_total_max` | (A2, category admin, hidden from players) Most one mass gift may give each player (default ₦1,000,000) / sanity cap on players × amount for one gift (default ₦20B). Raise them in Settings before a bigger gift. |
 | `broadcast.last_id` | (A2, category news) Set automatically by every broadcast / gift; open games see the change on the game_config live channel (or its poll fallback) and fetch their announcements within ~8 s (random spread). Don't edit. |
-| `admin.bootstrap_emails` | Emails allowed to press "claim admin". Hidden from players. |
+| `admin.bootstrap_emails` | Emails allowed to press "claim admin". Hidden from players. Ships empty; claiming also needs a confirmed email and zero existing admins (docs/SECURITY.md). |
 | `life.welcome_enabled` | Welcome-back screen (house, Sim, money, Continue / New life / Log out) on/off. Category "Welcome back & new life". |
 | `life.welcome_after_minutes` | In the same tab, the welcome-back screen shows again after this many real minutes away (default 30). A new tab always shows it once. |
 | `life.restart_enabled` | Players may start a **New life** (default on): the old Sim is archived in `profile_archive`, the account stays, the creator runs again (origin roll, `origin.force_next` applies). Audited as `life_restart`. |

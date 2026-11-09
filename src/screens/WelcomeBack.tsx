@@ -23,6 +23,9 @@ import { useReturnGift } from '../state/returnGift';
 import { ReturnGiftCard } from './game/ReturnGift';
 import { Button, Icon, Logo, Modal, toast } from '../ui';
 import { setDaypart } from '../lib/theme';
+import { reauthWithPassword } from '../lib/reauth';
+import { turnstileEnabled } from '../lib/turnstile';
+import { Turnstile } from '../ui/Turnstile';
 
 const ORBIT_SECONDS = 52;
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -92,6 +95,10 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
   const [cardBox, setCardBox] = useState({ w: 0, h: 0 });
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [typed, setTyped] = useState('');
+  // starting over asks for the password again (the server checks the sign-in is fresh: docs/SECURITY.md)
+  const [password, setPassword] = useState('');
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
   const [busy, setBusy] = useState<'restart' | 'logout' | null>(null);
   const [gone, setGone] = useState(false);
   // welcome-back gift (docs/DAILY_RETURN.md): shown inside the card; the pop-up in the game stays quiet once this showed it
@@ -181,10 +188,12 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
   const typedOk = typed.trim().toLowerCase() === confirmWord.toLowerCase();
 
   const restart = async () => {
-    if (!typedOk) return;
+    if (!typedOk || !password) return;
     setBusy('restart');
     try {
-      await rpc('life_restart');
+      await reauthWithPassword(password, captcha);
+      await rpc('life_restart', { p_confirm: confirmWord });
+      setPassword('');
       setGone(true);
       setStep(0);
       useCatalog.setState({ furniture: null, furnitureOf: null });
@@ -192,9 +201,10 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
       toast('Your old life is saved in the archive. Make your new Sim.', 'info');
       nav('/create', { replace: true });
     } catch (e) {
-      toast(errorMessage(e), 'bad');
+      toast(e instanceof GameError ? errorMessage(e) : e instanceof Error ? e.message : errorMessage(e), 'bad');
       if (e instanceof GameError && (e.hint === 'restart_disabled' || e.hint === 'restart_cooldown')) setStep(0);
     } finally {
+      if (turnstileEnabled) { setCaptcha(null); setCaptchaReset((n) => n + 1); }
       setBusy(null);
     }
   };
@@ -270,7 +280,7 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
             </button>
           </div>
           {restartOn && (
-            <button type="button" className="welcome__link welcome__link--quiet welcome__newlife" onClick={() => { setTyped(''); setStep(1); }}>
+            <button type="button" className="welcome__link welcome__link--quiet welcome__newlife" onClick={() => { setTyped(''); setPassword(''); setStep(1); }}>
               Start a new life
             </button>
           )}
@@ -314,7 +324,7 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
         title="Confirm your new life"
         actions={
           <>
-            <Button variant="danger" block disabled={!typedOk} loading={busy === 'restart'} onClick={() => void restart()}>
+            <Button variant="danger" block disabled={!typedOk || !password || (turnstileEnabled && !captcha)} loading={busy === 'restart'} onClick={() => void restart()}>
               Start a new life
             </Button>
             <Button variant="ghost" block disabled={busy !== null} onClick={() => setStep(0)}>Cancel</Button>
@@ -334,6 +344,18 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
           spellCheck={false}
           autoFocus
         />
+        <p>Then type your password, so we know it is really you.</p>
+        <input
+          className="input"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') void restart(); }}
+          placeholder="Your password"
+          aria-label="Your password"
+          autoComplete="current-password"
+        />
+        <Turnstile onToken={setCaptcha} resetKey={captchaReset} />
       </Modal>
     </div>
   );

@@ -127,8 +127,9 @@ export function authErrorMessage(raw: string): string {
   if (m.includes('already registered') || m.includes('already been registered') || m.includes('already exists'))
     return 'There is already an account with this email. Log in instead.';
   if (m.includes('same') && m.includes('password')) return 'Pick a password you have not used before.';
-  if (m.includes('password') && (m.includes('6') || m.includes('short') || m.includes('weak')))
-    return 'Your password needs at least 6 characters.';
+  if (m.includes('password') && (m.includes('at least') || m.includes('short') || m.includes('weak') || m.includes('pwned') || m.includes('character')))
+    return 'Your password needs at least 8 characters and cannot be a very common one.';
+  if (m.includes('captcha')) return 'The safety check did not pass. Wait a moment and try again.';
   if (m.includes('email') && (m.includes('invalid') || m.includes('valid')))
     return "That email doesn't look right. Check it and try again.";
   if (m.includes('not confirmed')) return 'Confirm your email first. Check your inbox for the link.';

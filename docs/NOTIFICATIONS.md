@@ -75,6 +75,7 @@ The VAPID keys are the ones already set for admin alerts. If "Notify me" on /adm
    - Schedule: every 1 minute (`* * * * *`)
    - Type: Supabase Edge Function -> function `player-push`, method POST
    - HTTP header `Authorization: Bearer <your anon key>` (Project settings -> API keys; the dashboard usually fills this in), timeout 5000 ms.
+   Optional but recommended (docs/SECURITY.md): also add the header `x-cron-secret: <CRON_SECRET>` (a Supabase secret you create). Calls with only the anon key still work but are throttled.
    Save and make sure the job is enabled. Without it, instant pushes still work (the game pokes the function), but "3 new messages" bundles and club-event starts are not sent.
 4. Test: on your phone open the game (iPhone: from the Home Screen icon), Settings -> Notifications -> Allow notifications. Ask a friend (or a second account) to DM you while the game is closed. Then check Admin -> Settings -> Push notifications: Sent goes up and Waiting stays near 0.
 5. If Failed grows, read "last error" on that card. `device gone` just means a phone removed the site; the dead device is deleted automatically.

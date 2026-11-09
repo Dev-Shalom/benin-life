@@ -736,7 +736,7 @@ begin
   perform pg_temp.assert((select status from kids_children where id = v_p) = 'expecting', 'g and x expect a baby');
   -- x starts a new life (the real function)
   perform pg_temp.cfg('life.restart_cooldown_hours', '0');
-  perform life_restart();
+  perform life_restart(pg_temp.my_sim());
   perform pg_temp.assert(not exists (select 1 from profiles where id = pg_temp.u('x')), 'x is gone (a new life)');
   perform pg_temp.assert((select status from kids_children where id = v_c) = 'home' and (select (parent_a is null) <> (parent_b is null) from kids_children where id = v_c), 'the child stays, with one parent: g');
   perform pg_temp.assert((select count(*) from kids_children where id = v_c and (parent_a = pg_temp.u('g') or parent_b = pg_temp.u('g'))) = 1, 'g is the parent');
