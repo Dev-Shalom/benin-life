@@ -23,6 +23,7 @@ export const SEDAN: CarDesign = {
   rear: 'boot',
   exhaust: true,
   fin: true,
+  dark: true,
   mirrorZ: -0.72,
 };
 
@@ -43,6 +44,7 @@ export const SEDAN2: CarDesign = {
   tail: { w: 0.5, h: 0.08, y: 0.86, bar: true },
   grille: { w: 0.86, h: 0.17, y: 0.63, style: 'lux' },
   plateY: [0.43, 0.58],
+  dark: true,
   mirrorZ: -0.8,
 };
 
@@ -66,6 +68,7 @@ export const HATCH: CarDesign = {
   plateY: [0.42, 0.56],
   rear: 'hatch',
   fin: true,
+  dark: true,
   mirrorZ: -0.6,
 };
 
@@ -82,6 +85,7 @@ export const SUV: CarDesign = {
   hwt: 0.76,
   roof: [2, 5],
   seams: [-0.8, 0.28, 1.35],
+  posts: [0.28, 1.5],
   wheel: { zf: -1.5, zr: 1.5, r: 0.4, wid: 0.28, x: 0.85 },
   head: { w: 0.4, h: 0.16, y: 0.9, yaw: 0.06, drl: true },
   tail: { w: 0.14, h: 0.42, y: 0.95 },
@@ -116,6 +120,7 @@ export const SUVLUX: CarDesign = {
   rear: 'hatch',
   rails: false,
   cladding: false,
+  dark: true,
 };
 
 export const PICKUP: CarDesign = {
@@ -182,21 +187,22 @@ export const SUVBOX: CarDesign = {
   y0: [[-2.375, 0.4], [-2.2, 0.33], [-1.8, 0.3], [1.8, 0.3], [2.2, 0.33], [2.375, 0.4]],
   y1: [[-2.375, 1.06], [-2.2, 1.12], [-1.4, 1.17], [0, 1.2], [2.2, 1.2], [2.375, 1.12]],
   crown: [[-2.375, 0.0], [-1.4, 0.015], [2.375, 0]],
-  cab: [{ z: -1.0, top: 1.18 }, { z: -0.9, top: 1.55 }, { z: -0.82, top: 1.96 }, { z: -0.6, top: 2.0 }, { z: 1.9, top: 2.0 }, { z: 2.15, top: 1.95 }, { z: 2.25, top: 1.22 }],
+  cab: [{ z: -1.0, top: 1.18 }, { z: -0.93, top: 1.6 }, { z: -0.86, top: 1.99 }, { z: -0.7, top: 2.0 }, { z: 2.05, top: 2.0 }, { z: 2.2, top: 1.98 }, { z: 2.26, top: 1.22 }],
   cabBase: 1.17,
-  hwb: 0.9,
-  hwt: 0.84,
+  hwb: 0.89,
+  hwt: 0.85,
   roof: [3, 4],
   seams: [-0.7, 0.35, 1.45],
   posts: [0.35, 1.45],
   wheel: { zf: -1.5, zr: 1.5, r: 0.42, wid: 0.28, x: 0.85 },
-  head: { w: 0.26, h: 0.26, y: 0.93, yaw: 0, drl: false },
+  head: { w: 0.26, h: 0.26, y: 0.93, yaw: 0, drl: false, round: true },
   tail: { w: 0.13, h: 0.36, y: 0.98 },
   grille: { w: 0.9, h: 0.3, y: 0.77, style: 'suv' },
   plateY: [0.52, 0.62],
   rails: true,
   cladding: true,
   running: true,
+  spare: true,
   rear: 'tail',
   mirrorZ: -0.92,
 };
@@ -223,6 +229,7 @@ export const SUVSPORT: CarDesign = {
   cladding: false,
   rails: false,
   running: false,
+  dark: true,
   mirrorZ: -0.88,
 };
 
@@ -278,6 +285,7 @@ export const WEDGE: CarDesign = {
   rails: false,
   cladding: false,
   running: false,
+  dark: true,
   rear: 'tail',
   mirrorZ: -0.75,
 };

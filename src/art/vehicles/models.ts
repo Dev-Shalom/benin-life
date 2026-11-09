@@ -363,7 +363,7 @@ function minibusExtras(K: Kit) {
       }
     }
   }
-  if (lod < 2) for (let i = 0; i < 4; i++) K.put(rbox(1.7, 0.03, 0.05, 0.012, 1), 'trim', 0, 2.3, -0.7 + i * 0.9);
+  if (lod < 2) for (let i = 0; i < 4; i++) K.put(rbox(1.7, 0.03, 0.05, 0.012, 1), 'trim', 0, 2.262, -0.7 + i * 0.9);
 }
 
 export type { Role, BufferGeometry };

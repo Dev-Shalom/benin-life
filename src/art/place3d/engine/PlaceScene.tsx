@@ -46,6 +46,7 @@ import { angleTo, DEFAULT_GAIT, makeWalker, place, stepWalker, stopWalk, walkPat
 import { buildPlaceGrid, propMeta, roomFor, zoneSpot, type NpcPlan, type Room, type ZonePose } from '../model';
 import { buildPlace } from './props';
 import { LAYERS } from '../../home3d/engine/build';
+import { placeVehicleMaterial, setVehicleLight } from '../../vehicles';
 import { feelQuality, useTier } from '../../feel/quality';
 import { hashStr } from '../../feel/kit';
 import { blobMaterial } from '../../feel/materials';
@@ -357,6 +358,7 @@ function Interior(props: PlaceSceneProps & {
       blob: blobMaterial(),
       glass: new MeshBasicMaterial({ color: '#bfe3f7', transparent: true, opacity: 0.78, vertexColors: true }),
       screen: new MeshBasicMaterial({ color: '#7ec8ff' }),
+      vehicle: placeVehicleMaterial(gl, q.tier === 'low'),
       pick: new MeshBasicMaterial({ visible: false }),
       ring: new MeshBasicMaterial({ color: '#17a05c', transparent: true, opacity: 0.32, depthWrite: false }),
       tap: new MeshBasicMaterial({ color: '#17a05c', transparent: true, opacity: 0, depthWrite: false }),
@@ -364,6 +366,11 @@ function Interior(props: PlaceSceneProps & {
     }),
     [feel],
   );
+  // showroom and lot cars: lamps glow and reflections fade at night
+  useEffect(() => {
+    setVehicleLight(mats.vehicle, hour >= 19 || hour < 6 ? 1 : 0);
+    invalidate();
+  }, [mats, hour, invalidate]);
   const group = useMemo(() => {
     const g = new Group();
     for (const k of LAYERS) {

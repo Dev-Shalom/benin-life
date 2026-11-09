@@ -24,8 +24,8 @@ import {
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAT, MAT_SCALE, type Mat } from '../../feel/atlas';
 
-export type Layer = 'solid' | 'glow' | 'glass' | 'screen' | 'light';
-export const LAYERS: Layer[] = ['solid', 'glow', 'glass', 'screen', 'light'];
+export type Layer = 'solid' | 'glow' | 'glass' | 'screen' | 'vehicle' | 'light';
+export const LAYERS: Layer[] = ['solid', 'glow', 'glass', 'screen', 'vehicle', 'light'];
 
 const _c = new Color();
 const _m = new Matrix4();
@@ -55,7 +55,7 @@ interface Occ { x0: number; z0: number; x1: number; z1: number; y0: number; y1: 
 export interface BoxOpt { ry?: number; rx?: number; rz?: number; layer?: Layer; mat?: Mat; uv?: number; seg?: number; noOcc?: boolean }
 
 export class HomeBuilder {
-  private parts: Record<Layer, BufferGeometry[]> = { solid: [], glow: [], glass: [], screen: [], light: [] };
+  private parts: Record<Layer, BufferGeometry[]> = { solid: [], glow: [], glass: [], screen: [], vehicle: [], light: [] };
   private occ: Occ[] = [];
   /** Current piece frame (position + yaw), applied after the part's own transform. */
   frame = new Matrix4();
@@ -179,6 +179,14 @@ export class HomeBuilder {
     if (!g.attributes.normal) g.computeVertexNormals();
     for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') g.deleteAttribute(k);
     this.push(g, color, opt.layer ?? 'solid', x, y, z, opt.rx, opt.ry, opt.rz, opt, !opt.noOcc);
+  }
+
+  /** A vehicle from the shared library (src/art/vehicles): already coloured per vertex (body paint baked in) with its lamp / surface
+   * attributes, placed in the current frame. It goes to the 'vehicle' layer, which the scenes draw with the shared vehicle material
+   * (paint and glass reflections on High). */
+  vehicle(g: BufferGeometry) {
+    g.applyMatrix4(this.frame);
+    this.parts.vehicle.push(g);
   }
 
   /** Fake light pool on the floor: an additive disc, bright centre fading to nothing (vertex colours). */

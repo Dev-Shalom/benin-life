@@ -2,13 +2,14 @@
 // showrooms, the city map markers and the shop thumbnails. Procedural, no assets. Geometry is built once per (model, lod) and cached;
 // every vehicle is ONE merged geometry with vertex colours (body paint is WHITE so the instance / material colour tints only the
 // paint) plus an `aPart` attribute that lets lamps glow at night (see vehicleMaterial). Nose -z, wheels on y = 0. docs/DRIVE.md "Vehicles".
-import type { BufferGeometry } from 'three';
-import { bake, Kit, type Lod, type Part, type WheelSpec } from './kit';
+import { Color, type BufferGeometry } from 'three';
+import { bake, Kit, setVehicleRenderer, vehicleMaterial, type Lod, type Part, type WheelSpec } from './kit';
+import type { WebGLRenderer } from 'three';
 import { buildModel, type VehicleModel } from './models';
 import { unitWheel, disposeWheels } from './wheels';
 
 export { BUS, VEH_LEN, type VehicleModel } from './models';
-export { vehicleMaterial, setVehicleRenderer, setVehicleLight, type VehicleMaterial, type Lod, type WheelSpec, type Role, type Part } from './kit';
+export { vehicleMaterial, setVehicleRenderer, setVehicleLight, bake, type VehicleMaterial, type Lod, type WheelSpec, type Role, type Part } from './kit';
 export { LUX_MODEL } from './lux';
 
 const cache = new Map<string, BufferGeometry>();
@@ -58,6 +59,14 @@ export function triCount(g: BufferGeometry): number {
   return Math.round((g.index ? g.index.count : g.getAttribute('position').count) / 3);
 }
 
+/** The material the place, home and thumbnail scenes draw the 'vehicle' layer with (reflections on High, a bit calmer than outdoors). */
+export function placeVehicleMaterial(renderer: WebGLRenderer | null, low: boolean) {
+  setVehicleRenderer(low ? null : renderer);
+  const m = vehicleMaterial(0xffffff, { cheap: low || !renderer });
+  m.envMapIntensity = 0.55;
+  return m;
+}
+
 export function disposeVehicleCache() {
   cache.forEach((g) => g.dispose());
   cache.clear();
@@ -66,16 +75,25 @@ export function disposeVehicleCache() {
   disposeWheels();
 }
 
+/** A vehicle baked at level 0 with or without its riders (cached): for the garage and showroom, which paint it with `paintedBody`. */
+const plainCache = new Map<string, BufferGeometry>();
+export function vehicleGeometryPlain(model: VehicleModel, rider: boolean): BufferGeometry {
+  const key = model + (rider ? 'r' : '');
+  let g = plainCache.get(key);
+  if (!g) {
+    g = bake(vehicleParts(model, 0, { rider }));
+    plainCache.set(key, g);
+  }
+  return g;
+}
+
 /** A copy of a vehicle geometry with its body paint baked to `hex` (for scenes whose material cannot tint, e.g. the map's keke marker). */
 export function paintedBody(g: BufferGeometry, hex: number): BufferGeometry {
   const c = g.clone();
   const col = c.getAttribute('color');
   const part = c.getAttribute('aPart');
-  const r = ((hex >> 16) & 255) / 255;
-  const gg = ((hex >> 8) & 255) / 255;
-  const b = (hex & 255) / 255;
-  const lin = (v: number) => Math.pow(v, 2.2);
-  for (let i = 0; i < col.count; i++) if (part.getY(i) > 0.5) col.setXYZ(i, col.getX(i) * lin(r), col.getY(i) * lin(gg), col.getZ(i) * lin(b));
+  const k = new Color(hex);
+  for (let i = 0; i < col.count; i++) if (part.getY(i) > 0.5) col.setXYZ(i, col.getX(i) * k.r, col.getY(i) * k.g, col.getZ(i) * k.b);
   return c;
 }
 

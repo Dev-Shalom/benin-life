@@ -39,6 +39,7 @@ import { poseCook, poseDance, poseGreet, poseLie, poseScrub, poseSit, sitRootY }
 import { decodeAct, encodeAct } from '../../../api/interactions';
 import { buildRoom, type Parking } from './room';
 import { HomeBuilder, LAYERS } from './build';
+import { placeVehicleMaterial, setVehicleLight } from '../../vehicles';
 import { buildPiece } from './furniture';
 import { feelQuality, useTier } from '../../feel/quality';
 import { rigFor } from '../../feel/rigs';
@@ -593,6 +594,7 @@ function House(props: HomeSceneProps & {
       light: feel.light,
       glass: new MeshBasicMaterial({ color: '#bfe3f7', transparent: true, opacity: 0.82, vertexColors: true }),
       screen: new MeshBasicMaterial({ color: '#15181d' }),
+      vehicle: placeVehicleMaterial(gl, q.tier === 'low'),
       pick: new MeshBasicMaterial({ visible: false }),
       ring: new MeshBasicMaterial({ color: '#17a05c', transparent: true, opacity: 0.38, depthWrite: false }),
       tap: new MeshBasicMaterial({ color: '#17a05c', transparent: true, opacity: 0, depthWrite: false }),
@@ -600,6 +602,11 @@ function House(props: HomeSceneProps & {
     }),
     [feel],
   );
+  // parked cars: lamps glow and reflections fade at night
+  useEffect(() => {
+    setVehicleLight(mats.vehicle, props.hour >= 19 || props.hour < 6 ? 1 : 0);
+    invalidate();
+  }, [mats, props.hour, invalidate]);
   const group = useMemo(() => {
     const g = new Group();
     for (const k of LAYERS) {

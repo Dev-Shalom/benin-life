@@ -1,45 +1,22 @@
 // Dealer showrooms, garages and the home parking bay draw their cars from the shared vehicle library (src/art/vehicles), the same
-// models the drive scene, free roam and traffic use. A model is built once as coloured parts (a role + geometry each); drawing one
-// puts every part into the HomeBuilder's own layers (solid, glass, glow), so a car merges into the place's few meshes like any prop.
-// Frame: front = +z (the library's nose is -z, so parts are turned half a turn), ground y = 0, scaled by `s`.
+// models the drive scene, free roam and traffic use. A model is baked once; drawing one copies it into the HomeBuilder's 'vehicle'
+// layer with its paint colour baked into the body vertices. The scenes draw that layer with the shared vehicle material (paint and
+// glass reflections on High, lamps that glow at night), so cars still merge into the place's few meshes: one extra draw call.
+// Frame: front = +z (the library's nose is -z, so models are turned half a turn), ground y = 0, scaled by `s`.
 // The LuxCar keys are internal ids; the models are original generic designs and CAR_NAMES are generic names (no real brands).
-import type { BufferGeometry } from 'three';
-import type { HomeBuilder, Layer } from '../../home3d/engine/build';
-import { LUX_MODEL, vehicleParts, type Part, type Role, type VehicleModel } from '../../vehicles';
+import { Color } from 'three';
+import type { HomeBuilder } from '../../home3d/engine/build';
+import { LUX_MODEL, paintedBody, vehicleGeometryPlain, type VehicleModel } from '../../vehicles';
 
 type B = HomeBuilder;
 
 export type LuxCar = 'gle63' | 'g63' | 'urus' | 'cybertruck' | 'escalade' | 'c300' | 'camry';
 
-const ROLE_HEX: Record<Role, string> = {
-  body: '#ffffff', glass: '#3a5068', trim: '#1d1f24', tyre: '#18191d', rim: '#cdd2d9', disc: '#2c3037', chrome: '#e2e6ea',
-  head: '#f4f7ff', tail: '#e0242c', amber: '#ffa526', plate: '#f3f2ea', plateband: '#2a8a4a', seat: '#2e3238', accent: '#2f7d4a',
-  skin: '#7a5236', cloth: '#4d6a8f', metal: '#8b929b',
-};
-const ROLE_LAYER: Partial<Record<Role, Layer>> = { glass: 'glass', head: 'glow', tail: 'glow', amber: 'glow' };
-
-const cache = new Map<string, Part[]>();
-
-function partsOf(model: VehicleModel, rider: boolean): Part[] {
-  const key = model + (rider ? 'r' : '');
-  let p = cache.get(key);
-  if (!p) {
-    p = vehicleParts(model, 0, { rider });
-    cache.set(key, p);
-  }
-  return p;
-}
-
-const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
-
-function put(b: B, model: VehicleModel, s: number, paint: string, rider = true, turn = true) {
-  for (const p of partsOf(model, rider)) {
-    const g: BufferGeometry = p.g.clone();
-    if (turn) g.rotateY(Math.PI);
-    g.scale(s, s, s);
-    const colour = p.role === 'body' ? paint : p.hex !== undefined ? hex(p.hex) : ROLE_HEX[p.role];
-    b.geo(g, 0, 0, 0, colour, { layer: ROLE_LAYER[p.role] ?? 'solid', mat: 'plain', noOcc: true });
-  }
+function put(b: B, model: VehicleModel, s: number, paint: string, rider = true) {
+  const g = paintedBody(vehicleGeometryPlain(model, rider), new Color(paint).getHex());
+  g.rotateY(Math.PI);
+  g.scale(s, s, s);
+  b.vehicle(g);
 }
 
 /** A generic saloon / SUV / pickup of the library in the given paint (the lots and yards use it for ordinary cars). */
@@ -48,7 +25,7 @@ export function drawModel(b: B, model: VehicleModel, x: number, z: number, ry: n
   put(b, model, s, paint, false);
 }
 
-/** Bajaj-style commuter motorcycle, no brand cues: tank in `tank`, no rider. */
+/** Commuter motorcycle, no brand cues: tank in `tank`, no rider. */
 export function motorcycle(b: B, s: number, tank = '#b0202d') {
   put(b, 'moto', s, tank, false);
 }

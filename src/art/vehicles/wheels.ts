@@ -18,7 +18,7 @@ function lathe(profile: [number, number][], seg: number): BufferGeometry {
 function carWheel(lod: Lod): Part[] {
   const parts: Part[] = [];
   const add = (g: BufferGeometry, role: Role) => parts.push({ g, role });
-  const seg = lod === 0 ? 20 : lod === 1 ? 10 : 8;
+  const seg = lod === 0 ? 16 : lod === 1 ? 10 : 8;
   if (lod >= 1) {
     add(cylX(1, 1, seg), 'tyre');
     if (lod === 1) for (const sd of [-1, 1]) {

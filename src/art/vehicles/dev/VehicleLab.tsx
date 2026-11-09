@@ -134,12 +134,18 @@ export default function VehicleLab() {
       const L = b.finish();
       const grp: Mesh[] = [];
       if (L.solid) grp.push(new Mesh(L.solid, new MeshLambertMaterial({ vertexColors: true })));
+      if (L.vehicle) {
+        const vm = labMaterial(0xffffff);
+        vm.glow.value = night ? 1.6 : 0.5;
+        mats.push(vm);
+        grp.push(new Mesh(L.vehicle, vm));
+      }
       if (L.glass) grp.push(new Mesh(L.glass, new MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.85 })));
       if (L.glow) grp.push(new Mesh(L.glow, new MeshBasicMaterial({ vertexColors: true })));
       grp.forEach((m) => scene.add(m));
-      for (const k of ['solid', 'glass', 'glow'] as const) if (L[k]) log.push(`${k}: ${labTris(L[k]!)} tris`);
+      for (const k of ['solid', 'vehicle', 'glass', 'glow'] as const) if (L[k]) log.push(`${k}: ${labTris(L[k]!)} tris`);
       if (only) {
-        const box = new Box3().setFromObject(grp[0]);
+        const box = new Box3().setFromObject(grp.find((m) => m.geometry === L.vehicle) ?? grp[0]);
         cam.fov = 28;
         cam.updateProjectionMatrix();
         frame(box, new Vector3(...(camDirs[camKey] ?? camDirs['3q'])), 1.0);

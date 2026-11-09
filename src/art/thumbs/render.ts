@@ -19,6 +19,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { HomeBuilder, type Layer } from '../home3d/engine/build';
+import { vehicleMaterial } from '../vehicles';
 import { buildPiece } from '../home3d/engine/furniture';
 import { drawVehicle } from '../home3d/engine/room';
 import type { FurnitureItem, FurnitureKind } from '../home3d/model';
@@ -42,6 +43,7 @@ function materials(): Partial<Record<Layer, Material>> {
       glow: new MeshBasicMaterial({ vertexColors: true }),
       glass: new MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.7 }),
       screen: new MeshBasicMaterial({ vertexColors: true }),
+      vehicle: vehicleMaterial(0xffffff, { cheap: true }),
     };
   }
   return mats;
