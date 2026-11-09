@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { TURNSTILE_SITE_KEY, loadTurnstile, turnstileEnabled } from '../lib/turnstile';
 
-export function Turnstile({ onToken, resetKey = 0 }: { onToken: (token: string | null) => void; resetKey?: number }) {
+export function Turnstile({ onToken, onFailed, resetKey = 0 }: { onToken: (token: string | null) => void; onFailed?: () => void; resetKey?: number }) {
   const box = useRef<HTMLDivElement>(null);
   const widget = useRef<string | null>(null);
   const cb = useRef(onToken);
-  useEffect(() => { cb.current = onToken; });
+  const failCb = useRef(onFailed);
+  useEffect(() => { cb.current = onToken; failCb.current = onFailed; });
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -20,9 +21,9 @@ export function Turnstile({ onToken, resetKey = 0 }: { onToken: (token: string |
         theme: 'auto',
         callback: (t: string) => cb.current(t),
         'expired-callback': () => cb.current(null),
-        'error-callback': () => cb.current(null),
+        'error-callback': () => { cb.current(null); failCb.current?.(); },
       });
-    }).catch(() => { if (!dead) setFailed(true); });
+    }).catch(() => { if (!dead) { setFailed(true); failCb.current?.(); } });
     return () => {
       dead = true;
       try { if (widget.current) window.turnstile?.remove(widget.current); } catch { /* ignore */ }

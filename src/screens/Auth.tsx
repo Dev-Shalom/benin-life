@@ -89,6 +89,8 @@ export default function Auth() {
   // Optional Turnstile CAPTCHA (only when VITE_TURNSTILE_SITE_KEY is set): one single-use token per attempt
   const [captcha, setCaptcha] = useState<string | null>(null);
   const [captchaReset, setCaptchaReset] = useState(0);
+  // If the safety check cannot load or errors, do not block the player here; the server decides.
+  const [captchaFailed, setCaptchaFailed] = useState(false);
 
   // Logged in already? Go play. (Not while choosing a new password: the recovery link signs you in.)
   useEffect(() => {
@@ -117,7 +119,7 @@ export default function Auth() {
       if (problem) return fail('password', problem);
     }
     if (mode === 'signup' && !adult) return fail('adult', 'Please confirm you are 18 or older to create an account.');
-    if (turnstileEnabled && mode !== 'reset' && !captcha) return fail('form', 'Please wait for the safety check to finish, then try again.');
+    if (turnstileEnabled && !captchaFailed && mode !== 'reset' && !captcha) return fail('form', 'Please wait for the safety check to finish, then try again.');
     setBusy(true);
     try {
       if (mode === 'signup') {
@@ -219,7 +221,7 @@ export default function Auth() {
           ) : (
             <button type="button" className="au-link" onClick={() => setMode('forgot')}>Forgot password?</button>
           )}
-          <Turnstile onToken={setCaptcha} resetKey={captchaReset} />
+          <Turnstile onToken={setCaptcha} onFailed={() => setCaptchaFailed(true)} resetKey={captchaReset} />
           {formError}
           {formInfo}
           <button type="submit" className="mk-btn mk-btn--primary mk-btn--block" aria-busy={busy || undefined} disabled={busy}>
@@ -239,7 +241,7 @@ export default function Auth() {
           <p>Enter the email you signed up with. We'll send you a link to choose a new password.</p>
         </div>
         {emailField()}
-        <Turnstile onToken={setCaptcha} resetKey={captchaReset} />
+        <Turnstile onToken={setCaptcha} onFailed={() => setCaptchaFailed(true)} resetKey={captchaReset} />
         {formError}
         {formInfo}
         <button type="submit" className="mk-btn mk-btn--primary mk-btn--block" aria-busy={busy || undefined} disabled={busy}>{busy ? 'One moment...' : 'Send reset link'}</button>

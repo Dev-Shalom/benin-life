@@ -99,6 +99,7 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
   const [password, setPassword] = useState('');
   const [captcha, setCaptcha] = useState<string | null>(null);
   const [captchaReset, setCaptchaReset] = useState(0);
+  const [captchaFailed, setCaptchaFailed] = useState(false);
   const [busy, setBusy] = useState<'restart' | 'logout' | null>(null);
   const [gone, setGone] = useState(false);
   // welcome-back gift (docs/DAILY_RETURN.md): shown inside the card; the pop-up in the game stays quiet once this showed it
@@ -324,7 +325,7 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
         title="Confirm your new life"
         actions={
           <>
-            <Button variant="danger" block disabled={!typedOk || !password || (turnstileEnabled && !captcha)} loading={busy === 'restart'} onClick={() => void restart()}>
+            <Button variant="danger" block disabled={!typedOk || !password || (turnstileEnabled && !captchaFailed && !captcha)} loading={busy === 'restart'} onClick={() => void restart()}>
               Start a new life
             </Button>
             <Button variant="ghost" block disabled={busy !== null} onClick={() => setStep(0)}>Cancel</Button>
@@ -355,7 +356,7 @@ export default function WelcomeBack({ lastSeenAt, onContinue }: WelcomeBackProps
           aria-label="Your password"
           autoComplete="current-password"
         />
-        <Turnstile onToken={setCaptcha} resetKey={captchaReset} />
+        <Turnstile onToken={setCaptcha} onFailed={() => setCaptchaFailed(true)} resetKey={captchaReset} />
       </Modal>
     </div>
   );
