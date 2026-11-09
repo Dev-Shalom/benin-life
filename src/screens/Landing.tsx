@@ -130,8 +130,8 @@ export default function Landing() {
           <div className="mk-wrap">
             <h2 id="lp-n-h" className="mk-display mk-rise">A busy city is already waiting.</h2>
             <div className="lp-num-grid">
-              <div className="lp-num mk-rise" style={{ ['--i' as string]: 0 }}><strong data-count="6000" data-suffix="+">6,000+</strong><span>players signed up, mostly from Benin and Edo</span></div>
-              <div className="lp-num mk-rise" style={{ ['--i' as string]: 1 }}><strong data-count="100" data-suffix="+">100+</strong><span>playing at the same time at peak</span></div>
+              <div className="lp-num mk-rise" style={{ ['--i' as string]: 0 }}><strong data-count="9600" data-suffix="+">9,600+</strong><span>players signed up in the last month, mostly from Benin and Edo</span></div>
+              <div className="lp-num mk-rise" style={{ ['--i' as string]: 1 }}><strong data-count="1000" data-suffix="+">1,000+</strong><span>players in the game on a busy day</span></div>
               <div className="lp-num mk-rise" style={{ ['--i' as string]: 2 }}><strong><span className="ngn">N</span>0</strong><span>to play. It opens in any phone browser, no download</span></div>
               <div className="lp-num mk-rise" style={{ ['--i' as string]: 3 }}><strong>18+</strong><span>Benin Life is for players 18 and over</span></div>
             </div>
