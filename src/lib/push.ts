@@ -79,12 +79,24 @@ async function subscribeDevice(): Promise<{ endpoint?: string; keys?: { p256dh?:
   return sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
 }
 
-/** Ask permission, subscribe and save it on the server (admins only). */
-export async function enablePush(): Promise<string> {
-  const j = await subscribeDevice();
-  const r = await rpc<{ message: string }>('admin_push_subscribe', {
+/** Subscribe this device and save it with `fn`. If the server says the endpoint already belongs to another account
+ *  ('endpoint_taken', e.g. a shared phone), drop the local subscription, get a new endpoint and save once more. */
+async function subscribeSaving<T>(fn: 'push_subscribe' | 'admin_push_subscribe'): Promise<T> {
+  const save = (j: { endpoint?: string; keys?: { p256dh?: string; auth?: string } }) => rpc<T>(fn, {
     p_endpoint: j.endpoint, p_p256dh: j.keys?.p256dh, p_auth: j.keys?.auth, p_user_agent: navigator.userAgent.slice(0, 200),
   });
+  try {
+    return await save(await subscribeDevice());
+  } catch (e) {
+    if ((e as { hint?: string } | null)?.hint !== 'endpoint_taken') throw e;
+    await (await currentSubscription())?.unsubscribe().catch(() => false);
+    return await save(await subscribeDevice());
+  }
+}
+
+/** Ask permission, subscribe and save it on the server (admins only). */
+export async function enablePush(): Promise<string> {
+  const r = await subscribeSaving<{ message: string }>('admin_push_subscribe');
   return r.message;
 }
 
@@ -103,10 +115,7 @@ export const setPushPrefs = (p: Partial<Record<'master' | PushCategory, boolean>
 
 /** Turn notifications on for this player: browser permission, save this device, master switch on. */
 export async function enablePlayerPush(): Promise<PushPrefs> {
-  const j = await subscribeDevice();
-  await rpc<PushPrefs>('push_subscribe', {
-    p_endpoint: j.endpoint, p_p256dh: j.keys?.p256dh, p_auth: j.keys?.auth, p_user_agent: navigator.userAgent.slice(0, 200),
-  });
+  await subscribeSaving<PushPrefs>('push_subscribe');
   return setPushPrefs({ master: true });
 }
 

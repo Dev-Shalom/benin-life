@@ -51,20 +51,26 @@ Deno.serve(async (req) => {
   }
 
   // 4. the account is gone: clean up what pointed at it (a failure here never undoes the delete; it is audited)
+  // supabase-js returns { data, error } and does not throw: every failure is logged and recorded in the done audit row
   let removedFiles = 0;
+  const filesErrors: string[] = [];
   for (const [bucket, names] of byBucket) {
     for (let i = 0; i < names.length; i += 100) {
-      try {
-        const { data: gone } = await db.storage.from(bucket).remove(names.slice(i, i + 100));
-        removedFiles += gone?.length ?? 0;
-      } catch { /* the files are unreachable without the account anyway; keep going */ }
+      const { data: gone, error: rmErr } = await db.storage.from(bucket).remove(names.slice(i, i + 100));
+      if (rmErr) {
+        console.error('storage remove failed', bucket, rmErr.message);
+        filesErrors.push(`${bucket}: ${rmErr.message}`);
+      } else removedFiles += gone?.length ?? 0;
     }
   }
-  let leftovers: unknown = {};
-  try {
-    const { data } = await db.rpc('bl_delete_user_leftovers', { p_uid: userId });
-    leftovers = data ?? {};
-  } catch { /* audited below with whatever we have */ }
-  try { await db.rpc('bl_self_delete_done', { p_user: userId, p_files: removedFiles, p_leftovers: leftovers }); } catch { /* audit only */ }
+  let leftovers: Record<string, unknown> = {};
+  const { data: lo, error: loErr } = await db.rpc('bl_delete_user_leftovers', { p_uid: userId });
+  if (loErr) {
+    console.error('bl_delete_user_leftovers failed', loErr.message);
+    leftovers = { error: loErr.message };
+  } else leftovers = (lo ?? {}) as Record<string, unknown>;
+  if (filesErrors.length) leftovers = { ...leftovers, files_error: filesErrors.join('; ').slice(0, 500) };
+  const { error: doneErr } = await db.rpc('bl_self_delete_done', { p_user: userId, p_files: removedFiles, p_leftovers: leftovers });
+  if (doneErr) console.error('bl_self_delete_done failed', doneErr.message);
   return json(req, { ok: true, message: 'Your account and all its data are deleted.' });
 });

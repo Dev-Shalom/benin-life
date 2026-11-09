@@ -31,13 +31,15 @@ insert into public.game_config (key, value, category, label, description, kind, 
 ('security.reauth_minutes', '15', 'security', 'Password re-check window (minutes)',
  'Dangerous actions (starting a new life) need a sign-in with the password within this many minutes. The app asks the player for the password and signs in again first.',
  'minutes', 1, 120),
-('security.reserved_names', '"admin,administrator,support,official,beninlife,moderator,mod,staff,system,owner,shalom"', 'security', 'Reserved usernames',
- 'Comma-separated words players cannot use as a new username. Compared in lower case with _ . - and spaces removed. A word of 4 or more letters blocks any name that starts with it; a shorter word blocks only itself and itself plus numbers (so "mod" and "mod2" are blocked but "Modeste" is not). Existing usernames are not touched.',
+('security.reserved_names', '"admin*,administrator*,beninlife*,moderator*,official,support,staff,system,owner,shalom,mod"', 'security', 'Reserved usernames',
+ 'Comma-separated words players cannot use as a new username. Compared in lower case with _ . - and spaces removed. A plain word blocks itself and itself plus numbers (support, support2). A word ending in * also blocks every name that starts with it (admin* blocks AdminBoss). Existing usernames are not touched.',
  'text', null, null)
 on conflict (key) do nothing;
 
--- the owners are admins already; a public email list is a takeover risk (email confirmation is off), so it ships empty
-update public.game_config set value = '""'::jsonb where key = 'admin.bootstrap_emails' and value <> '""'::jsonb;
+-- a public email list is a takeover risk (email confirmation is off): once an admin exists it is emptied
+-- (only when an admin already exists, so a project with no admin yet is not locked out of its first claim)
+update public.game_config set value = '""'::jsonb
+ where key = 'admin.bootstrap_emails' and value <> '""'::jsonb and exists (select 1 from public.profiles where is_admin);
 
 create or replace function public.admin_claim() returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -90,7 +92,7 @@ revoke all on function public.admin_claim() from public, anon;
 grant execute on function public.admin_claim() to authenticated;
 
 -- ---------------------------------------------------------------------
--- 2. life_restart needs the Sim name and a fresh sign-in
+-- 2. life_restart needs the Sim name and a recent password sign-in (JWT amr)
 -- ---------------------------------------------------------------------
 -- Old clients (and anyone calling it without the confirmation) fail safe.
 create or replace function public.life_restart()
@@ -132,10 +134,13 @@ begin
   if lower(btrim(coalesce(p_confirm, ''))) <> lower(btrim(v_me.username)) then
     raise exception 'Type your Sim name exactly to confirm.' using errcode = 'P0001', hint = 'confirm';
   end if;
-  -- 2) the sign-in (JWT) is fresh: the app signs in with the password right before this call
+  -- 2) the password was used recently: the JWT's amr claim lists how the session was authenticated and when. It is kept
+  --    when a token is refreshed, so a refresh token alone cannot pass. Missing or unreadable amr fails closed.
   v_mins := greatest(coalesce(bl_cfg('security.reauth_minutes'), 15), 1);
   begin
-    v_iat := (auth.jwt() ->> 'iat')::bigint;
+    select max((a ->> 'timestamp')::bigint) into v_iat
+      from jsonb_array_elements(case when jsonb_typeof(auth.jwt() -> 'amr') = 'array' then auth.jwt() -> 'amr' else '[]'::jsonb end) a
+     where a ->> 'method' = 'password';
   exception when others then
     v_iat := null;
   end;
@@ -276,7 +281,7 @@ select pg_temp.bl_sec_patch(
      and exists (
        select 1
          from (select lower(regexp_replace(p_name, '[_.[:space:]-]', '', 'g')) as v) nm,
-              (select lower(regexp_replace(w, '[_.[:space:]-]', '', 'g')) as w
+              (select lower(regexp_replace(w, '[_.[:space:]*-]', '', 'g')) as w, right(btrim(w), 1) = '*' as pre
                  from game_config c,
                       lateral (select jsonb_array_elements_text(c.value) as w
                                 where jsonb_typeof(c.value) = 'array'
@@ -285,8 +290,8 @@ select pg_temp.bl_sec_patch(
                                 where jsonb_typeof(c.value) = 'string') x
                 where c.key = 'security.reserved_names') r
         where r.w <> '' and (nm.v = r.w
-                or (length(r.w) >= 4 and left(nm.v, length(r.w)) = r.w)
-                or (length(r.w) < 4 and left(nm.v, length(r.w)) = r.w and substr(nm.v, length(r.w) + 1) ~ '^[0-9]*$'))) then
+                or (r.pre and left(nm.v, length(r.w)) = r.w)
+                or (left(nm.v, length(r.w)) = r.w and substr(nm.v, length(r.w) + 1) ~ '^[0-9]*$'))) then
     raise exception 'That username is reserved. Please pick another one.' using errcode = 'P0001', hint = 'reserved_name';
   end if;
   if p_gender not in ('male','female') then$new$);

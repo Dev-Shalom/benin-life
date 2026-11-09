@@ -29,11 +29,12 @@ begin
   return v;
 end $$;
 
--- log in with a JWT issued p_age_s seconds ago
+-- log in with a JWT whose password sign-in (amr) was p_age_s seconds ago (the token itself is fresh, like after a refresh)
 create or replace function pg_temp.login_aged(p uuid, p_age_s int) returns void
 language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', p, 'role', 'authenticated',
-         'iat', extract(epoch from now())::bigint - p_age_s)::text, true);
+         'iat', extract(epoch from now())::bigint,
+         'amr', json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint - p_age_s)))::text, true);
   select set_config('request.jwt.claim.sub', p::text, true);
 $$;
 
@@ -41,8 +42,6 @@ $$;
 do $$
 declare boss uuid; unconf uuid; other uuid; r jsonb;
 begin
-  perform pg_temp.assert((select value from game_config where key = 'admin.bootstrap_emails') = '""'::jsonb,
-    'shipped bootstrap list is empty');
   update profiles set is_admin = false where is_admin;   -- exact counts inside this rolled-back transaction
   boss := pg_temp.mk('sec_boss@sec.bl', 'Sec_Boss');
   unconf := pg_temp.mk('sec_unconf@sec.bl', 'Sec_Unconf');
@@ -94,10 +93,13 @@ begin
   perform pg_temp.assert(exists (select 1 from profiles where id = a), 'wrong name changed nothing');
   -- a sign-in older than the window
   perform pg_temp.login_aged(a, 16 * 60);
-  perform pg_temp.assert(pg_temp.hint_of($q$ select life_restart(' sec_LIFE ') $q$) = 'reauth_required', 'stale sign-in raises');
-  -- no iat at all
-  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
-  perform pg_temp.assert(pg_temp.hint_of($q$ select life_restart('Sec_Life') $q$) = 'reauth_required', 'missing iat raises');
+  perform pg_temp.assert(pg_temp.hint_of($q$ select life_restart(' sec_LIFE ') $q$) = 'reauth_required', 'stale password sign-in raises');
+  -- no amr at all, an amr without a password entry, a fresh iat alone
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint)::text, true);
+  perform pg_temp.assert(pg_temp.hint_of($q$ select life_restart('Sec_Life') $q$) = 'reauth_required', 'missing amr raises');
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint,
+    'amr', json_build_array(json_build_object('method', 'otp', 'timestamp', extract(epoch from now())::bigint)))::text, true);
+  perform pg_temp.assert(pg_temp.hint_of($q$ select life_restart('Sec_Life') $q$) = 'reauth_required', 'a non-password amr raises');
   perform pg_temp.assert(exists (select 1 from profiles where id = a), 'stale sign-in changed nothing');
   -- the window is a setting
   update game_config set value = '30' where key = 'security.reauth_minutes';
@@ -161,23 +163,18 @@ begin
   v := pg_temp.new_user('sec_names@sec.bl');
   perform pg_temp.login(v);
   update game_config set value = '"lapo"' where key = 'origin.force_next';
-  foreach n in array array['Admin', 'admin_01', 'ADMINISTRATOR', 'Sup_port', 'Support2', 'Official_BL', 'Benin_Life', 'BeninLife99', 'Moderator',
-                           'Mod', 'MOD_2', 'Staff', 'System', 'Owner_x', 'Shalom', 'Shalom_Fan'] loop
+  foreach n in array array['Admin', 'Admin_1', 'AdminBoss', 'admin_01', 'ADMINISTRATOR', 'BeninLifeHQ', 'Benin_Life', 'BeninLife99', 'Moderator1', 'ModeratorX',
+                           'Sup_port', 'Support', 'Support2', 'Official', 'Official_2', 'Mod', 'MOD_2', 'Staff', 'System', 'Owner', 'Owner_1', 'Shalom', 'Shalom1'] loop
     perform pg_temp.assert(pg_temp.hint_of(format('select create_profile_v2(%L, ''male'', ''{"gender":"male"}'', ''{hustler,foodie}'', ''oga_at_the_top'')', n)) = 'reserved_name',
       'reserved: ' || n);
   end loop;
   perform pg_temp.assert(not exists (select 1 from profiles where id = v), 'no profile was created');
-  -- fine names (a short word like mod only blocks itself plus numbers; real names such as Modeste stay free)
-  foreach n in array array['Modeste', 'Adminola_ok', 'Okoye', 'Ada_Obi'] loop
-    if n = 'Adminola_ok' then
-      perform pg_temp.assert(pg_temp.hint_of(format('select bl_check_new_profile(%L, %L, ''male'', ''{"gender":"male"}'')', v, n)) = 'reserved_name',
-        'long reserved word blocks a name that starts with it: ' || n);
-    else
-      perform pg_temp.assert(pg_temp.hint_of(format('select bl_check_new_profile(%L, %L, ''male'', ''{"gender":"male"}'')', v, n)) = 'ok', 'allowed: ' || n);
-    end if;
+  -- real names that merely start with a plain reserved word stay free
+  foreach n in array array['Shalom_Fan', 'Stafford', 'Systems', 'Supporter', 'Owners', 'Officially', 'Modupe', 'Modeste', 'Okoye', 'Ada_Obi'] loop
+    perform pg_temp.assert(pg_temp.hint_of(format('select bl_check_new_profile(%L, %L, ''male'', ''{"gender":"male"}'')', v, n)) = 'ok', 'allowed: ' || n);
   end loop;
   -- the list is a setting (text or json array)
-  update game_config set value = '["boss_man", "x"]'::jsonb where key = 'security.reserved_names';
+  update game_config set value = '["boss_man", "x*"]'::jsonb where key = 'security.reserved_names';
   perform pg_temp.assert(pg_temp.hint_of(format('select bl_check_new_profile(%L, ''Boss_Man_2'', ''male'', ''{"gender":"male"}'')', v)) = 'reserved_name', 'json array setting works');
   perform pg_temp.assert(pg_temp.hint_of(format('select bl_check_new_profile(%L, ''Admin'', ''male'', ''{"gender":"male"}'')', v)) = 'ok', 'removed words are free');
   update game_config set value = '""' where key = 'security.reserved_names';

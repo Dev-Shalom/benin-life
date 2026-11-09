@@ -54,11 +54,11 @@ The app reports crashes to the database so you can see them without player scree
 - **Where you see it:** Admin → **Overview → App errors** (last 24 h / 3 days / 7 days, grouped by message, tap for the stack, user and browser). Switch it off with `errors.enabled`.
 
 ## Becoming admin
-- **Owner claim (easiest):** sign up on the live site with an email listed in `admin.bootstrap_emails` (currently dev.shalom1@gmail.com, code.devshalom@gmail.com), finish creating the Sim, open https://playbeninlife.app/admin and press **"I'm the owner: claim admin"**. Then in Admin → Settings → Admin, **clear the owner emails list**.
+- **Owner claim (only for a project with no admin yet):** `admin.bootstrap_emails` is emptied by the security migration as soon as an admin exists, and claiming is refused while any admin exists, unless the email is on the list AND confirmed. For a brand new project: put your email in `admin.bootstrap_emails` (Admin is not available yet, so use the SQL editor: `update game_config set value = '"you@example.com"' where key = 'admin.bootstrap_emails';`), confirm that email address, finish creating the Sim, open https://playbeninlife.app/admin and press **"I'm the owner: claim admin"**. Then empty the list again.
 - **SQL editor:** Supabase dashboard → SQL Editor → `update profiles set is_admin = true where username = '<your username>';`
 - Details: `docs/ADMIN.md`.
 
-**Do this before announcing.** With email confirmation off, whoever registers an owner email first can claim admin.
+**Do this before announcing.** Make sure an admin exists and `admin.bootstrap_emails` is empty (docs/SECURITY.md).
 
 ## Supabase Auth settings to check (dashboard → Authentication)
 | Setting | Value |

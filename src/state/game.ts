@@ -199,6 +199,15 @@ export const useGame = create<GameStore>((set, get) => ({
   signOut: async () => {
     stopLive();
     useTasks.getState().clear(); // M2: the action queue never outlives the session
+    // best effort: free this device's push endpoint so the next account on this phone can use it (never blocks sign-out)
+    try {
+      const { currentSubscription } = await import('../lib/push');
+      const sub = await currentSubscription();
+      if (sub) {
+        await supabase.rpc('push_unsubscribe', { p_endpoint: sub.endpoint }).then(() => undefined, () => undefined);
+        await sub.unsubscribe().catch(() => false);
+      }
+    } catch { /* ignore */ }
     await supabase.auth.signOut();
     set({ state: null, status: 'idle', events: [], unread: 0, error: null });
   },
